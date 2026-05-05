@@ -1,6 +1,12 @@
-# Quick SQL <!-- omit in toc -->
+# ExpreSQL <!-- omit in toc -->
 
-[![Node.js CI](https://github.com/oracle/quicksql/actions/workflows/node.js.yml/badge.svg)](https://github.com/oracle/quicksql/actions/workflows/node.js.yml)
+[![Node.js CI](https://github.com/radicle-it/expresql/actions/workflows/node.js.yml/badge.svg)](https://github.com/radicle-it/expresql/actions/workflows/node.js.yml)
+
+> ExpreSQL is a fork of [Oracle's Quick SQL](https://github.com/oracle/quicksql),
+> released under the Universal Permissive License v1.0. The original copyright
+> and license remain in [`LICENSE.txt`](./LICENSE.txt). The "Quick SQL"
+> shorthand syntax referenced throughout this documentation is the input
+> language defined by the original project.
 
 ## Table of Contents <!-- omit in toc -->
 
@@ -36,7 +42,7 @@ module that can be used as seen in the example below:
 ## Install
 
 ```bash
-npm install @oracle/quicksql
+npm install @radicle-it/expresql
 ```
 
 ## Translating Quick SQL into Oracle SQL Data Definition Language (DDL)
@@ -53,13 +59,13 @@ See below for examples of how to use this library.
 NPXJS regitry already contains package with conflicting name. To disambiguate, please use command like this:
 
 ```
-npx @oracle/quicksql test/apex/department_employees.qsql > output.sql
+npx @radicle-it/expresql test/apex/department_employees.qsql > output.sql
 ```
 
 ### DDL NodeJS ECMA Script Module (ESM) Example
 
 ```js
-import { quicksql } from "@oracle/quicksql";
+import { quicksql } from "@radicle-it/expresql";
 import fs from "fs";
 
 try {
@@ -73,7 +79,7 @@ try {
 ### DDL NodeJS Common JS (CJS) Example
 
 ```js
-const { quicksql } = require( "@oracle/quicksql" );
+const { quicksql } = require( "@radicle-it/expresql" );
 const fs = require( "fs" );
 
 try {
@@ -153,6 +159,7 @@ vulnerability disclosure process
 ## License
 
 Copyright (c) 2023 Oracle and/or its affiliates.
+Copyright (c) 2026 Radicle IT and ExpreSQL contributors.
 
 Released under the Universal Permissive License v1.0 as shown at
-<https://oss.oracle.com/licenses/upl/>.
+<https://oss.oracle.com/licenses/upl/>. See [`LICENSE.txt`](./LICENSE.txt).

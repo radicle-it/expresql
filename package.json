@@ -1,7 +1,7 @@
 {
-  "name": "@oracle/quicksql",
+  "name": "@radicle-it/expresql",
   "version": "1.2.15",
-  "description": "Quick SQL to DDL and ERD translator",
+  "description": "ExpreSQL — Quick SQL to DDL and ERD translator (fork of @oracle/quicksql)",
   "main": "./dist/quick-sql.umd.cjs",
   "module": "./dist/quick-sql.js",
   "type": "module",
@@ -40,10 +40,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/oracle/quicksql.git"
+    "url": "git+https://github.com/radicle-it/expresql.git"
   },
   "keywords": [
-    "Oracle",
+    "ExpreSQL",
     "Quick SQL",
     "SQL",
     "DDL",

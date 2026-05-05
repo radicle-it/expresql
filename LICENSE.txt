@@ -1,4 +1,11 @@
 Copyright (c) 2023 Oracle and/or its affiliates.
+Copyright (c) 2026 Radicle IT and ExpreSQL contributors.
+
+Portions of this software are derived from the Oracle Quick SQL project
+(https://github.com/oracle/quicksql), originally released under the Universal
+Permissive License v1.0. ExpreSQL is a fork that contains modifications and
+additional contributions by Radicle IT and other contributors, released under
+the same license.
 
 The Universal Permissive License (UPL), Version 1.0
 

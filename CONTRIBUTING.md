@@ -1,37 +1,28 @@
-# Contributing to this repository
+# Contributing to ExpreSQL
 
-We welcome your contributions! There are multiple ways to contribute.
+ExpreSQL is a fork of [Oracle's Quick SQL](https://github.com/oracle/quicksql),
+released under the Universal Permissive License v1.0. We welcome your
+contributions to this fork.
 
 ## Opening issues
 
-For bugs or enhancement requests, please file a GitHub issue unless it's
-security related. When filing a bug remember that the better written the bug is,
-the more likely it is to be fixed. If you think you've found a security
-vulnerability, do not raise a GitHub issue and follow the instructions in our
+For bugs or enhancement requests, please file a GitHub issue unless it is
+security related. If you think you've found a security vulnerability, do not
+raise a GitHub issue and follow the instructions in our
 [security policy](./SECURITY.md).
 
 ## Contributing code
 
-We welcome your code contributions. Before submitting code via a pull request,
-you will need to have signed the [Oracle Contributor Agreement][OCA] (OCA) and
-your commits need to include the following line using the name and e-mail
-address you used to sign the OCA:
+By submitting a pull request, you agree that your contribution is licensed
+under the [Universal Permissive License v1.0](./LICENSE.txt) — the same
+license under which the original Quick SQL project and this fork are released.
 
-```text
-Signed-off-by: Your Name <you@example.org>
-```
+We recommend signing your commits using `git commit --signoff` (or `-s`) so
+that the `Signed-off-by:` trailer is included. This serves as a
+[Developer Certificate of Origin](https://developercertificate.org/)
+attestation that you have the right to contribute the code.
 
-This can be automatically added to pull requests by committing with `--sign-off`
-or `-s`, e.g.
-
-```text
-git commit --signoff
-```
-
-Only pull requests from committers that can be verified as having signed the OCA
-can be accepted.
-
-## Getting Started
+## Getting started
 
 1. Open a terminal window
 2. Clone the repository
@@ -42,7 +33,7 @@ can be accepted.
     npm install
     ```
 
-## Building Locally
+## Building locally
 
 Once you have set up the project, you can build the library by executing:
 
@@ -50,7 +41,7 @@ Once you have set up the project, you can build the library by executing:
 npm run build
 ```
 
-## Running Tests
+## Running tests
 
 Once you have set up the project, you can run the test suite by executing:
 
@@ -58,7 +49,7 @@ Once you have set up the project, you can run the test suite by executing:
 npm run test
 ```
 
-## Running the Example CLI
+## Running the example CLI
 
 Once you have built the library, you can run the example CLI by executing:
 
@@ -76,15 +67,14 @@ npm run example-cli -- ./test/department_employees.quicksql
 1. Ensure that any documentation is updated with the changes that are required
    by your change.
 1. Ensure that any samples are updated if the base image has been changed.
-1. Submit the pull request. *Do not leave the pull request blank*. Explain exactly
-   what your changes are meant to do and provide simple steps on how to validate.
-   your changes. Ensure that you reference the issue you created as well.
-1. We will assign the pull request to 2-3 people for review before it is merged.
+1. Submit the pull request. *Do not leave the pull request blank*. Explain
+   exactly what your changes are meant to do and provide simple steps on how
+   to validate your changes. Reference the issue you created.
+1. A maintainer will review your pull request before it is merged.
 
 ## Code of conduct
 
 Follow the [Golden Rule](https://en.wikipedia.org/wiki/Golden_Rule). If you'd
 like more specific guidelines, see the [Contributor Covenant Code of Conduct][COC].
 
-[OCA]: https://oca.opensource.oracle.com
 [COC]: https://www.contributor-covenant.org/version/1/4/code-of-conduct/

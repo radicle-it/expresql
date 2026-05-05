@@ -2,7 +2,15 @@
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
- 
+
+## ExpreSQL fork
+
+ExpreSQL is a fork of [Oracle's Quick SQL](https://github.com/oracle/quicksql)
+maintained by Radicle IT, released under the same Universal Permissive
+License v1.0. Versions and entries below `1.2.15` are inherited from the
+upstream project. Future ExpreSQL-specific changes will be recorded above
+this section.
+
 ## [1.2.0] - 2023-11-8
   
 [Compatible API amendments](https://github.com/oracle/quicksql/issues/23)

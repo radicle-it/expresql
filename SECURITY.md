@@ -1,38 +1,24 @@
 # Reporting security vulnerabilities
 
-Oracle values the independent security research community and believes that
-responsible disclosure of security vulnerabilities helps us ensure the security
-and privacy of all our users.
+ExpreSQL is a fork of [Oracle's Quick SQL](https://github.com/oracle/quicksql).
+This security policy applies to vulnerabilities found in the **ExpreSQL fork**
+maintained by Radicle IT.
 
-Please do NOT raise a GitHub Issue to report a security vulnerability. If you
-believe you have found a security vulnerability, please submit a report to
-[secalert_us@oracle.com][1] preferably with a proof of concept. Please review
-some additional information on [how to report security vulnerabilities to Oracle][2].
-We encourage people who contact Oracle Security to use email encryption using
-[our encryption key][3].
+If you believe you have found a security vulnerability that affects this fork,
+please do **not** open a public GitHub Issue. Instead, report it privately by
+using GitHub's [private vulnerability reporting][1] for this repository, or by
+emailing the maintainers.
 
-We ask that you do not use other channels or contact the project maintainers
-directly.
+For vulnerabilities that exist in the upstream Oracle Quick SQL codebase and
+have not been modified in this fork, please also follow [Oracle's security
+disclosure process][2].
 
-Non-vulnerability related security issues including ideas for new or improved
-security features are welcome on GitHub Issues.
+We will acknowledge your report and work with you on a coordinated disclosure
+timeline.
 
-## Security updates, alerts and bulletins
+## Non-vulnerability security topics
 
-Security updates will be released on a regular cadence. Many of our projects
-will typically release security fixes in conjunction with the
-Oracle Critical Patch Update program. Additional
-information, including past advisories, is available on our [security alerts][4]
-page.
+Ideas for new or improved security features are welcome via GitHub Issues.
 
-## Security-related information
-
-We will provide security related information such as a threat model, considerations
-for secure use, or any known security issues in our documentation. Please note
-that labs and sample code are intended to demonstrate a concept and may not be
-sufficiently hardened for production use.
-
-[1]: mailto:secalert_us@oracle.com
+[1]: https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability
 [2]: https://www.oracle.com/corporate/security-practices/assurance/vulnerability/reporting.html
-[3]: https://www.oracle.com/security-alerts/encryptionkey.html
-[4]: https://www.oracle.com/security-alerts/
