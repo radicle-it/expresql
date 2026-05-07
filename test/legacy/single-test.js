@@ -1,6 +1,6 @@
-import  {quicksql,fromJSON} from "../src/ddl.js";
+import  {quicksql,fromJSON} from "../../src/ddl.js";
 
-import {checkNoError} from './error_msg_tests.js'
+import {checkNoError} from './error-msg-tests.js'
 
 import fs from "fs";
 

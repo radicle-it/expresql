@@ -12,7 +12,7 @@
 
 import { describe, test, expect } from 'vitest';
 import { toERD } from '../../src/ddl.js';
-import type { ErdOutput, ErdItem, ErdLink } from '../../src/types.js';
+import type { ErdOutput, ErdItem, ErdLink } from '../../src/compiler/types.js';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
-import { getMajorVersion } from '../naming.js';
-import type { DdlContext, SemanticType } from '../types.js';
-import type { Naming } from '../node.js';
+import { getMajorVersion } from '../utils/naming.js';
+import type { DdlContext, SemanticType } from '../compiler/types.js';
+import type { Naming } from '../compiler/node.js';
 
 // ── Oracle type rendering ─────────────────────────────────────────────────────
 

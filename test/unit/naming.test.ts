@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { singular, canonicalObjectName, concatNames, getMajorVersion } from '../../src/naming.js';
+import { singular, canonicalObjectName, concatNames, getMajorVersion } from '../../src/utils/naming.js';
 
 // ── singular ──────────────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import split_str from '../../src/split_str.js';
+import split_str from '../../src/utils/split-str.js';
 
 describe('split_str', () => {
 

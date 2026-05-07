@@ -1,9 +1,9 @@
-import { singular } from '../naming.js';
+import { singular } from '../utils/naming.js';
 import amend_reserved_word from './reserved_words.js';
-import { DdlNode, tab } from '../node.js';
-import type { Naming } from '../node.js';
-import { LexerToken } from '../lexer.js';
-import type { DdlContext } from '../types.js';
+import { DdlNode, tab } from '../compiler/node.js';
+import type { Naming } from '../compiler/node.js';
+import { LexerToken } from '../compiler/lexer.js';
+import type { DdlContext } from '../compiler/types.js';
 import { toOracleType, oraclePkTypeModifier, isDb23 } from './types.js';
 
 function trimTrailingComma(s: string): string {

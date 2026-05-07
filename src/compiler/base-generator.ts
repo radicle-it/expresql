@@ -1,8 +1,8 @@
-import { singular } from './naming.js';
-import translate from './translate.js';
-import { generateSample, resetSeed } from './sample.js';
+import { singular } from '../utils/naming.js';
+import translate from '../utils/translate.js';
+import { generateSample, resetSeed } from '../utils/sample.js';
 import { tab } from './node.js';
-import split_str from './split_str.js';
+import split_str from '../utils/split-str.js';
 import type { DdlContext, DDLGenerator, IDdlNode, SemanticType, ErdColumn, ErdItem, ErdLink, ErdOutput } from './types.js';
 
 // ── Shared private utilities ───────────────────────────────────────────────────

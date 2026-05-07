@@ -2,10 +2,10 @@
 
 import fs from "fs";
 
-import {fromJSON} from "../src/ddl.js";
-import lexer from '../src/lexer.js'
-import errorMsgs from '../src/errorMsgs.js'
-import {resetSeed} from '../src/sample.js'
+import {fromJSON} from "../../src/ddl.js";
+import lexer from '../../src/compiler/lexer.js'
+import errorMsgs from '../../src/utils/error-msgs.js'
+import {resetSeed} from '../../src/utils/sample.js'
 
 const mismatches = { 
     "frc_patients_insurance_provider_fk": "frc_patients_insurance_prov_fk", 
@@ -57,7 +57,7 @@ function compareTokens( so, sc, strict ) {
     return false;
 }
 
-import {checkNoError} from './error_msg_tests.js'
+import {checkNoError} from './error-msg-tests.js'
 
 
 function processFile( subdir, file ) {
@@ -143,19 +143,19 @@ function processFile( subdir, file ) {
 
 let t1 = Date.now();
 
-import compatibility_tests from './compatibility_tests.js'
-console.log('compatibility_tests.js'); 
+import compatibility_tests from './compatibility-tests.js'
+console.log('compatibility-tests.js');
 
-import small_tests from './small_tests.js'
-console.log('small_tests.js'); 
+import small_tests from './small-tests.js'
+console.log('small-tests.js');
 
-import diagram_tests from './diagram_tests.js'
-console.log('diagram_tests.js');   
+import diagram_tests from './diagram-tests.js'
+console.log('diagram-tests.js');
 
 
-processFile('./test', '');
+processFile('./test/fixtures', '');
 
-import {error_msg_tests} from './error_msg_tests.js'
+import {error_msg_tests} from './error-msg-tests.js'
 error_msg_tests();
 console.log('error_msg_tests.js');   
 
@@ -169,6 +169,6 @@ console.log("              590 ms     as of 2/8/2024");
 console.log("              486 ms     as of 3/22/2024");
 
 
-import {quicksql} from '../dist/quick-sql.js';
+import {quicksql} from '../../dist/quick-sql.js';
 console.log("Version "+quicksql.version());
 

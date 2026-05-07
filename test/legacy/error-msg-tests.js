@@ -1,5 +1,5 @@
-import  {quicksql,toErrors} from "../src/ddl.js";
-import errorMsgs from '../src/errorMsgs.js'
+import  {quicksql,toErrors} from "../../src/ddl.js";
+import errorMsgs from '../../src/utils/error-msgs.js'
 
 var assertionCnt = 0;
 

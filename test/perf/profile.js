@@ -1,4 +1,4 @@
-import  {quicksql,fromJSON} from "../src/ddl.js";
+import  {quicksql,fromJSON} from "../../src/ddl.js";
 
 let input = "table\n";
 for( let i = 0; i < 1000; i++)

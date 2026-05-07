@@ -1,10 +1,10 @@
-import type { DdlContext, IDdlNode } from '../types.js';
-import type { DiffGenerator, DiffResult, DiffStatement, DiffStatementKind, DiffWarning, DiffSummary } from '../diff-types.js';
+import type { DdlContext, IDdlNode } from '../compiler/types.js';
+import type { DiffGenerator, DiffResult, DiffStatement, DiffStatementKind, DiffWarning, DiffSummary } from '../compiler/diff-types.js';
 import { OracleDDLGenerator } from './generator.js';
 import { OraclePlsqlBuilder } from './plsql.js';
 import { toOracleType, isDb23 } from './types.js';
-import { DdlNode, DEFAULT_NAMING } from '../node.js';
-import { concatNames } from '../naming.js';
+import { DdlNode, DEFAULT_NAMING } from '../compiler/node.js';
+import { concatNames } from '../utils/naming.js';
 
 // ── Step order map ────────────────────────────────────────────────────────────
 

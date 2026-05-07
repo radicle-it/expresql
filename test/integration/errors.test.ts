@@ -4,7 +4,7 @@
  */
 import { describe, test, expect } from 'vitest';
 import quicksql, { toErrors }  from '../../src/ddl.js';
-import errorMsgs               from '../../src/errorMsgs.js';
+import errorMsgs               from '../../src/utils/error-msgs.js';
 
 // ── Helpers (mirror error_msg_tests.js) ───────────────────────────────────────
 

@@ -5,11 +5,11 @@ import tree, { createGenerator, createDiffGenerator, DdlNode } from './tree.js';
 export { registerGenerator, BaseGenerator, registerDiffGenerator, createDiffGenerator } from './tree.js';
 export type { GeneratorFactory, DiffGeneratorFactory } from './tree.js';
 export type { DiffResult, DiffStatement, DiffStatementKind, DiffWarning, DiffSummary, DiffGenerator } from './tree.js';
-import lexer from './lexer.js';
-import json2qsql from './json2qsql.js';
-import errorMsgs from './errorMsgs.js';
-import { canonicalObjectName } from './naming.js';
-import type { DdlContext, DDLGenerator, IDdlNode, ErdColumn, ErdItem, ErdLink, ErdOutput } from './types.js';
+import lexer from './compiler/lexer.js';
+import json2qsql from './utils/json-to-qsql.js';
+import errorMsgs from './utils/error-msgs.js';
+import { canonicalObjectName } from './utils/naming.js';
+import type { DdlContext, DDLGenerator, IDdlNode, ErdColumn, ErdItem, ErdLink, ErdOutput } from './compiler/types.js';
 export type { DdlContext, DDLGenerator, IDdlNode, ErdColumn, ErdItem, ErdLink, ErdOutput };
 
 // ── PK / date-type canonical string constants ────────────────────────────────

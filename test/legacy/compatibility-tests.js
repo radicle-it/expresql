@@ -1,4 +1,4 @@
-import {quicksql, toERD, toDDL} from '../dist/quick-sql.js';
+import {quicksql, toERD, toDDL} from '../../dist/quick-sql.js';
 
 function assert( condition ) {
     if( !eval(condition) ) {

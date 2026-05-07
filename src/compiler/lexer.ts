@@ -1,4 +1,4 @@
-import split_str from './split_str.js';
+import split_str from '../utils/split-str.js';
 
 // ── Token type union ────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 // Re-export barrel for generic, database-agnostic symbols.
-export { default } from './parser.js';
-export { BaseGenerator } from './base-generator.js';
-export { createGenerator, registerGenerator, createDiffGenerator, registerDiffGenerator } from './factory.js';
-export type { GeneratorFactory, DiffGeneratorFactory } from './factory.js';
-export { DdlNode } from './node.js';
-export type { DiffResult, DiffStatement, DiffStatementKind, DiffWarning, DiffSummary, DiffGenerator } from './diff-types.js';
+export { default } from './compiler/parser.js';
+export { BaseGenerator } from './compiler/base-generator.js';
+export { createGenerator, registerGenerator, createDiffGenerator, registerDiffGenerator } from './compiler/factory.js';
+export type { GeneratorFactory, DiffGeneratorFactory } from './compiler/factory.js';
+export { DdlNode } from './compiler/node.js';
+export type { DiffResult, DiffStatement, DiffStatementKind, DiffWarning, DiffSummary, DiffGenerator } from './compiler/diff-types.js';

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import lexer, { LexerToken } from '../../src/lexer.js';
+import lexer, { LexerToken } from '../../src/compiler/lexer.js';
 
 // Helper: tokenise with the most common flags (no ws, no quoted-strings, no extra operators)
 function lex(input: string, extraOper = ''): LexerToken[] {

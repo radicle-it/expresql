@@ -23,8 +23,11 @@ function redirectLegacyToTs() {
             // e.g. './legacy/naming.js' or '../legacy/ddl.js'
             const m = id.match( /\/legacy\/([^/]+)\.js$/ );
             if ( !m ) return null;
-            const tsPath = path.join( srcDir, m[ 1 ] + '.ts' );
-            if ( fs.existsSync( tsPath ) ) return tsPath;
+            const base = m[ 1 ] + '.ts';
+            for ( const sub of [ '', 'compiler/', 'utils/' ] ) {
+                const tsPath = path.join( srcDir, sub + base );
+                if ( fs.existsSync( tsPath ) ) return tsPath;
+            }
             return null;
         },
     };

@@ -10,9 +10,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import quicksql, { toDDL, fromJSON }    from '../../src/ddl.js';
-import lexer,    { LexerToken }          from '../../src/lexer.js';
-import errorMsgs                         from '../../src/errorMsgs.js';
-import { resetSeed }                     from '../../src/sample.js';
+import lexer,    { LexerToken }          from '../../src/compiler/lexer.js';
+import errorMsgs                         from '../../src/utils/error-msgs.js';
+import { resetSeed }                     from '../../src/utils/sample.js';
 
 // ── Token comparison (ported from regression_test.js) ─────────────────────────
 
@@ -93,7 +93,7 @@ interface TestCase {
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const testRoot  = path.join(__dirname, '..');   // → project/test/
+const testRoot  = path.join(__dirname, '..', 'fixtures');   // → project/test/fixtures/
 
 function collectCases(dir: string): TestCase[] {
     const results: TestCase[] = [];

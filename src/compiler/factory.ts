@@ -1,7 +1,7 @@
 import type { DdlContext, DDLGenerator } from './types.js';
 import type { DiffGenerator } from './diff-types.js';
-import { OracleDDLGenerator } from './oracle/generator.js';
-import { OracleDiffGenerator } from './oracle/diff-generator.js';
+import { OracleDDLGenerator } from '../oracle/generator.js';
+import { OracleDiffGenerator } from '../oracle/diff-generator.js';
 
 /** A function that constructs a DDLGenerator for a given context. */
 export type GeneratorFactory = (ctx: DdlContext) => DDLGenerator;

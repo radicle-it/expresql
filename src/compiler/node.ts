@@ -1,6 +1,6 @@
-import { singular, concatNames, canonicalObjectName, getMajorVersion } from './naming.js';
+import { singular, concatNames, canonicalObjectName, getMajorVersion } from '../utils/naming.js';
 import lexer, { LexerToken } from './lexer.js';
-import amend_reserved_word from './oracle/reserved_words.js';
+import amend_reserved_word from '../oracle/reserved_words.js';
 import type { DdlContext, IDdlNode, SemanticType } from './types.js';
 
 // ── Pre-computed lowercase constants (used only in DdlNode) ──────────────────

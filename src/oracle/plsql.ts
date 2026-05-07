@@ -1,7 +1,7 @@
-import { getMajorVersion } from '../naming.js';
-import { tab } from '../node.js';
-import type { Naming } from '../node.js';
-import type { DdlContext, IDdlNode } from '../types.js';
+import { getMajorVersion } from '../utils/naming.js';
+import { tab } from '../compiler/node.js';
+import type { Naming } from '../compiler/node.js';
+import type { DdlContext, IDdlNode } from '../compiler/types.js';
 
 // ── Module-level helpers ───────────────────────────────────────────────────────
 

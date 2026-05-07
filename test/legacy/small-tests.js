@@ -1,4 +1,4 @@
-import {quicksql, toDDL} from "../src/ddl.js";
+import {quicksql, toDDL} from "../../src/ddl.js";
 
 
 var assertionCnt = 0;

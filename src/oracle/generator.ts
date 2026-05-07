@@ -1,9 +1,9 @@
-import { singular, concatNames, getMajorVersion } from '../naming.js';
-import split_str from '../split_str.js';
-import { DdlNode, DEFAULT_NAMING, tab, EXPANDING_TYPES } from '../node.js';
-import type { Naming } from '../node.js';
-import type { DdlContext, IDdlNode, SemanticType } from '../types.js';
-import { BaseGenerator } from '../base-generator.js';
+import { singular, concatNames, getMajorVersion } from '../utils/naming.js';
+import split_str from '../utils/split-str.js';
+import { DdlNode, DEFAULT_NAMING, tab, EXPANDING_TYPES } from '../compiler/node.js';
+import type { Naming } from '../compiler/node.js';
+import type { DdlContext, IDdlNode, SemanticType } from '../compiler/types.js';
+import { BaseGenerator } from '../compiler/base-generator.js';
 import { toOracleType, oraclePkTypeModifier, isDb23 } from './types.js';
 import { OracleViewBuilder } from './view.js';
 import { OraclePlsqlBuilder } from './plsql.js';

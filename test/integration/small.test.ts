@@ -5,7 +5,7 @@
  */
 import { describe, test, expect, beforeEach } from 'vitest';
 import quicksql, { toDDL }  from '../../src/ddl.js';
-import { resetSeed }         from '../../src/sample.js';
+import { resetSeed }         from '../../src/utils/sample.js';
 
 beforeEach(() => { resetSeed(); });
 

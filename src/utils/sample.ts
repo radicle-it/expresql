@@ -1,6 +1,6 @@
 // @ts-ignore – chance has no bundled type declarations
 import Chance from 'chance';
-import lexer from './lexer.js';
+import lexer from '../compiler/lexer.js';
 
 export function generateSample(
     lTable:  string,
