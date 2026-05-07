@@ -745,6 +745,41 @@ describe('triggers', () => {
     });
 });
 
+// ── Nested tables ────────────────────────────────────────────────────────────
+
+describe('nested tables', () => {
+    const oldNested =
+        'departments /insert 2\n' +
+        '   country\n' +
+        '   employees /insert 4\n' +
+        '      name /nn vc50\n' +
+        '      date hired\n' +
+        '      job vc255\n';
+    const newNested =
+        'departments /insert 2\n' +
+        '   country\n' +
+        '   employees /insert 4\n' +
+        '      name /nn vc50\n' +
+        '      pippo num\n';
+
+    test('add column in nested table — detected as add_column', () => {
+        const r = diff(oldNested, newNested);
+        expect(r.statements.some(s => s.kind === 'add_column' && s.table === 'employees' && s.column === 'pippo')).toBe(true);
+    });
+
+    test('drop columns in nested table — detected as set_unused or drop', () => {
+        const r = diff(oldNested, newNested);
+        expect(r.statements.some(s => s.table === 'employees' && (s.kind === 'set_unused' || s.kind === 'modify_column') && s.column === 'date_hired')).toBe(true);
+        expect(r.statements.some(s => s.table === 'employees' && (s.kind === 'set_unused' || s.kind === 'modify_column') && s.column === 'job')).toBe(true);
+    });
+
+    test('unchanged parent table columns produce no statements for departments', () => {
+        const r = diff(oldNested, newNested);
+        expect(r.statements.some(s => s.table === 'departments' && s.kind === 'add_column')).toBe(false);
+        expect(r.statements.some(s => s.table === 'departments' && s.kind === 'set_unused')).toBe(false);
+    });
+});
+
 // ── Table-level composite unique ─────────────────────────────────────────────
 
 describe('table-level composite unique', () => {

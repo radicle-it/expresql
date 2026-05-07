@@ -118,8 +118,8 @@ export class OracleDiffGenerator implements DiffGenerator {
 
     private _tableMap(ctx: DdlContext): Map<string, IDdlNode> {
         const map = new Map<string, IDdlNode>();
-        for (const root of ctx.forest)
-            if (root.inferType() === 'table') map.set(root.parseName(), root);
+        for (const node of ctx.descendants())
+            if (node.inferType() === 'table') map.set(node.parseName(), node);
         return map;
     }
 

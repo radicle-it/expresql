@@ -15,6 +15,7 @@ upstream project.
 ### Bug Fixes
 
 - **diff: triggers missing for new tables** — `_createTable` in `OracleDiffGenerator` did not call `generateTrigger()`, so BI/BU triggers were omitted from the diff output when adding a table that uses `/rowversion`, `/audit`, or `lower`/`upper` columns. Triggers for *modified* tables (via `_diffTriggers`) were unaffected.
+- **diff: nested table column changes not detected** — `_tableMap` iterated only `ctx.forest` (root-level tables), so nested tables (e.g. `employees` inside `departments`) were never included in the diff comparison. Changed to `ctx.descendants()` so all tables, regardless of nesting depth, are compared.
 
 ## [2.0.0] - 2026-05-07
 

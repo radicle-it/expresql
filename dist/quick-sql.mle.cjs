@@ -11089,7 +11089,7 @@ var Ee = class {
 	}
 	_tableMap(e) {
 		let t = /* @__PURE__ */ new Map();
-		for (let n of e.forest) n.inferType() === "table" && t.set(n.parseName(), n);
+		for (let n of e.descendants()) n.inferType() === "table" && t.set(n.parseName(), n);
 		return t;
 	}
 	_viewMap(e) {
