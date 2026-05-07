@@ -6,6 +6,5 @@ build
 dist-types/
 dist-ts/
 examples/diagram-generator/libs/rappid.*
-CLAUDE.md
 .claude*
 .vscode*
