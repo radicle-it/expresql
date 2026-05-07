@@ -68,4 +68,4 @@ PROMPT >>> ${outFile} completato.
 }
 
 embedSQL('mle/01_install_module.sql',     'quicksql_module',     'dist/quick-sql.mle.cjs');
-embedSQL('mle/02_install_api_module.sql', 'quicksql_api_module', 'quicksql-api.mjs');
+embedSQL('mle/02_install_api_module.sql', 'quicksql_api_module', 'mle/quicksql-api.mjs');

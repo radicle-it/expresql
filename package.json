@@ -22,7 +22,7 @@
   },
   "scripts": {
     "build": "run-p build:ddl build:erd && npm run build:mle",
-    "prebuild": "node -e \"const fs=require('fs');const tmp='./dist/_antv-x6-bak';const src='./dist/antv-x6';if(fs.existsSync(src))fs.renameSync(src,tmp);fs.rmSync('./dist',{recursive:true,force:true});fs.mkdirSync('./dist');if(fs.existsSync(tmp))fs.renameSync(tmp,src);\"",
+    "prebuild": "node -e \"const fs=require('fs');fs.rmSync('./dist',{recursive:true,force:true});fs.mkdirSync('./dist/antv-x6/2.18.1',{recursive:true});fs.copyFileSync('./node_modules/@antv/x6/dist/index.js','./dist/antv-x6/2.18.1/index.min.js');\"",
     "build:ddl": "cross-env TARGET_LIBRARY=DDL vite build",
     "build:erd": "cross-env TARGET_LIBRARY=ERD vite build",
     "test": "./test/regression_test.js",
@@ -55,6 +55,7 @@
   ],
   "license": "UPL-1.0",
   "dependencies": {
+    "@antv/x6": "^2.18.1",
     "chance": "^1.1.11",
     "dagre": "^0.8.5",
     "mermaid": "^11"
