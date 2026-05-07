@@ -214,14 +214,18 @@ export class OracleDiffGenerator implements DiffGenerator {
         for (const a of newAlters) tableDdl += a + '\n';
         stmts.push(mk('create_table', tbl, tableDdl));
 
+        const plsql = new OraclePlsqlBuilder(ctx, DEFAULT_NAMING);
+
+        // Triggers (lower/upper/rowversion/auditcols)
+        const triggerSql = plsql.generateTrigger(node);
+        if (triggerSql) stmts.push(mk('create_trigger', tbl, triggerSql));
+
         // Packages
         const hasApiDir = node.trimmedContent().toLowerCase().includes('/api');
         if (ctx.optionEQvalue('api', 'layered') && hasApiDir) {
-            const plsql = new OraclePlsqlBuilder(ctx, DEFAULT_NAMING);
             stmts.push(...this._splitPkgBlocks(plsql.generateLayeredTAPI(node), tbl));
         } else if ((ctx.optionEQvalue('api', 'yes') || hasApiDir) &&
                    !ctx.optionEQvalue('api', 'layered')) {
-            const plsql = new OraclePlsqlBuilder(ctx, DEFAULT_NAMING);
             stmts.push(...this._splitPkgBlocks(plsql.generateTAPI(node), tbl));
         }
 

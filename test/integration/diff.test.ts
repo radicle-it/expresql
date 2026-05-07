@@ -729,6 +729,20 @@ describe('triggers', () => {
         expect(r.statements.some(s => s.kind === 'set_unused' && s.column === 'row_version')).toBe(true);
         expect(r.statements.some(s => s.kind === 'drop_trigger')).toBe(true);
     });
+
+    test('new table with /rowversion — creates table AND triggers', () => {
+        const r = diff('', 'employees /rowversion\n   name vc100\n');
+        expect(r.statements.some(s => s.kind === 'create_table' && s.table === 'employees')).toBe(true);
+        expect(r.statements.some(s => s.kind === 'create_trigger' && s.sql.includes('employees_bi'))).toBe(true);
+        expect(r.statements.some(s => s.kind === 'create_trigger' && s.sql.includes('employees_bu'))).toBe(true);
+    });
+
+    test('new table with /lower column — creates table AND triggers', () => {
+        const r = diff('', 'employees\n   email vc255 /lower\n');
+        expect(r.statements.some(s => s.kind === 'create_table' && s.table === 'employees')).toBe(true);
+        expect(r.statements.some(s => s.kind === 'create_trigger' && s.sql.includes('employees_bi'))).toBe(true);
+        expect(r.statements.some(s => s.kind === 'create_trigger' && s.sql.includes('employees_bu'))).toBe(true);
+    });
 });
 
 // ── Table-level composite unique ─────────────────────────────────────────────

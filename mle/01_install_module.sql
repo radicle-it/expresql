@@ -1,5 +1,5 @@
 -- Auto-generato da scripts/generate-mle-sql.mjs — non modificare manualmente
--- Sorgente: dist/quick-sql.mle.cjs  (441530 byte, 221 chunk da 2000 char)
+-- Sorgente: dist/quick-sql.mle.cjs  (441544 byte, 221 chunk da 2000 char)
 PROMPT >>> Caricamento quicksql_module (221 chunk)...
 
 -- Disabilita sostituzione variabili (&/&&) per non interferire con il codice JavaScript
@@ -11340,16 +11340,11 @@ var Ee = class {
 		let o = t.postponedAlters.length, s = a.generateTable(e), c = t.postponedAlters.slice(o);
 		for (let e of c) s += e + "\n";
 		n.push(z("create_table", r, s));
-		let l = e.trimmedContent().toLowerCase().includes("/api");
-		if (t.optionEQvalue("api", "layered") && l) {
-			let i = new L(t, D);
-			n.push(...this._splitPkgBlocks(i.generateLayeredTAPI(e), r));
-		} else if ((t.optionEQvalue("api", "yes") || l) && !t.optionEQvalue("ap'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('i", "layered")) {
-			let i = new L(t, D);
-			n.push(...this._splitPkgBlocks(i.generateTAPI(e), r));
-		}
-		return n;
+		let l = new L(t, D), u = l.generateTrigger(e);
+		u && n.push(z("create_trigger", r, u));
+		let d = e.trimmedContent().toLowerCase().includes("/api");
+		return t.optionEQvalue("api", "layered") && d ? n.push(...this._splitPkgBlocks(l.generateLayeredTAPI(e), r)) : (t.opt'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('ionEQvalue("api", "yes") || d) && !t.optionEQvalue("api", "layered") && n.push(...this._splitPkgBlocks(l.generateTAPI(e), r)), n;
 	}
 	_diffTable(e, t, n, r) {
 		let i = [], a = [], o = t.parseName(), s = r.objPrefix() + o;
@@ -11375,8 +11370,8 @@ var Ee = class {
 		let h = e.hasRowVersion(), g = t.hasRowVersion();
 		!h && g && (i.push(z("add_column", o, `-- ⚠ MANUAL INTERVENTION REQUIRED
 -- Initialize row_version for existing rows, then add NOT NULL:
--- alter table ${s} add (row_version integer);\n-- update ${s} set row_version = 0;\n-- commit;\n-- alter table ${s} modify (row_version not null);\n`, "row_version", !0)), a.push(B("INFO", o, "rowversion added — requires manual column initialization", "row_version", !0))), h && !g && (i.push(z("set_unused", o, `alter table ${s} set unused column row_version;\n`, "row_version")), i.push(z("drop_unused_columns", o, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${s'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('} drop unused columns;\n`, "row_version")), a.push(B("DESTRUCTIVE", o, "row_version column dropped", "row_version")));
+-- alter table ${s} add (row_version integer);\n-- update ${s} set row_version = 0;\n-- commit;\n-- alter table ${s} modify (row_version not null);\n`, "row_version", !0)), a.push(B("INFO", o, "rowversion added — requires manual column initialization", "row_version", !0))), h && !g && (i.push(z("set_unused", o, `alter table ${s} set unused column row_version;\n`, "row_version")), i.push(z("drop_unused_columns", o, `-- [MAINTENANCE] safe to defer to a maintenance window\na'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('lter table ${s} drop unused columns;\n`, "row_version")), a.push(B("DESTRUCTIVE", o, "row_version column dropped", "row_version")));
 		let { stmts: _, warns: v } = this._diffPk(e, t, n, r, c, l);
 		i.push(..._), a.push(...v), i.push(...this._diffFKs(e, t, n, r)), i.push(...this._diffIndexes(e, t, n, r)), i.push(...this._diffTriggers(e, t, n, r));
 		let y = u.some((e) => !p.has(e.parseName())) || d.some((e) => !m.has(e.parseName())) || i.some((e) => e.kind === "modify_column"), { stmts: b, warns: x } = this._diffPackages(e, t, n, r, y);
@@ -11416,8 +11411,8 @@ var Ee = class {
 		s.push(B("DESTRUCTIVE", c, `Primary key change on "${c}": ${p} → ${m}. All FKs referencing this table must be dropped and re-created. Data migration required.`, void 0, !0));
 		for (let e of f.columns) {
 			let t = i.get(e), n = a.get(e);
-			n != null && (this._isNotNull(n) || (t == null ? o.push(z("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED\n-- Populate ${e} for existing rows, then add NOT NULL:\n-- update ${u} set ${e} = ??? where ${e} is null;\n-- commit;\'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('n-- alter table ${u} modify (${e} not null);\n`, e, !0)) : this._isNotNull(t) || o.push(z("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED\n-- Ensure all rows have a non-null ${e} value, then:\n-- alter table ${u} modify (${e} not null);\n`, e, !0))));
+			n != null && (this._isNotNull(n) || (t == null ? o.push(z("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED\n-- Populate ${e} for existing rows, then add NOT NULL:\n-- update ${u} set ${e} = ??? where ${e} is null'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB(';\n-- commit;\n-- alter table ${u} modify (${e} not null);\n`, e, !0)) : this._isNotNull(t) || o.push(z("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED\n-- Ensure all rows have a non-null ${e} value, then:\n-- alter table ${u} modify (${e} not null);\n`, e, !0))));
 		}
 		if (d.constraintName && o.push(z("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED
 -- Drop the old primary key constraint before continuing:
@@ -11446,8 +11441,8 @@ var Ee = class {
 		});
 		if (s(e) === s(t)) return i;
 		let c = (e) => e.children.some((e) => e.isOption("lower") || e.isOption("upper")), l = c(e) || e.hasRowVersion() || e.hasAuditCols() || e.hasRowKey(), u = c(e) || e.hasRowVersion() || e.hasAuditCols(), d = c(t) || t.hasRowVersion() || t.hasAuditCols() || t.hasRowKey(), f = c(t) || t.hasRowVersion() || t.hasAuditCols();
-		if (l && i.push(z("drop_trigger", a, `drop trig'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ger ${o}${D.bi};\n`)), u && i.push(z("drop_trigger", a, `drop trigger ${o}${D.bu};\n`)), d || f) {
+		if (l && i.push(z("drop_trigger",'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB(' a, `drop trigger ${o}${D.bi};\n`)), u && i.push(z("drop_trigger", a, `drop trigger ${o}${D.bu};\n`)), d || f) {
 			let e = new L(r, D).generateTrigger(t);
 			e && i.push(z("create_trigger", a, e));
 		}
@@ -11501,8 +11496,8 @@ var Ee = class {
 				"current_timestamp",
 				"systimestamp",
 				"localtimestamp"
-			], l = s.startsWith("integer") || s.startsWith("number") || s.startsWith("date") || s.st'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('artsWith("timestamp") || o.includes(r.toLowerCase()), u = !n.isOption("default") || l ? "" : "''", f = o.includes(r.toLowerCase()) ? r : `${u}${r}${u}`, p = n.isOption("default");
+			], l = s.startsWith("integer") || s.startsWith("number") || s.startsWith("'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('date") || s.startsWith("timestamp") || o.includes(r.toLowerCase()), u = !n.isOption("default") || l ? "" : "''", f = o.includes(r.toLowerCase()) ? r : `${u}${r}${u}`, p = n.isOption("default");
 			i.push(z("add_column", t, `alter table ${e} add (${d});\n`, c)), i.push(z("add_column", t, "-- ⚠ MANUAL INTERVENTION REQUIRED\n" + (p ? "-- Populate existing rows with the default value before step 3.\n" : "-- Populate existing rows before step 3. Replace ??? with the correct expression.\n") + `-- update ${e} set ${c} = ${f} where ${c} is null;\n-- commit;\n`, c, !0)), i.push(z("modify_column", t, `alter table ${e} modify (${c} not null);\n`, c)), a.push(B("DESTRUCTIVE", t, `added NOT NULL column ${c} — requires manual data population`, c, !0));
 		} else i.push(z("add_column", t, `alter table ${e} add (${d});\n`, c));
 		if (n.isOption("check") || n.isOption("values")) {
@@ -11526,8 +11521,8 @@ var Ee = class {
 	}
 	_dropColumn(e, t, n) {
 		let r = n.parseName();
-		return [z("set_unused", t, `alter table ${e} set unused column ${r};\n`, r), z("drop_unused_columns", t, `-- [MAINTENANCE'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('] safe to defer to a maintenance window\nalter table ${e} drop unused columns;\n`, r)];
+		return [z("set_unused", t, `alter table ${e} set unused column ${r};\n`, r), z("drop_unused_columns", t, `-'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${e} drop unused columns;\n`, r)];
 	}
 	_modifyColumn(e, t, n, r, i, a) {
 		let o = [], s = [], c = n._inferTypeFull(), l = r._inferTypeFull(), u = I(a), d = F(c, i.semantics(), I(i)), p = F(l, a.semantics(), u), m = this._isNotNull(n), h = this._isNotNull(r), g = r.parseName(), _ = d !== p, v = m !== h;
@@ -11557,8 +11552,8 @@ var Ee = class {
 			], i = p.startsWith("integer") || p.startsWith("number") || p.startsWith("date") || p.startsWith("timestamp") || r.includes(n.toLowerCase()) ? "" : "''", a = r.includes(n.toLowerCase()) ? `default on null ${n}` : `default on null ${i}${n}${i}`;
 			o.push(z("modify_column", t, `alter table ${e} modify (${g} ${a});\n`, g));
 		} else o.push(z("modify_column", t, `alter table ${e} modify (${g} default null);\n`, g));
-		let x = n.isOption("hidden") || n.isOption("invincible"), S = r.isOption("hidden") ||'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' r.isOption("invincible");
+		let x = n.isOption("hidden") || n.isOption("invincible"), S = r.isOptio'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('n("hidden") || r.isOption("invincible");
 		x !== S && o.push(z("modify_column", t, `alter table ${e} modify (${g} ${S ? "invisible" : "visible"});\n`, g));
 		let C = n.isOption("check") || n.isOption("values"), w = r.isOption("check") || r.isOption("values"), T = n.isOption("between"), E = r.isOption("between"), O = C ? JSON.stringify(n.parseValues()) : T ? n.getBetweenClause() : null;
 		if (O !== (w ? JSON.stringify(r.parseValues()) : E ? r.getBetweenClause() : null)) {
@@ -11585,9 +11580,9 @@ var Ee = class {
 		for (let e in u) {
 			if (e in l) continue;
 			let t = u[e], n = r.find(t) == null ? "" : r.objPrefix(), o = `${s}_${e}_fk`, d = this._fkColType(t, r) ?? "number", f = `alter table ${s} add constraint ${o}\n    foreign key (${e})\n    references ${n}${t};\n`;
-			i.push(z("add_column", a, `alter table ${s} add (${e} ${d});\n`, e)), i.push(z("add_fk", a, c ? f : this._wrapConstraint(f)));
-		'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('}
+			i.push(z("add_column", a, `alter table ${s} add (${e} ${d});\n`, e)), i.push(z("add_fk", a, c ? f : this._wrapConst'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('raint(f)));
+		}
 		return i;
 	}
 	_fkColType(e, t) {
@@ -11633,8 +11628,8 @@ var Ee = class {
 	}
 	_diffViews(e, t, n) {
 		let r = [], i = I(n) ? "if exists " : "";
-		for (let [a] of e) if'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' (!t.has(a)) {
+		for (le'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('t [a] of e) if (!t.has(a)) {
 			let e = n.objPrefix() + a;
 			r.push(z("drop_view", a, `drop view ${i}${e};\n`));
 		}
@@ -11693,8 +11688,8 @@ var Ee = class {
 		];
 		return e.isOption("auditlog") && r.unshift(`${n}_aud`), r;
 	}
-	_droppedPkgs(e, t, n, r, i'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(', a) {
+	_droppedPkgs'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('(e, t, n, r, i, a) {
 		let o = [], s = n.objPrefix() + e.parseName();
 		return i === "layered" && (a === "simple" || a === "none") ? (o.push(`${s}_dal`, `${s}_hks`, `${s}_svc`, `${s}_apx`), e.isOption("auditlog") && o.push(`${s}_aud`)) : i === "simple" && (a === "layered" || a === "none") ? o.push(`${s}_api`) : i === "layered" && a === "layered" && e.isOption("auditlog") && !t.isOption("auditlog") && o.push(`${s}_aud`), o;
 	}
@@ -11726,8 +11721,8 @@ var Ee = class {
 			tablesDropped: a,
 			tablesModified: o,
 			statementsTotal: e.length,
-			statementsRequiringIntervention: e.filter((e) => e.r'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('equiresManualIntervention).length,
+			statementsRequiringIntervention: e.fil'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('ter((e) => e.requiresManualIntervention).length,
 			warningsTotal: t.length
 		};
 	}
@@ -11765,8 +11760,8 @@ function ke(e, t) {
 	H[e.toLowerCase()] = t;
 }
 function Ae(e) {
-	let t = String(e.getOptionValue("dialect") ??'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' "oracle").toLowerCase(), n = H[t];
+	let t = String(e.getOptionValue'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('("dialect") ?? "oracle").toLowerCase(), n = H[t];
 	if (n == null) {
 		let e = Object.keys(H).join(", ");
 		throw Error(`Unknown SQL dialect for diff: "${t}". Registered dialects: ${e}`);
@@ -11838,8 +11833,8 @@ function Fe(e, t) {
 }
 var Ie = class {
 	constructor() {
-		this.tableContent = {}, this.notNormalized = [], this.tableSign'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('atures = [], this.child2parent = {}, this.objCounts = {}, this.idSeq = 1;
+		this.tableContent = {}, this.notNormalized = [], '));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('this.tableSignatures = [], this.child2parent = {}, this.objCounts = {}, this.idSeq = 1;
 	}
 	output(e, t, n, r) {
 		if (r !== !1 && this.notNormalized.includes(e)) {
@@ -11895,9 +11890,9 @@ var Ie = class {
 			if (a ??= [], je(a, r) || a.push(r), this.notNormalized.includes(e)) {
 				let t = this.parent(e);
 				if (t != null) {
-					let i = Fe(t, e), a = this.tableContent[i];
-'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('					a ??= [];
+					let i = Fe(t, e), a = this.tab'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('leContent[i];
+					a ??= [];
 					let o = {};
 					o[this.refIdName(t)] = n?.value;
 					let s = W(r);
@@ -11947,8 +11942,8 @@ function Le(e, t) {
 	a += "\n\n#settings = { genpk: false, drop: true, pk: identityDataType, semantics: char }", a += "\n\n#flattened = \n";
 	let o = {};
 	for (let e in i.tableContent) o[i.tableName(e)] = i.tableContent[e];
-	return a += JSON.stringify(o, null, 3), a += "\n", a += "\n\n-- Generated by json2qsql.js 2.0.0 " + (/* @__PURE__ */ new Date()).toLocaleString() + "\n\n", a += "#document = \n", a += JSON.stringify(n, null, 3), a += "\n'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('", a;
+	return a += JSON.stringify(o, null, 3), a += "\n", a += "\n\n-- Generated by json2qsql.js 2.0.0 " + (/* @__PURE__ */ new Date()).toLocaleString() + "\n\n", a += "#document = \n", a += JSON.stringify(n, null'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB(', 3), a += "\n", a;
 }
 //#endregion
 //#region src/utils/error-msgs.ts
@@ -12018,8 +12013,8 @@ function Be(e) {
 	return n;
 }
 function Ve(e, t) {
-	let n = t.inferType() ='));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('== "table", r = [], i = t.src, a = !1;
+	let n = t'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('.inferType() === "table", r = [], i = t.src, a = !1;
 	for (let e = 1; e < i.length; e++) {
 		if (i[e].value === "/") {
 			a = !0;
@@ -12082,8 +12077,8 @@ function Ke(e, t) {
 var qe = {
 	findErrors: Be,
 	messages: J
-}, Je = "identityDataType", X = "guid", Ye = "Timestamp with time zone", Xe = "Timestamp w'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ith local time zone";
+}, Je = "identityDataType", X = "guid", Ye = "Timestamp with time zone", Xe '));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('= "Timestamp with local time zone";
 function Ze(e) {
 	if (e == null) return null;
 	let t = typeof e == "string" ? e.toLowerCase() : e;
@@ -12192,8 +12187,8 @@ var Z = {
 		check: ["yes", "no"]
 	},
 	namelen: {
-		label: "Name Charac'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ter Length",
+		label'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB(': "Name Character Length",
 		value: 255
 	},
 	overridesettings: {
@@ -12288,10 +12283,10 @@ var Z = {
 			t != null && (this._labelToKey[t.toLowerCase()] = e);
 		}
 		let n = "";
-		e.toLowerCase().includes("overridesettings") && oe(this), t !== void 0 && this.optionEQvalue("overrideSettings", !1) && (n = "# settings = " + String(t) + "\n\n"), this.input = n + e, this.forest = oe(this);
+		e.toLowerCase().includes("overridesettings") && oe(this), t !== void 0 && this.optionEQvalue("overrideSettings", !1) && (n = "# settings = " + String(t) + "\n\n"), this.input = n + e, this.forest = '));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('oe(this);
 	}
-	'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('getOptionValue(e) {
+	getOptionValue(e) {
 		let t = e.toLowerCase(), n = this.options[t];
 		if (!(t in this.options)) {
 			let e = this._labelToKey[t];
@@ -12348,8 +12343,8 @@ var Z = {
 		if (this.name2node != null) return this.name2node[d(e)] ?? null;
 		this.name2node = {};
 		for (let e of this.forest) for (let t of e.descendants()) this.name2node[t.parseName()] = t;
-		return this.name2node[d(e)] ??'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' null;
+		return this.name'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('2node[d(e)] ?? null;
 	}
 	descendants() {
 		let e = [];

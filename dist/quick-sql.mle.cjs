@@ -11129,15 +11129,10 @@ var Ee = class {
 		let o = t.postponedAlters.length, s = a.generateTable(e), c = t.postponedAlters.slice(o);
 		for (let e of c) s += e + "\n";
 		n.push(z("create_table", r, s));
-		let l = e.trimmedContent().toLowerCase().includes("/api");
-		if (t.optionEQvalue("api", "layered") && l) {
-			let i = new L(t, D);
-			n.push(...this._splitPkgBlocks(i.generateLayeredTAPI(e), r));
-		} else if ((t.optionEQvalue("api", "yes") || l) && !t.optionEQvalue("api", "layered")) {
-			let i = new L(t, D);
-			n.push(...this._splitPkgBlocks(i.generateTAPI(e), r));
-		}
-		return n;
+		let l = new L(t, D), u = l.generateTrigger(e);
+		u && n.push(z("create_trigger", r, u));
+		let d = e.trimmedContent().toLowerCase().includes("/api");
+		return t.optionEQvalue("api", "layered") && d ? n.push(...this._splitPkgBlocks(l.generateLayeredTAPI(e), r)) : (t.optionEQvalue("api", "yes") || d) && !t.optionEQvalue("api", "layered") && n.push(...this._splitPkgBlocks(l.generateTAPI(e), r)), n;
 	}
 	_diffTable(e, t, n, r) {
 		let i = [], a = [], o = t.parseName(), s = r.objPrefix() + o;

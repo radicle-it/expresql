@@ -10,6 +10,12 @@ maintained by Radicle IT, released under the same Universal Permissive
 License v1.0. Versions and entries below `1.2.15` are inherited from the
 upstream project.
 
+## [2.0.1] - 2026-05-08
+
+### Bug Fixes
+
+- **diff: triggers missing for new tables** — `_createTable` in `OracleDiffGenerator` did not call `generateTrigger()`, so BI/BU triggers were omitted from the diff output when adding a table that uses `/rowversion`, `/audit`, or `lower`/`upper` columns. Triggers for *modified* tables (via `_diffTriggers`) were unaffected.
+
 ## [2.0.0] - 2026-05-07
 
 ### Major TypeScript Refactoring
