@@ -1,9 +1,34 @@
 import { defineConfig } from 'vite';
 
 import path from 'path';
+import fs   from 'fs';
 import { fileURLToPath } from 'url';
 
 import * as buildConstants from './build-constants.js';
+
+/**
+ * Vite plugin: when a JS file inside src/legacy/ is imported, transparently
+ * redirect it to the corresponding TypeScript file in src/ (if one exists).
+ * This prevents the legacy JS modules from being double-bundled alongside
+ * their already-compiled TypeScript counterparts.
+ * Node.js test execution is unaffected (the plugin only runs inside Vite).
+ */
+function redirectLegacyToTs() {
+    const srcDir = path.join( __dirname, 'src' );
+    return {
+        name:    'redirect-legacy-to-ts',
+        enforce: 'pre',
+        resolveId( id ) {
+            // Match any import that references a file inside a /legacy/ directory,
+            // e.g. './legacy/naming.js' or '../legacy/ddl.js'
+            const m = id.match( /\/legacy\/([^/]+)\.js$/ );
+            if ( !m ) return null;
+            const tsPath = path.join( srcDir, m[ 1 ] + '.ts' );
+            if ( fs.existsSync( tsPath ) ) return tsPath;
+            return null;
+        },
+    };
+}
 
 const __filename = fileURLToPath( import.meta.url );
 const __dirname = path.dirname( __filename );
@@ -17,8 +42,8 @@ if ( ![ 'DDL', 'ERD' ].includes( gTargetLibrary ) ) {
 const gBuildOptions = gTargetLibrary === 'DDL' ?
     {
         lib: {
-            entry: path.join( __dirname, 'src/ddl.js' ),
-            name: buildConstants.__DDL_LIBRARY_NAME__,
+            entry: path.join( __dirname, 'src/ddl.ts' ),
+            formats: [ 'es' ],
             fileName: buildConstants.__DDL_LIBRARY_FILE_NAME__
         }
     }
@@ -26,11 +51,12 @@ const gBuildOptions = gTargetLibrary === 'DDL' ?
     {
         lib: {
             entry: path.join( __dirname, 'src/quick-erd/quick-erd.js' ),
-            name: buildConstants.__ERD_LIBRARY_NAME__,
+            formats: [ 'es' ],
             fileName: buildConstants.__ERD_LIBRARY_FILE_NAME__
         },
         rollupOptions: {
             output: {
+                inlineDynamicImports: true,
                 assetFileNames: assetInfo => {
                     // TODO: Make this config more generic
                     return assetInfo.type === 'asset' ? `${ buildConstants.__ERD_LIBRARY_FILE_NAME__ }[extname]` : assetInfo.name;
@@ -43,6 +69,7 @@ const gBuildOptions = gTargetLibrary === 'DDL' ?
 // eslint-disable-next-line no-unused-vars
 export default defineConfig( ( { command: pCommand, mode: pMode, ssrBuild: pSsrBuild } ) => {
     return {
+        plugins: [ redirectLegacyToTs() ],
         root: path.join( __dirname, 'src' ),
         publicDir: path.join( __dirname, 'public' ),
         define: Object.fromEntries(

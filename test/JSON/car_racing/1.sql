@@ -36,10 +36,9 @@ select
     driver.name        driver_name,
     driver.points      driver_points
 from
-    team,
-    driver
-where
-    driver.team_id(+) = team.id
+    team
+    left join driver
+        on driver.team_id = team.id
 /
 
 

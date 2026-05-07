@@ -1,19 +1,12 @@
 {
   "name": "@radicle-it/expresql",
-  "version": "1.2.15",
+  "version": "2.0.0",
   "description": "ExpreSQL — Quick SQL to DDL and ERD translator (fork of @oracle/quicksql)",
-  "main": "./dist/quick-sql.umd.cjs",
-  "module": "./dist/quick-sql.js",
+  "main": "./dist/quick-sql.js",
   "type": "module",
   "exports": {
-    ".": {
-      "import": "./dist/quick-sql.js",
-      "require": "./dist/quick-sql.umd.cjs"
-    },
-    "./erd": {
-      "import": "./dist/quick-erd.js",
-      "require": "./dist/quick-erd.umd.cjs"
-    }
+    ".": "./dist/quick-sql.js",
+    "./erd": "./dist/quick-erd.js"
   },
   "engines": {
     "node": ">=16"
@@ -28,15 +21,18 @@
     "erdLibraryFileName": "quick-erd"
   },
   "scripts": {
-    "build": "run-p build:*",
-    "prebuild": "rm -f ./dist/*",
-    "build:ddl": "TARGET_LIBRARY=DDL vite build",
-    "build:erd": "TARGET_LIBRARY=ERD vite build",
+    "build": "run-p build:ddl build:erd && npm run build:mle",
+    "prebuild": "node -e \"const fs=require('fs');const tmp='./dist/_antv-x6-bak';const src='./dist/antv-x6';if(fs.existsSync(src))fs.renameSync(src,tmp);fs.rmSync('./dist',{recursive:true,force:true});fs.mkdirSync('./dist');if(fs.existsSync(tmp))fs.renameSync(tmp,src);\"",
+    "build:ddl": "cross-env TARGET_LIBRARY=DDL vite build",
+    "build:erd": "cross-env TARGET_LIBRARY=ERD vite build",
     "test": "./test/regression_test.js",
+    "test:ts": "vitest run",
+    "test:ts:watch": "vitest",
     "lint:markdown": "markdownlint-cli2 *.md, doc/**/*.md",
     "lint": "run-p lint:*",
     "example-cli": "./examples/cli.js",
-    "postversion": "run-s build"
+    "postversion": "run-s build",
+    "build:mle": "node scripts/build-mle.mjs && node scripts/generate-mle-sql.mjs"
   },
   "repository": {
     "type": "git",
@@ -44,6 +40,7 @@
   },
   "keywords": [
     "ExpreSQL",
+    "Oracle",
     "Quick SQL",
     "SQL",
     "DDL",
@@ -58,17 +55,23 @@
   ],
   "license": "UPL-1.0",
   "dependencies": {
-    "chance": "^1.1.11"
+    "chance": "^1.1.11",
+    "dagre": "^0.8.5",
+    "mermaid": "^11"
   },
   "bundledDependencies": true,
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "eslint": "^8.42.0",
     "markdownlint-cli2": "^0.18.1",
     "npm-run-all": "^4.1.5",
+    "typescript": "^6.0.3",
     "vite": "^7.1.5",
+    "vitest": "^4.1.5",
     "webpack-cli": "^6.0.1"
   },
   "bundleDependencies": [
-    "chance"
+    "chance",
+    "mermaid"
   ]
 }

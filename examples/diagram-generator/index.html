@@ -3,24 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QuickERD</title>
-
-    <!-- Assuming you put the rappid.min.css file in this path -->
-    <link rel="stylesheet" type="text/css" href="libs/rappid.min.css">
+    <title>QuickERD — DiagramPreview (Mermaid)</title>
 
     <link rel="stylesheet" href="../../dist/quick-erd.css">
-
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js" integrity="sha256-qXBd/EfAdjOA2FGrGAG+b3YBn2tn5A6bhz+LSgYD96k=" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/backbone@1.5.0/backbone-min.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/graphlib@2.1.8/dist/graphlib.core.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.core.min.js"></script>
-    
-    <!-- Assuming you put the rappid.min.js file in this path -->
-    <script src="libs/rappid.min.js"></script>
-
-    <!-- <script src="../../dist/quick-erd.umd.cjs"></script>
-    <script src="../../dist/quick-sql.umd.cjs"></script> -->
 
     <style>
         html, body {
@@ -32,6 +17,20 @@
 
         .container {
             display: flex;
+            height: 100%;
+        }
+
+        #sql {
+            width: 15%;
+            padding: 20px;
+            overflow: auto;
+            font-size: 13px;
+            border-right: 1px solid #e7e3e1;
+        }
+
+        #quickERD {
+            width: 85%;
+            height: 100%;
         }
 
         :root {
@@ -64,39 +63,47 @@
     </style>
 </head>
 <body>
-    <div class="container" style="padding: 20px;">
+    <div class="container">
         <div id="sql">
             <pre></pre>
         </div>
-        <div id="quickERD" style="width: 85%; height: 100%;"></div>
+        <div id="quickERD"></div>
     </div>
-    
+
     <script type="module">
         import { toERD } from '../../dist/quick-sql.js';
-        import { Diagram  } from '../../dist/quick-erd.js';
+        import { DiagramPreview } from '../../dist/quick-erd.js';
 
-        const input = 
+        const input =
 `
-departments
+departments {GROUP "HR"}
     name /nn
     location
     country
-employees
+employees {GROUP "HR"}
     departments_id /fk departments
     name /nn vc50
     email /lower
     cost center num
     date hired
     job vc255
+projects {GROUP "PM"}
+    name /nn vc100
+    budget num
+    start date
+tasks {GROUP "PM"}
+    projects_id /fk projects
+    name /nn vc255
+    status vc20
+    assigned to vc100
 
 view emp_v departments employees
 
 # settings = { "prefix": null, "semantics": "CHAR", "DV": false }
 `
-        // new quickERD.Diagram( quickSQL.toERD( input ), document.getElementById( 'quickERD' ) );
+        const data = toERD(input);
+        new DiagramPreview( data, '#quickERD' );
 
-        new Diagram( toERD(input), '#quickERD' );
-        
         document.querySelector( '#sql > pre' ).innerText = input;
     </script>
 </body>

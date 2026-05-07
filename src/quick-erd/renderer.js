@@ -4,6 +4,8 @@
 
 import cs from './constants.js';
 
+if (typeof joint !== 'undefined') {
+
 joint.shapes.quicksql = {};
 
 joint.shapes.quicksql.Table = joint.shapes.standard.HeaderedRecord.define('quicksql.Table', {
@@ -85,14 +87,21 @@ joint.shapes.quicksql.Table = joint.shapes.standard.HeaderedRecord.define('quick
     setColumns(data = []) {
         const names = [];
         const values = [];
+        const seen = new Set();
 
         data.forEach((item, i) => {
 
             if (!item.name)
                 return;
 
+            let id = item.name;
+            if (seen.has(id)) {
+                id = `${item.name}_${i}`;
+            }
+            seen.add(id);
+
             names.push({
-                id: item.name,
+                id: id,
                 label: item.name,
                 span: 2
             });
@@ -149,33 +158,34 @@ joint.shapes.quicksql.View = joint.shapes.quicksql.Table.define('quicksql.View',
 
 joint.shapes.quicksql.ViewView = joint.shapes.quicksql.TableView;
 
-joint.shapes.quicksql.Relation = joint.dia.Link.extend({
+joint.shapes.quicksql.Relation = joint.shapes.standard.Link.define('quicksql.Relation', {
     z: -1,
-    defaults: {
-        type: 'quicksql.Relation',
-        attrs: {
-            '.connection': {
-                stroke: cs.colors.LINK,
-                'stroke-width': 1,
-                'stroke-dasharray': 'none'
-            },
-            '.marker-source': {
+    attrs: {
+        line: {
+            stroke: cs.colors.LINK,
+            strokeWidth: 1,
+            strokeDasharray: 'none',
+            sourceMarker: {
+                d: 'M 5 -4 L 0 0 L 5 4 z',
                 fill: cs.colors.LINK,
-                stroke: cs.colors.LINK,
-                d: 'M 5 0 L 0 4 L 5 8 z'
+                stroke: cs.colors.LINK
             },
-
-        },
-        style: 'none',
-        sourceTable: '',
-        targetTable: '',
-        lineWidth: 1,
+            targetMarker: {
+                d: ''
+            }
+        }
     },
+    style: 'none',
+    sourceTable: '',
+    targetTable: ''
+}, {
     initialize: function () {
-        joint.dia.Link.prototype.initialize.apply(this, arguments);
-        this.updateStyle(this, arguments);
+        joint.shapes.standard.Link.prototype.initialize.apply(this, arguments);
+        this.updateStyle();
     },
     updateStyle: function () {
-        this.attr('.connection/stroke-dasharray', (this.get('style') === 'dash') ? '5 5' : 'none');
+        this.attr('line/strokeDasharray', (this.get('style') === 'dash') ? '5 5' : 'none');
     }
 });
+
+} // end if (typeof joint !== 'undefined')

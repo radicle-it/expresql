@@ -3,7 +3,9 @@
 
 var utils = {};
 
-const FONT_NAME = getComputedStyle(document.querySelector(':root')).getPropertyValue('--qs-diagram-font-family') || 'Arial';
+const FONT_NAME = (typeof document !== 'undefined')
+    ? getComputedStyle(document.querySelector(':root')).getPropertyValue('--qs-diagram-font-family') || 'Arial'
+    : 'Arial';
 
 utils.newGuid = function () {
     function _s8(s) {

@@ -7,6 +7,8 @@ import './quick-erd.css';
 
 import utils from './utils.js';
 
+export { DiagramPreview } from './diagram-preview.js';
+
 export class Diagram {
     constructor(data, elementOrSelector = '#quickERD') {
         if (
@@ -323,7 +325,11 @@ export class Diagram {
 
 export const version = typeof __PACKAGE_VERSION__ === 'undefined' ? 'development' : __PACKAGE_VERSION__;
 
+// Re-import for default export
+import { DiagramPreview as _DiagramPreview } from './diagram-preview.js';
+
 export default {
     Diagram,
+    DiagramPreview: _DiagramPreview,
     version
 };

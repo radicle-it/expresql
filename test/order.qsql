@@ -1,9 +1,17 @@
-emp
+emp {TGROUP "Employee Group"}
   ename
   deptno /fk dept
 
-dept 
-  dname
+dept /immutable
+  dname /trans
+
+user {DESCRIPTION "User table"}
+  username /trans {
+    DESCRIPTION "Username column"
+  }
+  description clob /trans {
+    DESCRIPTION "Description column"
+  }
 
 #pk: identityDataType
 #prefix: abc
