@@ -17,13 +17,14 @@ This document collects end-to-end Quick SQL examples. Each scenario shows the QS
 - [11. Sample data generation: /insert, /values, /constant](#11-sample-data-generation-insert-values-constant)
 - [12. Oracle SQL Annotations](#12-oracle-sql-annotations)
 - [13. REST enablement with ORDS](#13-rest-enablement-with-ords)
-- [14. Table API (TAPI) — simple and layered](#14-table-api-tapi--simple-and-layered)
-- [15. Complete schema combining multiple features](#15-complete-schema-combining-multiple-features)
-- [16. Shared-schema multi-tenancy with `tenantid: yes`](#16-shared-schema-multi-tenancy-with-tenantid-yes)
-- [17. Schema migration with `toDiff`](#17-schema-migration-with-todiff)
-- [18. Layered TAPI — per-table tier selection](#18-layered-tapi--per-table-tier-selection)
-- [19. Layered TAPI — degradation (absorbed layers)](#19-layered-tapi--degradation-absorbed-layers)
-- [20. Layered TAPI — REST interface (`ifc: rest`)](#20-layered-tapi--rest-interface-ifc-rest)
+- [14. Table API (TAPI) — simple and layered tiers](#14-table-api-tapi--simple-and-layered-tiers)
+- [15. Audit log chain (`/auditlog`)](#15-audit-log-chain-auditlog)
+- [16. Complete schema combining multiple features](#16-complete-schema-combining-multiple-features)
+- [17. Shared-schema multi-tenancy with `tenantid: yes`](#17-shared-schema-multi-tenancy-with-tenantid-yes)
+- [18. Schema migration with `toDiff`](#18-schema-migration-with-todiff)
+- [19. Layered TAPI — per-table tier selection](#19-layered-tapi--per-table-tier-selection)
+- [20. Layered TAPI — degradation (absorbed layers)](#20-layered-tapi--degradation-absorbed-layers)
+- [21. Layered TAPI — REST interface (`ifc: rest`)](#21-layered-tapi--rest-interface-ifc-rest)
 
 ---
 
@@ -682,52 +683,124 @@ ORDS must be installed and configured in the database. After running the script,
 
 ---
 
-## 14. Table API (TAPI) — simple and layered
+## 14. Table API (TAPI) — simple and layered tiers
 
-`api: true` generates a single `<table>_api` package. `api: layered` generates a three-layer architecture: Data Access Layer (`_dal`), a hooks layer (`_hooks`) for business rules, and a Service Layer (`_svc`) that orchestrates them. `/auditlog` on a table generates an additional audit package that writes to a developer-supplied log table via `PRAGMA AUTONOMOUS_TRANSACTION`.
+**Simple API** (`api: yes`): one `<table>_api` package with `get_row`, `insert_row`, `update_row`, `delete_row`.
 
-**Input — simple API:**
+**Layered API**: a stack of packages per table, selected by the tier argument on `/api`. No global setting needed — the tier is self-contained.
+
+### Simple API
 
 ```quicksql
 products /api
   name  vc200 /nn
   price num(10,2)
+
+# settings = { api: yes }
 ```
 
-**Input — layered API with audit log:**
+Generated: `products_api` — single package with four procedures.
+
+### Layered API — all six tiers
 
 ```quicksql
-audit_log /api
-  entity     vc128 /nn
-  entity_id  num /nn
-  operation  vc6 /nn
-  old_values clob
-  new_values clob
+-- tier: lookup
+-- generated: items_apx
+items /api lookup
+  code  vc20 /nn
+  label vc100 /nn
 
-doctors /api /auditlog audit_log
-  name      vc200 /nn
-  specialty vc100
-  email     vc200 /nn /unique
+-- tier: lookup+hks
+-- generated: categories_hks, categories_apx
+categories /api lookup+hks
+  code  vc20 /nn
+  label vc100 /nn
 
-# settings = { prefix: "app_", auditcols: yes, rowversion: yes,
-#              api: layered, apex: yes }
+-- tier: service
+-- generated: orders_svc, orders_apx
+-- _svc body embeds private DML (no _dal)
+orders /api service
+  customer_id num /nn
+  total       num(12,2)
+
+-- tier: service+hks
+-- generated: invoices_hks, invoices_svc, invoices_apx
+invoices /api service+hks
+  order_id num /nn
+  amount   num(12,2)
+
+-- tier: full  (no hook stubs)
+-- generated: employees_dal, employees_svc, employees_apx
+employees /api full
+  name  vc100 /nn
+  email vc200 /nn
+
+-- tier: full+hks  (default for bare /api)
+-- generated: contracts_dal, contracts_hks, contracts_svc, contracts_apx
+contracts /api full+hks
+  title      vc200 /nn
+  row_version num /nn
 ```
 
-**What gets generated (layered):**
+Package name anatomy for `contracts` with no prefix:
 
-- `app_audit_log_dal` — basic DML procedures for `audit_log`
-- `app_audit_log_hooks` — placeholder hooks for business logic
-- `app_audit_log_svc` — service layer calling dal + hooks; exposes `create_rec`, `get_rec`, `update_rec`, `delete_rec`
-- `app_doctors_dal`, `app_doctors_hooks`, `app_doctors_svc` — same three layers for `doctors`
-- `app_doctors_audit` — autonomous-transaction audit package that calls `app_audit_log_svc.create_rec` on every DML event
-
-The layered pattern allows you to override `_hooks` without touching `_dal` or `_svc`, and to plug in audit logging transparently.
-
-> **Log table name:** `/auditlog` accepts an optional table name (without prefix). If omitted the generator looks for a table named `app_audit_log`. Use the explicit form — `/auditlog audit_log` — whenever your log table has a different name.
+| Package | Role |
+| --- | --- |
+| `contracts_dal` | Data Access Layer — raw DML (`get_by_id`, `insert_row`, `update_row`, `delete_row`) |
+| `contracts_hks` | Hooks — override stubs (`validate`, `before_insert`, `after_insert`, …) |
+| `contracts_svc` | Service — orchestrates DAL + hooks; public API (`create_rec`, `get`, `update_rec`, `delete_rec`) |
+| `contracts_apx` | APEX interface — thin scalar-parameter wrappers over `_svc` |
 
 ---
 
-## 15. Complete schema combining multiple features
+## 15. Audit log chain (`/auditlog`)
+
+`/auditlog` on a table generates an `<table>_aud` package that captures every DML event
+in an audit log table via `PRAGMA AUTONOMOUS_TRANSACTION`. The audit record persists even
+if the outer transaction rolls back.
+
+**Requirements:** the audit log table must exist in the schema (or be defined in the same
+QSQL input), and both tables must use a layered tier.
+
+```quicksql
+-- 1. Define the audit log table (also gets layered API for querying)
+app_audit_log /api full+hks
+  entity     vc128 /nn
+  entity_id  num   /nn
+  operation  vc6   /nn
+  old_values clob
+  new_values clob
+
+-- 2. Audited table — /auditlog names the log table (without prefix)
+employees /api full+hks /auditlog app_audit_log
+  name        vc100 /nn
+  email       vc200 /nn /unique
+  row_version num   /nn
+```
+
+**Generated packages for `employees`:**
+
+| Package | Role |
+| --- | --- |
+| `employees_dal` | Raw DML |
+| `employees_hks` | Business rule stubs |
+| `employees_svc` | Orchestration; calls `employees_aud` after each DML |
+| `employees_apx` | APEX interface |
+| `employees_aud` | Autonomous-transaction audit writer |
+
+The `employees_aud` package:
+
+- declares `g_enabled boolean := true` — flip to `false` to suppress audit without code change
+- contains a private `f_to_json` function that serialises the row to a JSON string
+- `log_insert(p_row)`, `log_update(p_old_row, p_new_row)`, `log_delete(p_old_row)` delegate to a private `p_log` procedure that calls `app_audit_log_svc.create_rec` inside an autonomous transaction
+
+> **Log table name:** `/auditlog` with no argument defaults to `app_audit_log`.
+> Use the explicit form — `/auditlog my_audit_log` — when your log table has a
+> different name.
+
+---
+
+## 16. Complete schema combining multiple features
 
 A realistic schema that combines several features: prefix, audit columns, APEX, rowversion, FK constraints, check constraints, annotations, REST, and a duality view.
 
@@ -827,7 +900,7 @@ This pattern is typical for Oracle APEX applications: prefix isolates the schema
 
 ---
 
-## 16. Shared-schema multi-tenancy with `tenantid: yes`
+## 17. Shared-schema multi-tenancy with `tenantid: yes`
 
 The `tenantid: yes` setting implements the shared-schema (discriminator) multi-tenancy pattern. QuickSQL automatically wires the schema for tenant isolation, leaving only optional hardening steps for the developer.
 
@@ -954,7 +1027,7 @@ See [Multi-Tenant Design](./multitenant-design.md) for the complete enterprise g
 
 ---
 
-## 17. Schema migration with `toDiff`
+## 18. Schema migration with `toDiff`
 
 **Interactive (editor):** write both schema versions in the same editor separated by `# ---`. The DDL panel switches to migration mode automatically — no extra tabs or buttons needed. Use **⇄ Compare versions** to insert the delimiter.
 
@@ -1125,48 +1198,46 @@ const result = toDiff(v1 + db23, v2 + db23);
 
 ---
 
-## 18. Layered TAPI — per-table tier selection
+## 19. Layered TAPI — per-table tier selection
 
-Different tables in the same schema often need different levels of API complexity. The `/api <tier>` per-table syntax lets you select exactly which packages are generated for each table without changing the global setting.
-
-**Input:**
+Different tables in the same schema often need different levels of API complexity.
+The `/api <tier>` syntax selects the tier per table independently of the global default.
 
 ```quicksql
--- Reference data: only needs a thin APEX interface
+-- reference data: thin APEX interface only
+-- generated: lookup_codes_apx
 lookup_codes /api lookup
   code  vc20 /nn /unique
   label vc100 /nn
 
--- Core entity: full stack with audit trail
-employees /api full+hks /auditlog
+-- business entity with hook stubs but no DAL
+-- generated: orders_hks, orders_svc, orders_apx
+orders /api service+hks
+  customer_id num /nn
+  total       num(12,2)
+
+-- core entity: full stack without hooks
+-- generated: products_dal, products_svc, products_apx
+products /api full
+  name  vc100 /nn
+  price num(12,2)
+
+-- top-level entity: full stack with hooks
+-- generated: employees_dal, employees_hks, employees_svc, employees_apx
+employees /api full+hks
   name        vc100 /nn
   email       vc200 /nn /unique
-  row_version num /nn
-
--- Audit log table required by /auditlog
-app_audit_log /api
-  entity     vc128 /nn
-  entity_id  num /nn
-  operation  vc6 /nn
-  old_values clob
-  new_values clob
+  row_version num   /nn
 
 # settings = { api: layered }
 ```
 
-**Generated packages:**
-
-<!-- markdownlint-disable MD013 -->
-| Table | Tier | Packages |
-| --- | --- | --- |
-| `lookup_codes` | `lookup` | `lookup_codes_apx` |
-| `employees` | `full+hks` | `employees_dal`, `employees_hks`, `employees_svc`, `employees_apx`, `employees_aud` |
-| `app_audit_log` | `full+hks` (default) | `app_audit_log_dal`, `app_audit_log_hks`, `app_audit_log_svc`, `app_audit_log_apx` |
-<!-- markdownlint-enable MD013 -->
+Numeric shorthand: `1`=`lookup`, `1h`=`lookup+hks`, `2`=`service`, `2h`=`service+hks`,
+`3`=`full`, `3h`=`full+hks`. Both forms are equivalent: `/api 3h` and `/api full+hks`.
 
 ---
 
-## 19. Layered TAPI — degradation (absorbed layers)
+## 20. Layered TAPI — degradation (absorbed layers)
 
 When a lower layer is absent, its logic is absorbed as private procedures in the package above it. This lets you start with a leaner tier and upgrade later without changing calling code.
 
@@ -1202,7 +1273,7 @@ procedure before_delete (p_id in departments_dal.t_id);
 
 ---
 
-## 20. Layered TAPI — REST interface (`ifc: rest`)
+## 21. Layered TAPI — REST interface (`ifc: rest`)
 
 Use `ifc: rest` to generate ORDS handler packages (`_rst`) instead of APEX interface packages (`_apx`). Use `ifc: both` to generate both.
 
@@ -1236,9 +1307,9 @@ end employees_rst;
 For dual access (APEX + REST simultaneously):
 
 ```quicksql
-# settings = { api: layered, ifc: both }
+# settings = { ifc: both }
 
-employees /api
+employees /api full+hks
   name vc100 /nn
 ```
 

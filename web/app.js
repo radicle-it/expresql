@@ -503,21 +503,53 @@ embeddings
 # settings = { pk: identityDataType, auditcols: yes }`,
     },
     {
-        label: 'Layered TAPI + Audit Log', desc: 'DAL / hooks / SVC + autonomous audit package',
+        label: 'Layered TAPI — tiers', desc: 'Six tiers: lookup → lookup+hks → service → service+hks → full → full+hks',
         qsql:
-`app_audit_log /api
+`-- lookup      → codes_apx
+codes /api lookup
+   code  vc20 /nn /unique
+   label vc100 /nn
+
+-- service+hks  → orders_hks, orders_svc, orders_apx
+--   (_svc absorbs private DML; delegates to _hks for hooks)
+orders /api service+hks
+   customer_id num /nn
+   total       num(12,2)
+   row_version num /nn
+
+-- full+hks     → employees_dal, employees_hks, employees_svc, employees_apx
+employees /api full+hks
+   name        vc100 /nn
+   email       vc200 /nn /unique
+   row_version num /nn`,
+    },
+    {
+        label: 'Layered TAPI — Audit Log', desc: '_aud package with PRAGMA AUTONOMOUS_TRANSACTION; log table defined in schema',
+        qsql:
+`app_audit_log /api full+hks
    entity     vc128 /nn
    entity_id  num /nn
    operation  vc6 /nn
    old_values clob
    new_values clob
 
-doctors /api /auditlog app_audit_log
-   name      vc200 /nn
-   specialty vc100
-   email     vc200 /nn /unique
+-- /auditlog generates employees_aud (autonomous CDC writer)
+employees /api full+hks /auditlog app_audit_log
+   name        vc100 /nn
+   email       vc200 /nn /unique
+   row_version num /nn
 
-# settings = {"prefix": "a01_", "auditcols": "yes", "rowversion": "yes", "api": "layered", "apex": "yes"}`,
+# settings = {"auditcols": "yes"}`,
+    },
+    {
+        label: 'Layered TAPI — REST (ifc: rest)', desc: '_rst ORDS handler package: get/ins/upd/del with :body_text, :p_id, :status',
+        qsql:
+`employees /api full+hks
+   name        vc100 /nn
+   email       vc200 /nn /unique
+   row_version num /nn
+
+# settings = {"ifc": "rest"}`,
     },
     {
         label: 'Multi-Tenant SaaS', desc: 'Shared schema with tenant_id isolation',

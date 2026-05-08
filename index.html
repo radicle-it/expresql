@@ -334,7 +334,7 @@ emp_v = departments employees
       salary num(10,2)</code>
                 <p class="hdw-note" style="margin-top:8px">Add settings at the end of the script:</p>
                 <code class="hdw-eg"># settings = { db: "23c", auditcols: yes, prefix: "app_" }</code>
-                <p class="hdw-note" style="margin-top:8px">The DDL panel updates in real time. Use <strong>Copy SQL</strong> to grab the output. Load a starter schema from the <strong>Examples ▾</strong> button in the toolbar, or browse the <a href="doc/user/examples.md" target="_blank">full examples guide</a> (15 annotated scenarios with DDL output).</p>
+                <p class="hdw-note" style="margin-top:8px">The DDL panel updates in real time. Use <strong>Copy SQL</strong> to grab the output. Load a starter schema from the <strong>Examples ▾</strong> button in the toolbar, or browse the <a href="doc/user/examples.md" target="_blank">full examples guide</a> (21 annotated scenarios with DDL output).</p>
             </div>
         </details>
 
@@ -526,21 +526,30 @@ departments
    customer_id /fk customers
    total num(10,2) /nn
    status /check OPEN,CLOSED,PENDING</code>
-                <p class="hdw-note" style="margin-top:10px">Layered TAPI with autonomous audit log — <code>app_audit_log</code> is developer-owned with its own DAL / hooks / SVC; <code>/auditlog app_audit_log</code> on <code>doctors</code> generates <code>doctors_audit</code> which calls <code>app_audit_log_svc.create_rec</code> via <code>PRAGMA AUTONOMOUS_TRANSACTION</code>; the log table name is optional and defaults to <code>app_audit_log</code>; prefix, rowversion (OCC) and audit columns applied globally:</p>
-                <code class="hdw-eg">app_audit_log /api
-   entity     vc128 /nn
-   entity_id  num /nn
-   operation  vc6 /nn
-   old_values clob
-   new_values clob
+                <p class="hdw-note" style="margin-top:10px">Layered TAPI — six tiers per table (<code>lookup</code> → <code>lookup+hks</code> → <code>service</code> → <code>service+hks</code> → <code>full</code> → <code>full+hks</code>). Comments show the generated package names:</p>
+                <code class="hdw-eg">-- lookup  → codes_apx
+codes /api lookup
+   code vc20 /nn
 
-doctors /api /auditlog app_audit_log
-   name      vc200 /nn
-   specialty vc100
-   email     vc200 /nn /unique
+-- service+hks  → orders_hks, orders_svc, orders_apx
+orders /api service+hks
+   total num(12,2)
+   row_version num /nn
 
-# settings = {"prefix": "a01_", "auditcols": "yes", "rowversion": "yes", "api": "layered", "apex": "yes"}</code>
-                <p class="hdw-note" style="margin-top:10px"><a href="doc/user/examples.md" target="_blank">→ 15 annotated scenarios with DDL output</a></p>
+-- full+hks  → emp_dal, emp_hks, emp_svc, emp_apx
+employees /api full+hks
+   name vc100 /nn
+   row_version num /nn</code>
+                <p class="hdw-note" style="margin-top:10px">Audit log — <code>/auditlog</code> generates <code>employees_aud</code> (autonomous CDC writer) on top of the layered stack:</p>
+                <code class="hdw-eg">app_audit_log /api full+hks
+   entity vc128 /nn
+   entity_id num /nn
+   operation vc6 /nn
+
+employees /api full+hks /auditlog app_audit_log
+   name vc100 /nn
+   row_version num /nn</code>
+                <p class="hdw-note" style="margin-top:10px"><a href="doc/user/examples.md" target="_blank">→ 21 annotated scenarios with DDL output</a></p>
             </div>
         </details>
 
@@ -559,7 +568,7 @@ doctors /api /auditlog app_audit_log
                 <p class="hdw-note" style="margin-top:8px">Full reference documentation:</p>
                 <table class="ref">
                     <tr><td><a href="doc/user/quick-sql-grammar.md" target="_blank">Grammar Reference</a></td><td>All directives, types, settings, API</td></tr>
-                    <tr><td><a href="doc/user/examples.md" target="_blank">Examples</a></td><td>15 end-to-end practical scenarios</td></tr>
+                    <tr><td><a href="doc/user/examples.md" target="_blank">Examples</a></td><td>21 end-to-end practical scenarios</td></tr>
                     <tr><td><a href="doc/user/multitenant-design.md" target="_blank">Multi-Tenant Design</a></td><td>Enterprise multi-tenancy: indexes, FK integrity, VPD</td></tr>
                     <tr><td><a href="doc/user/quick-erd.md" target="_blank">ERD Guide</a></td><td>Diagram rendering and theming</td></tr>
                     <tr><td><a href="ORACLE_MLE_INTEGRATION.md" target="_blank">Oracle MLE Integration</a></td><td>Server-side use inside Oracle 23ai+</td></tr>

@@ -463,7 +463,7 @@ Generate PL/SQL APIs on all tables for create, read, update, and delete operatio
 
 #### Layered TAPI tiers
 
-When `api: layered` is set globally, each table with a `/api` directive generates a stack of PL/SQL packages. The **tier** controls which packages are included. Set it globally (all tables get that tier) or per table using `/api <tier>`:
+Each table with a `/api <tier>` directive generates a stack of PL/SQL packages. The tier argument is self-contained — no global setting needed:
 
 | Tier | Packages generated | Notes |
 |---|---|---|
@@ -481,19 +481,17 @@ Numeric aliases: `1` = `lookup`, `1h` = `lookup+hks`, `2` = `service`, `2h` = `s
 **Interface package**: controlled by the [`ifc`](#ifc) setting (`apex`, `rest`, or `both`). Default is `apex`, which generates `_apx`. Use `rest` to generate `_rst` (ORDS handlers) instead, or `both` to generate both.
 
 ```quicksql
-# api: layered
-
 -- default: log table is app_audit_log (with prefix applied)
-employees /api /auditlog
+employees /api full+hks /auditlog
   name vc100 /nn
 
 -- explicit: name the log table directly
-app_audit_log /api
+app_audit_log /api full+hks
   entity    vc128 /nn
   entity_id num   /nn
   operation vc6   /nn
 
-employees /api /auditlog app_audit_log
+employees /api full+hks /auditlog app_audit_log
   name vc100 /nn
 ```
 
@@ -871,7 +869,7 @@ The `/insert 10` directive is ignored and no INSERT statements are generated.
 **Possible Values**: `apex`, `rest`, `both`  
 **Default Value**: `apex`
 
-Controls which interface package is generated for layered TAPI tables (`api: layered`).
+Controls which interface package is generated for layered TAPI tables.
 
 | Value | Package generated | Use when |
 |---|---|---|
@@ -882,7 +880,7 @@ Controls which interface package is generated for layered TAPI tables (`api: lay
 The `_rst` package contains no-parameter procedures (`get`, `ins`, `upd`, `del`) that use ORDS bind variables (`:body_text`, `:p_id`, `:status`) and emit JSON via `htp.p`.
 
 ```quicksql
-# settings = { api: layered, ifc: rest }
+# settings = { ifc: rest }
 
 employees /api full+hks
   name       vc100 /nn
@@ -891,7 +889,7 @@ employees /api full+hks
 ```
 
 ```quicksql
-# settings = { api: layered, ifc: both }
+# settings = { ifc: both }
 
 employees /api
   name vc100 /nn

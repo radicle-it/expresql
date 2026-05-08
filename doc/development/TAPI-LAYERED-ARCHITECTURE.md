@@ -8,6 +8,92 @@
 
 ---
 
+## Quick QSQL Reference
+
+### Tier selection
+
+Add `/api <tier>` on any table. The global `api: layered` setting is still required when
+using bare `/api` (no tier argument, defaults to `full+hks`).
+
+```quicksql
+-- lookup      → generated: tbl_apx
+lookup_codes /api lookup
+  code vc20 /nn
+  label vc100 /nn
+
+-- lookup+hks  → generated: tbl_hks, tbl_apx
+categories /api lookup+hks
+  code vc20 /nn
+  label vc100 /nn
+
+-- service     → generated: tbl_svc, tbl_apx  (_svc absorbs private DML)
+orders /api service
+  customer_id num /nn
+  total num(12,2)
+
+-- service+hks → generated: tbl_hks, tbl_svc, tbl_apx
+invoices /api service+hks
+  order_id num /nn
+  amount num(12,2)
+
+-- full        → generated: tbl_dal, tbl_svc, tbl_apx  (no hook stubs)
+products /api full
+  name vc100 /nn
+  price num(12,2)
+
+-- full+hks    → generated: tbl_dal, tbl_hks, tbl_svc, tbl_apx  (default)
+employees /api full+hks
+  name vc100 /nn
+  email vc200 /nn /unique
+  row_version num /nn
+```
+
+Numeric aliases: `1`=`lookup`, `1h`=`lookup+hks`, `2`=`service`, `2h`=`service+hks`,
+`3`=`full`, `3h`=`full+hks`.
+
+### Audit log
+
+```quicksql
+app_audit_log /api full+hks
+  entity vc128 /nn
+  entity_id num /nn
+  operation vc6 /nn
+  old_values clob
+  new_values clob
+
+employees /api full+hks /auditlog app_audit_log
+  name vc100 /nn
+  row_version num /nn
+```
+
+Generated extra package: `employees_aud` (autonomous-transaction CDC writer).
+
+### REST interface (`ifc` setting)
+
+| `ifc` value | Interface package | Use case |
+| --- | --- | --- |
+| `apex` (default) | `_apx` | Oracle APEX |
+| `rest` | `_rst` | ORDS REST endpoints |
+| `both` | `_apx` + `_rst` | Dual access |
+
+```quicksql
+# settings = { ifc: rest }
+
+employees /api full+hks
+  name vc100 /nn
+```
+
+### User-facing documentation
+
+- **All tiers with examples**: [doc/user/examples.md §14](../user/examples.md#14-table-api-tapi--simple-and-layered-tiers)
+- **Audit log chain**: [doc/user/examples.md §15](../user/examples.md#15-audit-log-chain-auditlog)
+- **Per-table tier selection**: [doc/user/examples.md §19](../user/examples.md#19-layered-tapi--per-table-tier-selection)
+- **Degradation rule**: [doc/user/examples.md §20](../user/examples.md#20-layered-tapi--degradation-absorbed-layers)
+- **REST interface**: [doc/user/examples.md §21](../user/examples.md#21-layered-tapi--rest-interface-ifc-rest)
+- **Grammar reference**: [doc/user/quick-sql-grammar.md §api](../user/quick-sql-grammar.md#api)
+
+---
+
 ## 1. Critical Analysis of the Current Generated TAPI
 
 The TAPI produced by QuickSQL (`/api` directive) is a functional scaffold, not a production-ready API. Before defining the target architecture, the defects must be understood explicitly.
@@ -1165,7 +1251,7 @@ When a table carries the `/auditlog` directive, the generator emits a fourth pac
 **QSQL definition:**
 
 ```
-app_audit_log /api
+app_audit_log /api full+hks
   entity     vc128 /nn
   entity_id  num /nn
   operation  vc6 /nn
