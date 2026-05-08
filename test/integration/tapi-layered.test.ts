@@ -1377,3 +1377,289 @@ describe('layered TAPI — tenantid:yes', () => {
     });
 
 });
+
+// ── §10 Per-table tier system (/api <tier>) ───────────────────────────────────
+
+describe('per-table tier system — package selection', () => {
+
+    test('lookup tier emits only _apx (no dal, hks, svc)', () => {
+        const out = ddl('doctors /api lookup\n  name vc200');
+        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).not.toContain('create or replace package doctors_dal');
+        expect(out).not.toContain('create or replace package doctors_hks');
+        expect(out).not.toContain('create or replace package doctors_svc');
+    });
+
+    test('lookup+hks tier emits _hks and _apx only', () => {
+        const out = ddl('doctors /api lookup+hks\n  name vc200');
+        expect(out).toContain('create or replace package doctors_hks');
+        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).not.toContain('create or replace package doctors_dal');
+        expect(out).not.toContain('create or replace package doctors_svc');
+    });
+
+    test('service tier emits _svc and _apx only', () => {
+        const out = ddl('doctors /api service\n  name vc200');
+        expect(out).toContain('create or replace package doctors_svc');
+        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).not.toContain('create or replace package doctors_dal');
+        expect(out).not.toContain('create or replace package doctors_hks');
+    });
+
+    test('service+hks tier emits _hks, _svc, and _apx', () => {
+        const out = ddl('doctors /api service+hks\n  name vc200');
+        expect(out).toContain('create or replace package doctors_hks');
+        expect(out).toContain('create or replace package doctors_svc');
+        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).not.toContain('create or replace package doctors_dal');
+    });
+
+    test('full tier emits _dal, _svc, and _apx (no _hks)', () => {
+        const out = ddl('doctors /api full\n  name vc200');
+        expect(out).toContain('create or replace package doctors_dal');
+        expect(out).toContain('create or replace package doctors_svc');
+        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).not.toContain('create or replace package doctors_hks');
+    });
+
+    test('full+hks tier emits _dal, _hks, _svc, and _apx', () => {
+        const out = ddl('doctors /api full+hks\n  name vc200');
+        expect(out).toContain('create or replace package doctors_dal');
+        expect(out).toContain('create or replace package doctors_hks');
+        expect(out).toContain('create or replace package doctors_svc');
+        expect(out).toContain('create or replace package doctors_apx');
+    });
+
+    test('bare /api (no arg) + api:layered global defaults to full+hks', () => {
+        const out = ddl(DOCTORS_QSQL);  // DOCTORS_QSQL uses bare /api + api:"layered"
+        expect(out).toContain('create or replace package doctors_dal');
+        expect(out).toContain('create or replace package doctors_hks');
+        expect(out).toContain('create or replace package doctors_svc');
+    });
+
+    test('numeric alias 1 maps to lookup', () => {
+        const out = ddl('doctors /api 1\n  name vc200');
+        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).not.toContain('create or replace package doctors_dal');
+        expect(out).not.toContain('create or replace package doctors_svc');
+    });
+
+    test('numeric alias 1h maps to lookup+hks', () => {
+        const out = ddl('doctors /api 1h\n  name vc200');
+        expect(out).toContain('create or replace package doctors_hks');
+        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).not.toContain('create or replace package doctors_svc');
+    });
+
+    test('numeric alias 2 maps to service', () => {
+        const out = ddl('doctors /api 2\n  name vc200');
+        expect(out).toContain('create or replace package doctors_svc');
+        expect(out).not.toContain('create or replace package doctors_dal');
+    });
+
+    test('numeric alias 3h maps to full+hks', () => {
+        const out = ddl('doctors /api 3h\n  name vc200');
+        expect(out).toContain('create or replace package doctors_dal');
+        expect(out).toContain('create or replace package doctors_hks');
+        expect(out).toContain('create or replace package doctors_svc');
+    });
+
+    test('different tables in same schema can use different tiers', () => {
+        const qsql = 'staff /api lookup\n  name vc200\n\ndoctors /api full+hks\n  name vc200';
+        const out = ddl(qsql);
+        expect(out).toContain('create or replace package staff_apx');
+        expect(out).not.toContain('create or replace package staff_dal');
+        expect(out).toContain('create or replace package doctors_dal');
+        expect(out).toContain('create or replace package doctors_hks');
+    });
+
+});
+
+// ── §11 Degradation — absorbed DML and hook stubs ────────────────────────────
+
+describe('degradation — SVC absorbs private DML when DAL absent', () => {
+
+    test('service tier SVC body contains private DML section comment', () => {
+        const out = ddl('doctors /api service\n  name vc200\n  email vc200');
+        const body = segment(out, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        expect(body).toContain('private DML');
+    });
+
+    test('service tier SVC body contains p_get_by_id function', () => {
+        const out = ddl('doctors /api service\n  name vc200');
+        const body = segment(out, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        expect(body).toContain('function p_get_by_id');
+        expect(body).toContain('return doctors%rowtype');
+    });
+
+    test('service tier SVC body contains p_insert_row procedure', () => {
+        const out = ddl('doctors /api service\n  name vc200');
+        const body = segment(out, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        expect(body).toContain('procedure p_insert_row');
+    });
+
+    test('service tier SVC body contains p_update_row procedure', () => {
+        const out = ddl('doctors /api service\n  name vc200');
+        const body = segment(out, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        expect(body).toContain('procedure p_update_row');
+    });
+
+    test('service tier SVC body contains p_delete_row procedure', () => {
+        const out = ddl('doctors /api service\n  name vc200');
+        const body = segment(out, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        expect(body).toContain('procedure p_delete_row');
+    });
+
+    test('service tier SVC body calls p_get_by_id (not doctors_dal.get_by_id)', () => {
+        const out = ddl('doctors /api service\n  name vc200');
+        const body = segment(out, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        expect(body).toContain('p_get_by_id(');
+        expect(body).not.toContain('doctors_dal.get_by_id');
+    });
+
+    test('full+hks tier SVC body does NOT contain private DML (DAL present)', () => {
+        const out = ddl('doctors /api full+hks\n  name vc200');
+        const body = segment(out, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        expect(body).not.toContain('private DML');
+        expect(body).toContain('doctors_dal.get_by_id');
+    });
+
+});
+
+describe('degradation — SVC absorbs private hook stubs when HKS absent', () => {
+
+    test('service tier (no hks) SVC body contains private hook stubs comment', () => {
+        const out = ddl('doctors /api service\n  name vc200');
+        const body = segment(out, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        expect(body).toContain('private hook stubs');
+    });
+
+    test('service tier (no hks) SVC body contains p_validate stub', () => {
+        const out = ddl('doctors /api service\n  name vc200');
+        const body = segment(out, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        expect(body).toContain('procedure p_validate');
+    });
+
+    test('service tier (no hks) SVC body calls p_validate (not doctors_hks.validate)', () => {
+        const out = ddl('doctors /api service\n  name vc200');
+        const body = segment(out, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        expect(body).toContain('p_validate(');
+        expect(body).not.toContain('doctors_hks.validate');
+    });
+
+    test('service+hks tier SVC body does NOT contain private hook stubs (HKS present)', () => {
+        const out = ddl('doctors /api service+hks\n  name vc200');
+        const body = segment(out, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        expect(body).not.toContain('private hook stubs');
+        expect(body).toContain('doctors_hks.validate');
+    });
+
+});
+
+describe('degradation — HKS id type conditional on DAL presence', () => {
+
+    test('full+hks tier: before_delete uses doctors_dal.t_id', () => {
+        const out = ddl('doctors /api full+hks\n  name vc200');
+        const spec = segment(out, 'create or replace package doctors_hks', 'end doctors_hks;');
+        expect(spec).toContain('p_id in doctors_dal.t_id');
+    });
+
+    test('service+hks tier (no dal): before_delete uses doctors.id%type', () => {
+        const out = ddl('doctors /api service+hks\n  name vc200');
+        const spec = segment(out, 'create or replace package doctors_hks', 'end doctors_hks;');
+        expect(spec).toContain('p_id in doctors.id%type');
+        expect(spec).not.toContain('doctors_dal.t_id');
+    });
+
+    test('lookup+hks tier (no dal): after_delete uses doctors.id%type', () => {
+        const out = ddl('doctors /api lookup+hks\n  name vc200');
+        const spec = segment(out, 'create or replace package doctors_hks', 'end doctors_hks;');
+        expect(spec).toContain('p_id in doctors.id%type');
+    });
+
+});
+
+// ── §12 ifc setting — APEX / REST / both ─────────────────────────────────────
+
+describe('ifc setting — interface package selection', () => {
+
+    test('ifc:"apex" (default) emits _apx but not _rst', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered"}`);
+        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).not.toContain('create or replace package doctors_rst');
+    });
+
+    test('ifc:"rest" emits _rst but not _apx', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        expect(out).toContain('create or replace package doctors_rst');
+        expect(out).not.toContain('create or replace package doctors_apx');
+    });
+
+    test('ifc:"both" emits both _apx and _rst', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "both"}`);
+        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).toContain('create or replace package doctors_rst');
+    });
+
+    test('RST spec declares get procedure (no parameters)', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const spec = segment(out, 'create or replace package doctors_rst', 'end doctors_rst;');
+        expect(spec).toContain('procedure get;');
+    });
+
+    test('RST spec declares ins, upd, del procedures', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const spec = segment(out, 'create or replace package doctors_rst', 'end doctors_rst;');
+        expect(spec).toContain('procedure ins;');
+        expect(spec).toContain('procedure upd;');
+        expect(spec).toContain('procedure del;');
+    });
+
+    test('RST body get procedure uses :p_id bind variable', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
+        const getProc = segment(body, 'procedure get is', 'end get;');
+        expect(getProc).toContain(':p_id');
+    });
+
+    test('RST body get procedure calls doctors_svc.get', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
+        const getProc = segment(body, 'procedure get is', 'end get;');
+        expect(getProc).toContain('doctors_svc.get');
+    });
+
+    test('RST body get procedure uses htp.p to output JSON', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
+        const getProc = segment(body, 'procedure get is', 'end get;');
+        expect(getProc).toContain('htp.p(');
+    });
+
+    test('RST body ins procedure uses :body_text bind variable', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
+        const insProc = segment(body, 'procedure ins is', 'end ins;');
+        expect(insProc).toContain(':body_text');
+    });
+
+    test('RST body ins procedure calls doctors_svc.create_rec', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
+        const insProc = segment(body, 'procedure ins is', 'end ins;');
+        expect(insProc).toContain('doctors_svc.create_rec');
+    });
+
+    test('RST body procedures set :status bind variable', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
+        expect(body).toContain(':status');
+    });
+
+    test('ifc:"rest" with lookup tier (no svc): RST body absorbs private DML', () => {
+        const out = ddl(`doctors /api lookup\n  name vc200\n# settings = {"ifc": "rest"}`);
+        const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
+        expect(body).toContain('private DML');
+    });
+
+});

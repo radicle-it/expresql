@@ -21,6 +21,9 @@ This document collects end-to-end Quick SQL examples. Each scenario shows the QS
 - [15. Complete schema combining multiple features](#15-complete-schema-combining-multiple-features)
 - [16. Shared-schema multi-tenancy with `tenantid: yes`](#16-shared-schema-multi-tenancy-with-tenantid-yes)
 - [17. Schema migration with `toDiff`](#17-schema-migration-with-todiff)
+- [18. Layered TAPI — per-table tier selection](#18-layered-tapi--per-table-tier-selection)
+- [19. Layered TAPI — degradation (absorbed layers)](#19-layered-tapi--degradation-absorbed-layers)
+- [20. Layered TAPI — REST interface (`ifc: rest`)](#20-layered-tapi--rest-interface-ifc-rest)
 
 ---
 
@@ -1119,3 +1122,124 @@ const result = toDiff(v1 + db23, v2 + db23);
 | `create_package` (spec) | 15 | CREATE OR REPLACE PACKAGE |
 | `create_view` | 16 | CREATE OR REPLACE VIEW |
 | `create_package` (body) | 17 | CREATE OR REPLACE PACKAGE BODY |
+
+---
+
+## 18. Layered TAPI — per-table tier selection
+
+Different tables in the same schema often need different levels of API complexity. The `/api <tier>` per-table syntax lets you select exactly which packages are generated for each table without changing the global setting.
+
+**Input:**
+
+```quicksql
+-- Reference data: only needs a thin APEX interface
+lookup_codes /api lookup
+  code  vc20 /nn /unique
+  label vc100 /nn
+
+-- Core entity: full stack with audit trail
+employees /api full+hks /auditlog
+  name        vc100 /nn
+  email       vc200 /nn /unique
+  row_version num /nn
+
+-- Audit log table required by /auditlog
+app_audit_log /api
+  entity     vc128 /nn
+  entity_id  num /nn
+  operation  vc6 /nn
+  old_values clob
+  new_values clob
+
+# settings = { api: layered }
+```
+
+**Generated packages:**
+
+<!-- markdownlint-disable MD013 -->
+| Table | Tier | Packages |
+| --- | --- | --- |
+| `lookup_codes` | `lookup` | `lookup_codes_apx` |
+| `employees` | `full+hks` | `employees_dal`, `employees_hks`, `employees_svc`, `employees_apx`, `employees_aud` |
+| `app_audit_log` | `full+hks` (default) | `app_audit_log_dal`, `app_audit_log_hks`, `app_audit_log_svc`, `app_audit_log_apx` |
+<!-- markdownlint-enable MD013 -->
+
+---
+
+## 19. Layered TAPI — degradation (absorbed layers)
+
+When a lower layer is absent, its logic is absorbed as private procedures in the package above it. This lets you start with a leaner tier and upgrade later without changing calling code.
+
+**Service tier (no `_dal` — DML absorbed into `_svc`):**
+
+```quicksql
+-- _svc body contains private p_get_by_id, p_insert_row, etc.
+departments /api service
+  name    vc100 /nn
+  budget  num(15,2)
+```
+
+The generated `departments_svc` body begins with:
+
+```sql
+-- private DML (absorbed from absent _dal)
+
+function p_get_by_id (p_id in departments.id%type) return departments%rowtype is ...
+procedure p_insert_row (p_row in out nocopy departments%rowtype) is ...
+```
+
+**Service+hks tier — `_hks` id type when no `_dal`:**
+
+When `_dal` is absent, the hooks package uses the table anchor type directly:
+
+```sql
+-- service+hks: no _dal present
+procedure before_delete (p_id in departments.id%type);
+
+-- full+hks: _dal present → use its t_id subtype
+procedure before_delete (p_id in departments_dal.t_id);
+```
+
+---
+
+## 20. Layered TAPI — REST interface (`ifc: rest`)
+
+Use `ifc: rest` to generate ORDS handler packages (`_rst`) instead of APEX interface packages (`_apx`). Use `ifc: both` to generate both.
+
+**Input:**
+
+```quicksql
+employees /api full+hks
+  name        vc100 /nn
+  email       vc200 /nn /unique
+  row_version num /nn
+
+# settings = { api: layered, ifc: rest }
+```
+
+The generated `employees_rst` package:
+
+- **No-parameter procedures**: `get`, `ins`, `upd`, `del` — all parameters are ORDS bind variables.
+- **Input**: `:body_text` (JSON body for ins/upd), `:p_id` (path parameter for get/upd/del).
+- **Output**: `:status` (HTTP status code), `htp.p(json_object(...))` for response body.
+
+```sql
+create or replace package employees_rst as
+    procedure get;
+    procedure ins;
+    procedure upd;
+    procedure del;
+end employees_rst;
+/
+```
+
+For dual access (APEX + REST simultaneously):
+
+```quicksql
+# settings = { api: layered, ifc: both }
+
+employees /api
+  name vc100 /nn
+```
+
+This generates both `employees_apx` and `employees_rst`.

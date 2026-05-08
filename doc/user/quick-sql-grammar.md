@@ -44,6 +44,7 @@
     - [updatedCol](#updatedcol)
     - [verbose](#verbose)
     - [inserts](#inserts)
+    - [ifc](#ifc)
     - [dv](#dv)
     - [editionable](#editionable)
     - [aienrichment](#aienrichment)
@@ -105,7 +106,7 @@ A comment can appear between any keywords, parameters, or punctuation marks in a
 <!-- markdownlint-disable MD013 -->
 | Directive                               | Description                       |
 | --------------------------------------- | --------------------------------- |
-| /api                                    | Generate PL/SQL package API to query, insert, update, and delete data within a table. Adds Oracle auditing, by default AUDIT ALL ON &lt;TABLE NAME&gt;. |
+| /api [*tier*]                           | Generate PL/SQL package API to query, insert, update, and delete data within a table. Adds Oracle auditing, by default AUDIT ALL ON &lt;TABLE NAME&gt;. The optional *tier* argument selects which layers are generated for this specific table: `lookup`, `lookup+hks`, `service`, `service+hks`, `full`, or `full+hks` (default). See [api](#api) setting for details. |
 | /audit                                  | Adds Oracle auditing, by default AUDIT ALL ON &lt;TABLE NAME&gt;. |
 | /auditcols, /audit cols, /audit columns | Automatically adds CREATED, CREATED_BY, UPDATED, and UPDATED_BY columns and the trigger logic to set column values. |
 | /auditlog [*table*]                     | Generates an audit package with `PRAGMA AUTONOMOUS_TRANSACTION` that logs all DML operations to a developer-supplied audit log table. Typically combined with `/api`. The generated package calls `<log_table>_svc.create_rec` inside an autonomous transaction so that audit records persist even if the outer transaction rolls back. The optional *table* argument names the log table (without prefix); defaults to `app_audit_log` if omitted. |
@@ -458,7 +459,26 @@ Generate PL/SQL APIs on all tables for create, read, update, and delete operatio
 |---|---|
 | `false` | No API generated (default). |
 | `true` | Generates a single `<table>_api` package with create, read, update, delete procedures. |
-| `layered` | Generates a three-layer API: a Data Access Layer (`_dal`), a hooks layer (`_hooks`) for business logic, and a service layer (`_svc`) that orchestrates them. Use `layered` when tables also have `/auditlog` to get the full autonomous-transaction audit chain. |
+| `layered` | Enables the layered TAPI system (see below). Tables marked with `/api` get the full six-layer stack unless overridden per table. |
+
+#### Layered TAPI tiers
+
+When `api: layered` is set globally, each table with a `/api` directive generates a stack of PL/SQL packages. The **tier** controls which packages are included. Set it globally (all tables get that tier) or per table using `/api <tier>`:
+
+| Tier | Packages generated | Notes |
+|---|---|---|
+| `lookup` | `_apx` | Minimal: APEX interface only, no service logic. |
+| `lookup+hks` | `_hks`, `_apx` | Adds hook stubs for business rules. |
+| `service` | `_svc`, `_apx` | Service layer absorbs private DML (no `_dal`). |
+| `service+hks` | `_hks`, `_svc`, `_apx` | Adds hook stubs; SVC delegates to `_hks`. |
+| `full` | `_dal`, `_svc`, `_apx` | Full stack without hook stubs. |
+| `full+hks` | `_dal`, `_hks`, `_svc`, `_apx` | Full stack (default for bare `/api`). |
+
+Numeric aliases: `1` = `lookup`, `1h` = `lookup+hks`, `2` = `service`, `2h` = `service+hks`, `3` = `full`, `3h` = `full+hks`.
+
+**Degradation rule**: each layer calls the layer below when present; when a lower layer is absent, its logic is absorbed as private procedures. For example, a `service` tier SVC body embeds private `p_get_by_id`, `p_insert_row`, `p_update_row`, `p_delete_row` procedures instead of calling `_dal`.
+
+**Interface package**: controlled by the [`ifc`](#ifc) setting (`apex`, `rest`, or `both`). Default is `apex`, which generates `_apx`. Use `rest` to generate `_rst` (ORDS handlers) instead, or `both` to generate both.
 
 ```quicksql
 # api: layered
@@ -475,6 +495,21 @@ app_audit_log /api
 
 employees /api /auditlog app_audit_log
   name vc100 /nn
+```
+
+Per-table tier override (two tables, different tiers in the same schema):
+
+```quicksql
+-- lookup_codes only needs a thin APEX interface
+lookup_codes /api lookup
+  code  vc20 /nn
+  label vc100 /nn
+
+-- employees needs the full stack with hooks and audit
+employees /api full+hks /auditlog
+  name       vc100 /nn
+  email      vc200 /nn /unique
+  row_version num /nn
 ```
 
 #### API and multi-tenancy (`tenantid: yes`)
@@ -830,6 +865,37 @@ employees /insert 10
 ```
 
 The `/insert 10` directive is ignored and no INSERT statements are generated.
+
+### ifc
+
+**Possible Values**: `apex`, `rest`, `both`  
+**Default Value**: `apex`
+
+Controls which interface package is generated for layered TAPI tables (`api: layered`).
+
+| Value | Package generated | Use when |
+|---|---|---|
+| `apex` | `_apx` | Consuming the API from Oracle APEX (default). |
+| `rest` | `_rst` | Exposing the API as ORDS REST endpoints. |
+| `both` | `_apx` and `_rst` | Dual access: APEX UI and REST clients simultaneously. |
+
+The `_rst` package contains no-parameter procedures (`get`, `ins`, `upd`, `del`) that use ORDS bind variables (`:body_text`, `:p_id`, `:status`) and emit JSON via `htp.p`.
+
+```quicksql
+# settings = { api: layered, ifc: rest }
+
+employees /api full+hks
+  name       vc100 /nn
+  email      vc200 /nn /unique
+  row_version num /nn
+```
+
+```quicksql
+# settings = { api: layered, ifc: both }
+
+employees /api
+  name vc100 /nn
+```
 
 ### dv
 

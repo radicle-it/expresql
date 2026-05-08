@@ -549,15 +549,30 @@ export class OracleDDLGenerator extends BaseGenerator {
         if (node.inferType() === 'view') ret = 'drop view ' + ifExists + objName + ';\n';
         if (node.inferType() === 'table') {
             ret = 'drop table ' + ifExists + objName + ' cascade constraints;\n';
-            if (this._ddl.optionEQvalue('api', 'layered') &&
-                node.trimmedContent().toLowerCase().includes('/api')) {
-                ret += 'drop package ' + ifExists + objName + '_dal;\n';
-                ret += 'drop package ' + ifExists + objName + '_hks;\n';
-                ret += 'drop package ' + ifExists + objName + '_svc;\n';
-                if (node.isOption('auditlog')) {
-                    ret += 'drop package ' + ifExists + objName + '_aud;\n';
-                }
-                ret += 'drop package ' + ifExists + objName + '_apx;\n';
+            const hasApiDir = node.trimmedContent().toLowerCase().includes('/api');
+            const apiVal    = (node.getOptionValue('api') ?? '').trim().toLowerCase();
+            const tierNames = ['full+hks', 'full', 'service+hks', 'service',
+                               'lookup+hks', 'lookup', 'layered',
+                               '3h', '3', '2h', '2', '1h', '1'];
+            const isLayeredNode = hasApiDir && (tierNames.includes(apiVal) || this._ddl.optionEQvalue('api', 'layered'));
+            if (isLayeredNode) {
+                const raw     = apiVal || 'full+hks';
+                const tier    = raw === 'layered' || raw === '3h' ? 'full+hks'
+                              : raw === '3'  ? 'full' : raw === '2h' ? 'service+hks'
+                              : raw === '2'  ? 'service' : raw === '1h' ? 'lookup+hks'
+                              : raw === '1'  ? 'lookup' : raw;
+                const hasDal  = ['full', 'full+hks'].includes(tier);
+                const hasHks  = tier.endsWith('+hks');
+                const hasSvc  = ['service', 'service+hks', 'full', 'full+hks'].includes(tier);
+                const ifc     = String(this._ddl.getOptionValue('ifc') ?? 'apex').toLowerCase();
+                const genApx  = ifc === 'apex' || ifc === 'both' || ifc === '';
+                const genRst  = ifc === 'rest' || ifc === 'both';
+                if (hasDal) ret += 'drop package ' + ifExists + objName + '_dal;\n';
+                if (hasHks) ret += 'drop package ' + ifExists + objName + '_hks;\n';
+                if (hasSvc) ret += 'drop package ' + ifExists + objName + '_svc;\n';
+                if (node.isOption('auditlog') && hasSvc) ret += 'drop package ' + ifExists + objName + '_aud;\n';
+                if (genApx)  ret += 'drop package ' + ifExists + objName + '_apx;\n';
+                if (genRst)  ret += 'drop package ' + ifExists + objName + '_rst;\n';
             } else if (this._ddl.optionEQvalue('api', 'yes')) {
                 ret += 'drop package ' + ifExists + objName + '_api;\n';
             }
@@ -656,11 +671,15 @@ export class OracleDDLGenerator extends BaseGenerator {
 
         // TAPI
         j = 0;
-        const isLayered = this._ddl.optionEQvalue('api', 'layered');
+        const globalLayered = this._ddl.optionEQvalue('api', 'layered');
+        const layeredTiers  = ['full+hks', 'full', 'service+hks', 'service',
+                               'lookup+hks', 'lookup', 'layered',
+                               '3h', '3', '2h', '2', '1h', '1'];
         for (const node of descendants) {
-            const hasApiDir = node.trimmedContent().toLowerCase().includes('/api');
-            if (isLayered) {
-                if (!hasApiDir) continue;
+            const hasApiDir  = node.trimmedContent().toLowerCase().includes('/api');
+            const nodeApiVal = (node.getOptionValue('api') ?? '').trim().toLowerCase();
+            const isNodeLayered = hasApiDir && (layeredTiers.includes(nodeApiVal) || globalLayered);
+            if (isNodeLayered) {
                 const tapi = this.generateLayeredTAPI(node);
                 if (tapi) { if (j++ === 0) output += '-- APIs\n'; output += tapi + '\n'; }
             } else {

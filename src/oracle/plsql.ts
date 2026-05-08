@@ -280,6 +280,128 @@ export class OraclePlsqlBuilder {
         );
     }
 
+    // Normalises /api directive arg to a canonical tier name.
+    // An empty or absent argument defaults to 'full+hks' (backward-compatible with 'layered').
+    private _getTier(node: IDdlNode): string {
+        const apiArg = node.getOptionValue('api');
+        const raw    = apiArg == null || apiArg.trim() === '' ? 'full+hks'
+                     : apiArg.trim().toLowerCase();
+        switch (raw) {
+            case 'layered': case '3h': return 'full+hks';
+            case '3':                  return 'full';
+            case '2h':                 return 'service+hks';
+            case '2':                  return 'service';
+            case '1h':                 return 'lookup+hks';
+            case '1':                  return 'lookup';
+            default:                   return raw;
+        }
+    }
+
+    // Private DML procedures absorbed into a package body when _dal is absent.
+    private _generatePrivateDml(node: IDdlNode): string {
+        const tbl         = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
+        const pkNm        = (node.getPkName() ?? 'id').toLowerCase();
+        const hasVer      = this._hasVersionCol(node);
+        const hasAudit    = node.hasAuditCols();
+        const svcCols     = this._svcCols(node);
+        const fkCols      = Object.keys(node.fks ?? {});
+        const synTenantId = this._hasSyntheticTenantId(node);
+
+        let r = `\n${tab}-- private DML (absorbed from absent _dal)\n\n`;
+
+        r += `${tab}function p_get_by_id (p_id in ${tbl}.${pkNm}%type) return ${tbl}%rowtype is\n`;
+        r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+        r += `${tab}begin\n`;
+        r += `${tab}${tab}select * into l_row from ${tbl} where ${pkNm} = p_id;\n`;
+        r += `${tab}${tab}return l_row;\n`;
+        r += `${tab}exception\n`;
+        r += `${tab}${tab}when no_data_found then\n`;
+        r += `${tab}${tab}${tab}raise_application_error(-20002, '${tbl}: record not found (id=' || p_id || ')');\n`;
+        r += `${tab}end p_get_by_id;\n\n`;
+
+        const insCols = [...(synTenantId ? ['tenant_id'] : []),
+                         ...fkCols.map(f => f.toLowerCase()),
+                         ...svcCols.map(c => c.parseName().toLowerCase())];
+        const insVals = [...(synTenantId ? ['p_row.tenant_id'] : []),
+                         ...fkCols.map(f => `p_row.${f.toLowerCase()}`),
+                         ...svcCols.map(c => `p_row.${c.parseName().toLowerCase()}`)];
+        r += `${tab}procedure p_insert_row (p_row in out nocopy ${tbl}%rowtype) is\n`;
+        r += `${tab}begin\n`;
+        if (insCols.length > 0) {
+            r += `${tab}${tab}insert into ${tbl} (\n`;
+            r += `${tab}${tab}${tab}` + insCols.join(`,\n${tab}${tab}${tab}`) + '\n';
+            r += `${tab}${tab}) values (\n`;
+            r += `${tab}${tab}${tab}` + insVals.join(`,\n${tab}${tab}${tab}`) + '\n';
+            r += `${tab}${tab})`;
+        } else {
+            r += `${tab}${tab}insert into ${tbl} values (default)`;
+        }
+        if (hasVer) {
+            const createdCol   = String(this.ctx.getOptionValue('createdcol')   ?? 'created');
+            const createdByCol = String(this.ctx.getOptionValue('createdbycol') ?? 'created_by');
+            const retCols  = [pkNm, 'row_version'];
+            const intoCols = [`p_row.${pkNm}`, 'p_row.row_version'];
+            if (hasAudit) { retCols.push(createdCol, createdByCol); intoCols.push(`p_row.${createdCol}`, `p_row.${createdByCol}`); }
+            r += `\n${tab}${tab}returning ${retCols.join(', ')}\n`;
+            r += `${tab}${tab}     into ${intoCols.join(', ')}`;
+        } else {
+            r += `\n${tab}${tab}returning ${pkNm}\n`;
+            r += `${tab}${tab}     into p_row.${pkNm}`;
+        }
+        r += `;\n${tab}end p_insert_row;\n\n`;
+
+        const setCols = [...fkCols.map(f => `${f.toLowerCase()} = p_row.${f.toLowerCase()}`),
+                         ...svcCols.map(c => `${c.parseName().toLowerCase()} = p_row.${c.parseName().toLowerCase()}`)];
+        r += `${tab}procedure p_update_row (p_row in out nocopy ${tbl}%rowtype) is\n`;
+        r += `${tab}${tab}l_id ${tbl}.${pkNm}%type;\n`;
+        r += `${tab}begin\n`;
+        r += `${tab}${tab}l_id := p_row.${pkNm};\n`;
+        if (setCols.length > 0) {
+            r += `${tab}${tab}update ${tbl} set\n`;
+            r += `${tab}${tab}${tab}` + setCols.join(`,\n${tab}${tab}${tab}`) + '\n';
+            r += `${tab}${tab}where ${pkNm} = l_id`;
+        } else {
+            r += `${tab}${tab}update ${tbl} set ${pkNm} = l_id where ${pkNm} = l_id`;
+        }
+        if (hasVer) r += `\n${tab}${tab}  and row_version = p_row.row_version`;
+        r += `;\n`;
+        if (hasVer) {
+            r += `${tab}${tab}if sql%rowcount = 0 then\n`;
+            r += `${tab}${tab}${tab}declare l_dummy pls_integer;\n`;
+            r += `${tab}${tab}${tab}begin\n`;
+            r += `${tab}${tab}${tab}${tab}select 1 into l_dummy from ${tbl} where ${pkNm} = l_id;\n`;
+            r += `${tab}${tab}${tab}${tab}raise_application_error(-20001, 'row modified by another session. reload and retry.');\n`;
+            r += `${tab}${tab}${tab}exception\n`;
+            r += `${tab}${tab}${tab}${tab}when no_data_found then\n`;
+            r += `${tab}${tab}${tab}${tab}${tab}raise_application_error(-20002, 'record ' || l_id || ' does not exist.');\n`;
+            r += `${tab}${tab}${tab}end;\n`;
+            r += `${tab}${tab}end if;\n`;
+        }
+        r += `${tab}end p_update_row;\n\n`;
+
+        r += `${tab}procedure p_delete_row (p_id in ${tbl}.${pkNm}%type) is\n`;
+        r += `${tab}begin\n`;
+        r += `${tab}${tab}delete from ${tbl} where ${pkNm} = p_id;\n`;
+        r += `${tab}end p_delete_row;\n\n`;
+
+        return r;
+    }
+
+    // Private no-op hook stubs — used inside a body when _hks is absent from the tier.
+    private _generatePrivateHookStubs(node: IDdlNode): string {
+        const tbl  = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
+        const pkNm = (node.getPkName() ?? 'id').toLowerCase();
+        let r = `\n${tab}-- private hook stubs (no external _hks)\n\n`;
+        r += `${tab}procedure p_validate (p_operation in varchar2, p_row in out nocopy ${tbl}%rowtype) is begin null; end p_validate;\n`;
+        r += `${tab}procedure p_before_insert (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n`;
+        r += `${tab}procedure p_before_update (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n`;
+        r += `${tab}procedure p_before_delete (p_id in ${tbl}.${pkNm}%type) is begin null; end;\n`;
+        r += `${tab}procedure p_after_insert  (p_row in ${tbl}%rowtype) is begin null; end;\n`;
+        r += `${tab}procedure p_after_update  (p_row in ${tbl}%rowtype) is begin null; end;\n`;
+        r += `${tab}procedure p_after_delete  (p_id in ${tbl}.${pkNm}%type) is begin null; end;\n\n`;
+        return r;
+    }
+
     private _generateDalSpec(node: IDdlNode): string {
         const tbl        = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
         const dal        = tbl + '_dal';
@@ -432,10 +554,11 @@ export class OraclePlsqlBuilder {
         return r;
     }
 
-    private _generateHksSpec(node: IDdlNode): string {
-        const tbl = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const dal = tbl + '_dal';
-        const pkg = tbl + '_hks';
+    private _generateHksSpec(node: IDdlNode, hasDal: boolean): string {
+        const tbl    = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
+        const dal    = tbl + '_dal';
+        const pkg    = tbl + '_hks';
+        const idType = hasDal ? `${dal}.t_id` : `${tbl}.id%type`;
         let r = `create or replace package ${pkg} as\n\n`;
         r += `${tab}procedure validate (\n`;
         r += `${tab}${tab}p_operation in varchar2,\n`;
@@ -443,18 +566,19 @@ export class OraclePlsqlBuilder {
         r += `${tab});\n\n`;
         r += `${tab}procedure before_insert (p_row in out nocopy ${tbl}%rowtype);\n`;
         r += `${tab}procedure before_update (p_row in out nocopy ${tbl}%rowtype);\n`;
-        r += `${tab}procedure before_delete (p_id in ${dal}.t_id);\n\n`;
+        r += `${tab}procedure before_delete (p_id in ${idType});\n\n`;
         r += `${tab}procedure after_insert (p_row in ${tbl}%rowtype);\n`;
         r += `${tab}procedure after_update (p_row in ${tbl}%rowtype);\n`;
-        r += `${tab}procedure after_delete (p_id in ${dal}.t_id);\n\n`;
+        r += `${tab}procedure after_delete (p_id in ${idType});\n\n`;
         r += `end ${pkg};\n/\n`;
         return r;
     }
 
-    private _generateHksBody(node: IDdlNode): string {
-        const tbl = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const dal = tbl + '_dal';
-        const pkg = tbl + '_hks';
+    private _generateHksBody(node: IDdlNode, hasDal: boolean): string {
+        const tbl    = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
+        const dal    = tbl + '_dal';
+        const pkg    = tbl + '_hks';
+        const idType = hasDal ? `${dal}.t_id` : `${tbl}.id%type`;
         let r = `create or replace package body ${pkg} as\n`;
         r += `-- warning: this file is generated once and must not be overwritten\n\n`;
         r += `${tab}procedure validate (\n`;
@@ -463,10 +587,10 @@ export class OraclePlsqlBuilder {
         r += `${tab}) is begin null; end validate;\n\n`;
         r += `${tab}procedure before_insert (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n`;
         r += `${tab}procedure before_update (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n`;
-        r += `${tab}procedure before_delete (p_id in ${dal}.t_id) is begin null; end;\n\n`;
+        r += `${tab}procedure before_delete (p_id in ${idType}) is begin null; end;\n\n`;
         r += `${tab}procedure after_insert  (p_row in ${tbl}%rowtype) is begin null; end;\n`;
         r += `${tab}procedure after_update  (p_row in ${tbl}%rowtype) is begin null; end;\n`;
-        r += `${tab}procedure after_delete  (p_id in ${dal}.t_id)     is begin null; end;\n\n`;
+        r += `${tab}procedure after_delete  (p_id in ${idType})     is begin null; end;\n\n`;
         r += `end ${pkg};\n/\n`;
         return r;
     }
@@ -518,7 +642,7 @@ export class OraclePlsqlBuilder {
         return r;
     }
 
-    private _generateSvcBody(node: IDdlNode): string {
+    private _generateSvcBody(node: IDdlNode, hasDal: boolean, hasHks: boolean): string {
         const tbl         = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
         const dal         = tbl + '_dal';
         const hk          = tbl + '_hks';
@@ -530,17 +654,25 @@ export class OraclePlsqlBuilder {
         const hasAuditLog = this._hasAuditLog(node);
         const paramCols   = this._svcParamCols(node);
 
-        let r = `create or replace package body ${svc} as\n\n`;
+        const getById   = hasDal ? `${dal}.get_by_id`  : 'p_get_by_id';
+        const insertRow = hasDal ? `${dal}.insert_row`  : 'p_insert_row';
+        const updateRow = hasDal ? `${dal}.update_row`  : 'p_update_row';
+        const deleteRow = hasDal ? `${dal}.delete_row`  : 'p_delete_row';
+        const hkCall    = (proc: string) => hasHks ? `${hk}.${proc}` : `p_${proc}`;
+
+        let r = `create or replace package body ${svc} as\n`;
+
+        if (!hasDal) r += this._generatePrivateDml(node);
+        if (!hasHks) r += this._generatePrivateHookStubs(node);
+        r += '\n';
 
         // get
         r += `${tab}function get (p_id in ${tbl}.${pkNm}%type) return ${tbl}%rowtype is\n`;
         r += `${tab}begin\n`;
-        r += `${tab}${tab}return ${dal}.get_by_id(p_id => p_id);\n`;
+        r += `${tab}${tab}return ${getById}(p_id => p_id);\n`;
         r += `${tab}end get;\n\n`;
 
-        // p_do_create — private; insert_row reference appears here so that it
-        // precedes the x_id OUT param (public create_rec below), satisfying
-        // any output-order expectations in tests or tooling.
+        // p_do_create — private
         r += `${tab}procedure p_do_create (\n`;
         r += `${tab}${tab}p_rec in  t_rec,\n`;
         r += `${tab}${tab}l_row in out nocopy ${tbl}%rowtype\n`;
@@ -548,14 +680,14 @@ export class OraclePlsqlBuilder {
         r += `${tab}begin\n`;
         for (const { name } of paramCols)
             r += `${tab}${tab}l_row.${name} := p_rec.${name};\n`;
-        r += `${tab}${tab}${hk}.validate(p_operation => 'insert', p_row => l_row);\n`;
-        r += `${tab}${tab}${hk}.before_insert(p_row => l_row);\n`;
-        r += `${tab}${tab}${dal}.insert_row(p_row => l_row);\n`;
-        r += `${tab}${tab}${hk}.after_insert(p_row => l_row);\n`;
+        r += `${tab}${tab}${hkCall('validate')}(p_operation => 'insert', p_row => l_row);\n`;
+        r += `${tab}${tab}${hkCall('before_insert')}(p_row => l_row);\n`;
+        r += `${tab}${tab}${insertRow}(p_row => l_row);\n`;
+        r += `${tab}${tab}${hkCall('after_insert')}(p_row => l_row);\n`;
         if (hasAuditLog) r += `${tab}${tab}${aud}.log_insert(p_row => l_row);\n`;
         r += `${tab}end p_do_create;\n\n`;
 
-        // create_rec — public; x_id OUT appears after insert_row reference above
+        // create_rec — public
         r += `${tab}procedure create_rec (\n`;
         r += `${tab}${tab}p_rec in  t_rec,\n`;
         r += `${tab}${tab}x_id  out ${tbl}.${pkNm}%type\n`;
@@ -580,15 +712,15 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
         if (hasAuditLog) r += `${tab}${tab}l_old_row ${tbl}%rowtype;\n`;
         r += `${tab}begin\n`;
-        r += `${tab}${tab}l_row := ${dal}.get_by_id(p_id => p_id);\n`;
+        r += `${tab}${tab}l_row := ${getById}(p_id => p_id);\n`;
         if (hasAuditLog) r += `${tab}${tab}l_old_row := l_row;\n`;
         for (const { name } of paramCols)
             r += `${tab}${tab}l_row.${name} := p_rec.${name};\n`;
         if (hasVer) r += `${tab}${tab}l_row.row_version := p_row_version;\n`;
-        r += `${tab}${tab}${hk}.validate(p_operation => 'update', p_row => l_row);\n`;
-        r += `${tab}${tab}${hk}.before_update(p_row => l_row);\n`;
-        r += `${tab}${tab}${dal}.update_row(p_row => l_row);\n`;
-        r += `${tab}${tab}${hk}.after_update(p_row => l_row);\n`;
+        r += `${tab}${tab}${hkCall('validate')}(p_operation => 'update', p_row => l_row);\n`;
+        r += `${tab}${tab}${hkCall('before_update')}(p_row => l_row);\n`;
+        r += `${tab}${tab}${updateRow}(p_row => l_row);\n`;
+        r += `${tab}${tab}${hkCall('after_update')}(p_row => l_row);\n`;
         if (hasAuditLog) r += `${tab}${tab}${aud}.log_update(p_old_row => l_old_row, p_new_row => l_row);\n`;
         r += `${tab}end update_rec;\n\n`;
 
@@ -596,10 +728,10 @@ export class OraclePlsqlBuilder {
         r += `${tab}procedure delete_rec (p_id in ${tbl}.${pkNm}%type) is\n`;
         if (hasAuditLog) r += `${tab}${tab}l_old_row ${tbl}%rowtype;\n`;
         r += `${tab}begin\n`;
-        if (hasAuditLog) r += `${tab}${tab}l_old_row := ${dal}.get_by_id(p_id => p_id);\n`;
-        r += `${tab}${tab}${hk}.before_delete(p_id => p_id);\n`;
-        r += `${tab}${tab}${dal}.delete_row(p_id => p_id);\n`;
-        r += `${tab}${tab}${hk}.after_delete(p_id => p_id);\n`;
+        if (hasAuditLog) r += `${tab}${tab}l_old_row := ${getById}(p_id => p_id);\n`;
+        r += `${tab}${tab}${hkCall('before_delete')}(p_id => p_id);\n`;
+        r += `${tab}${tab}${deleteRow}(p_id => p_id);\n`;
+        r += `${tab}${tab}${hkCall('after_delete')}(p_id => p_id);\n`;
         if (hasAuditLog) r += `${tab}${tab}${aud}.log_delete(p_old_row => l_old_row);\n`;
         r += `${tab}end delete_rec;\n\n`;
 
@@ -658,23 +790,33 @@ export class OraclePlsqlBuilder {
         return r;
     }
 
-    private _generateApxBody(node: IDdlNode): string {
+    private _generateApxBody(node: IDdlNode, hasSvc: boolean, _hasDal: boolean, hasHks: boolean): string {
         const tbl       = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
         const svc       = tbl + '_svc';
+        const hk        = tbl + '_hks';
         const apx       = tbl + '_apx';
         const pkNm      = (node.getPkName() ?? 'id').toLowerCase();
         const hasVer    = this._hasVersionCol(node);
         const hasAudit  = node.hasAuditCols();
+        const hasUniq   = this._hasUniqueCol(node);
         const paramCols = this._svcParamCols(node);
         const createdCol   = String(this.ctx.getOptionValue('createdcol')   ?? 'created');
         const createdByCol = String(this.ctx.getOptionValue('createdbycol') ?? 'created_by');
         const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
         const updatedByCol = String(this.ctx.getOptionValue('updatedbycol') ?? 'updated_by');
+        const hkCall    = (proc: string) => hasHks ? `${hk}.${proc}` : `p_${proc}`;
 
-        let r = `create or replace package body ${apx} as\n\n`;
+        let r = `create or replace package body ${apx} as\n`;
+
+        // Degraded: absorb private DML + (if !hasHks) private hook stubs
+        if (!hasSvc) {
+            r += this._generatePrivateDml(node);
+            if (!hasHks) r += this._generatePrivateHookStubs(node);
+            r += '\n';
+        }
 
         // get
-        r += `${tab}procedure get (\n`;
+        r += `\n${tab}procedure get (\n`;
         r += `${tab}${tab}p_id          in  ${tbl}.${pkNm}%type`;
         for (const { name } of paramCols)
             r += `,\n${tab}${tab}p_${name.padEnd(13)} out ${tbl}.${name}%type`;
@@ -690,7 +832,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
         r += `${tab}begin\n`;
         r += `${tab}${tab}if p_id is null then return; end if;  -- INSERT mode: leave OUT params null\n`;
-        r += `${tab}${tab}l_row := ${svc}.get(p_id => p_id);\n`;
+        r += `${tab}${tab}l_row := ${hasSvc ? `${svc}.get(p_id => p_id)` : 'p_get_by_id(p_id => p_id)'};\n`;
         for (const { name } of paramCols)
             r += `${tab}${tab}p_${name} := l_row.${name};\n`;
         if (hasVer) r += `${tab}${tab}p_row_version := l_row.row_version;\n`;
@@ -702,21 +844,38 @@ export class OraclePlsqlBuilder {
         }
         r += `${tab}end get;\n\n`;
 
-        // ins — builds t_rec and calls svc.create_rec
+        // ins
         r += `${tab}procedure ins (\n`;
         const insLines: string[] = [];
         for (const { name, nullable } of paramCols)
             insLines.push(`${tab}${tab}p_${name.padEnd(13)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
         insLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
         r += insLines.join(',\n') + `\n${tab}) is\n`;
-        r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
-        r += `${tab}begin\n`;
-        for (const { name } of paramCols)
-            r += `${tab}${tab}l_rec.${name} := p_${name};\n`;
-        r += `${tab}${tab}${svc}.create_rec(p_rec => l_rec, x_id => p_id);\n`;
+        if (hasSvc) {
+            r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
+            r += `${tab}begin\n`;
+            for (const { name } of paramCols)
+                r += `${tab}${tab}l_rec.${name} := p_${name};\n`;
+            r += `${tab}${tab}${svc}.create_rec(p_rec => l_rec, x_id => p_id);\n`;
+        } else {
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}begin\n`;
+            for (const { name } of paramCols)
+                r += `${tab}${tab}l_row.${name} := p_${name};\n`;
+            r += `${tab}${tab}${hkCall('validate')}(p_operation => 'insert', p_row => l_row);\n`;
+            r += `${tab}${tab}${hkCall('before_insert')}(p_row => l_row);\n`;
+            r += `${tab}${tab}p_insert_row(p_row => l_row);\n`;
+            r += `${tab}${tab}${hkCall('after_insert')}(p_row => l_row);\n`;
+            r += `${tab}${tab}p_id := l_row.${pkNm};\n`;
+            if (hasUniq) {
+                r += `${tab}exception\n`;
+                r += `${tab}${tab}when dup_val_on_index then\n`;
+                r += `${tab}${tab}${tab}raise_application_error(-20010, 'duplicate value on unique constraint.');\n`;
+            }
+        }
         r += `${tab}end ins;\n\n`;
 
-        // upd — builds t_rec and calls svc.update_rec
+        // upd
         r += `${tab}procedure upd (\n`;
         const updLines: string[] = [];
         updLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
@@ -724,24 +883,191 @@ export class OraclePlsqlBuilder {
             updLines.push(`${tab}${tab}p_${name.padEnd(13)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
         if (hasVer) updLines.push(`${tab}${tab}p_row_version  in  ${tbl}.row_version%type`);
         r += updLines.join(',\n') + `\n${tab}) is\n`;
-        r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
-        r += `${tab}begin\n`;
-        for (const { name } of paramCols)
-            r += `${tab}${tab}l_rec.${name} := p_${name};\n`;
-        r += `${tab}${tab}${svc}.update_rec(\n`;
-        r += `${tab}${tab}${tab}p_id  => p_id,\n`;
-        r += `${tab}${tab}${tab}p_rec => l_rec`;
-        if (hasVer) r += `,\n${tab}${tab}${tab}p_row_version => p_row_version`;
-        r += `\n${tab}${tab});\n`;
+        if (hasSvc) {
+            r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
+            r += `${tab}begin\n`;
+            for (const { name } of paramCols)
+                r += `${tab}${tab}l_rec.${name} := p_${name};\n`;
+            r += `${tab}${tab}${svc}.update_rec(\n`;
+            r += `${tab}${tab}${tab}p_id  => p_id,\n`;
+            r += `${tab}${tab}${tab}p_rec => l_rec`;
+            if (hasVer) r += `,\n${tab}${tab}${tab}p_row_version => p_row_version`;
+            r += `\n${tab}${tab});\n`;
+        } else {
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}l_row := p_get_by_id(p_id => p_id);\n`;
+            for (const { name } of paramCols)
+                r += `${tab}${tab}l_row.${name} := p_${name};\n`;
+            if (hasVer) r += `${tab}${tab}l_row.row_version := p_row_version;\n`;
+            r += `${tab}${tab}${hkCall('validate')}(p_operation => 'update', p_row => l_row);\n`;
+            r += `${tab}${tab}${hkCall('before_update')}(p_row => l_row);\n`;
+            r += `${tab}${tab}p_update_row(p_row => l_row);\n`;
+            r += `${tab}${tab}${hkCall('after_update')}(p_row => l_row);\n`;
+            if (hasUniq) {
+                r += `${tab}exception\n`;
+                r += `${tab}${tab}when dup_val_on_index then\n`;
+                r += `${tab}${tab}${tab}raise_application_error(-20010, 'duplicate value on unique constraint.');\n`;
+            }
+        }
         r += `${tab}end upd;\n\n`;
 
         // del
         r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type) is\n`;
         r += `${tab}begin\n`;
-        r += `${tab}${tab}${svc}.delete_rec(p_id => p_id);\n`;
+        if (hasSvc) {
+            r += `${tab}${tab}${svc}.delete_rec(p_id => p_id);\n`;
+        } else {
+            r += `${tab}${tab}${hkCall('before_delete')}(p_id => p_id);\n`;
+            r += `${tab}${tab}p_delete_row(p_id => p_id);\n`;
+            r += `${tab}${tab}${hkCall('after_delete')}(p_id => p_id);\n`;
+        }
         r += `${tab}end del;\n\n`;
 
         r += `end ${apx};\n/\n`;
+        return r;
+    }
+
+    private _generateRstSpec(node: IDdlNode): string {
+        const tbl = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
+        const rst = tbl + '_rst';
+        let r = `create or replace package ${rst} as\n\n`;
+        r += `${tab}procedure get;\n`;
+        r += `${tab}procedure ins;\n`;
+        r += `${tab}procedure upd;\n`;
+        r += `${tab}procedure del;\n\n`;
+        r += `end ${rst};\n/\n`;
+        return r;
+    }
+
+    private _generateRstBody(node: IDdlNode, hasSvc: boolean, _hasDal: boolean, hasHks: boolean): string {
+        const tbl       = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
+        const svc       = tbl + '_svc';
+        const hk        = tbl + '_hks';
+        const rst       = tbl + '_rst';
+        const pkNm      = (node.getPkName() ?? 'id').toLowerCase();
+        const hasVer    = this._hasVersionCol(node);
+        const paramCols = this._svcParamCols(node);
+        const hkCall    = (proc: string) => hasHks ? `${hk}.${proc}` : `p_${proc}`;
+
+        const jsonCols = [pkNm, ...paramCols.map(p => p.name)];
+        if (hasVer) jsonCols.push('row_version');
+
+        const excTail =
+            `${tab}exception\n` +
+            `${tab}${tab}when others then\n` +
+            `${tab}${tab}${tab}rollback;\n` +
+            `${tab}${tab}${tab}:status := case sqlcode\n` +
+            `${tab}${tab}${tab}${tab}when -20001 then 409\n` +
+            `${tab}${tab}${tab}${tab}when -20002 then 404\n` +
+            `${tab}${tab}${tab}${tab}when -20003 then 409\n` +
+            `${tab}${tab}${tab}${tab}else              500\n` +
+            `${tab}${tab}${tab}end;\n` +
+            `${tab}${tab}${tab}htp.p(json_object('error_code' value sqlcode, 'message' value sqlerrm, 'detail' value dbms_utility.format_error_backtrace));\n`;
+
+        let r = `create or replace package body ${rst} as\n`;
+
+        if (!hasSvc) {
+            r += this._generatePrivateDml(node);
+            if (!hasHks) r += this._generatePrivateHookStubs(node);
+            r += '\n';
+        }
+
+        // get
+        r += `\n${tab}procedure get is\n`;
+        r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+        r += `${tab}begin\n`;
+        r += `${tab}${tab}l_row := ${hasSvc ? `${svc}.get(p_id => :p_id)` : 'p_get_by_id(p_id => :p_id)'};\n`;
+        r += `${tab}${tab}:status := 200;\n`;
+        r += `${tab}${tab}htp.p(json_object(\n`;
+        r += jsonCols.map(c => `${tab}${tab}${tab}'${c}' value l_row.${c}`).join(',\n') + '\n';
+        r += `${tab}${tab}${tab}returning clob\n`;
+        r += `${tab}${tab}));\n`;
+        r += excTail + `${tab}end get;\n\n`;
+
+        // ins
+        r += `${tab}procedure ins is\n`;
+        r += `${tab}${tab}l_body clob := :body_text;\n`;
+        if (hasSvc) {
+            r += `${tab}${tab}l_rec  ${svc}.t_rec;\n`;
+        } else {
+            r += `${tab}${tab}l_row  ${tbl}%rowtype;\n`;
+        }
+        r += `${tab}${tab}l_id   ${tbl}.${pkNm}%type;\n`;
+        r += `${tab}begin\n`;
+        r += `${tab}${tab}if l_body is null or not json_exists(l_body, '$') then\n`;
+        r += `${tab}${tab}${tab}:status := 400;\n`;
+        r += `${tab}${tab}${tab}htp.p(json_object('message' value 'request body must be valid json'));\n`;
+        r += `${tab}${tab}${tab}return;\n`;
+        r += `${tab}${tab}end if;\n`;
+        if (hasSvc) {
+            for (const { name } of paramCols)
+                r += `${tab}${tab}l_rec.${name} := json_value(l_body, '$.${name}');\n`;
+            r += `${tab}${tab}${svc}.create_rec(p_rec => l_rec, x_id => l_id);\n`;
+        } else {
+            for (const { name } of paramCols)
+                r += `${tab}${tab}l_row.${name} := json_value(l_body, '$.${name}');\n`;
+            r += `${tab}${tab}${hkCall('validate')}(p_operation => 'insert', p_row => l_row);\n`;
+            r += `${tab}${tab}${hkCall('before_insert')}(p_row => l_row);\n`;
+            r += `${tab}${tab}p_insert_row(p_row => l_row);\n`;
+            r += `${tab}${tab}${hkCall('after_insert')}(p_row => l_row);\n`;
+            r += `${tab}${tab}l_id := l_row.${pkNm};\n`;
+        }
+        r += `${tab}${tab}:status := 201;\n`;
+        r += `${tab}${tab}htp.p(json_object('id' value l_id));\n`;
+        r += excTail + `${tab}end ins;\n\n`;
+
+        // upd
+        r += `${tab}procedure upd is\n`;
+        r += `${tab}${tab}l_body clob := :body_text;\n`;
+        if (hasSvc) {
+            r += `${tab}${tab}l_rec  ${svc}.t_rec;\n`;
+        } else {
+            r += `${tab}${tab}l_row  ${tbl}%rowtype;\n`;
+        }
+        r += `${tab}begin\n`;
+        r += `${tab}${tab}if l_body is null or not json_exists(l_body, '$') then\n`;
+        r += `${tab}${tab}${tab}:status := 400;\n`;
+        r += `${tab}${tab}${tab}htp.p(json_object('message' value 'request body must be valid json'));\n`;
+        r += `${tab}${tab}${tab}return;\n`;
+        r += `${tab}${tab}end if;\n`;
+        if (hasSvc) {
+            for (const { name } of paramCols)
+                r += `${tab}${tab}l_rec.${name} := json_value(l_body, '$.${name}');\n`;
+            r += `${tab}${tab}${svc}.update_rec(\n`;
+            r += `${tab}${tab}${tab}p_id  => :p_id,\n`;
+            r += `${tab}${tab}${tab}p_rec => l_rec`;
+            if (hasVer) r += `,\n${tab}${tab}${tab}p_row_version => json_value(l_body, '$.row_version' returning ${tbl}.row_version%type)`;
+            r += `\n${tab}${tab});\n`;
+        } else {
+            r += `${tab}${tab}l_row := p_get_by_id(p_id => :p_id);\n`;
+            for (const { name } of paramCols)
+                r += `${tab}${tab}l_row.${name} := json_value(l_body, '$.${name}');\n`;
+            if (hasVer) r += `${tab}${tab}l_row.row_version := json_value(l_body, '$.row_version' returning ${tbl}.row_version%type);\n`;
+            r += `${tab}${tab}${hkCall('validate')}(p_operation => 'update', p_row => l_row);\n`;
+            r += `${tab}${tab}${hkCall('before_update')}(p_row => l_row);\n`;
+            r += `${tab}${tab}p_update_row(p_row => l_row);\n`;
+            r += `${tab}${tab}${hkCall('after_update')}(p_row => l_row);\n`;
+        }
+        r += `${tab}${tab}:status := 200;\n`;
+        r += `${tab}${tab}htp.p(json_object('id' value :p_id));\n`;
+        r += excTail + `${tab}end upd;\n\n`;
+
+        // del
+        r += `${tab}procedure del is\n`;
+        r += `${tab}begin\n`;
+        if (hasSvc) {
+            r += `${tab}${tab}${svc}.delete_rec(p_id => :p_id);\n`;
+        } else {
+            r += `${tab}${tab}${hkCall('before_delete')}(p_id => :p_id);\n`;
+            r += `${tab}${tab}p_delete_row(p_id => :p_id);\n`;
+            r += `${tab}${tab}${hkCall('after_delete')}(p_id => :p_id);\n`;
+        }
+        r += `${tab}${tab}:status := 200;\n`;
+        r += `${tab}${tab}htp.p(json_object('id' value :p_id));\n`;
+        r += excTail + `${tab}end del;\n\n`;
+
+        r += `end ${rst};\n/\n`;
         return r;
     }
 
@@ -757,7 +1083,7 @@ export class OraclePlsqlBuilder {
         return r;
     }
 
-    private _generateAuditBody(node: IDdlNode): string {
+    private _generateAuditBody(node: IDdlNode, hasDal: boolean): string {
         const tbl      = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
         const dal      = tbl + '_dal';
         const aud      = tbl + '_aud';
@@ -798,9 +1124,10 @@ export class OraclePlsqlBuilder {
         }
 
         // p_log — private; autonomous transaction so audit survives caller rollback
+        const audIdType = hasDal ? `${dal}.t_id` : `${tbl}.${pkName}%type`;
         r += `${tab}procedure p_log (\n`;
         r += `${tab}${tab}p_operation  in varchar2,\n`;
-        r += `${tab}${tab}p_id         in ${dal}.t_id`;
+        r += `${tab}${tab}p_id         in ${audIdType}`;
         if (hasCdcCols) {
             r += `,\n${tab}${tab}p_old_values in clob default null,\n`;
             r += `${tab}${tab}p_new_values in clob default null\n`;
@@ -861,23 +1188,31 @@ export class OraclePlsqlBuilder {
     generateLayeredTAPI(node: IDdlNode): string {
         if (node.inferType() !== 'table') return '';
         if (node.children.length === 0) return '';
+
+        const tier     = this._getTier(node);
+        const hasDal   = ['full', 'full+hks'].includes(tier);
+        const hasHks   = tier.endsWith('+hks');
+        const hasSvc   = ['service', 'service+hks', 'full', 'full+hks'].includes(tier);
         const hasAudit = this._hasAuditLog(node);
-        const ifc = String(this.ctx.getOptionValue('ifc') ?? 'apex').toLowerCase();
-        let r = this._generateDalSpec(node) + '\n'
-              + this._generateDalBody(node) + '\n'
-              + this._generateHksSpec(node) + '\n'
-              + this._generateHksBody(node) + '\n'
-              + this._generateSvcSpec(node) + '\n';
-        if (hasAudit) {
-            // Audit spec must precede SVC body: SVC body references audit package
-            r += this._generateAuditSpec(node) + '\n';
+
+        const ifc    = String(this.ctx.getOptionValue('ifc') ?? 'apex').toLowerCase();
+        const genApx = ifc === 'apex' || ifc === 'both' || ifc === '';
+        const genRst = ifc === 'rest' || ifc === 'both';
+
+        let r = '';
+        if (hasDal) r += this._generateDalSpec(node) + '\n' + this._generateDalBody(node) + '\n';
+        if (hasHks) r += this._generateHksSpec(node, hasDal) + '\n' + this._generateHksBody(node, hasDal) + '\n';
+        if (hasSvc) {
+            r += this._generateSvcSpec(node) + '\n';
+            // Audit spec must precede SVC body: SVC body references the audit package
+            if (hasAudit) r += this._generateAuditSpec(node) + '\n';
+            r += this._generateSvcBody(node, hasDal, hasHks) + '\n';
+            if (hasAudit) r += this._generateAuditBody(node, hasDal) + '\n';
         }
-        r += this._generateSvcBody(node);
-        if (hasAudit) {
-            r += '\n' + this._generateAuditBody(node);
-        }
-        if (ifc === 'apex' || ifc === '') {
-            r += '\n' + this._generateApxSpec(node) + '\n' + this._generateApxBody(node);
+        if (genApx) r += this._generateApxSpec(node) + '\n' + this._generateApxBody(node, hasSvc, hasDal, hasHks);
+        if (genRst) {
+            if (genApx) r += '\n';
+            r += this._generateRstSpec(node) + '\n' + this._generateRstBody(node, hasSvc, hasDal, hasHks);
         }
         return r;
     }

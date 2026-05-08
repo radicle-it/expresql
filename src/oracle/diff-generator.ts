@@ -172,11 +172,11 @@ export class OracleDiffGenerator implements DiffGenerator {
         const ifx       = db23 ? 'if exists ' : '';
 
         // Packages (permanent removal)
-        const hasApiDir = node.trimmedContent().toLowerCase().includes('/api');
-        if (ctx.optionEQvalue('api', 'layered') && hasApiDir) {
+        const apiKind = this._apiKind(node, ctx);
+        if (apiKind === 'layered') {
             for (const pkg of this._layeredPkgNames(node, ctx))
                 stmts.push(mk('drop_package', tbl, `drop package ${ifx}${pkg};\n`));
-        } else if (ctx.optionEQvalue('api', 'yes') || hasApiDir) {
+        } else if (apiKind === 'simple') {
             stmts.push(mk('drop_package', tbl, `drop package ${ifx}${objName}_api;\n`));
         }
 
@@ -221,11 +221,10 @@ export class OracleDiffGenerator implements DiffGenerator {
         if (triggerSql) stmts.push(mk('create_trigger', tbl, triggerSql));
 
         // Packages
-        const hasApiDir = node.trimmedContent().toLowerCase().includes('/api');
-        if (ctx.optionEQvalue('api', 'layered') && hasApiDir) {
+        const apiKindCreate = this._apiKind(node, ctx);
+        if (apiKindCreate === 'layered') {
             stmts.push(...this._splitPkgBlocks(plsql.generateLayeredTAPI(node), tbl));
-        } else if ((ctx.optionEQvalue('api', 'yes') || hasApiDir) &&
-                   !ctx.optionEQvalue('api', 'layered')) {
+        } else if (apiKindCreate === 'simple') {
             stmts.push(...this._splitPkgBlocks(plsql.generateTAPI(node), tbl));
         }
 
@@ -1034,16 +1033,44 @@ export class OracleDiffGenerator implements DiffGenerator {
 
     private _apiKind(node: IDdlNode, ctx: DdlContext): 'layered' | 'simple' | 'none' {
         const hasDir = node.trimmedContent().toLowerCase().includes('/api');
-        if (ctx.optionEQvalue('api', 'layered') && hasDir) return 'layered';
-        if ((ctx.optionEQvalue('api', 'yes') || hasDir) && !ctx.optionEQvalue('api', 'layered'))
-            return 'simple';
+        if (!hasDir) return 'none';
+        // If /api is present on the node, it's layered (any tier argument)
+        const apiVal = node.getOptionValue('api')?.trim().toLowerCase() ?? '';
+        const isLayeredTier = ['full+hks', 'full', 'service+hks', 'service',
+                               'lookup+hks', 'lookup', 'layered',
+                               '3h', '3', '2h', '2', '1h', '1'].includes(apiVal);
+        if (isLayeredTier) return 'layered';
+        // Legacy: global api:layered setting
+        if (ctx.optionEQvalue('api', 'layered')) return 'layered';
+        // /api yes (simple flat TAPI)
+        if (ctx.optionEQvalue('api', 'yes') || apiVal === 'yes') return 'simple';
         return 'none';
     }
 
     private _layeredPkgNames(node: IDdlNode, ctx: DdlContext): string[] {
-        const obj  = ctx.objPrefix() + node.parseName();
-        const pkgs = [`${obj}_dal`, `${obj}_hks`, `${obj}_svc`, `${obj}_apx`];
-        if (node.isOption('auditlog')) pkgs.unshift(`${obj}_aud`);
+        const obj     = ctx.objPrefix() + node.parseName();
+        const raw     = (node.getOptionValue('api') ?? 'full+hks').trim().toLowerCase();
+        const tier    = raw === 'layered' || raw === '3h' ? 'full+hks'
+                      : raw === '3'                       ? 'full'
+                      : raw === '2h'                      ? 'service+hks'
+                      : raw === '2'                       ? 'service'
+                      : raw === '1h'                      ? 'lookup+hks'
+                      : raw === '1'                       ? 'lookup'
+                      : raw;
+        const hasDal  = ['full', 'full+hks'].includes(tier);
+        const hasHks  = tier.endsWith('+hks');
+        const hasSvc  = ['service', 'service+hks', 'full', 'full+hks'].includes(tier);
+        const ifc     = String(ctx.getOptionValue('ifc') ?? 'apex').toLowerCase();
+        const genApx  = ifc === 'apex' || ifc === 'both' || ifc === '';
+        const genRst  = ifc === 'rest' || ifc === 'both';
+
+        const pkgs: string[] = [];
+        if (hasDal) pkgs.push(`${obj}_dal`);
+        if (hasHks) pkgs.push(`${obj}_hks`);
+        if (hasSvc) pkgs.push(`${obj}_svc`);
+        if (genApx)  pkgs.push(`${obj}_apx`);
+        if (genRst)  pkgs.push(`${obj}_rst`);
+        if (node.isOption('auditlog') && hasSvc) pkgs.push(`${obj}_aud`);
         return pkgs;
     }
 
