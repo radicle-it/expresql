@@ -1,9 +1,9 @@
 # QuickSQL — Layered TAPI Architecture Specification
 
 **Status**: Specification  
-**Version**: 1.6  
+**Version**: 1.9  
 **Author**: Roberto Capancioni — Radicle s.r.l.  
-**Date**: 2026-05-05  
+**Date**: 2026-05-08  
 **Target Platform**: Oracle Database 19c, Oracle APEX 22.1+, ORDS 23+
 
 ---
@@ -86,11 +86,11 @@ Adequate for APEX rapid prototyping. Not suitable as a contract-stable enterpris
 
 ---
 
-## 3. Target Architecture — Four-Layer TAPI
+## 3. Target Architecture — Layered TAPI
 
 ### 3.1 Rationale
 
-The four-layer split is justified when:
+The full layered stack is justified when:
 - Multiple consumers exist (APEX, ORDS, batch jobs) with different parameter conventions
 - Business rules must fire regardless of entry point
 - Validation and observability must be injectable without forking core code
@@ -153,7 +153,208 @@ The four-layer split is justified when:
 | Hook | `_hks` | `%ROWTYPE` | Validate / before / after (replaceable body) |
 | Data Access | `_dal` | `%ROWTYPE` | Pure DML, no business logic |
 
-### 3.4 Design Decisions
+### 3.4 Tier Model — Selecting the Right Stack
+
+Not every table justifies four separate packages. The tier is specified directly on the `/api` directive and selects the minimum package set for that table. The `_audit` package is orthogonal — it is added independently via `/auditlog` regardless of tier.
+
+#### Tier definitions
+
+| Tier | Packages generated | pkg# |
+|------|--------------------|------|
+| `lookup` | `_apx` | 1 |
+| `lookup+hks` | `_apx` `_hks` | 2 |
+| `service` | `_svc` `_apx` | 2 |
+| `service+hks` | `_svc` `_hks` `_apx` | 3 |
+| `full` | `_dal` `_svc` `_apx` | 3 |
+| `full+hks` | `_dal` `_hks` `_svc` `_apx` | 4 |
+
+`_rst` is orthogonal to the tier — it is added when `ifc: "rest"` or `ifc: "both"` is set, regardless of tier. `_audit` is added when `/auditlog` is active on the table, regardless of tier.
+
+#### The `+hks` suffix — ownership boundary
+
+`+hks` generates a separate `_hks` package with a **developer-owned body**. The generator writes the spec once and never overwrites the body again. Without `+hks`, hook stubs are private procedures inside the owning package body — generator-owned and overwritten on every regeneration. Use `+hks` when the hooks body contains production logic that must survive regeneration; omit it when there is no custom logic yet and a manual merge on regeneration is acceptable.
+
+#### Cross-entity coupling constraint
+
+| Scenario | Minimum tier |
+|----------|-------------|
+| No external callers | `lookup` or `lookup+hks` |
+| Another `_svc` calls this entity's SVC procedures | `service` or `service+hks` |
+| Another package calls this entity's `_dal` directly | `full` or `full+hks` |
+
+#### Grant model
+
+Only `_apx` (and `_rst` when generated) is granted to external consumers. `_dal`, `_svc`, and `_hks` are schema-internal regardless of tier.
+
+#### QuickSQL syntax
+
+The tier is the argument to `/api`. When omitted, the default is `full+hks` (backward-compatible with the old `layered` value). The `api` key is not needed in the settings block.
+
+```sql
+doctors       /api full+hks    -- dal + hks + svc + apx
+lookup_types  /api lookup      -- apx only
+order_lines   /api service+hks -- svc + hks + apx
+
+# settings = { ifc: "apex", auditcols: yes, rowversion: yes }
+```
+
+#### Tier selection guide
+
+```
+Does another package call this entity's _dal directly?
+  Yes → full  or  full+hks
+
+Does another _svc call this entity's service procedures?
+  Yes → service  or  service+hks
+
+Otherwise → lookup  or  lookup+hks
+
+Add +hks if: the hooks body contains logic that must survive regeneration.
+```
+
+#### Degradation rule
+
+Each layer calls the layer immediately below it when that layer exists; when absent, it absorbs the missing layer's responsibilities as **private procedures** in its own body. The rule cascades uniformly through all boundaries:
+
+| Caller | Dependency | Layer present | Layer absent |
+|---|---|---|---|
+| `_hks` spec | `_dal` | `{entity}_dal.t_id` for `before/after_delete` | `{entity}.id%TYPE` |
+| `_svc` body | `_dal` | calls `{entity}_dal.get_by_id`, `insert_row`, … | private procedures `p_get_by_id`, `p_insert_row`, … in `_svc` body |
+| `_svc` body | `_hks` | calls `{entity}_hks.validate`, `before_insert`, … | private no-op stubs in `_svc` body |
+| `_apx` body | `_svc` | calls `{entity}_svc.create_rec`, `update_rec`, … | private procedures absorbing SVC logic in `_apx` body |
+
+Consequences by tier:
+
+- **`full` / `full+hks`**: all layers independent; each calls the one below.
+- **`service` / `service+hks`**: no `_dal`; `_svc` body contains private DML procedures. `_svc` calls `_hks` when `+hks`.
+- **`lookup` / `lookup+hks`**: no `_dal`, no `_svc`; `_apx` body contains both private DML and business logic. `_apx` calls `_hks` when `+hks`.
+
+#### Body pattern — `service+hks` (SVC absorbs DAL)
+
+When `_dal` is absent the `_svc` body opens with a private DML section that mirrors the DAL contract. The public procedures are identical in signature to the `full` tier; only the internal calls change.
+
+```sql
+CREATE OR REPLACE PACKAGE BODY doctors_svc AS
+
+    -- ── Private DML (absorbed from the absent _dal) ──────────────────────────
+
+    resource_busy EXCEPTION;
+    PRAGMA EXCEPTION_INIT(resource_busy, -54);
+
+    FUNCTION p_get_by_id (p_id IN doctors.id%TYPE) RETURN doctors%ROWTYPE IS
+        l_row doctors%ROWTYPE;
+    BEGIN
+        SELECT * INTO l_row FROM doctors WHERE id = p_id;
+        RETURN l_row;
+    EXCEPTION
+        WHEN no_data_found THEN
+            raise_application_error(-20002,
+                'doctors: record not found (id=' || p_id || ')');
+    END p_get_by_id;
+
+    PROCEDURE p_insert_row (p_row IN OUT NOCOPY doctors%ROWTYPE) IS
+    BEGIN
+        INSERT INTO doctors (name, specialty, email)
+        VALUES (p_row.name, p_row.specialty, p_row.email)
+        RETURNING id, row_version, created, created_by
+             INTO p_row.id, p_row.row_version, p_row.created, p_row.created_by;
+    END p_insert_row;
+
+    PROCEDURE p_update_row (p_row IN OUT NOCOPY doctors%ROWTYPE) IS
+    BEGIN
+        UPDATE doctors
+           SET name      = p_row.name,
+               specialty = p_row.specialty,
+               email     = p_row.email
+         WHERE id          = p_row.id
+           AND row_version = p_row.row_version;
+        IF SQL%ROWCOUNT = 0 THEN
+            DECLARE l_dummy PLS_INTEGER; BEGIN
+                SELECT 1 INTO l_dummy FROM doctors WHERE id = p_row.id;
+                raise_application_error(-20001,
+                    'Row modified by another session. Reload and retry.');
+            EXCEPTION
+                WHEN no_data_found THEN
+                    raise_application_error(-20002,
+                        'Record ' || p_row.id || ' does not exist.');
+            END;
+        END IF;
+    END p_update_row;
+
+    PROCEDURE p_delete_row (p_id IN doctors.id%TYPE) IS
+    BEGIN
+        DELETE FROM doctors WHERE id = p_id;
+        IF SQL%ROWCOUNT = 0 THEN
+            raise_application_error(-20002,
+                'Record ' || p_id || ' does not exist.');
+        END IF;
+    END p_delete_row;
+
+    -- ── Public interface (identical spec to full tier) ────────────────────────
+
+    FUNCTION get (p_id IN doctors.id%TYPE) RETURN doctors%ROWTYPE IS
+    BEGIN
+        RETURN p_get_by_id(p_id => p_id);
+    END get;
+
+    PROCEDURE create_rec (
+        p_rec IN  t_rec,
+        x_id  OUT doctors.id%TYPE
+    ) IS
+        l_row doctors%ROWTYPE;
+    BEGIN
+        l_row.name      := p_rec.name;
+        l_row.specialty := p_rec.specialty;
+        l_row.email     := p_rec.email;
+        doctors_hks.validate(p_operation => 'INSERT', p_row => l_row);
+        doctors_hks.before_insert(p_row => l_row);
+        p_insert_row(p_row => l_row);       -- private, replaces doctors_dal.insert_row
+        doctors_hks.after_insert(p_row => l_row);
+        x_id := l_row.id;
+    EXCEPTION
+        WHEN dup_val_on_index THEN
+            raise_application_error(-20015,
+                'Email address ' || p_rec.email || ' is already registered.');
+    END create_rec;
+
+    PROCEDURE update_rec (
+        p_id          IN doctors.id%TYPE,
+        p_rec         IN t_rec,
+        p_row_version IN doctors.row_version%TYPE
+    ) IS
+        l_row     doctors%ROWTYPE;
+        l_old_row doctors%ROWTYPE;
+    BEGIN
+        l_row             := p_get_by_id(p_id => p_id);
+        l_old_row         := l_row;
+        l_row.name        := p_rec.name;
+        l_row.specialty   := p_rec.specialty;
+        l_row.email       := p_rec.email;
+        l_row.row_version := p_row_version;
+        doctors_hks.validate(p_operation => 'UPDATE', p_row => l_row);
+        doctors_hks.before_update(p_row => l_row);
+        p_update_row(p_row => l_row);       -- private, replaces doctors_dal.update_row
+        doctors_hks.after_update(p_row => l_row);
+    EXCEPTION
+        WHEN dup_val_on_index THEN
+            raise_application_error(-20015,
+                'Email address ' || p_rec.email || ' is already registered.');
+    END update_rec;
+
+    PROCEDURE delete_rec (p_id IN doctors.id%TYPE) IS
+    BEGIN
+        doctors_hks.before_delete(p_id => p_id);
+        p_delete_row(p_id => p_id);         -- private, replaces doctors_dal.delete_row
+        doctors_hks.after_delete(p_id => p_id);
+    END delete_rec;
+
+END doctors_svc;
+/
+```
+
+For the `lookup+hks` tier the same principle applies one level further: `_apx` body opens with private DML procedures (absorbed from the absent `_dal`) and private business logic procedures (absorbed from the absent `_svc`), then calls `_hks` for hooks. The public `ins`, `upd`, `del` procedures map scalar page-item parameters to `%ROWTYPE` internally.
+
+### 3.5 Design Decisions
 
 **Error handling by exception, not by result record**
 
@@ -560,6 +761,8 @@ The hks body is the only package where "re-run = data loss." All others are idem
 
 ### 6.3 Package Specification
 
+The parameter type for `before_delete` and `after_delete` depends on whether `_dal` is present in the tier. When `_dal` exists, the spec references `{entity}_dal.t_id`, anchoring the type to the DAL's subtype declaration. When `_dal` is absent, it references `{entity}.id%TYPE` directly.
+
 ```sql
 CREATE OR REPLACE PACKAGE doctors_hks AS
 
@@ -575,21 +778,33 @@ CREATE OR REPLACE PACKAGE doctors_hks AS
     -- Raising here vetoes the operation — all within the same transaction.
     PROCEDURE before_insert (p_row IN OUT NOCOPY doctors%ROWTYPE);
     PROCEDURE before_update (p_row IN OUT NOCOPY doctors%ROWTYPE);
-    PROCEDURE before_delete (p_id  IN doctors_dal.t_id);
+
+    -- Type of p_id: doctors_dal.t_id when _dal is present (full / full+hks),
+    --               doctors.id%TYPE when _dal is absent (service+hks / lookup+hks).
+    PROCEDURE before_delete (p_id  IN doctors_dal.t_id);   -- full / full+hks
 
     -- Called after successful DML, within the same open transaction.
     -- Raising here causes the IFC layer to roll back both the DML and the hook.
     PROCEDURE after_insert (p_row IN doctors%ROWTYPE);
     PROCEDURE after_update (p_row IN doctors%ROWTYPE);
-    PROCEDURE after_delete (p_id  IN doctors_dal.t_id);
+    PROCEDURE after_delete (p_id  IN doctors_dal.t_id);    -- full / full+hks
 
 END doctors_hks;
 /
 ```
 
+For tiers without `_dal` (`service+hks`, `lookup+hks`) the generator emits `doctors.id%TYPE` instead:
+
+```sql
+    PROCEDURE before_delete (p_id  IN doctors.id%TYPE);    -- service+hks / lookup+hks
+    PROCEDURE after_delete  (p_id  IN doctors.id%TYPE);    -- service+hks / lookup+hks
+```
+
 ### 6.4 Default No-Op Body
 
 QuickSQL includes this block in the generated output. Execute it once to install the stub. Save it separately and replace the `NULL` stubs with custom logic — do not re-execute this block from subsequent QuickSQL output.
+
+The type of `p_id` in `before_delete` and `after_delete` matches the spec (see §6.3): `doctors_dal.t_id` when `_dal` is present, `doctors.id%TYPE` otherwise.
 
 ```sql
 -- WARNING: execute once only. Do not re-run after adding custom logic.
@@ -604,17 +819,19 @@ CREATE OR REPLACE PACKAGE BODY doctors_hks AS
 
     PROCEDURE before_insert (p_row IN OUT NOCOPY doctors%ROWTYPE) IS BEGIN NULL; END;
     PROCEDURE before_update (p_row IN OUT NOCOPY doctors%ROWTYPE) IS BEGIN NULL; END;
-    PROCEDURE before_delete (p_id  IN doctors_dal.t_id)           IS BEGIN NULL; END;
+    PROCEDURE before_delete (p_id  IN doctors_dal.t_id)           IS BEGIN NULL; END;  -- or doctors.id%TYPE
 
     PROCEDURE after_insert  (p_row IN doctors%ROWTYPE)             IS BEGIN NULL; END;
     PROCEDURE after_update  (p_row IN doctors%ROWTYPE)             IS BEGIN NULL; END;
-    PROCEDURE after_delete  (p_id  IN doctors_dal.t_id)            IS BEGIN NULL; END;
+    PROCEDURE after_delete  (p_id  IN doctors_dal.t_id)            IS BEGIN NULL; END;  -- or doctors.id%TYPE
 
 END doctors_hks;
 /
 ```
 
 ### 6.5 Custom Body — Validation, Normalisation, Audit
+
+The type of `p_id` in `before_delete` and `after_delete` must match the spec generated for the tier (see §6.3).
 
 ```sql
 CREATE OR REPLACE PACKAGE BODY doctors_hks AS
@@ -653,7 +870,7 @@ CREATE OR REPLACE PACKAGE BODY doctors_hks AS
         p_row.name := INITCAP(TRIM(p_row.name));
     END before_update;
 
-    PROCEDURE before_delete (p_id IN doctors_dal.t_id) IS BEGIN NULL; END;
+    PROCEDURE before_delete (p_id IN doctors_dal.t_id) IS BEGIN NULL; END;  -- or doctors.id%TYPE
 
     PROCEDURE after_insert (p_row IN doctors%ROWTYPE) IS
     BEGIN
@@ -669,7 +886,7 @@ CREATE OR REPLACE PACKAGE BODY doctors_hks AS
                 SYS_CONTEXT('APEX$SESSION','APP_USER'));
     END after_update;
 
-    PROCEDURE after_delete (p_id IN doctors_dal.t_id) IS
+    PROCEDURE after_delete (p_id IN doctors_dal.t_id) IS  -- or doctors.id%TYPE
     BEGIN
         INSERT INTO app_audit_log (entity, entity_id, operation, logged_at, logged_by)
         VALUES ('DOCTORS', p_id, 'DELETE', SYSTIMESTAMP,
@@ -692,11 +909,18 @@ The interface layer is the only layer that knows which technology is consuming t
 - Returns results in the form expected by the consumer.
 - Does not contain business logic. Any validation performed here is structural (e.g., "JSON body is present") — semantic validation belongs in the HKS layer.
 
-Which IFC package is generated is controlled by the `ifc` setting (default: `apex`). Multiple IFC packages can coexist.
+Which IFC packages are generated is controlled by the `ifc` setting:
+
+| `ifc` value | Packages generated |
+|---|---|
+| `"apex"` (default) | `_apx` only |
+| `"rest"` | `_rst` only |
+| `"both"` | `_apx` + `_rst` |
 
 ```
-# settings = {"api": "layered", "ifc": "apex"}    ← generates _apx only
-# settings = {"api": "layered", "ifc": "rest"}     ← generates _rst only
+# settings = { ifc: "apex" }    ← generates _apx only (default)
+# settings = { ifc: "rest" }    ← generates _rst only
+# settings = { ifc: "both" }    ← generates _apx + _rst
 ```
 
 ### 7.2 APEX Interface Package (`{entity}_apx`)
@@ -879,7 +1103,7 @@ END app_error_handler;
 
 ### 7.3 REST Interface Package (`{entity}_rst`)
 
-The `_rst` package is generated when `ifc: rest` is set. It wraps the same SVC layer as `_apx`, translating between JSON and `t_rec`. It is typically called from ORDS resource module handlers.
+The `_rst` package is generated when `ifc: "rest"` or `ifc: "both"` is set. It wraps the same SVC layer as `_apx`, translating between JSON and `t_rec`. It is typically called from ORDS resource module handlers.
 
 ```sql
 CREATE OR REPLACE PACKAGE BODY doctors_rst AS
@@ -948,11 +1172,11 @@ app_audit_log /api
   old_values clob
   new_values clob
 
-doctors /api /auditlog
+doctors /api full+hks /auditlog
   name       vc200 /nn
   email      vc200 /nn /unique
   row_version num /nn
-# settings = {"api": "layered", "auditcols": "yes"}
+# settings = { auditcols: yes }
 ```
 
 **Generated `doctors_audit` package spec:**
@@ -1059,7 +1283,8 @@ app_audit_log_svc   (spec + body)
 doctors_dal         (spec + body)
 doctors_hks         (spec + body)
 doctors_svc         (spec + body)
-doctors_apx         (spec + body)   ← when ifc: apex
+doctors_apx         (spec + body)   ← when ifc: apex or both
+doctors_rst         (spec + body)   ← when ifc: rest or both
 doctors_audit       (spec + body)
 ```
 
@@ -1122,13 +1347,22 @@ In a single-schema deployment, only the last two grants apply.
 
 ## 11. QuickSQL Generator Integration
 
-```
-# settings = {"api": "layered", "ifc": "apex"}
+The tier is the argument to `/api` on each table. When omitted, the default is `full+hks` (backward-compatible with the old `layered` value). The `api` key is not used in the settings block — tier selection is always per-table.
 
-doctors /api
-   name /nn
-   specialty vc100
-   email /lower /nn /unique
+```
+doctors       /api full+hks
+   name       vc200 /nn
+   email      vc200 /nn /unique
+
+lookup_types  /api lookup
+   code       vc30 /nn
+   name       vc100 /nn
+
+order_lines   /api service+hks
+   order_id   num /fk orders /nn
+   qty        num /nn
+
+# settings = { ifc: "both", auditcols: yes, rowversion: yes, semantics: "CHAR" }
 ```
 
 ```typescript
@@ -1136,26 +1370,47 @@ doctors /api
 generateLayeredTAPI(node: IDdlNode): string {
     if (node.inferType() !== 'table') return '';
     if (node.children.length === 0) return '';
-    let r = this._generateDalSpec(node) + '\n'
-          + this._generateDalBody(node) + '\n'
-          + this._generateHksSpec(node) + '\n'
-          + this._generateHksBody(node) + '\n'
-          + this._generateSvcSpec(node) + '\n'   // emits t_rec type + procedures
-          + this._generateSvcBody(node);
-    const ifc = this.ctx.getOption('ifc') ?? 'apex';
-    if (ifc === 'apex') r += '\n' + this._generateApxSpec(node)
-                           + '\n' + this._generateApxBody(node);
-    if (ifc === 'rest')  r += '\n' + this._generateRstSpec(node)
-                           + '\n' + this._generateRstBody(node);
-    if (this._hasAuditLog(node)) {
-        r += '\n' + this._generateAuditSpec(node)
-           + '\n' + this._generateAuditBody(node);
-    }
+
+    const raw  = node.getDirectiveArg('api') ?? 'full+hks';
+    // legacy aliases
+    const tier = raw === 'layered' ? 'full+hks'
+               : raw === '3h'      ? 'full+hks'
+               : raw === '3'       ? 'full'
+               : raw === '2h'      ? 'service+hks'
+               : raw === '2'       ? 'service'
+               : raw === '1h'      ? 'lookup+hks'
+               : raw === '1'       ? 'lookup'
+               : raw;
+
+    const hasDal = ['full', 'full+hks'].includes(tier);
+    const hasHks = tier.endsWith('+hks');
+    const hasSvc = ['service', 'service+hks', 'full', 'full+hks'].includes(tier);
+
+    let r = '';
+    if (hasDal) r += this._generateDalSpec(node) + '\n' + this._generateDalBody(node) + '\n';
+    if (hasHks) r += this._generateHksSpec(node, hasDal) + '\n' + this._generateHksBody(node, hasDal) + '\n';
+    if (hasSvc) r += this._generateSvcSpec(node) + '\n' + this._generateSvcBody(node, hasDal, hasHks) + '\n';
+
+    // IFC packages — controlled by the ifc setting, not by tier
+    const ifc = this.ctx.getOptionValue('ifc') ?? 'apex';
+    if (ifc === 'apex' || ifc === 'both')
+        r += this._generateApxSpec(node) + '\n' + this._generateApxBody(node, hasSvc, hasDal);
+    if (ifc === 'rest' || ifc === 'both')
+        r += '\n' + this._generateRstSpec(node) + '\n' + this._generateRstBody(node, hasSvc, hasDal);
+    if (this._hasAuditLog(node))
+        r += '\n' + this._generateAuditSpec(node) + '\n' + this._generateAuditBody(node);
+
     return r;
 }
 ```
 
-The hooks body (`_hks_impl.sql`) is the only file developers own. It is generated once and must not be overwritten on subsequent runs.
+`_generateHksSpec(node, hasDal)` uses `{entity}_dal.t_id` for `before/after_delete` when `hasDal` is true, and `{entity}.id%TYPE` otherwise.
+
+`_generateSvcBody(node, hasDal, hasHks)` emits private DML procedures (`p_get_by_id`, `p_insert_row`, …) when `hasDal` is false, and private no-op hook stubs when `hasHks` is false.
+
+`_generateApxBody(node, hasSvc, hasDal)` calls `{entity}_svc.*` when `hasSvc` is true, and emits absorbed private logic otherwise.
+
+The `_hks` body is the only file developers own — generated once and never overwritten. All other packages are generator-owned and safe to regenerate at any time.
 
 ---
 
@@ -1207,3 +1462,5 @@ SELECT application_id, page_id, process_name, process_text
 | 1.5     | 2026-04-27 | Roberto Capancioni | `app_audit_log` is now developer-owned; `_audit.p_log` calls `app_audit_log_svc.create_rec` |
 | 1.6     | 2026-05-05 | Roberto Capancioni | Four-layer architecture: IFC layer added (`_apx` / `_rst`); SVC switches from scalar params to `t_rec` record (business columns only, no PK/rowversion/audit — all trigger-managed); `x_version OUT` removed from SVC; hooks renamed to `_hks` throughout; `ifc` setting controls which IFC package is generated (default: `apex`); APX procedures: `get / ins / upd / del` with `p_`-prefix for APEX Invoke API auto-mapping; grants model updated — only IFC layer is public; `p_row_version` in APX `get`/`upd` only when `/rowversion` active; audit OUT params in APX `get` only when `auditcols: yes` active |
 | 1.7     | 2026-05-05 | Roberto Capancioni | DAL: `lock_by_id` function added (SELECT FOR UPDATE NOWAIT); `c_err_locked` constant (-20003); `resource_busy` exception with PRAGMA EXCEPTION_INIT(-54) declared at body level; §4.3 extended with check-then-act pattern, SVC usage example, and guidance on when to use `lock_by_id` vs `get_by_id`; §7.2.3 APEX error handler updated with -20003 mapping; §8 audit body corrected to `l_rec t_rec` pattern (was showing old scalar named-param call); §9 error range and `app_errors` package updated with `c_locked`; §6.2 rewritten — QuickSQL generates a single SQL block, not separate files; file management is a deployment discipline, not a generator feature; `_hks_impl.sql` naming is a developer convention, not enforced by QuickSQL |
+| 1.8     | 2026-05-08 | Roberto Capancioni | §3.4 Tier Model: 6-tier system (`lookup` `lookup+hks` `service` `service+hks` `full` `full+hks`) selects minimum package set per table; tier is the argument to `/api` on each table — `api` key removed from settings block; `+hks` suffix formalises developer-owned `_hks` body; cross-entity coupling constraint and tier selection guide added; `_audit` noted as orthogonal to tier; §3.4 Design Decisions renumbered to §3.5; §3 title "Four-Layer" → "Layered"; §7.1 and §8 settings examples updated; §11 TypeScript simplified with `hasDal`/`hasHks`/`hasSvc` flags and legacy numeric alias mapping |
+| 1.9     | 2026-05-08 | Roberto Capancioni | §3.4 Degradation rule: explicit principle — each layer calls the one below if present, absorbs it as private procedures if absent; cascading table and per-tier consequences added; `service+hks` complete body example showing private DML section; `lookup+hks` pattern described; `_rst` and `_audit` noted as orthogonal to tier in tier table; §6.3 `_hks` spec: `before/after_delete` parameter type is `_dal.t_id` when `_dal` is present, `table.id%TYPE` otherwise — documented with both variants; §6.4/§6.5 bodies updated with conditional type note; §7.1 `ifc` setting: three explicit values (`"apex"` / `"rest"` / `"both"`) replace the previous two-value implicit behaviour; §8 output order updated with `_rst` conditional line; §11 TypeScript: `getOption` → `getOptionValue`; `hasDal` passed to `_generateHksSpec` and `_generateHksBody`; `hasDal`/`hasHks` passed to `_generateSvcBody`; `hasSvc`/`hasDal` passed to `_generateApxBody` and `_generateRstBody`; IFC generation replaced with explicit three-way `ifc` switch |
