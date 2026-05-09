@@ -571,8 +571,7 @@ footer.status-error  { background: var(--error-bg); color: var(--error-text); bo
 }
 .sett-searching .sett-tab-bar { opacity: 0.4; pointer-events: none; }
 
-/* Settings panes — managed by JS */
-.sett-pane { display: none; }
+/* Settings panes — visibility managed entirely by JS via inline style */
 
 /* Help panes */
 .hdw-pane         { display: none; }
