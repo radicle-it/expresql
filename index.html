@@ -12,7 +12,7 @@
     <script>
         (function(){
             var params = new URLSearchParams(window.location.search);
-            var t = params.get('theme') || localStorage.getItem('qsql-theme') || 'dark';
+            var t = params.get('theme') || localStorage.getItem('qsql-theme') || 'light';
             document.documentElement.dataset.theme = t;
             var embedded = false;
             try { embedded = window.self !== window.top; } catch(e) { embedded = true; }
