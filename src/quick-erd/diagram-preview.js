@@ -5,7 +5,6 @@
 
 /* global joint */
 
-import { MermaidRenderer } from './mermaid-renderer.js';
 import { RappidRenderer } from './rappid-renderer.js';
 import { buildToolbar } from './toolbar.js';
 import { computeHighlightTree, normalizeTableName } from './highlight.js';
@@ -39,7 +38,7 @@ export class DiagramPreview {
         this.toolbar = buildToolbar( this );
         this.toolbarEl.appendChild( this.toolbar.el );
 
-        this.rendererType = ( typeof joint !== 'undefined' ) ? 'rappid' : 'mermaid';
+        this.rendererType = 'rappid';
         this.renderer = this._createRenderer( this.rendererType );
         this.refresh();
     }
@@ -153,6 +152,6 @@ export class DiagramPreview {
         if ( type === 'rappid' && typeof joint !== 'undefined' ) {
             return new RappidRenderer( this.canvasEl, this );
         }
-        return new MermaidRenderer( this.canvasEl, this );
+        throw new Error( 'Rappid library (joint.js) is required for ERD rendering' );
     }
 }

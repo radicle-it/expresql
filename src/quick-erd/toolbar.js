@@ -3,42 +3,9 @@
  * Builds renderer dropdown + group filter chips.
  */
 
-/* global joint */
-
 export function buildToolbar( diagram ) {
     const el = document.createElement( 'div' );
     el.className = 'qs-erd-toolbar';
-
-    const hasRappid = typeof joint !== 'undefined';
-
-    // Renderer select
-    const select = document.createElement( 'select' );
-    select.className = 'qs-erd-renderer-select';
-
-    const optRappid = document.createElement( 'option' );
-    optRappid.value = 'rappid';
-    optRappid.textContent = 'Rappid';
-    if ( hasRappid ) {
-        optRappid.selected = true;
-    } else {
-        optRappid.disabled = true;
-        optRappid.title = 'Requires Rappid library';
-    }
-    select.appendChild( optRappid );
-
-    const optMermaid = document.createElement( 'option' );
-    optMermaid.value = 'mermaid';
-    optMermaid.textContent = 'Mermaid';
-    if ( !hasRappid ) {
-        optMermaid.selected = true;
-    }
-    select.appendChild( optMermaid );
-
-    select.addEventListener( 'change', () => {
-        diagram.switchRenderer( select.value );
-    } );
-
-    el.appendChild( select );
 
     // Search input
     const searchInput = document.createElement( 'input' );
