@@ -11193,8 +11193,8 @@ var X = class {
 		for (let { name: e } of f) v += `${O}${O}l_row.${e} := p_rec.${e};\n`;
 		return l && (v += `${O}${O}l_row.row_version := p_row_version;\n`), v += `${O}${O}${_("validate")}(p_operation => 'update', p_row => l_row);\n`, v += `${O}${O}${_("before_update")}(p_row => l_row);\n`, v += `${O}${O}${h}(p_row => l_row);\n`, v += `${O}${O}${_("after_update")}(p_row => l_row);\n`, d && (v += `${O}${O}${s}.log_update(p_old_row => l_old_row, p_new_row => l_row);\n`), v += `${O}end update_rec;\n\n`, v += `${O}procedure delete_rec (p_id in ${r}.${c}%type) is\n`, d && (v += `${O}${O}l_old_row ${r}%rowtype;\n`), v += `${O}begin\n`, d && (v += `${O}${O}l_old_row := ${p}(p_id => p_id);\n`), v += `${O}${O}${_("before_delete")}(p_id => p_id);\n`, v += `${O}${O}${g}(p_id => p_id);\n`, v += `${O}${O}${_("after_delete")}(p_id => p_id);\n`, d && (v += `${O}${O}${s}.log_delete(p_old_row => l_old_row);\n`), v += `${O}end delete_rec;\n\n`, v += `end ${o};\n/\n`, v;
 	}
-	_generateApxSpec(e) {
-		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_apx", r = (e.getPkName() ?? "id").toLowerCase(), i = this._hasVersionCol(e), a = e.hasAuditCols(), o = this._svcParamCols(e), s = String(this.ctx.getOptionValue("createdcol") ?? "created"), c = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), l = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), u = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), d = `create or replace package ${n} as\n\n`;
+	_generateAppSpec(e) {
+		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_app", r = (e.getPkName() ?? "id").toLowerCase(), i = this._hasVersionCol(e), a = e.hasAuditCols(), o = this._svcParamCols(e), s = String(this.ctx.getOptionValue("createdcol") ?? "created"), c = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), l = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), u = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), d = `create or replace package ${n} as\n\n`;
 		d += `${O}procedure get (\n`, d += `${O}${O}p_id          in  ${t}.${r}%type`;
 		for (let { name: e } of o) d += `,\n${O}${O}p_${e.padEnd(13)} out ${t}.${e}%type`;
 		i && (d += `,\n${O}${O}p_row_version  out ${t}.row_version%type`), a && (d += `,\n${O}${O}p_${s.padEnd(13)} out ${t}.${s}%type`, d += `,\n${O}${O}p_${c.padEnd(13)} out ${t}.${c}%type`, d += `,\n${O}${O}p_${l.padEnd(13)} out ${t}.${l}%type`, d += `,\n${O}${O}p_${u.padEnd(13)} out ${t}.${u}%type`), d += `\n${O});\n\n`, d += `${O}procedure ins (\n`;
@@ -11206,8 +11206,8 @@ var X = class {
 		for (let { name: e, nullable: n } of o) p.push(`${O}${O}p_${e.padEnd(13)} in  ${t}.${e}%type${n ? " default null" : ""}`);
 		return i && p.push(`${O}${O}p_row_version  in  ${t}.row_version%type`), d += p.join(",\n") + `\n${O});\n\n`, d += `${O}procedure del (p_id in ${t}.${r}%type);\n\n`, d += `end ${n};\n/\n`, d;
 	}
-	_generateApxBody(e, t, n, r) {
-		let i = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), a = i + "_svc", o = i + "_hks", s = i + "_apx", c = (e.getPkName() ?? "id").toLowerCase(), l = this._hasVersionCol(e), u = e.hasAuditCols(), d = this._hasUniqueCol(e), f = this._svcParamCols(e), p = String(this.ctx.getOptionValue("createdcol") ?? "created"), m = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), h = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), g = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), _ = (e) => r ? `${o}.${e}` : `p_${e}`, v = `create or replace package body ${s} as\n`;
+	_generateAppBody(e, t, n, r) {
+		let i = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), a = i + "_svc", o = i + "_hks", s = i + "_app", c = (e.getPkName() ?? "id").toLowerCase(), l = this._hasVersionCol(e), u = e.hasAuditCols(), d = this._hasUniqueCol(e), f = this._svcParamCols(e), p = String(this.ctx.getOptionValue("createdcol") ?? "created"), m = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), h = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), g = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), _ = (e) => r ? `${o}.${e}` : `p_${e}`, v = `create or replace package body ${s} as\n`;
 		t || (v += this._generatePrivateDml(e), r || (v += this._generatePrivateHookStubs(e)), v += "\n"), v += `\n${O}procedure get (\n`, v += `${O}${O}p_id          in  ${i}.${c}%type`;
 		for (let { name: e } of f) v += `,\n${O}${O}p_${e.padEnd(13)} out ${i}.${e}%type`;
 		l && (v += `,\n${O}${O}p_row_version  out ${i}.row_version%type`), u && (v += `,\n${O}${O}p_${p.padEnd(13)} out ${i}.${p}%type`, v += `,\n${O}${O}p_${m.padEnd(13)} out ${i}.${m}%type`, v += `,\n${O}${O}p_${h.padEnd(13)} out ${i}.${h}%type`, v += `,\n${O}${O}p_${g.padEnd(13)} out ${i}.${g}%type`), v += `\n${O}) is\n`, v += `${O}${O}l_row ${i}%rowtype;\n`, v += `${O}begin\n`, v += `${O}${O}if p_id is null then return; end if;  -- INSERT mode: leave OUT params null\n`, v += `${O}${O}l_row := ${t ? `${a}.get(p_id => p_id)` : "p_get_by_id(p_id => p_id)"};\n`;
@@ -11291,8 +11291,8 @@ var X = class {
 			"service+hks",
 			"full",
 			"full+hks"
-		].includes(t), a = this._hasAuditLog(e), o = String(this.ctx.getOptionValue("ifc") ?? "apex").toLowerCase(), s = o === "apex" || o === "both" || o === "", c = o === "rest" || o === "both", l = "";
-		return n && (l += this._generateDalSpec(e) + "\n" + this._generateDalBody(e) + "\n"), r && (l += this._generateHksSpec(e, n) + "\n" + this._generateHksBody(e, n) + "\n"), i && (l += this._generateSvcSpec(e) + "\n", a && (l += this._generateAuditSpec(e) + "\n"), l += this._generateSvcBody(e, n, r) + "\n", a && (l += this._generateAuditBody(e, n) + "\n")), s && (l += this._generateApxSpec(e) + "\n" + this._generateApxBody(e, i, n, r)), c && (s && (l += "\n"), l += this._generateRstSpec(e) + "\n" + this._generateRstBody(e, i, n, r)), l;
+		].includes(t), a = this._hasAuditLog(e), o = String(this.ctx.getOptionValue("ifc") ?? "app").toLowerCase(), s = o === "app" || o === "apex" || o === "both" || o === "", c = o === "rest" || o === "both", l = "";
+		return n && (l += this._generateDalSpec(e) + "\n" + this._generateDalBody(e) + "\n"), r && (l += this._generateHksSpec(e, n) + "\n" + this._generateHksBody(e, n) + "\n"), i && (l += this._generateSvcSpec(e) + "\n", a && (l += this._generateAuditSpec(e) + "\n"), l += this._generateSvcBody(e, n, r) + "\n", a && (l += this._generateAuditBody(e, n) + "\n")), s && (l += this._generateAppSpec(e) + "\n" + this._generateAppBody(e, i, n, r)), c && (s && (l += "\n"), l += this._generateRstSpec(e) + "\n" + this._generateRstBody(e, i, n, r)), l;
 	}
 	generateTAPI(e) {
 		if (e.children.length === 0) return "";
@@ -11628,8 +11628,8 @@ var Z = class extends ge {
 					"service+hks",
 					"full",
 					"full+hks"
-				].includes(o), u = String(this._ddl.getOptionValue("ifc") ?? "apex").toLowerCase(), d = u === "apex" || u === "both" || u === "", f = u === "rest" || u === "both";
-				s && (i += "drop package " + r + t + "_dal;\n"), c && (i += "drop package " + r + t + "_hks;\n"), l && (i += "drop package " + r + t + "_svc;\n"), e.isOption("auditlog") && l && (i += "drop package " + r + t + "_aud;\n"), d && (i += "drop package " + r + t + "_apx;\n"), f && (i += "drop package " + r + t + "_rst;\n");
+				].includes(o), u = String(this._ddl.getOptionValue("ifc") ?? "app").toLowerCase(), d = u === "app" || u === "apex" || u === "both" || u === "", f = u === "rest" || u === "both";
+				s && (i += "drop package " + r + t + "_dal;\n"), c && (i += "drop package " + r + t + "_hks;\n"), l && (i += "drop package " + r + t + "_svc;\n"), e.isOption("auditlog") && l && (i += "drop package " + r + t + "_aud;\n"), d && (i += "drop package " + r + t + "_app;\n"), f && (i += "drop package " + r + t + "_rst;\n");
 			} else this._ddl.optionEQvalue("api", "yes") && (i += "drop package " + r + t + "_api;\n");
 			this._ddl.optionEQvalue("pk", "SEQ") && (i += "drop sequence " + r + t + this._naming.seq + ";\n");
 		}
@@ -12241,12 +12241,12 @@ var nt = class {
 			"service+hks",
 			"full",
 			"full+hks"
-		].includes(i), c = String(t.getOptionValue("ifc") ?? "apex").toLowerCase(), l = c === "apex" || c === "both" || c === "", u = c === "rest" || c === "both", d = [];
-		return a && d.push(`${n}_dal`), o && d.push(`${n}_hks`), s && d.push(`${n}_svc`), l && d.push(`${n}_apx`), u && d.push(`${n}_rst`), e.isOption("auditlog") && s && d.push(`${n}_aud`), d;
+		].includes(i), c = String(t.getOptionValue("ifc") ?? "app").toLowerCase(), l = c === "app" || c === "apex" || c === "both" || c === "", u = c === "rest" || c === "both", d = [];
+		return a && d.push(`${n}_dal`), o && d.push(`${n}_hks`), s && d.push(`${n}_svc`), l && d.push(`${n}_app`), u && d.push(`${n}_rst`), e.isOption("auditlog") && s && d.push(`${n}_aud`), d;
 	}
 	_droppedPkgs(e, t, n, r, i, a) {
 		let o = [], s = n.objPrefix() + e.parseName();
-		return i === "layered" && (a === "simple" || a === "none") ? (o.push(`${s}_dal`, `${s}_hks`, `${s}_svc`, `${s}_apx`), e.isOption("auditlog") && o.push(`${s}_aud`)) : i === "simple" && (a === "layered" || a === "none") ? o.push(`${s}_api`) : i === "layered" && a === "layered" && e.isOption("auditlog") && !t.isOption("auditlog") && o.push(`${s}_aud`), o;
+		return i === "layered" && (a === "simple" || a === "none") ? (o.push(`${s}_dal`, `${s}_hks`, `${s}_svc`, `${s}_app`), e.isOption("auditlog") && o.push(`${s}_aud`)) : i === "simple" && (a === "layered" || a === "none") ? o.push(`${s}_api`) : i === "layered" && a === "layered" && e.isOption("auditlog") && !t.isOption("auditlog") && o.push(`${s}_aud`), o;
 	}
 	_splitPkgBlocks(e, t) {
 		let n = [], r = e.split(/\n\/\s*(?:\n|$)/);

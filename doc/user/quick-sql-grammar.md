@@ -109,7 +109,7 @@ A comment can appear between any keywords, parameters, or punctuation marks in a
 <!-- markdownlint-disable MD013 -->
 | Directive | Description | Dialect |
 | --- | --- | --- |
-| `/api [tier]` | Generate layered Table API. The optional *tier* selects which layers are generated: `lookup`, `lookup+hks`, `service`, `service+hks`, `full`, `full+hks` (default). **Oracle:** generates PL/SQL packages (`_dal`, `_hks`, `_svc`, `_apx`/`_rst`). **Db2:** generates schema-scoped SQL PL procedures (`_dal`, `_hks`, `_svc`, `_rst`). See [api](#api) setting. | All |
+| `/api [tier]` | Generate layered Table API. The optional *tier* selects which layers are generated: `lookup`, `lookup+hks`, `service`, `service+hks`, `full`, `full+hks` (default). **Oracle:** generates PL/SQL packages (`_dal`, `_hks`, `_svc`, `_app`/`_rst`). **Db2:** generates schema-scoped SQL PL procedures (`_dal`, `_hks`, `_svc`, `_app`/`_rst`). Interface controlled by [`ifc`](#ifc). See [api](#api) setting. | All |
 | `/audit` | Adds Oracle auditing (`AUDIT ALL ON <TABLE>`). On Db2, emits a comment recommending an IBM Db2 Audit Policy instead. | All *(Oracle feature)* |
 | `/auditcols`, `/audit cols` | Adds `CREATED`, `CREATED_BY`, `UPDATED`, `UPDATED_BY` columns and trigger logic. **Oracle:** `SYSDATE` / `v('APP_USER')`. **Db2:** `CURRENT TIMESTAMP` / `CURRENT USER`. | All |
 | `/auditlog [table]` | Generates an audit package with `PRAGMA AUTONOMOUS_TRANSACTION` that logs all DML to a developer-supplied audit table. The generated package calls `<log_table>_svc.create_rec` inside an autonomous transaction. | Oracle only |
@@ -452,7 +452,7 @@ The available settings are listed in the below sections.
 | `editionable` | | ✓ | Oracle EBR. |
 | `aienrichment` | | ✓ | Oracle 26ai metadata annotations. |
 | `genPK` | ✓ | | |
-| `ifc` | ✓ (`rest`) | ✓ (`apex`, `both`) | `rest` works for both dialects. `apex` / `both` are Oracle only. |
+| `ifc` | ✓ (`app`, `rest`, `both`) | ✓ (`app`, `rest`, `both`) | `app` and `rest` work for both dialects. `both` generates `_app` + `_rst` simultaneously. |
 | `inserts` | ✓ | | |
 | `language` | ✓ | | |
 | `longVC` | ✓ | | |
@@ -517,18 +517,18 @@ Each table with a `/api <tier>` directive generates a stack of PL/SQL packages. 
 
 | Tier | Packages generated | Notes |
 |---|---|---|
-| `lookup` | `_apx` | Minimal: APEX interface only, no service logic. |
-| `lookup+hks` | `_hks`, `_apx` | Adds hook stubs for business rules. |
-| `service` | `_svc`, `_apx` | Service layer absorbs private DML (no `_dal`). |
-| `service+hks` | `_hks`, `_svc`, `_apx` | Adds hook stubs; SVC delegates to `_hks`. |
-| `full` | `_dal`, `_svc`, `_apx` | Full stack without hook stubs. |
-| `full+hks` | `_dal`, `_hks`, `_svc`, `_apx` | Full stack (default for bare `/api`). |
+| `lookup` | `_app` | Minimal: application interface only, no service logic. |
+| `lookup+hks` | `_hks`, `_app` | Adds hook stubs for business rules. |
+| `service` | `_svc`, `_app` | Service layer absorbs private DML (no `_dal`). |
+| `service+hks` | `_hks`, `_svc`, `_app` | Adds hook stubs; SVC delegates to `_hks`. |
+| `full` | `_dal`, `_svc`, `_app` | Full stack without hook stubs. |
+| `full+hks` | `_dal`, `_hks`, `_svc`, `_app` | Full stack (default for bare `/api`). |
 
 Numeric aliases: `1` = `lookup`, `1h` = `lookup+hks`, `2` = `service`, `2h` = `service+hks`, `3` = `full`, `3h` = `full+hks`.
 
 **Degradation rule**: each layer calls the layer below when present; when a lower layer is absent, its logic is absorbed as private procedures. For example, a `service` tier SVC body embeds private `p_get_by_id`, `p_insert_row`, `p_update_row`, `p_delete_row` procedures instead of calling `_dal`.
 
-**Interface package**: controlled by the [`ifc`](#ifc) setting (`apex`, `rest`, or `both`). Default is `apex`, which generates `_apx`. Use `rest` to generate `_rst` (ORDS handlers) instead, or `both` to generate both.
+**Interface package**: controlled by the [`ifc`](#ifc) setting (`app`, `rest`, or `both`). Default is `app`, which generates `_app` (named-parameter procedures). Use `rest` to generate `_rst` (ORDS/HTTP handlers) instead, or `both` to generate both. `apex` is a backward-compatible alias for `app`.
 
 ```quicksql
 -- default: log table is app_audit_log (with prefix applied)
@@ -548,7 +548,7 @@ employees /api full+hks /auditlog app_audit_log
 Per-table tier override (two tables, different tiers in the same schema):
 
 ```quicksql
--- lookup_codes only needs a thin APEX interface
+-- lookup_codes only needs the app interface
 lookup_codes /api lookup
   code  vc20 /nn
   label vc100 /nn
@@ -707,8 +707,8 @@ employees
 - Primary key default: `INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY`. Use `pk: seq` for a sequence-based PK.
 - Triggers: Db2 SQL PL syntax — `REFERENCING NEW AS n [OLD AS o]`, `SET n.col = value`, `CURRENT TIMESTAMP`, `CURRENT USER`.  The statement terminator is changed to `@` via `--#SET TERMINATOR @`.
 - DROP: `DROP TABLE IF EXISTS` (no `CASCADE CONSTRAINTS`).
-- Layered TAPI (`/api`): schemas replace Oracle packages — each tier gets its own schema (`_dal`, `_hks`, `_svc`, `_rst`) containing `CREATE OR REPLACE PROCEDURE` statements.  The APEX interface (`_apx`) and ORDS tie-in are not available for Db2; the default interface is `rst`.
-- No `ifc: apex` support; `ifc: rest` (or bare `/api`) is the only interface tier.
+- Layered TAPI (`/api`): schemas replace Oracle packages — each tier gets its own schema (`_dal`, `_hks`, `_svc`, `_app`, `_rst`) containing `CREATE OR REPLACE PROCEDURE` statements.
+- `ifc: app` (default) generates `_app` with named-parameter `get`/`ins`/`upd`/`del` procedures. `get` uses `SELECT … INTO` for per-column OUT params; `ins`/`upd`/`del` delegate to `_svc`. `ifc: rest` generates `_rst` with `GET DIAGNOSTICS`-based error handling and `json_object(…)` responses. `apex` is accepted as a backward-compatible alias for `app`.
 
 ### drop
 
@@ -968,20 +968,24 @@ The `/insert 10` directive is ignored and no INSERT statements are generated.
 
 ### ifc
 
-> **Dialect:** All dialects support `rest`. `apex` and `both` are Oracle only.
-
-**Possible Values**: `apex`, `rest`, `both`  
-**Default Value**: `apex` (Oracle) · `rest` (Db2)
+**Possible Values**: `app`, `rest`, `both` (`apex` is a backward-compatible alias for `app`)  
+**Default Value**: `app` (both dialects)
 
 Controls which interface package is generated for layered TAPI tables.
 
 | Value | Package generated | Dialect | Use when |
 |---|---|---|---|
-| `apex` | `_apx` | Oracle only | Consuming the API from Oracle APEX. |
-| `rest` | `_rst` | All | Exposing the API as REST endpoints. |
-| `both` | `_apx` and `_rst` | Dual access: APEX UI and REST clients simultaneously. |
+| `app` | `_app` | All | Named-parameter procedures, callable from any application code. |
+| `apex` | `_app` | All | Backward-compatible alias for `app`. |
+| `rest` | `_rst` | All | HTTP-aware procedures with status codes and JSON, for REST gateways (ORDS on Oracle, similar on Db2). |
+| `both` | `_app` and `_rst` | All | Dual access: application code and REST clients simultaneously. |
 
-The `_rst` package contains no-parameter procedures (`get`, `ins`, `upd`, `del`) that use ORDS bind variables (`:body_text`, `:p_id`, `:status`) and emit JSON via `htp.p`.
+The `_app` package exposes named IN/OUT parameters — no HTTP semantics.  
+**Oracle**: `get` returns a `%ROWTYPE`; `ins`/`upd`/`del` call through to `_svc`.  
+**Db2**: `get` uses `SELECT … INTO` to populate per-column OUT params; `ins`/`upd`/`del` delegate to `_svc` with a `p_status VARCHAR(20)` output.
+
+The `_rst` package (Oracle) uses ORDS bind variables (`:body_text`, `:p_id`, `:status`) and emits JSON via `htp.p`.  
+The `_rst` package (Db2) uses SQL PL `GET DIAGNOSTICS` for error handling and returns `json_object(…)` results.
 
 ```quicksql
 # settings = { ifc: rest }

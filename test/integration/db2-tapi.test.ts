@@ -40,9 +40,9 @@ describe('§1 full+hks tier', () => {
         expect(out).toContain('create schema employees_svc @');
     });
 
-    test('creates RST schema (default ifc)', () => {
+    test('creates APP schema (default ifc)', () => {
         const out = ddl('employees /api full+hks\n  name');
-        expect(out).toContain('create schema employees_rst @');
+        expect(out).toContain('create schema employees_app @');
     });
 
     test('DAL p_get_by_id uses DYNAMIC RESULT SETS 1 cursor', () => {
@@ -85,19 +85,19 @@ describe('§1 full+hks tier', () => {
     });
 
     test('RST get delegates to SVC', () => {
-        const out = ddl('employees /api full+hks\n  name');
+        const out = ddl('employees /api full+hks\n  name\n# settings = {"ifc":"rest"}');
         expect(out).toContain('call employees_svc.get(');
     });
 
     test('RST returns HTTP status codes', () => {
-        const out = ddl('employees /api full+hks\n  name');
+        const out = ddl('employees /api full+hks\n  name\n# settings = {"ifc":"rest"}');
         expect(out).toContain('set p_status = 200');
         expect(out).toContain('set p_status = 201');
         expect(out).toContain('set p_status = 500');
     });
 
     test('RST error handler uses GET DIAGNOSTICS', () => {
-        const out = ddl('employees /api full+hks\n  name');
+        const out = ddl('employees /api full+hks\n  name\n# settings = {"ifc":"rest"}');
         expect(out).toContain('get diagnostics exception 1 p_result = message_text');
     });
 
@@ -110,7 +110,7 @@ describe('§1 full+hks tier', () => {
     });
 
     test('JSON output uses json_object', () => {
-        const out = ddl('employees /api full+hks\n  name');
+        const out = ddl('employees /api full+hks\n  name\n# settings = {"ifc":"rest"}');
         expect(out).toContain('json_object(');
     });
 
@@ -188,7 +188,7 @@ describe('§5 lookup+hks tier (read-only + hooks)', () => {
     });
 
     test('RST get uses private get when no SVC/DAL', () => {
-        const out = ddl('employees /api lookup+hks\n  name');
+        const out = ddl('employees /api lookup+hks\n  name\n# settings = {"ifc":"rest"}');
         expect(out).toContain('private get (absorbed from absent _svc/_dal)');
     });
 
@@ -198,9 +198,9 @@ describe('§5 lookup+hks tier (read-only + hooks)', () => {
 
 describe('§6 lookup tier (read-only)', () => {
 
-    test('generates RST only, no DAL/HKS/SVC schemas', () => {
+    test('generates APP only, no DAL/HKS/SVC schemas', () => {
         const out = ddl('employees /api lookup\n  name');
-        expect(out).toContain('create schema employees_rst @');
+        expect(out).toContain('create schema employees_app @');
         expect(out).not.toContain('create schema employees_dal @');
         expect(out).not.toContain('create schema employees_hks @');
         expect(out).not.toContain('create schema employees_svc @');

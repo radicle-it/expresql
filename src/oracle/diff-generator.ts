@@ -1060,15 +1060,15 @@ export class OracleDiffGenerator implements DiffGenerator {
         const hasDal  = ['full', 'full+hks'].includes(tier);
         const hasHks  = tier.endsWith('+hks');
         const hasSvc  = ['service', 'service+hks', 'full', 'full+hks'].includes(tier);
-        const ifc     = String(ctx.getOptionValue('ifc') ?? 'apex').toLowerCase();
-        const genApx  = ifc === 'apex' || ifc === 'both' || ifc === '';
+        const ifc     = String(ctx.getOptionValue('ifc') ?? 'app').toLowerCase();
+        const genApp  = ifc === 'app' || ifc === 'apex' || ifc === 'both' || ifc === '';
         const genRst  = ifc === 'rest' || ifc === 'both';
 
         const pkgs: string[] = [];
         if (hasDal) pkgs.push(`${obj}_dal`);
         if (hasHks) pkgs.push(`${obj}_hks`);
         if (hasSvc) pkgs.push(`${obj}_svc`);
-        if (genApx)  pkgs.push(`${obj}_apx`);
+        if (genApp)  pkgs.push(`${obj}_app`);
         if (genRst)  pkgs.push(`${obj}_rst`);
         if (node.isOption('auditlog') && hasSvc) pkgs.push(`${obj}_aud`);
         return pkgs;
@@ -1083,7 +1083,7 @@ export class OracleDiffGenerator implements DiffGenerator {
         const oldObj  = oldCtx.objPrefix() + oldNode.parseName();
 
         if (oldKind === 'layered' && (newKind === 'simple' || newKind === 'none')) {
-            dropped.push(`${oldObj}_dal`, `${oldObj}_hks`, `${oldObj}_svc`, `${oldObj}_apx`);
+            dropped.push(`${oldObj}_dal`, `${oldObj}_hks`, `${oldObj}_svc`, `${oldObj}_app`);
             if (oldNode.isOption('auditlog')) dropped.push(`${oldObj}_aud`);
         } else if (oldKind === 'simple' && (newKind === 'layered' || newKind === 'none')) {
             dropped.push(`${oldObj}_api`);

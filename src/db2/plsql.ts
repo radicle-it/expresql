@@ -125,8 +125,9 @@ export class Db2PlsqlBuilder {
         const hasDal = ['full', 'full+hks'].includes(tier);
         const hasHks = tier.endsWith('+hks');
         const hasSvc = ['service', 'service+hks', 'full', 'full+hks'].includes(tier);
-        const ifc    = String(this.ctx.getOptionValue('ifc') ?? 'rest').toLowerCase();
-        const genRst = ifc === 'rest' || ifc === 'both' || ifc === '' || ifc === 'apex';
+        const ifc    = String(this.ctx.getOptionValue('ifc') ?? 'app').toLowerCase();
+        const genApp = ifc === 'app' || ifc === 'apex' || ifc === 'both' || ifc === '';
+        const genRst = ifc === 'rest' || ifc === 'both';
 
         const tbl    = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
         const pkNm   = (node.getPkName() ?? 'id').toLowerCase();
@@ -151,6 +152,12 @@ export class Db2PlsqlBuilder {
         if (hasSvc) {
             out += `create schema ${tbl}_svc @\n\n`;
             out += this._generateSvc(node, tbl, pkNm, pkType, hasDal, hasHks);
+        }
+
+        // ── APP ──
+        if (genApp) {
+            out += `create schema ${tbl}_app @\n\n`;
+            out += this._generateApp(node, tbl, pkNm, pkType, hasSvc, hasDal, hasHks);
         }
 
         // ── RST ──
@@ -352,6 +359,119 @@ export class Db2PlsqlBuilder {
         }
         if (hasHks) out += `    call ${tbl}_hks.p_after_delete(p_${pkNm});\n`;
         out += `    set p_status = 'SUCCESS';\n`;
+        out += `end @\n\n`;
+
+        return out;
+    }
+
+    // ── APP interface ─────────────────────────────────────────────────────────
+
+    private _generateApp(
+        node: IDdlNode, tbl: string, pkNm: string, pkType: string,
+        hasSvc: boolean, hasDal: boolean, hasHks: boolean,
+    ): string {
+        const fkCols  = Object.keys(node.fks ?? {});
+        const svcCols = this._svcCols(node);
+        let out = '';
+
+        // APP.get — SELECT INTO with per-column OUT params
+        out += `create or replace procedure ${tbl}_app.get (\n`;
+        out += `    in  p_${pkNm}  ${pkType}`;
+        for (const fk of fkCols)
+            out += `,\n    out p_${fk} ${fkDb2Type(this.ctx, node.fks![fk])}`;
+        for (const child of svcCols)
+            out += `,\n    out p_${child.parseName()} ${toDb2Type(child._inferTypeFull())}`;
+        out += `\n)\nlanguage sql\nbegin\n`;
+        const selectCols = [...fkCols, ...svcCols.map(c => c.parseName())];
+        if (selectCols.length > 0) {
+            out += `    select\n`;
+            out += selectCols.map(c => `        ${c}`).join(',\n') + `\n`;
+            out += `    into\n`;
+            out += selectCols.map(c => `        p_${c}`).join(',\n') + `\n`;
+            out += `    from ${tbl}\n`;
+            out += `    where ${pkNm} = p_${pkNm};\n`;
+        }
+        out += `end @\n\n`;
+
+        // APP.ins
+        out += `create or replace procedure ${tbl}_app.ins (\n`;
+        for (const fk of fkCols) out += `    in  p_${fk} ${fkDb2Type(this.ctx, node.fks![fk])},\n`;
+        for (const child of svcCols) out += `    in  p_${child.parseName()} ${toDb2Type(child._inferTypeFull())},\n`;
+        out += `    out p_${pkNm} ${pkType},\n`;
+        out += `    out p_status  varchar(20)\n`;
+        out += `)\nlanguage sql\nbegin\n`;
+        if (hasSvc) {
+            out += `    call ${tbl}_svc.ins(`;
+            const args = [...fkCols.map(fk => `p_${fk}`), ...svcCols.map(c => `p_${c.parseName()}`), `p_${pkNm}`, 'p_status'];
+            out += args.join(', ') + `);\n`;
+        } else {
+            out += `    -- private insert (absorbed from absent _svc)\n`;
+            if (hasHks) out += `    call ${tbl}_hks.p_validate('INSERT', '');\n`;
+            if (hasHks) out += `    call ${tbl}_hks.p_before_insert('');\n`;
+            if (hasDal) {
+                out += `    call ${tbl}_dal.p_insert_row(`;
+                const allCols = [...fkCols.map(fk => `p_${fk}`), ...svcCols.map(c => `p_${c.parseName()}`), `p_${pkNm}`];
+                out += allCols.join(', ') + `);\n`;
+            } else {
+                const cols = [...fkCols, ...svcCols.map(c => c.parseName())];
+                out += `    insert into ${tbl} (`;
+                out += cols.join(', ') + `) values (`;
+                out += cols.map(c => `p_${c}`).join(', ') + `);\n`;
+                out += `    set p_${pkNm} = identity_val_local();\n`;
+            }
+            if (hasHks) out += `    call ${tbl}_hks.p_after_insert('');\n`;
+            out += `    set p_status = 'SUCCESS';\n`;
+        }
+        out += `end @\n\n`;
+
+        // APP.upd
+        out += `create or replace procedure ${tbl}_app.upd (\n`;
+        out += `    in  p_${pkNm} ${pkType},\n`;
+        for (const fk of fkCols) out += `    in  p_${fk} ${fkDb2Type(this.ctx, node.fks![fk])},\n`;
+        for (const child of svcCols) out += `    in  p_${child.parseName()} ${toDb2Type(child._inferTypeFull())},\n`;
+        out += `    out p_status  varchar(20)\n`;
+        out += `)\nlanguage sql\nbegin\n`;
+        if (hasSvc) {
+            out += `    call ${tbl}_svc.upd(p_${pkNm}`;
+            for (const fk of fkCols) out += `, p_${fk}`;
+            for (const child of svcCols) out += `, p_${child.parseName()}`;
+            out += `, p_status);\n`;
+        } else {
+            out += `    -- private update (absorbed from absent _svc)\n`;
+            if (hasHks) out += `    call ${tbl}_hks.p_validate('UPDATE', '');\n`;
+            if (hasHks) out += `    call ${tbl}_hks.p_before_update('');\n`;
+            if (hasDal) {
+                out += `    call ${tbl}_dal.p_update_row(p_${pkNm}`;
+                for (const fk of fkCols) out += `, p_${fk}`;
+                for (const child of svcCols) out += `, p_${child.parseName()}`;
+                out += `);\n`;
+            } else {
+                out += `    update ${tbl} set\n`;
+                const setCols = [...fkCols.map(fk => `        ${fk} = p_${fk}`), ...svcCols.map(c => `        ${c.parseName()} = p_${c.parseName()}`)];
+                out += setCols.join(',\n') + `\n    where ${pkNm} = p_${pkNm};\n`;
+            }
+            if (hasHks) out += `    call ${tbl}_hks.p_after_update('');\n`;
+            out += `    set p_status = 'SUCCESS';\n`;
+        }
+        out += `end @\n\n`;
+
+        // APP.del
+        out += `create or replace procedure ${tbl}_app.del (\n`;
+        out += `    in  p_${pkNm}  ${pkType},\n`;
+        out += `    out p_status   varchar(20)\n`;
+        out += `)\nlanguage sql\nbegin\n`;
+        if (hasSvc)
+            out += `    call ${tbl}_svc.del(p_${pkNm}, p_status);\n`;
+        else {
+            out += `    -- private delete (absorbed from absent _svc)\n`;
+            if (hasHks) out += `    call ${tbl}_hks.p_before_delete(p_${pkNm});\n`;
+            if (hasDal)
+                out += `    call ${tbl}_dal.p_delete_row(p_${pkNm});\n`;
+            else
+                out += `    delete from ${tbl} where ${pkNm} = p_${pkNm};\n`;
+            if (hasHks) out += `    call ${tbl}_hks.p_after_delete(p_${pkNm});\n`;
+            out += `    set p_status = 'SUCCESS';\n`;
+        }
         out += `end @\n\n`;
 
         return out;

@@ -399,11 +399,13 @@ export class Db2DDLGenerator extends BaseGenerator {
                 const hasDal = ['full', 'full+hks'].includes(tier);
                 const hasHks = tier.endsWith('+hks');
                 const hasSvc = ['service', 'service+hks', 'full', 'full+hks'].includes(tier);
-                const ifc    = String(this._ddl.getOptionValue('ifc') ?? 'rest').toLowerCase();
-                const genRst = ifc === 'rest' || ifc === 'both' || ifc === '';
+                const ifc    = String(this._ddl.getOptionValue('ifc') ?? 'app').toLowerCase();
+                const genApp = ifc === 'app' || ifc === 'apex' || ifc === 'both' || ifc === '';
+                const genRst = ifc === 'rest' || ifc === 'both';
                 if (hasDal) ret += `drop schema ${objName}_dal restrict;\n`;
                 if (hasHks) ret += `drop schema ${objName}_hks restrict;\n`;
                 if (hasSvc) ret += `drop schema ${objName}_svc restrict;\n`;
+                if (genApp) ret += `drop schema ${objName}_app restrict;\n`;
                 if (genRst) ret += `drop schema ${objName}_rst restrict;\n`;
             }
         }

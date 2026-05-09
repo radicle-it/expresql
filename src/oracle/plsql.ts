@@ -739,9 +739,9 @@ export class OraclePlsqlBuilder {
         return r;
     }
 
-    private _generateApxSpec(node: IDdlNode): string {
+    private _generateAppSpec(node: IDdlNode): string {
         const tbl       = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const apx       = tbl + '_apx';
+        const apx       = tbl + '_app';
         const pkNm      = (node.getPkName() ?? 'id').toLowerCase();
         const hasVer    = this._hasVersionCol(node);
         const hasAudit  = node.hasAuditCols();
@@ -790,11 +790,11 @@ export class OraclePlsqlBuilder {
         return r;
     }
 
-    private _generateApxBody(node: IDdlNode, hasSvc: boolean, _hasDal: boolean, hasHks: boolean): string {
+    private _generateAppBody(node: IDdlNode, hasSvc: boolean, _hasDal: boolean, hasHks: boolean): string {
         const tbl       = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
         const svc       = tbl + '_svc';
         const hk        = tbl + '_hks';
-        const apx       = tbl + '_apx';
+        const apx       = tbl + '_app';
         const pkNm      = (node.getPkName() ?? 'id').toLowerCase();
         const hasVer    = this._hasVersionCol(node);
         const hasAudit  = node.hasAuditCols();
@@ -1195,8 +1195,9 @@ export class OraclePlsqlBuilder {
         const hasSvc   = ['service', 'service+hks', 'full', 'full+hks'].includes(tier);
         const hasAudit = this._hasAuditLog(node);
 
-        const ifc    = String(this.ctx.getOptionValue('ifc') ?? 'apex').toLowerCase();
-        const genApx = ifc === 'apex' || ifc === 'both' || ifc === '';
+        // 'apex' kept as backward-compat alias for 'app'
+        const ifc    = String(this.ctx.getOptionValue('ifc') ?? 'app').toLowerCase();
+        const genApp = ifc === 'app' || ifc === 'apex' || ifc === 'both' || ifc === '';
         const genRst = ifc === 'rest' || ifc === 'both';
 
         let r = '';
@@ -1209,9 +1210,9 @@ export class OraclePlsqlBuilder {
             r += this._generateSvcBody(node, hasDal, hasHks) + '\n';
             if (hasAudit) r += this._generateAuditBody(node, hasDal) + '\n';
         }
-        if (genApx) r += this._generateApxSpec(node) + '\n' + this._generateApxBody(node, hasSvc, hasDal, hasHks);
+        if (genApp) r += this._generateAppSpec(node) + '\n' + this._generateAppBody(node, hasSvc, hasDal, hasHks);
         if (genRst) {
-            if (genApx) r += '\n';
+            if (genApp) r += '\n';
             r += this._generateRstSpec(node) + '\n' + this._generateRstBody(node, hasSvc, hasDal, hasHks);
         }
         return r;

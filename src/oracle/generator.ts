@@ -564,14 +564,14 @@ export class OracleDDLGenerator extends BaseGenerator {
                 const hasDal  = ['full', 'full+hks'].includes(tier);
                 const hasHks  = tier.endsWith('+hks');
                 const hasSvc  = ['service', 'service+hks', 'full', 'full+hks'].includes(tier);
-                const ifc     = String(this._ddl.getOptionValue('ifc') ?? 'apex').toLowerCase();
-                const genApx  = ifc === 'apex' || ifc === 'both' || ifc === '';
+                const ifc     = String(this._ddl.getOptionValue('ifc') ?? 'app').toLowerCase();
+                const genApp  = ifc === 'app' || ifc === 'apex' || ifc === 'both' || ifc === '';
                 const genRst  = ifc === 'rest' || ifc === 'both';
                 if (hasDal) ret += 'drop package ' + ifExists + objName + '_dal;\n';
                 if (hasHks) ret += 'drop package ' + ifExists + objName + '_hks;\n';
                 if (hasSvc) ret += 'drop package ' + ifExists + objName + '_svc;\n';
                 if (node.isOption('auditlog') && hasSvc) ret += 'drop package ' + ifExists + objName + '_aud;\n';
-                if (genApx)  ret += 'drop package ' + ifExists + objName + '_apx;\n';
+                if (genApp)  ret += 'drop package ' + ifExists + objName + '_app;\n';
                 if (genRst)  ret += 'drop package ' + ifExists + objName + '_rst;\n';
             } else if (this._ddl.optionEQvalue('api', 'yes')) {
                 ret += 'drop package ' + ifExists + objName + '_api;\n';

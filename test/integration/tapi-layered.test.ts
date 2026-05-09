@@ -1384,7 +1384,7 @@ describe('per-table tier system — package selection', () => {
 
     test('lookup tier emits only _apx (no dal, hks, svc)', () => {
         const out = ddl('doctors /api lookup\n  name vc200');
-        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).toContain('create or replace package doctors_app');
         expect(out).not.toContain('create or replace package doctors_dal');
         expect(out).not.toContain('create or replace package doctors_hks');
         expect(out).not.toContain('create or replace package doctors_svc');
@@ -1393,7 +1393,7 @@ describe('per-table tier system — package selection', () => {
     test('lookup+hks tier emits _hks and _apx only', () => {
         const out = ddl('doctors /api lookup+hks\n  name vc200');
         expect(out).toContain('create or replace package doctors_hks');
-        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).toContain('create or replace package doctors_app');
         expect(out).not.toContain('create or replace package doctors_dal');
         expect(out).not.toContain('create or replace package doctors_svc');
     });
@@ -1401,7 +1401,7 @@ describe('per-table tier system — package selection', () => {
     test('service tier emits _svc and _apx only', () => {
         const out = ddl('doctors /api service\n  name vc200');
         expect(out).toContain('create or replace package doctors_svc');
-        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).toContain('create or replace package doctors_app');
         expect(out).not.toContain('create or replace package doctors_dal');
         expect(out).not.toContain('create or replace package doctors_hks');
     });
@@ -1410,7 +1410,7 @@ describe('per-table tier system — package selection', () => {
         const out = ddl('doctors /api service+hks\n  name vc200');
         expect(out).toContain('create or replace package doctors_hks');
         expect(out).toContain('create or replace package doctors_svc');
-        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).toContain('create or replace package doctors_app');
         expect(out).not.toContain('create or replace package doctors_dal');
     });
 
@@ -1418,7 +1418,7 @@ describe('per-table tier system — package selection', () => {
         const out = ddl('doctors /api full\n  name vc200');
         expect(out).toContain('create or replace package doctors_dal');
         expect(out).toContain('create or replace package doctors_svc');
-        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).toContain('create or replace package doctors_app');
         expect(out).not.toContain('create or replace package doctors_hks');
     });
 
@@ -1427,7 +1427,7 @@ describe('per-table tier system — package selection', () => {
         expect(out).toContain('create or replace package doctors_dal');
         expect(out).toContain('create or replace package doctors_hks');
         expect(out).toContain('create or replace package doctors_svc');
-        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).toContain('create or replace package doctors_app');
     });
 
     test('bare /api (no arg) + api:layered global defaults to full+hks', () => {
@@ -1439,7 +1439,7 @@ describe('per-table tier system — package selection', () => {
 
     test('numeric alias 1 maps to lookup', () => {
         const out = ddl('doctors /api 1\n  name vc200');
-        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).toContain('create or replace package doctors_app');
         expect(out).not.toContain('create or replace package doctors_dal');
         expect(out).not.toContain('create or replace package doctors_svc');
     });
@@ -1447,7 +1447,7 @@ describe('per-table tier system — package selection', () => {
     test('numeric alias 1h maps to lookup+hks', () => {
         const out = ddl('doctors /api 1h\n  name vc200');
         expect(out).toContain('create or replace package doctors_hks');
-        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).toContain('create or replace package doctors_app');
         expect(out).not.toContain('create or replace package doctors_svc');
     });
 
@@ -1467,7 +1467,7 @@ describe('per-table tier system — package selection', () => {
     test('different tables in same schema can use different tiers', () => {
         const qsql = 'staff /api lookup\n  name vc200\n\ndoctors /api full+hks\n  name vc200';
         const out = ddl(qsql);
-        expect(out).toContain('create or replace package staff_apx');
+        expect(out).toContain('create or replace package staff_app');
         expect(out).not.toContain('create or replace package staff_dal');
         expect(out).toContain('create or replace package doctors_dal');
         expect(out).toContain('create or replace package doctors_hks');
@@ -1583,21 +1583,27 @@ describe('degradation — HKS id type conditional on DAL presence', () => {
 
 describe('ifc setting — interface package selection', () => {
 
-    test('ifc:"apex" (default) emits _apx but not _rst', () => {
+    test('ifc:"app" (default) emits _app but not _rst', () => {
         const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered"}`);
-        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).toContain('create or replace package doctors_app');
         expect(out).not.toContain('create or replace package doctors_rst');
     });
 
-    test('ifc:"rest" emits _rst but not _apx', () => {
-        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
-        expect(out).toContain('create or replace package doctors_rst');
-        expect(out).not.toContain('create or replace package doctors_apx');
+    test('ifc:"apex" is backward-compat alias for "app"', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "apex"}`);
+        expect(out).toContain('create or replace package doctors_app');
+        expect(out).not.toContain('create or replace package doctors_rst');
     });
 
-    test('ifc:"both" emits both _apx and _rst', () => {
+    test('ifc:"rest" emits _rst but not _app', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        expect(out).toContain('create or replace package doctors_rst');
+        expect(out).not.toContain('create or replace package doctors_app');
+    });
+
+    test('ifc:"both" emits both _app and _rst', () => {
         const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "both"}`);
-        expect(out).toContain('create or replace package doctors_apx');
+        expect(out).toContain('create or replace package doctors_app');
         expect(out).toContain('create or replace package doctors_rst');
     });
 

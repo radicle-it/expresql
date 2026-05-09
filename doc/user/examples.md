@@ -707,39 +707,39 @@ Generated: `products_api` — single package with four procedures.
 ### Layered API — all six tiers
 
 ```quicksql
--- tier: lookup
--- generated: items_apx
+-- tier: lookup (app interface only)
+-- generated: items_app
 items /api lookup
   code  vc20 /nn
   label vc100 /nn
 
 -- tier: lookup+hks
--- generated: categories_hks, categories_apx
+-- generated: categories_hks, categories_app
 categories /api lookup+hks
   code  vc20 /nn
   label vc100 /nn
 
 -- tier: service
--- generated: orders_svc, orders_apx
+-- generated: orders_svc, orders_app
 -- _svc body embeds private DML (no _dal)
 orders /api service
   customer_id num /nn
   total       num(12,2)
 
 -- tier: service+hks
--- generated: invoices_hks, invoices_svc, invoices_apx
+-- generated: invoices_hks, invoices_svc, invoices_app
 invoices /api service+hks
   order_id num /nn
   amount   num(12,2)
 
 -- tier: full  (no hook stubs)
--- generated: employees_dal, employees_svc, employees_apx
+-- generated: employees_dal, employees_svc, employees_app
 employees /api full
   name  vc100 /nn
   email vc200 /nn
 
 -- tier: full+hks  (default for bare /api)
--- generated: contracts_dal, contracts_hks, contracts_svc, contracts_apx
+-- generated: contracts_dal, contracts_hks, contracts_svc, contracts_app
 contracts /api full+hks
   title      vc200 /nn
   row_version num /nn
@@ -752,7 +752,7 @@ Package name anatomy for `contracts` with no prefix:
 | `contracts_dal` | Data Access Layer — raw DML (`get_by_id`, `insert_row`, `update_row`, `delete_row`) |
 | `contracts_hks` | Hooks — override stubs (`validate`, `before_insert`, `after_insert`, …) |
 | `contracts_svc` | Service — orchestrates DAL + hooks; public API (`create_rec`, `get`, `update_rec`, `delete_rec`) |
-| `contracts_apx` | APEX interface — thin scalar-parameter wrappers over `_svc` |
+| `contracts_app` | Application interface — named-parameter wrappers over `_svc` |
 
 ---
 
@@ -788,7 +788,7 @@ employees /api full+hks /auditlog app_audit_log
 | `employees_dal` | Raw DML |
 | `employees_hks` | Business rule stubs |
 | `employees_svc` | Orchestration; calls `employees_aud` after each DML |
-| `employees_apx` | APEX interface |
+| `employees_app` | Application interface |
 | `employees_aud` | Autonomous-transaction audit writer |
 
 The `employees_aud` package:
@@ -1207,26 +1207,26 @@ Different tables in the same schema often need different levels of API complexit
 The `/api <tier>` syntax selects the tier per table independently of the global default.
 
 ```quicksql
--- reference data: thin APEX interface only
--- generated: lookup_codes_apx
+-- reference data: app interface only
+-- generated: lookup_codes_app
 lookup_codes /api lookup
   code  vc20 /nn /unique
   label vc100 /nn
 
 -- business entity with hook stubs but no DAL
--- generated: orders_hks, orders_svc, orders_apx
+-- generated: orders_hks, orders_svc, orders_app
 orders /api service+hks
   customer_id num /nn
   total       num(12,2)
 
 -- core entity: full stack without hooks
--- generated: products_dal, products_svc, products_apx
+-- generated: products_dal, products_svc, products_app
 products /api full
   name  vc100 /nn
   price num(12,2)
 
 -- top-level entity: full stack with hooks
--- generated: employees_dal, employees_hks, employees_svc, employees_apx
+-- generated: employees_dal, employees_hks, employees_svc, employees_app
 employees /api full+hks
   name        vc100 /nn
   email       vc200 /nn /unique
@@ -1278,7 +1278,7 @@ procedure before_delete (p_id in departments_dal.t_id);
 
 ## 21. Layered TAPI — REST interface (`ifc: rest`)
 
-Use `ifc: rest` to generate ORDS handler packages (`_rst`) instead of APEX interface packages (`_apx`). Use `ifc: both` to generate both.
+Use `ifc: rest` to generate ORDS handler packages (`_rst`) instead of application interface packages (`_app`). Use `ifc: both` to generate both.
 
 **Input:**
 
@@ -1316,7 +1316,7 @@ employees /api full+hks
   name vc100 /nn
 ```
 
-This generates both `employees_apx` and `employees_rst`.
+This generates both `employees_app` (named-parameter interface) and `employees_rst` (ORDS handlers).
 
 ---
 

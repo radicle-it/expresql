@@ -10756,8 +10756,8 @@ var Ue = class {
 			"service+hks",
 			"full",
 			"full+hks"
-		].includes(t), a = String(this.ctx.getOptionValue("ifc") ?? "rest").toLowerCase(), o = a === "rest" || a === "both" || a === "" || a === "apex", s = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), c = (e.getPkName() ?? "id").toLowerCase(), l = "integer", u = "--#SET TERMINATOR @\n";
-		return u += `-- TAPI: ${s}  tier=${t}\n\n`, n && (u += `create schema ${s}_dal @\n\n`, u += this._generateDal(e, s, c, l)), r && (u += `create schema ${s}_hks @\n\n`, u += this._generateHks(e, s, c, l, n)), i && (u += `create schema ${s}_svc @\n\n`, u += this._generateSvc(e, s, c, l, n, r)), o && (u += `create schema ${s}_rst @\n\n`, u += this._generateRst(e, s, c, l, i, n, r)), u += "--#SET TERMINATOR ;\n", u;
+		].includes(t), a = String(this.ctx.getOptionValue("ifc") ?? "app").toLowerCase(), o = a === "app" || a === "apex" || a === "both" || a === "", s = a === "rest" || a === "both", c = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), l = (e.getPkName() ?? "id").toLowerCase(), u = "integer", d = "--#SET TERMINATOR @\n";
+		return d += `-- TAPI: ${c}  tier=${t}\n\n`, n && (d += `create schema ${c}_dal @\n\n`, d += this._generateDal(e, c, l, u)), r && (d += `create schema ${c}_hks @\n\n`, d += this._generateHks(e, c, l, u, n)), i && (d += `create schema ${c}_svc @\n\n`, d += this._generateSvc(e, c, l, u, n, r)), o && (d += `create schema ${c}_app @\n\n`, d += this._generateApp(e, c, l, u, i, n, r)), s && (d += `create schema ${c}_rst @\n\n`, d += this._generateRst(e, c, l, u, i, n, r)), d += "--#SET TERMINATOR ;\n", d;
 	}
 	_generateDal(e, t, n, r) {
 		let i = Object.keys(e.fks ?? {}), a = this._svcCols(e), o = "";
@@ -10821,6 +10821,63 @@ var Ue = class {
 			c += e.join(",\n") + `\n    where ${n} = p_${n};\n`;
 		}
 		return a && (c += `    call ${t}_hks.p_after_update('');\n`), c += "    set p_status = 'SUCCESS';\n", c += "end @\n\n", c += `create or replace procedure ${t}_svc.del (\n`, c += `    in  p_${n} ${r},\n`, c += "    out p_status  varchar(20)\n", c += ")\nlanguage sql\nbegin\n", c += "    declare exit handler for sqlexception\n", c += "    begin\n", c += "        set p_status = 'ERROR';\n", c += "    end;\n", a && (c += `    call ${t}_hks.p_before_delete(p_${n});\n`), i ? c += `    call ${t}_dal.p_delete_row(p_${n});\n` : (c += "    -- private delete (absorbed from absent _dal)\n", c += `    delete from ${t} where ${n} = p_${n};\n`), a && (c += `    call ${t}_hks.p_after_delete(p_${n});\n`), c += "    set p_status = 'SUCCESS';\n", c += "end @\n\n", c;
+	}
+	_generateApp(e, t, n, r, i, a, o) {
+		let s = Object.keys(e.fks ?? {}), c = this._svcCols(e), l = "";
+		l += `create or replace procedure ${t}_app.get (\n`, l += `    in  p_${n}  ${r}`;
+		for (let t of s) l += `,\n    out p_${t} ${$(this.ctx, e.fks[t])}`;
+		for (let e of c) l += `,\n    out p_${e.parseName()} ${Q(e._inferTypeFull())}`;
+		l += "\n)\nlanguage sql\nbegin\n";
+		let u = [...s, ...c.map((e) => e.parseName())];
+		u.length > 0 && (l += "    select\n", l += u.map((e) => `        ${e}`).join(",\n") + "\n", l += "    into\n", l += u.map((e) => `        p_${e}`).join(",\n") + "\n", l += `    from ${t}\n`, l += `    where ${n} = p_${n};\n`), l += "end @\n\n", l += `create or replace procedure ${t}_app.ins (\n`;
+		for (let t of s) l += `    in  p_${t} ${$(this.ctx, e.fks[t])},\n`;
+		for (let e of c) l += `    in  p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
+		if (l += `    out p_${n} ${r},\n`, l += "    out p_status  varchar(20)\n", l += ")\nlanguage sql\nbegin\n", i) {
+			l += `    call ${t}_svc.ins(`;
+			let e = [
+				...s.map((e) => `p_${e}`),
+				...c.map((e) => `p_${e.parseName()}`),
+				`p_${n}`,
+				"p_status"
+			];
+			l += e.join(", ") + ");\n";
+		} else {
+			if (l += "    -- private insert (absorbed from absent _svc)\n", o && (l += `    call ${t}_hks.p_validate('INSERT', '');\n`), o && (l += `    call ${t}_hks.p_before_insert('');\n`), a) {
+				l += `    call ${t}_dal.p_insert_row(`;
+				let e = [
+					...s.map((e) => `p_${e}`),
+					...c.map((e) => `p_${e.parseName()}`),
+					`p_${n}`
+				];
+				l += e.join(", ") + ");\n";
+			} else {
+				let e = [...s, ...c.map((e) => e.parseName())];
+				l += `    insert into ${t} (`, l += e.join(", ") + ") values (", l += e.map((e) => `p_${e}`).join(", ") + ");\n", l += `    set p_${n} = identity_val_local();\n`;
+			}
+			o && (l += `    call ${t}_hks.p_after_insert('');\n`), l += "    set p_status = 'SUCCESS';\n";
+		}
+		l += "end @\n\n", l += `create or replace procedure ${t}_app.upd (\n`, l += `    in  p_${n} ${r},\n`;
+		for (let t of s) l += `    in  p_${t} ${$(this.ctx, e.fks[t])},\n`;
+		for (let e of c) l += `    in  p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
+		if (l += "    out p_status  varchar(20)\n", l += ")\nlanguage sql\nbegin\n", i) {
+			l += `    call ${t}_svc.upd(p_${n}`;
+			for (let e of s) l += `, p_${e}`;
+			for (let e of c) l += `, p_${e.parseName()}`;
+			l += ", p_status);\n";
+		} else {
+			if (l += "    -- private update (absorbed from absent _svc)\n", o && (l += `    call ${t}_hks.p_validate('UPDATE', '');\n`), o && (l += `    call ${t}_hks.p_before_update('');\n`), a) {
+				l += `    call ${t}_dal.p_update_row(p_${n}`;
+				for (let e of s) l += `, p_${e}`;
+				for (let e of c) l += `, p_${e.parseName()}`;
+				l += ");\n";
+			} else {
+				l += `    update ${t} set\n`;
+				let e = [...s.map((e) => `        ${e} = p_${e}`), ...c.map((e) => `        ${e.parseName()} = p_${e.parseName()}`)];
+				l += e.join(",\n") + `\n    where ${n} = p_${n};\n`;
+			}
+			o && (l += `    call ${t}_hks.p_after_update('');\n`), l += "    set p_status = 'SUCCESS';\n";
+		}
+		return l += "end @\n\n", l += `create or replace procedure ${t}_app.del (\n`, l += `    in  p_${n}  ${r},\n`, l += "    out p_status   varchar(20)\n", l += ")\nlanguage sql\nbegin\n", i ? l += `    call ${t}_svc.del(p_${n}, p_status);\n` : (l += "    -- private delete (absorbed from absent _svc)\n", o && (l += `    call ${t}_hks.p_before_delete(p_${n});\n`), a ? l += `    call ${t}_dal.p_delete_row(p_${n});\n` : l += `    delete from ${t} where ${n} = p_${n};\n`, o && (l += `    call ${t}_hks.p_after_delete(p_${n});\n`), l += "    set p_status = 'SUCCESS';\n"), l += "end @\n\n", l;
 	}
 	_generateRst(e, t, n, r, i, a, o) {
 		let s = Object.keys(e.fks ?? {}), c = this._svcCols(e), l = "";
@@ -11109,8 +11166,8 @@ var Ke = class extends me {
 					"service+hks",
 					"full",
 					"full+hks"
-				].includes(r), c = String(this._ddl.getOptionValue("ifc") ?? "rest").toLowerCase(), l = c === "rest" || c === "both" || c === "";
-				a && (n += `drop schema ${t}_dal restrict;\n`), o && (n += `drop schema ${t}_hks restrict;\n`), s && (n += `drop schema ${t}_svc restrict;\n`), l && (n += `drop schema ${t}_rst restrict;\n`);
+				].includes(r), c = String(this._ddl.getOptionValue("ifc") ?? "app").toLowerCase(), l = c === "app" || c === "apex" || c === "both" || c === "", u = c === "rest" || c === "both";
+				a && (n += `drop schema ${t}_dal restrict;\n`), o && (n += `drop schema ${t}_hks restrict;\n`), s && (n += `drop schema ${t}_svc restrict;\n`), l && (n += `drop schema ${t}_app restrict;\n`), u && (n += `drop schema ${t}_rst restrict;\n`);
 			}
 		}
 		return n.toLowerCase();
