@@ -643,13 +643,6 @@ footer.status-error  { background: var(--error-bg); color: var(--error-text); bo
 .ac-item .ac-desc  { color: var(--text-muted); font-size: 10px; }
 
 /* ── Help drawer ──────────────────────────────────────────────────── */
-#help-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.4); z-index: 400;
-    opacity: 0; pointer-events: none;
-    transition: opacity .2s ease;
-}
-#help-overlay.open { opacity: 1; pointer-events: auto; }
 #help-drawer {
     position: fixed; top: 0; right: 0; bottom: 0; width: 420px;
     background: var(--bg-ui); border-left: 2px solid var(--border);
@@ -658,6 +651,12 @@ footer.status-error  { background: var(--error-bg); color: var(--error-text); bo
     will-change: transform;
 }
 #help-drawer.open { transform: translateX(0); }
+html.embedded #help-drawer {
+    right: auto; left: 0;
+    border-left: none; border-right: 2px solid var(--border);
+    transform: translateX(-100%);
+}
+html.embedded #help-drawer.open { transform: translateX(0); }
 .hdw-hdr {
     display: flex; align-items: center; justify-content: space-between;
     padding: 10px 16px; background: var(--bg-panel);

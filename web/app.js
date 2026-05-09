@@ -287,15 +287,23 @@ const settingsPanel = initSettingsPanel();
 
 // ── Help drawer ───────────────────────────────────────────────────
 
-const helpOverlay = document.getElementById('help-overlay');
-const helpDrawer  = document.getElementById('help-drawer');
+const helpDrawer = document.getElementById('help-drawer');
+const btnHelp    = document.getElementById('btn-help');
 
-function openHelp()  { helpOverlay.classList.add('open');    helpDrawer.classList.add('open'); }
-function closeHelp() { helpOverlay.classList.remove('open'); helpDrawer.classList.remove('open'); }
+function openHelp() {
+    examplesPanel.classList.remove('open');
+    settingsPanel.classList.remove('open');
+    helpDrawer.classList.add('open');
+}
+function closeHelp() { helpDrawer.classList.remove('open'); }
 
-document.getElementById('btn-help').addEventListener('click', openHelp);
+btnHelp.addEventListener('click', (e) => { e.stopPropagation(); openHelp(); });
 document.getElementById('help-close').addEventListener('click', closeHelp);
-helpOverlay.addEventListener('click', closeHelp);
+
+document.addEventListener('click', (e) => {
+    if (!helpDrawer.contains(e.target) && e.target !== btnHelp)
+        closeHelp();
+});
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -640,6 +648,7 @@ EXAMPLES.forEach((ex) => {
 btnExamples.addEventListener('click', (e) => {
     e.stopPropagation();
     settingsPanel.classList.remove('open');
+    closeHelp();
     const isOpen = examplesPanel.classList.toggle('open');
     if (isOpen) {
         const r = btnExamples.getBoundingClientRect();
