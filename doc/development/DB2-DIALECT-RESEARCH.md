@@ -80,7 +80,7 @@ cleanly at ~85%. The main gaps are:
 - **No `DUAL`** → `SYSIBM.SYSDUMMY1`
 - **No `NVL`** → `COALESCE` (also valid in Oracle)
 - **No Oracle packages** → schema-based namespacing (see §8.3)
-- **No Oracle APEX** → `_apx` tier not applicable
+- **No Oracle APEX** → `_app` tier not applicable
 
 ---
 
@@ -317,7 +317,7 @@ Each TAPI "package" becomes a **schema containing stored procedures**:
 |---|---|---|
 | `employees_dal` | schema `employees_dal` | All DAL procedures in one schema |
 | `employees_svc` | schema `employees_svc` | Service layer |
-| `employees_apx` | _(not generated)_ | APEX is Oracle-specific |
+| `employees_app` | _(not generated)_ | APEX is Oracle-specific |
 | `employees_rst` | schema `employees_rst` | Db2 REST Service compatible |
 
 **Type aliases** (`t_row`, `t_id`) have no Db2 equivalent at the schema level. Options:
@@ -332,7 +332,7 @@ unchanged — the schema-based layout still supports the same tier hierarchy.
 
 | ifc value | Oracle | Db2 |
 |---|---|---|
-| `apex` | APEX `_apx` handler package | _(not applicable)_ |
+| `app` (`apex` = alias) | APEX `_app` handler package | _(not applicable)_ |
 | `rest` | ORDS `_rst` package | IBM Db2 REST Service procedures |
 | `both` | both | REST only |
 
@@ -379,7 +379,7 @@ Phase 1 alone is a shippable, useful product. Phase 2 makes it genuinely differe
 | # | Weakness | Impact |
 |---|---|---|
 | W1 | **No Db2 packages** | TAPI tier system needs significant redesign (schema strategy) |
-| W2 | **Oracle APEX irrelevant** | `_apx` tier produces no output; `ifc: apex` is a no-op |
+| W2 | **Oracle APEX irrelevant** | `_app` tier produces no output; `ifc: app` is a no-op |
 | W3 | **Three incompatible editions** | LUW, z/OS, IBM i each differ — a single dialect may mislead users |
 | W4 | **Test infrastructure** | Requires a Db2 instance (Docker image available but adds CI overhead) |
 | W5 | **Limited organic community** | ExpreSQL is currently Oracle-centric; attracting Db2 users needs outreach |

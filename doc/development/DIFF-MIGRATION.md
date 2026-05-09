@@ -179,11 +179,11 @@ Package replacement uses `CREATE OR REPLACE PACKAGE` / `CREATE OR REPLACE PACKAG
 | `/api layered` → `/api yes` | `DROP PACKAGE` five layered packages + `CREATE OR REPLACE _api` |
 | `/auditlog` added (layered) | `CREATE OR REPLACE` all layered packages (`_aud` included) |
 | `/auditlog` removed (layered) | `DROP PACKAGE _aud` + `CREATE OR REPLACE` remaining four packages |
-| `/apex` added (layered) | `CREATE OR REPLACE` all layered packages (`_apx` included) |
-| `/apex` removed (layered) | `DROP PACKAGE _apx` + `CREATE OR REPLACE` remaining four packages |
+| `/apex` added (layered) | `CREATE OR REPLACE` all layered packages (`_app` included) |
+| `/apex` removed (layered) | `DROP PACKAGE _app` + `CREATE OR REPLACE` remaining four packages |
 | Any column change on a layered table | `CREATE OR REPLACE` all layered packages for that table |
 
-> **Why all-or-nothing for replacement**: the dependency graph between DAL/HKS/SVC/APX/AUD is tight — SVC body calls DAL and AUD, APX body calls SVC. Regenerating all packages via `CREATE OR REPLACE` is safe (idempotent) and avoids the risk of stale inter-package references from partial replacement.
+> **Why all-or-nothing for replacement**: the dependency graph between DAL/HKS/SVC/APP/AUD is tight — SVC body calls DAL and AUD, APP body calls SVC. Regenerating all packages via `CREATE OR REPLACE` is safe (idempotent) and avoids the risk of stale inter-package references from partial replacement.
 
 ### 4.7 PK changes
 
@@ -306,7 +306,7 @@ function diffTable(oldTbl, newTbl, ctx):
 ```
 function diffPackages(oldTbl, newTbl, ctx):
   stmts  ← []
-  oldPkgs ← packageNamesOf(oldTbl)   // e.g. {_api} or {_dal, _hks, _svc, _apx, _aud}
+  oldPkgs ← packageNamesOf(oldTbl)   // e.g. {_api} or {_dal, _hks, _svc, _app, _aud}
   newPkgs ← packageNamesOf(newTbl)
 
   // Permanently removed packages → DROP (the only case DROP PACKAGE is emitted)

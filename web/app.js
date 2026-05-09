@@ -298,6 +298,17 @@ function closeHelp() { helpDrawer.classList.remove('open'); }
 btnHelp.addEventListener('click', (e) => { e.stopPropagation(); openHelp(); });
 document.getElementById('help-close').addEventListener('click', closeHelp);
 
+(function initHelpTabs() {
+    helpDrawer.querySelectorAll('.hdw-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            helpDrawer.querySelectorAll('.hdw-tab').forEach(t => t.classList.remove('active'));
+            helpDrawer.querySelectorAll('.hdw-pane').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            helpDrawer.querySelector(`.hdw-pane[data-pane="${btn.dataset.tab}"]`).classList.add('active');
+        });
+    });
+})();
+
 document.addEventListener('click', (e) => {
     if (!helpDrawer.contains(e.target) && e.target !== btnHelp)
         closeHelp();
@@ -315,7 +326,7 @@ document.addEventListener('keydown', (e) => {
 
 const EXAMPLES = [
     {
-        label: 'Schema Migration (# ---)', desc: 'Incremental ALTER TABLE migration between two schema versions',
+        label: 'Schema Migration (# ---)', desc: 'Incremental ALTER TABLE migration between two schema versions', cat: 'Migration',
         qsql:
 `employees
    name vc100 /nn
@@ -337,7 +348,7 @@ departments
       phone vc50`,
     },
     {
-        label: 'HR — Human Resources', desc: 'Departments, employees, jobs',
+        label: 'HR — Human Resources', desc: 'Departments, employees, jobs', cat: 'Basic',
         qsql:
 `departments /insert 3
    name /nn /upper
@@ -351,7 +362,7 @@ departments
       job_title vc100`,
     },
     {
-        label: 'E-Commerce', desc: 'Customers, orders, products',
+        label: 'E-Commerce', desc: 'Customers, orders, products', cat: 'Basic',
         qsql:
 `customers /insert 5
    name /nn
@@ -372,7 +383,7 @@ products /insert 20
    category vc50`,
     },
     {
-        label: 'Blog', desc: 'Authors, posts, comments',
+        label: 'Blog', desc: 'Authors, posts, comments', cat: 'Basic',
         qsql:
 `authors /insert 5
    name /nn
@@ -389,7 +400,7 @@ products /insert 20
          posted_at ts`,
     },
     {
-        label: 'Healthcare', desc: 'Doctors, patients, appointments',
+        label: 'Healthcare', desc: 'Doctors, patients, appointments', cat: 'Basic',
         qsql:
 `doctors /insert 8
    name /nn
@@ -408,7 +419,7 @@ patients /insert 20
       doctor_id /fk doctors`,
     },
     {
-        label: 'Project Management', desc: 'Teams, projects, tasks',
+        label: 'Project Management', desc: 'Teams, projects, tasks', cat: 'Basic',
         qsql:
 `teams /insert 4
    name /nn
@@ -425,7 +436,7 @@ patients /insert 20
          done bool`,
     },
     {
-        label: 'Inventory', desc: 'Warehouses, categories, products',
+        label: 'Inventory', desc: 'Warehouses, categories, products', cat: 'Basic',
         qsql:
 `warehouses /insert 3
    name /nn
@@ -441,7 +452,7 @@ patients /insert 20
          reorder_level int`,
     },
     {
-        label: 'Star Schema', desc: 'Fact table with dimension tables (sales model)',
+        label: 'Star Schema', desc: 'Fact table with dimension tables (sales model)', cat: 'Advanced',
         qsql:
 `sales /insert 10
    quantity int /nn
@@ -458,7 +469,7 @@ patients /insert 20
 # settings = { pk: identityDataType, semantics: CHAR }`,
     },
     {
-        label: 'JSON Duality Views (23ai)', desc: 'Relational data exposed as JSON documents',
+        label: 'JSON Duality Views (23ai)', desc: 'Relational data exposed as JSON documents', cat: '23ai',
         qsql:
 `departments
    name vc200 /nn
@@ -472,7 +483,7 @@ dv dept_emp_dv departments employees
 # settings = { db: "23c", pk: identityDataType }`,
     },
     {
-        label: 'Multi-lingual (/trans)', desc: 'Translated columns with _trans table and _resolved view',
+        label: 'Multi-lingual (/trans)', desc: 'Translated columns with _trans table and _resolved view', cat: 'Advanced',
         qsql:
 `products
    name        vc200 /nn /trans
@@ -485,7 +496,7 @@ categories
 # settings = { prefix: "shop_", pk: identityDataType }`,
     },
     {
-        label: 'Immutable + SODA + Vector', desc: 'Append-only ledger, document store, AI vector search',
+        label: 'Immutable + SODA + Vector', desc: 'Append-only ledger, document store, AI vector search', cat: '23ai',
         qsql:
 `-- Immutable audit ledger (no UPDATE or DELETE allowed)
 transactions /immutable /insert 5
@@ -505,7 +516,7 @@ embeddings
 # settings = { db: "23c", pk: identityDataType }`,
     },
     {
-        label: 'Oracle SQL Annotations', desc: 'DESCRIPTION, GROUP, custom key-value annotations',
+        label: 'Oracle SQL Annotations', desc: 'DESCRIPTION, GROUP, custom key-value annotations', cat: 'Advanced',
         qsql:
 `employees {DESCRIPTION 'HR workforce', Classification 'HR', GROUP 'PII'}
    full_name  vc200 /nn {DESCRIPTION 'Legal full name', Sensitivity 'Private'}
@@ -516,28 +527,28 @@ embeddings
 # settings = { pk: identityDataType, auditcols: yes }`,
     },
     {
-        label: 'Layered TAPI — tiers', desc: 'Six tiers: lookup → lookup+hks → service → service+hks → full → full+hks',
+        label: 'Layered TAPI — tiers', desc: 'Six tiers: lookup → lookup+hks → service → service+hks → full → full+hks', cat: 'TAPI',
         qsql:
-`-- lookup      → codes_apx
+`-- lookup      → codes_app
 codes /api lookup
    code  vc20 /nn /unique
    label vc100 /nn
 
--- service+hks  → orders_hks, orders_svc, orders_apx
+-- service+hks  → orders_hks, orders_svc, orders_app
 --   (_svc absorbs private DML; delegates to _hks for hooks)
 orders /api service+hks
    customer_id num /nn
    total       num(12,2)
    row_version num /nn
 
--- full+hks     → employees_dal, employees_hks, employees_svc, employees_apx
+-- full+hks     → employees_dal, employees_hks, employees_svc, employees_app
 employees /api full+hks
    name        vc100 /nn
    email       vc200 /nn /unique
    row_version num /nn`,
     },
     {
-        label: 'Layered TAPI — Audit Log', desc: '_aud package with PRAGMA AUTONOMOUS_TRANSACTION; log table defined in schema',
+        label: 'Layered TAPI — Audit Log', desc: '_aud package with PRAGMA AUTONOMOUS_TRANSACTION; log table defined in schema', cat: 'TAPI',
         qsql:
 `app_audit_log /api full+hks
    entity     vc128 /nn
@@ -555,7 +566,7 @@ employees /api full+hks /auditlog app_audit_log
 # settings = {"auditcols": "yes"}`,
     },
     {
-        label: 'Layered TAPI — REST (ifc: rest)', desc: '_rst ORDS handler package: get/ins/upd/del with :body_text, :p_id, :status',
+        label: 'Layered TAPI — REST (ifc: rest)', desc: '_rst ORDS handler package: get/ins/upd/del with :body_text, :p_id, :status', cat: 'TAPI',
         qsql:
 `employees /api full+hks
    name        vc100 /nn
@@ -565,7 +576,7 @@ employees /api full+hks /auditlog app_audit_log
 # settings = {"ifc": "rest"}`,
     },
     {
-        label: 'Multi-Tenant SaaS', desc: 'Shared schema with tenant_id isolation',
+        label: 'Multi-Tenant SaaS', desc: 'Shared schema with tenant_id isolation', cat: 'Multi-tenant',
         qsql:
 `tenants /insert 2
   name      vc200 /nn
@@ -594,7 +605,7 @@ order_lines /insert 50
 # settings = { prefix: "app", tenantid: no, auditcols: yes, rowversion: yes, drop: yes, db: "23c" }`,
     },
     {
-        label: 'Multi-Tenant (auto)', desc: 'tenantid: yes — TENANT_ID, composite FK and auto-FK generated automatically',
+        label: 'Multi-Tenant (auto)', desc: 'tenantid: yes — TENANT_ID, composite FK and auto-FK generated automatically', cat: 'Multi-tenant',
         qsql:
 `subscription_plans /notenantid    -- supra-tenant lookup: no TENANT_ID
   code  vc20 /nn /pk
@@ -628,20 +639,48 @@ order_lines                       -- /cascade → ON DELETE CASCADE on composite
 const examplesPanel = document.getElementById('examples-panel');
 const btnExamples   = document.getElementById('btn-examples');
 
-EXAMPLES.forEach((ex) => {
-    const btn = document.createElement('button');
-    btn.className = 'ex-item';
-    btn.innerHTML = `<strong>${ex.label}</strong><span>${ex.desc}</span>`;
-    btn.addEventListener('click', () => {
-        inputEl.value = ex.qsql;
-        examplesPanel.classList.remove('open');
-        state.lastErdPos = new Map();
-        state.collapsed.clear();
-        state.lastRenderedInput = null;
-        update();
+(function buildExamplesPanel() {
+    const cats = ['All', ...new Set(EXAMPLES.map(e => e.cat))];
+    let activeCat = 'All';
+
+    const tagBar = document.createElement('div');
+    tagBar.className = 'ex-tag-bar';
+    cats.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'ex-tag' + (c === 'All' ? ' active' : '');
+        btn.textContent = c;
+        btn.addEventListener('click', () => {
+            activeCat = c;
+            tagBar.querySelectorAll('.ex-tag').forEach(t => t.classList.toggle('active', t.textContent === c));
+            renderCards();
+        });
+        tagBar.appendChild(btn);
     });
-    examplesPanel.appendChild(btn);
-});
+    examplesPanel.appendChild(tagBar);
+
+    const grid = document.createElement('div');
+    grid.className = 'ex-grid';
+    examplesPanel.appendChild(grid);
+
+    function renderCards() {
+        grid.innerHTML = '';
+        EXAMPLES.filter(e => activeCat === 'All' || e.cat === activeCat).forEach(ex => {
+            const card = document.createElement('button');
+            card.className = 'ex-card';
+            card.innerHTML = `<strong>${ex.label}</strong><span>${ex.desc}</span>`;
+            card.addEventListener('click', () => {
+                inputEl.value = ex.qsql;
+                examplesPanel.classList.remove('open');
+                state.lastErdPos = new Map();
+                state.collapsed.clear();
+                state.lastRenderedInput = null;
+                update();
+            });
+            grid.appendChild(card);
+        });
+    }
+    renderCards();
+})();
 
 btnExamples.addEventListener('click', (e) => {
     e.stopPropagation();

@@ -16,32 +16,32 @@ Add `/api <tier>` on any table. The global `api: layered` setting is still requi
 using bare `/api` (no tier argument, defaults to `full+hks`).
 
 ```espresql
--- lookup      → generated: tbl_apx
+-- lookup      → generated: tbl_app
 lookup_codes /api lookup
   code vc20 /nn
   label vc100 /nn
 
--- lookup+hks  → generated: tbl_hks, tbl_apx
+-- lookup+hks  → generated: tbl_hks, tbl_app
 categories /api lookup+hks
   code vc20 /nn
   label vc100 /nn
 
--- service     → generated: tbl_svc, tbl_apx  (_svc absorbs private DML)
+-- service     → generated: tbl_svc, tbl_app  (_svc absorbs private DML)
 orders /api service
   customer_id num /nn
   total num(12,2)
 
--- service+hks → generated: tbl_hks, tbl_svc, tbl_apx
+-- service+hks → generated: tbl_hks, tbl_svc, tbl_app
 invoices /api service+hks
   order_id num /nn
   amount num(12,2)
 
--- full        → generated: tbl_dal, tbl_svc, tbl_apx  (no hook stubs)
+-- full        → generated: tbl_dal, tbl_svc, tbl_app  (no hook stubs)
 products /api full
   name vc100 /nn
   price num(12,2)
 
--- full+hks    → generated: tbl_dal, tbl_hks, tbl_svc, tbl_apx  (default)
+-- full+hks    → generated: tbl_dal, tbl_hks, tbl_svc, tbl_app  (default)
 employees /api full+hks
   name vc100 /nn
   email vc200 /nn /unique
@@ -72,9 +72,9 @@ Generated extra package: `employees_aud` (autonomous-transaction CDC writer).
 
 | `ifc` value | Interface package | Use case |
 | --- | --- | --- |
-| `apex` (default) | `_apx` | Oracle APEX |
+| `app` (default; `apex` = alias) | `_app` | Oracle APEX |
 | `rest` | `_rst` | ORDS REST endpoints |
-| `both` | `_apx` + `_rst` | Dual access |
+| `both` | `_app` + `_rst` | Dual access |
 
 ```espresql
 # settings = { ifc: rest }
@@ -166,7 +166,7 @@ Adequate for APEX rapid prototyping. Not suitable as a contract-stable enterpris
 | Extensibility | Requires forking the generated package | Hook layer: `validate / before / after` |
 | Error visibility | Low — exceptions swallowed or raw | Full call stack via `DBMS_UTILITY.FORMAT_ERROR_BACKTRACE` |
 | Consumer coverage | APEX only | APEX, ORDS, batch — same service layer |
-| Technology-specific interface | None | IFC layer: `_apx` for APEX, `_rst` for ORDS |
+| Technology-specific interface | None | IFC layer: `_app` for APEX, `_rst` for ORDS |
 | DML + side-effect atomicity | Undefined | Explicit policy per consumer |
 | Migration path | N/A | Incremental, coexists with old package |
 
@@ -188,7 +188,7 @@ The full layered stack is justified when:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  INTERFACE LAYER                                                │
-│  {entity}_apx                   {entity}_rst                   │
+│  {entity}_app                   {entity}_rst                   │
 │  APEX Invoke API                REST/ORDS handler              │
 │  p_-prefixed params             JSON body in / JSON out        │
 │  get / ins / upd / del          get / ins / upd / del          │
@@ -233,7 +233,7 @@ The full layered stack is justified when:
 
 | Layer | Package suffix | Parameters | Responsibilities |
 |---|---|---|---|
-| IFC — APEX | `_apx` | `p_`-prefixed scalars | Maps APEX page items ↔ SVC `t_rec` |
+| IFC — APEX | `_app` | `p_`-prefixed scalars | Maps APEX page items ↔ SVC `t_rec` |
 | IFC — REST | `_rst` | JSON body / JSON response | Maps REST payload ↔ SVC `t_rec` |
 | Service | `_svc` | `t_rec` record | Business logic, hook sequencing, constraint mapping |
 | Hook | `_hks` | `%ROWTYPE` | Validate / before / after (replaceable body) |
@@ -247,12 +247,12 @@ Not every table justifies four separate packages. The tier is specified directly
 
 | Tier | Packages generated | pkg# |
 |------|--------------------|------|
-| `lookup` | `_apx` | 1 |
-| `lookup+hks` | `_apx` `_hks` | 2 |
-| `service` | `_svc` `_apx` | 2 |
-| `service+hks` | `_svc` `_hks` `_apx` | 3 |
-| `full` | `_dal` `_svc` `_apx` | 3 |
-| `full+hks` | `_dal` `_hks` `_svc` `_apx` | 4 |
+| `lookup` | `_app` | 1 |
+| `lookup+hks` | `_app` `_hks` | 2 |
+| `service` | `_svc` `_app` | 2 |
+| `service+hks` | `_svc` `_hks` `_app` | 3 |
+| `full` | `_dal` `_svc` `_app` | 3 |
+| `full+hks` | `_dal` `_hks` `_svc` `_app` | 4 |
 
 `_rst` is orthogonal to the tier — it is added when `ifc: "rest"` or `ifc: "both"` is set, regardless of tier. `_audit` is added when `/auditlog` is active on the table, regardless of tier.
 
@@ -270,7 +270,7 @@ Not every table justifies four separate packages. The tier is specified directly
 
 #### Grant model
 
-Only `_apx` (and `_rst` when generated) is granted to external consumers. `_dal`, `_svc`, and `_hks` are schema-internal regardless of tier.
+Only `_app` (and `_rst` when generated) is granted to external consumers. `_dal`, `_svc`, and `_hks` are schema-internal regardless of tier.
 
 #### EspreSQL syntax
 
@@ -307,13 +307,13 @@ Each layer calls the layer immediately below it when that layer exists; when abs
 | `_hks` spec | `_dal` | `{entity}_dal.t_id` for `before/after_delete` | `{entity}.id%TYPE` |
 | `_svc` body | `_dal` | calls `{entity}_dal.get_by_id`, `insert_row`, … | private procedures `p_get_by_id`, `p_insert_row`, … in `_svc` body |
 | `_svc` body | `_hks` | calls `{entity}_hks.validate`, `before_insert`, … | private no-op stubs in `_svc` body |
-| `_apx` body | `_svc` | calls `{entity}_svc.create_rec`, `update_rec`, … | private procedures absorbing SVC logic in `_apx` body |
+| `_app` body | `_svc` | calls `{entity}_svc.create_rec`, `update_rec`, … | private procedures absorbing SVC logic in `_app` body |
 
 Consequences by tier:
 
 - **`full` / `full+hks`**: all layers independent; each calls the one below.
 - **`service` / `service+hks`**: no `_dal`; `_svc` body contains private DML procedures. `_svc` calls `_hks` when `+hks`.
-- **`lookup` / `lookup+hks`**: no `_dal`, no `_svc`; `_apx` body contains both private DML and business logic. `_apx` calls `_hks` when `+hks`.
+- **`lookup` / `lookup+hks`**: no `_dal`, no `_svc`; `_app` body contains both private DML and business logic. `_app` calls `_hks` when `+hks`.
 
 #### Body pattern — `service+hks` (SVC absorbs DAL)
 
@@ -438,7 +438,7 @@ END doctors_svc;
 /
 ```
 
-For the `lookup+hks` tier the same principle applies one level further: `_apx` body opens with private DML procedures (absorbed from the absent `_dal`) and private business logic procedures (absorbed from the absent `_svc`), then calls `_hks` for hooks. The public `ins`, `upd`, `del` procedures map scalar page-item parameters to `%ROWTYPE` internally.
+For the `lookup+hks` tier the same principle applies one level further: `_app` body opens with private DML procedures (absorbed from the absent `_dal`) and private business logic procedures (absorbed from the absent `_svc`), then calls `_hks` for hooks. The public `ins`, `upd`, `del` procedures map scalar page-item parameters to `%ROWTYPE` internally.
 
 ### 3.5 Design Decisions
 
@@ -474,7 +474,7 @@ Even though row_version is trigger-managed in writing, optimistic concurrency co
 **IFC layer — one package per technology**
 
 The interface layer does not attempt to be generic. Each technology (APEX, ORDS) has its own package with conventions native to that technology:
-- `_apx`: parameters follow the `p_` naming convention; APEX Invoke API auto-maps them to page items of the same root name.
+- `_app`: parameters follow the `p_` naming convention; APEX Invoke API auto-maps them to page items of the same root name.
 - `_rst`: procedures parse JSON input and emit JSON output using Oracle SQL/JSON functions.
 
 Which IFC package is generated is controlled by the global setting `ifc` (default: `apex`). Multiple IFC packages can coexist for the same entity.
@@ -839,7 +839,7 @@ Subsequent regenerations (e.g. new column added):
 | `{entity}_hks` spec | Yes | Generator |
 | `{entity}_hks` body | **No** — contains custom logic | Developer |
 | `{entity}_svc` (spec + body) | Yes | Generator |
-| `{entity}_apx` (spec + body) | Yes | Generator |
+| `{entity}_app` (spec + body) | Yes | Generator |
 | `{entity}_audit` (spec + body) | Yes | Generator |
 | `app_audit_log` DAL/HKS/SVC | Yes | Generator |
 
@@ -985,7 +985,7 @@ END doctors_hks;
 
 ---
 
-## 7. Layer 4 — Interface Layer (`{entity}_apx` / `{entity}_rst`)
+## 7. Layer 4 — Interface Layer (`{entity}_app` / `{entity}_rst`)
 
 ### 7.1 Purpose
 
@@ -999,19 +999,19 @@ Which IFC packages are generated is controlled by the `ifc` setting:
 
 | `ifc` value | Packages generated |
 |---|---|
-| `"apex"` (default) | `_apx` only |
+| `"app"` (default; `"apex"` = alias) | `_app` only |
 | `"rest"` | `_rst` only |
-| `"both"` | `_apx` + `_rst` |
+| `"both"` | `_app` + `_rst` |
 
 ```
-# settings = { ifc: "apex" }    ← generates _apx only (default)
+# settings = { ifc: "app" }     ← generates _app only (default; "apex" is an alias)
 # settings = { ifc: "rest" }    ← generates _rst only
-# settings = { ifc: "both" }    ← generates _apx + _rst
+# settings = { ifc: "both" }    ← generates _app + _rst
 ```
 
-### 7.2 APEX Interface Package (`{entity}_apx`)
+### 7.2 APEX Interface Package (`{entity}_app`)
 
-APEX calls `_apx` procedures from page processes using the **Invoke API** process type. APEX automatically maps page items to parameters by name: a parameter `p_name` is sourced from (or written to) a page item whose name ends in `_NAME` after stripping the page prefix (`P<n>_`).
+APEX calls `_app` procedures from page processes using the **Invoke API** process type. APEX automatically maps page items to parameters by name: a parameter `p_name` is sourced from (or written to) a page item whose name ends in `_NAME` after stripping the page prefix (`P<n>_`).
 
 **Procedure naming**: `get`, `ins`, `upd`, `del` — short imperative verbs consistent with the consumer's mental model. `update` and `delete` are SQL reserved words and cannot be used as bare procedure names in Oracle PL/SQL; `upd` and `del` are the standard short forms.
 
@@ -1022,7 +1022,7 @@ The parameters of `get` are generated conditionally:
 - Audit columns OUT (`p_created`, `p_created_by`, `p_updated`, `p_updated_by`) — only if `auditcols: yes` is active.
 
 ```sql
-CREATE OR REPLACE PACKAGE doctors_apx AS
+CREATE OR REPLACE PACKAGE doctors_app AS
 
     -- Loads a row into OUT parameters, which APEX maps back to page items.
     -- Call from an APEX "Fetch Row" process on page load.
@@ -1062,14 +1062,14 @@ CREATE OR REPLACE PACKAGE doctors_apx AS
 
     PROCEDURE del (p_id IN doctors.id%TYPE);
 
-END doctors_apx;
+END doctors_app;
 /
 ```
 
 #### 7.2.2 Package Body
 
 ```sql
-CREATE OR REPLACE PACKAGE BODY doctors_apx AS
+CREATE OR REPLACE PACKAGE BODY doctors_app AS
 
     PROCEDURE get (
         p_id          IN  doctors.id%TYPE,
@@ -1133,7 +1133,7 @@ CREATE OR REPLACE PACKAGE BODY doctors_apx AS
         doctors_svc.delete_rec(p_id => p_id);
     END del;
 
-END doctors_apx;
+END doctors_app;
 /
 ```
 
@@ -1143,7 +1143,7 @@ END doctors_apx;
 
 APEX forms have a native lost-update mechanism: a hidden `p_md5` item containing an MD5 checksum of the displayed column values. If left active alongside `row_version`, two independent locking mechanisms operate in parallel and can produce contradictory results.
 
-Resolution: **disable APEX's native Lost Update Protection** on any form that submits to this TAPI. Include `row_version` as a hidden page item (e.g., `:P10_ROW_VERSION`) populated by `doctors_apx.get` on load and submitted to `doctors_apx.upd` on save.
+Resolution: **disable APEX's native Lost Update Protection** on any form that submits to this TAPI. Include `row_version` as a hidden page item (e.g., `:P10_ROW_VERSION`) populated by `doctors_app.get` on load and submitted to `doctors_app.upd` on save.
 
 To disable Lost Update Protection in APEX: on each updatable column in the form region, set "Enable Column Locking" to **Off**, and remove any `APEX_ITEM.md5` or `P{n}_CHECKSUM` usage from the page process.
 
@@ -1151,9 +1151,9 @@ To disable Lost Update Protection in APEX: on each updatable column in the form 
 
 | Process event | Type | Package | Procedure | Parameter mapping |
 |---|---|---|---|---|
-| After Header | Invoke API | `doctors_apx` | `get` | `p_id` ← `:P10_ID`; OUT params → corresponding items |
-| Processing | Invoke API | `doctors_apx` | `ins` or `upd` | `p_*` ← page items; `p_id OUT` → `:P10_ID` |
-| Processing | Invoke API | `doctors_apx` | `del` | `p_id` ← `:P10_ID` |
+| After Header | Invoke API | `doctors_app` | `get` | `p_id` ← `:P10_ID`; OUT params → corresponding items |
+| Processing | Invoke API | `doctors_app` | `ins` or `upd` | `p_*` ← page items; `p_id OUT` → `:P10_ID` |
+| Processing | Invoke API | `doctors_app` | `del` | `p_id` ← `:P10_ID` |
 
 APEX automatically applies the page prefix when matching parameter names to items. A parameter `p_name` on page 10 is matched to item `P10_NAME`.
 
@@ -1189,7 +1189,7 @@ END app_error_handler;
 
 ### 7.3 REST Interface Package (`{entity}_rst`)
 
-The `_rst` package is generated when `ifc: "rest"` or `ifc: "both"` is set. It wraps the same SVC layer as `_apx`, translating between JSON and `t_rec`. It is typically called from ORDS resource module handlers.
+The `_rst` package is generated when `ifc: "rest"` or `ifc: "both"` is set. It wraps the same SVC layer as `_app`, translating between JSON and `t_rec`. It is typically called from ORDS resource module handlers.
 
 ```sql
 CREATE OR REPLACE PACKAGE BODY doctors_rst AS
@@ -1369,7 +1369,7 @@ app_audit_log_svc   (spec + body)
 doctors_dal         (spec + body)
 doctors_hks         (spec + body)
 doctors_svc         (spec + body)
-doctors_apx         (spec + body)   ← when ifc: apex or both
+doctors_app         (spec + body)   ← when ifc: apex or both
 doctors_rst         (spec + body)   ← when ifc: rest or both
 doctors_audit       (spec + body)
 ```
@@ -1420,7 +1420,7 @@ Grants must be planned at install time. In a two-schema setup (`DATA_SCHEMA` own
 GRANT SELECT, INSERT, UPDATE, DELETE ON doctors TO APP_SCHEMA;
 
 -- From APP_SCHEMA — only the IFC package is exposed to consumers
-GRANT EXECUTE ON doctors_apx TO APEX_SCHEMA;
+GRANT EXECUTE ON doctors_app TO APEX_SCHEMA;
 GRANT EXECUTE ON doctors_rst TO ORDS_PUBLIC_USER;
 
 -- SVC, DAL, and HKS are internal — no external grants.
@@ -1526,9 +1526,9 @@ SELECT application_id, page_id, process_name, process_text
  WHERE UPPER(process_text) LIKE '%DOCTORS_API%';
 ```
 
-**Step 2** — Install `doctors_dal`, `doctors_hks` (spec + no-op body), `doctors_svc`, `doctors_apx`. The old flat package coexists.
+**Step 2** — Install `doctors_dal`, `doctors_hks` (spec + no-op body), `doctors_svc`, `doctors_app`. The old flat package coexists.
 
-**Step 3** — Migrate APEX page processes one at a time to use `doctors_apx`. Switch from manual bind-variable process code to APEX Invoke API. Disable APEX Lost Update Protection. Map `row_version` to a hidden page item.
+**Step 3** — Migrate APEX page processes one at a time to use `doctors_app`. Switch from manual bind-variable process code to APEX Invoke API. Disable APEX Lost Update Protection. Map `row_version` to a hidden page item.
 
 **Step 4** — Move existing validation logic into the hooks body. Execute the no-op stub from EspreSQL output once, save it as a developer-owned file, then replace the stubs with the custom logic ported from the old package.
 
@@ -1546,7 +1546,7 @@ SELECT application_id, page_id, process_name, process_text
 | 1.3     | 2026-04-26 | Roberto Capancioni | Cross-entity validation via DAL with direct-SQL fallback note; file extension convention (`.pks`/`.pkb` vs `.sql`); corrected `PRAGMA SERIALLY_REUSABLE` misconception |
 | 1.4     | 2026-04-27 | Roberto Capancioni | Audit layer: `/auditlog` directive generates `{entity}_audit` package with `PRAGMA AUTONOMOUS_TRANSACTION`; layer map, file naming table, and generator section updated |
 | 1.5     | 2026-04-27 | Roberto Capancioni | `app_audit_log` is now developer-owned; `_audit.p_log` calls `app_audit_log_svc.create_rec` |
-| 1.6     | 2026-05-05 | Roberto Capancioni | Four-layer architecture: IFC layer added (`_apx` / `_rst`); SVC switches from scalar params to `t_rec` record (business columns only, no PK/rowversion/audit — all trigger-managed); `x_version OUT` removed from SVC; hooks renamed to `_hks` throughout; `ifc` setting controls which IFC package is generated (default: `apex`); APX procedures: `get / ins / upd / del` with `p_`-prefix for APEX Invoke API auto-mapping; grants model updated — only IFC layer is public; `p_row_version` in APX `get`/`upd` only when `/rowversion` active; audit OUT params in APX `get` only when `auditcols: yes` active |
+| 1.6     | 2026-05-05 | Roberto Capancioni | Four-layer architecture: IFC layer added (`_app` / `_rst`); SVC switches from scalar params to `t_rec` record (business columns only, no PK/rowversion/audit — all trigger-managed); `x_version OUT` removed from SVC; hooks renamed to `_hks` throughout; `ifc` setting controls which IFC package is generated (default: `apex`); APX procedures: `get / ins / upd / del` with `p_`-prefix for APEX Invoke API auto-mapping; grants model updated — only IFC layer is public; `p_row_version` in APX `get`/`upd` only when `/rowversion` active; audit OUT params in APX `get` only when `auditcols: yes` active |
 | 1.7     | 2026-05-05 | Roberto Capancioni | DAL: `lock_by_id` function added (SELECT FOR UPDATE NOWAIT); `c_err_locked` constant (-20003); `resource_busy` exception with PRAGMA EXCEPTION_INIT(-54) declared at body level; §4.3 extended with check-then-act pattern, SVC usage example, and guidance on when to use `lock_by_id` vs `get_by_id`; §7.2.3 APEX error handler updated with -20003 mapping; §8 audit body corrected to `l_rec t_rec` pattern (was showing old scalar named-param call); §9 error range and `app_errors` package updated with `c_locked`; §6.2 rewritten — EspreSQL generates a single SQL block, not separate files; file management is a deployment discipline, not a generator feature; `_hks_impl.sql` naming is a developer convention, not enforced by EspreSQL |
 | 1.8     | 2026-05-08 | Roberto Capancioni | §3.4 Tier Model: 6-tier system (`lookup` `lookup+hks` `service` `service+hks` `full` `full+hks`) selects minimum package set per table; tier is the argument to `/api` on each table — `api` key removed from settings block; `+hks` suffix formalises developer-owned `_hks` body; cross-entity coupling constraint and tier selection guide added; `_audit` noted as orthogonal to tier; §3.4 Design Decisions renumbered to §3.5; §3 title "Four-Layer" → "Layered"; §7.1 and §8 settings examples updated; §11 TypeScript simplified with `hasDal`/`hasHks`/`hasSvc` flags and legacy numeric alias mapping |
 | 1.9     | 2026-05-08 | Roberto Capancioni | §3.4 Degradation rule: explicit principle — each layer calls the one below if present, absorbs it as private procedures if absent; cascading table and per-tier consequences added; `service+hks` complete body example showing private DML section; `lookup+hks` pattern described; `_rst` and `_audit` noted as orthogonal to tier in tier table; §6.3 `_hks` spec: `before/after_delete` parameter type is `_dal.t_id` when `_dal` is present, `table.id%TYPE` otherwise — documented with both variants; §6.4/§6.5 bodies updated with conditional type note; §7.1 `ifc` setting: three explicit values (`"apex"` / `"rest"` / `"both"`) replace the previous two-value implicit behaviour; §8 output order updated with `_rst` conditional line; §11 TypeScript: `getOption` → `getOptionValue`; `hasDal` passed to `_generateHksSpec` and `_generateHksBody`; `hasDal`/`hasHks` passed to `_generateSvcBody`; `hasSvc`/`hasDal` passed to `_generateApxBody` and `_generateRstBody`; IFC generation replaced with explicit three-way `ifc` switch |

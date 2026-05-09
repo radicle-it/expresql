@@ -167,25 +167,51 @@ export function initSettingsPanel() {
     body.addEventListener('input',  refreshDirty);
     // ─────────────────────────────────────────────────────────────
 
+    let _activeTab = 'schema';
+
+    function switchTab(name) {
+        _activeTab = name;
+        panel.querySelectorAll('.sett-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+        body.querySelectorAll('.sett-pane').forEach(p => {
+            p.style.display = p.dataset.pane === name ? '' : 'none';
+        });
+    }
+
+    panel.querySelectorAll('.sett-tab').forEach(btn => {
+        btn.addEventListener('click', () => { resetSearch(); switchTab(btn.dataset.tab); });
+    });
+
+    switchTab('schema');
+
     function filterSettings() {
         const q = searchEl.value.trim().toLowerCase();
         clearBtn.style.display = q ? '' : 'none';
 
-        body.querySelectorAll('.sett-row').forEach(row => {
-            const label = row.querySelector('label');
-            const text  = label ? label.textContent.toLowerCase() : '';
-            row.style.display = (!q || text.includes(q)) ? '' : 'none';
-        });
+        if (q) {
+            panel.classList.add('sett-searching');
+            body.querySelectorAll('.sett-pane').forEach(p => { p.style.display = ''; });
+        } else {
+            panel.classList.remove('sett-searching');
+            body.querySelectorAll('.sett-pane').forEach(p => {
+                p.style.display = p.dataset.pane === _activeTab ? '' : 'none';
+            });
+        }
 
-        body.querySelectorAll('.sett-group').forEach(group => {
-            let sibling = group.nextElementSibling;
-            let hasVisible = false;
-            while (sibling && !sibling.classList.contains('sett-group')) {
-                if (sibling.classList.contains('sett-row') && sibling.style.display !== 'none')
-                    hasVisible = true;
-                sibling = sibling.nextElementSibling;
-            }
-            group.style.display = hasVisible ? '' : 'none';
+        body.querySelectorAll('.sett-pane').forEach(pane => {
+            pane.querySelectorAll('.sett-row').forEach(row => {
+                const label = row.querySelector('label');
+                const text  = label ? label.textContent.toLowerCase() : '';
+                row.style.display = (!q || text.includes(q)) ? '' : 'none';
+            });
+            pane.querySelectorAll('.sett-group').forEach(group => {
+                let sib = group.nextElementSibling;
+                let hasVisible = false;
+                while (sib && !sib.classList.contains('sett-group')) {
+                    if (sib.classList.contains('sett-row') && sib.style.display !== 'none') hasVisible = true;
+                    sib = sib.nextElementSibling;
+                }
+                group.style.display = hasVisible ? '' : 'none';
+            });
         });
     }
 

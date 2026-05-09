@@ -44,205 +44,221 @@
 <!-- Settings dropdown -->
 <div id="settings-panel">
     <div class="sett-hdr">Settings<button class="sett-close" id="btn-sett-close" aria-label="Close settings">&times;</button></div>
+    <div class="sett-search-wrap">
+        <span class="sett-search-icon">&#x1F50D;</span>
+        <input id="sett-search" type="text" placeholder="Filter settings…" autocomplete="off">
+        <button id="sett-search-clear" class="sett-search-clear" title="Clear">&#x00D7;</button>
+    </div>
+    <div class="sett-tab-bar">
+        <button class="sett-tab" data-tab="schema">Schema</button>
+        <button class="sett-tab" data-tab="types">Types</button>
+        <button class="sett-tab" data-tab="columns">Columns</button>
+        <button class="sett-tab" data-tab="output">Output</button>
+        <button class="sett-tab" data-tab="advanced">Advanced</button>
+    </div>
     <div class="sett-body">
 
-        <div class="sett-search-wrap">
-            <span class="sett-search-icon">&#x1F50D;</span>
-            <input id="sett-search" type="text" placeholder="Filter settings…" autocomplete="off">
-            <button id="sett-search-clear" class="sett-search-clear" title="Clear">&#x00D7;</button>
+        <div class="sett-pane" data-pane="schema">
+            <div class="sett-group">Primary Key</div>
+            <div class="sett-row">
+                <label for="sett-pk">PK type</label>
+                <select id="sett-pk">
+                    <option value="">— default (guid) —</option>
+                    <option value="identityDataType">identityDataType</option>
+                    <option value="guid">guid</option>
+                    <option value="seq">seq (sequence)</option>
+                    <option value="none">none</option>
+                </select>
+            </div>
+            <div class="sett-row">
+                <label for="sett-genpk">Auto PK</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-genpk"><span class="sett-toggle-slider"></span></label>
+            </div>
+            <div class="sett-row">
+                <label for="sett-prefixpk">Prefix PK with table name</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-prefixpk"><span class="sett-toggle-slider"></span></label>
+            </div>
+
+            <div class="sett-group">Naming</div>
+            <div class="sett-row">
+                <label for="sett-prefix">Object prefix</label>
+                <input id="sett-prefix" type="text" placeholder="e.g. app_, hr_">
+            </div>
+            <div class="sett-row">
+                <label for="sett-schema">Schema</label>
+                <input id="sett-schema" type="text" placeholder="e.g. HR, APP">
+            </div>
+            <div class="sett-row">
+                <label for="sett-dialect">SQL dialect</label>
+                <input id="sett-dialect" type="text" placeholder="oracle">
+            </div>
         </div>
 
-        <div class="sett-group">Primary Key</div>
-        <div class="sett-row">
-            <label for="sett-pk">PK type</label>
-            <select id="sett-pk">
-                <option value="">— default (guid) —</option>
-                <option value="identityDataType">identityDataType</option>
-                <option value="guid">guid</option>
-                <option value="seq">seq (sequence)</option>
-                <option value="none">none</option>
-            </select>
-        </div>
-        <div class="sett-row">
-            <label for="sett-genpk">Auto PK</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-genpk"><span class="sett-toggle-slider"></span></label>
-        </div>
-        <div class="sett-row">
-            <label for="sett-prefixpk">Prefix PK with table name</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-prefixpk"><span class="sett-toggle-slider"></span></label>
-        </div>
-
-        <div class="sett-group">Naming</div>
-        <div class="sett-row">
-            <label for="sett-prefix">Object prefix</label>
-            <input id="sett-prefix" type="text" placeholder="e.g. app_, hr_">
-        </div>
-        <div class="sett-row">
-            <label for="sett-schema">Schema</label>
-            <input id="sett-schema" type="text" placeholder="e.g. HR, APP">
-        </div>
-        <div class="sett-row">
-            <label for="sett-dialect">SQL dialect</label>
-            <input id="sett-dialect" type="text" placeholder="oracle">
-        </div>
-
-        <div class="sett-group">Data Types</div>
-        <div class="sett-row">
-            <label for="sett-db">DB version</label>
-            <input id="sett-db" type="text" placeholder="e.g. 23c, 19c, 21c">
-        </div>
-        <div class="sett-row">
-            <label for="sett-sem">Char semantics</label>
-            <select id="sett-sem">
-                <option value="">— default (CHAR) —</option>
-                <option value="CHAR">CHAR</option>
-                <option value="BYTE">BYTE</option>
-            </select>
-        </div>
-        <div class="sett-row">
-            <label for="sett-date">Date data type</label>
-            <select id="sett-date">
-                <option value="">— default (DATE) —</option>
-                <option value="DATE">DATE</option>
-                <option value="TIMESTAMP">TIMESTAMP</option>
-                <option value="Timestamp with time zone">TIMESTAMP WITH TIME ZONE</option>
-                <option value="Timestamp with local time zone">TIMESTAMP WITH LOCAL TIME ZONE</option>
-            </select>
-        </div>
-        <div class="sett-row">
-            <label for="sett-bool">Boolean data type</label>
-            <select id="sett-bool">
-                <option value="">— not set —</option>
-                <option value="native">native (23c boolean)</option>
-                <option value="yn">yn (char Y/N)</option>
-            </select>
-        </div>
-        <div class="sett-row">
-            <label for="sett-lang">Data language</label>
-            <select id="sett-lang">
-                <option value="">— default (EN) —</option>
-                <option value="EN">EN (English)</option>
-                <option value="JP">JP (Japanese)</option>
-                <option value="KO">KO (Korean)</option>
-            </select>
+        <div class="sett-pane" data-pane="types">
+            <div class="sett-group">Data Types</div>
+            <div class="sett-row">
+                <label for="sett-db">DB version</label>
+                <input id="sett-db" type="text" placeholder="e.g. 23c, 19c, 21c">
+            </div>
+            <div class="sett-row">
+                <label for="sett-sem">Char semantics</label>
+                <select id="sett-sem">
+                    <option value="">— default (CHAR) —</option>
+                    <option value="CHAR">CHAR</option>
+                    <option value="BYTE">BYTE</option>
+                </select>
+            </div>
+            <div class="sett-row">
+                <label for="sett-date">Date data type</label>
+                <select id="sett-date">
+                    <option value="">— default (DATE) —</option>
+                    <option value="DATE">DATE</option>
+                    <option value="TIMESTAMP">TIMESTAMP</option>
+                    <option value="Timestamp with time zone">TIMESTAMP WITH TIME ZONE</option>
+                    <option value="Timestamp with local time zone">TIMESTAMP WITH LOCAL TIME ZONE</option>
+                </select>
+            </div>
+            <div class="sett-row">
+                <label for="sett-bool">Boolean data type</label>
+                <select id="sett-bool">
+                    <option value="">— not set —</option>
+                    <option value="native">native (23c boolean)</option>
+                    <option value="yn">yn (char Y/N)</option>
+                </select>
+            </div>
+            <div class="sett-row">
+                <label for="sett-lang">Data language</label>
+                <select id="sett-lang">
+                    <option value="">— default (EN) —</option>
+                    <option value="EN">EN (English)</option>
+                    <option value="JP">JP (Japanese)</option>
+                    <option value="KO">KO (Korean)</option>
+                </select>
+            </div>
         </div>
 
-        <div class="sett-group">Auto Columns</div>
-        <div class="sett-row">
-            <label for="sett-audit">Audit columns</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-audit"><span class="sett-toggle-slider"></span></label>
-        </div>
-        <div class="sett-row">
-            <label for="sett-rowver">Row version</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-rowver"><span class="sett-toggle-slider"></span></label>
-        </div>
-        <div class="sett-row">
-            <label for="sett-rowkey">Row key (alphanumeric)</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-rowkey"><span class="sett-toggle-slider"></span></label>
-        </div>
-        <div class="sett-row">
-            <label for="sett-aienrich">AI enrichment</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-aienrich"><span class="sett-toggle-slider"></span></label>
+        <div class="sett-pane" data-pane="columns">
+            <div class="sett-group">Auto Columns</div>
+            <div class="sett-row">
+                <label for="sett-audit">Audit columns</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-audit"><span class="sett-toggle-slider"></span></label>
+            </div>
+            <div class="sett-row">
+                <label for="sett-rowver">Row version</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-rowver"><span class="sett-toggle-slider"></span></label>
+            </div>
+            <div class="sett-row">
+                <label for="sett-rowkey">Row key (alphanumeric)</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-rowkey"><span class="sett-toggle-slider"></span></label>
+            </div>
+            <div class="sett-row">
+                <label for="sett-aienrich">AI enrichment</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-aienrich"><span class="sett-toggle-slider"></span></label>
+            </div>
+
+            <div class="sett-group">Audit Column Names</div>
+            <div class="sett-row">
+                <label for="sett-createdcol">Created timestamp column</label>
+                <input id="sett-createdcol" type="text" placeholder="created">
+            </div>
+            <div class="sett-row">
+                <label for="sett-createdbycol">Created by column</label>
+                <input id="sett-createdbycol" type="text" placeholder="created_by">
+            </div>
+            <div class="sett-row">
+                <label for="sett-updatedcol">Updated timestamp column</label>
+                <input id="sett-updatedcol" type="text" placeholder="updated">
+            </div>
+            <div class="sett-row">
+                <label for="sett-updatedbycol">Updated by column</label>
+                <input id="sett-updatedbycol" type="text" placeholder="updated_by">
+            </div>
         </div>
 
-        <div class="sett-group">Output</div>
-        <div class="sett-row">
-            <label for="sett-drop">Include DROP statements</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-drop"><span class="sett-toggle-slider"></span></label>
-        </div>
-        <div class="sett-row">
-            <label for="sett-inserts">Generate INSERTs</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-inserts"><span class="sett-toggle-slider"></span></label>
-        </div>
-        <div class="sett-row">
-            <label for="sett-dv">Duality views</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-dv"><span class="sett-toggle-slider"></span></label>
-        </div>
-        <div class="sett-row">
-            <label for="sett-edit">Editionable</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-edit"><span class="sett-toggle-slider"></span></label>
-        </div>
-        <div class="sett-row">
-            <label for="sett-api">Table API (TAPI)</label>
-            <select id="sett-api">
-                <option value="">— default (no) —</option>
-                <option value="yes">yes</option>
-                <option value="no">no</option>
-                <option value="layered">layered</option>
-            </select>
-        </div>
-        <div class="sett-row">
-            <label for="sett-apex">APEX</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-apex"><span class="sett-toggle-slider"></span></label>
-        </div>
-        <div class="sett-row">
-            <label for="sett-compress">Table compression</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-compress"><span class="sett-toggle-slider"></span></label>
+        <div class="sett-pane" data-pane="output">
+            <div class="sett-group">Output</div>
+            <div class="sett-row">
+                <label for="sett-drop">Include DROP statements</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-drop"><span class="sett-toggle-slider"></span></label>
+            </div>
+            <div class="sett-row">
+                <label for="sett-inserts">Generate INSERTs</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-inserts"><span class="sett-toggle-slider"></span></label>
+            </div>
+            <div class="sett-row">
+                <label for="sett-dv">Duality views</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-dv"><span class="sett-toggle-slider"></span></label>
+            </div>
+            <div class="sett-row">
+                <label for="sett-edit">Editionable</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-edit"><span class="sett-toggle-slider"></span></label>
+            </div>
+            <div class="sett-row">
+                <label for="sett-api">Table API (TAPI)</label>
+                <select id="sett-api">
+                    <option value="">— default (no) —</option>
+                    <option value="yes">yes</option>
+                    <option value="no">no</option>
+                    <option value="layered">layered</option>
+                </select>
+            </div>
+            <div class="sett-row">
+                <label for="sett-apex">APEX</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-apex"><span class="sett-toggle-slider"></span></label>
+            </div>
+            <div class="sett-row">
+                <label for="sett-compress">Table compression</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-compress"><span class="sett-toggle-slider"></span></label>
+            </div>
+
+            <div class="sett-group">FK &amp; Identifiers</div>
+            <div class="sett-row">
+                <label for="sett-ondelete">FK ON DELETE</label>
+                <select id="sett-ondelete">
+                    <option value="">— default (cascade) —</option>
+                    <option value="cascade">cascade</option>
+                    <option value="restrict">restrict</option>
+                    <option value="set null">set null</option>
+                </select>
+            </div>
+            <div class="sett-row">
+                <label for="sett-longvc">Long VARCHAR2 (32767)</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-longvc"><span class="sett-toggle-slider"></span></label>
+            </div>
+            <div class="sett-row">
+                <label for="sett-namelen">Max identifier length</label>
+                <input id="sett-namelen" type="text" placeholder="128 (12.2+) or 30">
+            </div>
         </div>
 
-        <div class="sett-group">FK &amp; Identifiers</div>
-        <div class="sett-row">
-            <label for="sett-ondelete">FK ON DELETE</label>
-            <select id="sett-ondelete">
-                <option value="">— default (cascade) —</option>
-                <option value="cascade">cascade</option>
-                <option value="restrict">restrict</option>
-                <option value="set null">set null</option>
-            </select>
-        </div>
-        <div class="sett-row">
-            <label for="sett-longvc">Long VARCHAR2 (32767)</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-longvc"><span class="sett-toggle-slider"></span></label>
-        </div>
-        <div class="sett-row">
-            <label for="sett-namelen">Max identifier length</label>
-            <input id="sett-namelen" type="text" placeholder="128 (12.2+) or 30">
-        </div>
+        <div class="sett-pane" data-pane="advanced">
+            <div class="sett-group">Multi-tenancy &amp; Data</div>
+            <div class="sett-row">
+                <label for="sett-tenantid">Tenant ID column</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-tenantid"><span class="sett-toggle-slider"></span></label>
+            </div>
+            <div class="sett-row">
+                <label for="sett-tenantref">Tenant reference table</label>
+                <input id="sett-tenantref" type="text" placeholder="tenants">
+            </div>
+            <div class="sett-row">
+                <label for="sett-datalimit">Max INSERT rows per table</label>
+                <input id="sett-datalimit" type="text" placeholder="no limit">
+            </div>
 
-        <div class="sett-group">Multi-tenancy &amp; Data</div>
-        <div class="sett-row">
-            <label for="sett-tenantid">Tenant ID column</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-tenantid"><span class="sett-toggle-slider"></span></label>
-        </div>
-        <div class="sett-row">
-            <label for="sett-tenantref">Tenant reference table</label>
-            <input id="sett-tenantref" type="text" placeholder="tenants">
-        </div>
-        <div class="sett-row">
-            <label for="sett-datalimit">Max INSERT rows per table</label>
-            <input id="sett-datalimit" type="text" placeholder="no limit">
-        </div>
-
-        <div class="sett-group">Audit Column Names</div>
-        <div class="sett-row">
-            <label for="sett-createdcol">Created timestamp column</label>
-            <input id="sett-createdcol" type="text" placeholder="created">
-        </div>
-        <div class="sett-row">
-            <label for="sett-createdbycol">Created by column</label>
-            <input id="sett-createdbycol" type="text" placeholder="created_by">
-        </div>
-        <div class="sett-row">
-            <label for="sett-updatedcol">Updated timestamp column</label>
-            <input id="sett-updatedcol" type="text" placeholder="updated">
-        </div>
-        <div class="sett-row">
-            <label for="sett-updatedbycol">Updated by column</label>
-            <input id="sett-updatedbycol" type="text" placeholder="updated_by">
-        </div>
-
-        <div class="sett-group">Advanced</div>
-        <div class="sett-row">
-            <label for="sett-transcontext">Translation context expression</label>
-            <input id="sett-transcontext" type="text" placeholder="sys_context('APP_CTX','LANG')">
-        </div>
-        <div class="sett-row">
-            <label for="sett-overridesettings">Override UI settings</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-overridesettings"><span class="sett-toggle-slider"></span></label>
-        </div>
-        <div class="sett-row">
-            <label for="sett-verbose">Verbose (show all settings)</label>
-            <label class="sett-toggle"><input type="checkbox" id="sett-verbose"><span class="sett-toggle-slider"></span></label>
+            <div class="sett-group">Advanced</div>
+            <div class="sett-row">
+                <label for="sett-transcontext">Translation context expression</label>
+                <input id="sett-transcontext" type="text" placeholder="sys_context('APP_CTX','LANG')">
+            </div>
+            <div class="sett-row">
+                <label for="sett-overridesettings">Override UI settings</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-overridesettings"><span class="sett-toggle-slider"></span></label>
+            </div>
+            <div class="sett-row">
+                <label for="sett-verbose">Verbose (show all settings)</label>
+                <label class="sett-toggle"><input type="checkbox" id="sett-verbose"><span class="sett-toggle-slider"></span></label>
+            </div>
         </div>
 
     </div>
@@ -324,119 +340,170 @@ emp_v = departments employees
         <strong>EspreSQL Reference</strong>
         <button class="hdw-close" id="help-close">&times;</button>
     </div>
+    <div class="hdw-tab-bar">
+        <button class="hdw-tab active" data-tab="start">Start</button>
+        <button class="hdw-tab" data-tab="tables">Tables</button>
+        <button class="hdw-tab" data-tab="types">Types</button>
+        <button class="hdw-tab" data-tab="views">Views</button>
+        <button class="hdw-tab" data-tab="api">API</button>
+    </div>
     <div class="hdw-body">
 
-        <details class="hdw-sec" open>
-            <summary>Quick Start</summary>
-            <div class="hdw-content">
-                <p class="hdw-note">Write table names at the left margin. Indent columns underneath. Indent a table under another to create a parent-child FK automatically.</p>
-                <code class="hdw-eg">departments
+        <div class="hdw-pane active" data-pane="start">
+            <details class="hdw-sec" open>
+                <summary>Quick Start</summary>
+                <div class="hdw-content">
+                    <p class="hdw-note">Write table names at the left margin. Indent columns underneath. Indent a table under another to create a parent-child FK automatically.</p>
+                    <code class="hdw-eg">departments
    name /nn
    location
    employees
       name /nn vc100
       email /lower
       salary num(10,2)</code>
-                <p class="hdw-note" style="margin-top:8px">Add settings at the end of the script:</p>
-                <code class="hdw-eg"># settings = { db: "23c", auditcols: yes, prefix: "app_" }</code>
-                <p class="hdw-note" style="margin-top:8px">The DDL panel updates in real time. Use <strong>Copy SQL</strong> to grab the output. Load a starter schema from the <strong>Examples ▾</strong> button in the toolbar, or browse the <a href="doc/user/examples.md" target="_blank">full examples guide</a> (21 annotated scenarios with DDL output).</p>
-            </div>
-        </details>
+                    <p class="hdw-note" style="margin-top:8px">Add settings at the end of the script:</p>
+                    <code class="hdw-eg"># settings = { db: "23c", auditcols: yes, prefix: "app_" }</code>
+                    <p class="hdw-note" style="margin-top:8px">The DDL panel updates in real time. Use <strong>Copy SQL</strong> to grab the output. Load a starter schema from the <strong>Examples ▾</strong> button in the toolbar, or browse the <a href="doc/user/examples.md" target="_blank">full examples guide</a>.</p>
+                </div>
+            </details>
+            <details class="hdw-sec">
+                <summary>Keyboard Shortcuts</summary>
+                <div class="hdw-content">
+                    <table class="ref">
+                        <tr><td><kbd>Tab</kbd></td><td>Indent 3 spaces</td></tr>
+                        <tr><td><kbd>Enter</kbd></td><td>Auto-indent to match current line</td></tr>
+                        <tr><td><kbd>Esc</kbd></td><td>Close Help and Settings panels</td></tr>
+                    </table>
+                    <p class="hdw-note" style="margin-top:8px">DDL updates in real time on every keystroke. The ER diagram updates 350 ms after the last keypress.</p>
+                    <p class="hdw-note">QSQL text is auto-saved to localStorage and restored on next visit. Each schema tab has its own content.</p>
+                </div>
+            </details>
+        </div>
 
-        <details class="hdw-sec">
-            <summary>Tables</summary>
-            <div class="hdw-content">
-                <table class="ref">
-                    <tr><td>table_name</td><td>Creates a table with auto primary key</td></tr>
-                    <tr><td>name /insert <em>N</em></td><td>Generate N sample data rows (max 1000)</td></tr>
-                    <tr><td>name /rest</td><td>Enable ORDS REST on the table</td></tr>
-                    <tr><td>name /audit</td><td>Add <code>AUDIT ALL ON &lt;table&gt;</code></td></tr>
-                    <tr><td>name /auditcols</td><td>Add CREATED, CREATED_BY, UPDATED, UPDATED_BY columns + trigger</td></tr>
-                    <tr><td>name /rowversion</td><td>Add ROW_VERSION column; trigger increments on every UPDATE (OCC)</td></tr>
-                    <tr><td>name /api</td><td>Generate Table API (TAPI package)</td></tr>
-                    <tr><td>name /api /auditlog [<em>log_table</em>]</td><td>Layered TAPI + audit package with <code>PRAGMA AUTONOMOUS_TRANSACTION</code>; log table defaults to <code>app_audit_log</code></td></tr>
-                    <tr><td>name /colprefix <em>pfx</em></td><td>Prefix all columns of this table with <em>pfx</em></td></tr>
-                    <tr><td>name /compress</td><td>CREATE TABLE … COMPRESS</td></tr>
-                    <tr><td>name /flashback <em>archive</em></td><td>Enable Flashback Data Archive (optional archive name)</td></tr>
-                    <tr><td>name /immutable</td><td>Append-only table — trigger blocks UPDATE/DELETE (21c+)</td></tr>
-                    <tr><td>name /history</td><td>Temporal history table with valid_from/valid_to (23ai+)</td></tr>
-                    <tr><td>name /soda</td><td>SODA JSON document collection with fixed schema (21c+)</td></tr>
-                </table>
-                <p class="hdw-note" style="margin-top:8px">Tables indented under another table automatically become children with a FK to the parent.</p>
-                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#table-directives" target="_blank">→ Full reference</a></p>
-            </div>
-        </details>
+        <div class="hdw-pane" data-pane="tables">
+            <details class="hdw-sec" open>
+                <summary>Tables</summary>
+                <div class="hdw-content">
+                    <table class="ref">
+                        <tr><td>table_name</td><td>Creates a table with auto primary key</td></tr>
+                        <tr><td>name /insert <em>N</em></td><td>Generate N sample data rows (max 1000)</td></tr>
+                        <tr><td>name /rest</td><td>Enable ORDS REST on the table</td></tr>
+                        <tr><td>name /audit</td><td>Add <code>AUDIT ALL ON &lt;table&gt;</code></td></tr>
+                        <tr><td>name /auditcols</td><td>Add CREATED, CREATED_BY, UPDATED, UPDATED_BY columns + trigger</td></tr>
+                        <tr><td>name /rowversion</td><td>Add ROW_VERSION column; trigger increments on every UPDATE (OCC)</td></tr>
+                        <tr><td>name /api</td><td>Generate Table API (TAPI package)</td></tr>
+                        <tr><td>name /api /auditlog [<em>log_table</em>]</td><td>Layered TAPI + audit package with <code>PRAGMA AUTONOMOUS_TRANSACTION</code></td></tr>
+                        <tr><td>name /colprefix <em>pfx</em></td><td>Prefix all columns of this table with <em>pfx</em></td></tr>
+                        <tr><td>name /compress</td><td>CREATE TABLE … COMPRESS</td></tr>
+                        <tr><td>name /flashback <em>archive</em></td><td>Enable Flashback Data Archive (optional archive name)</td></tr>
+                        <tr><td>name /immutable</td><td>Append-only table — trigger blocks UPDATE/DELETE (21c+)</td></tr>
+                        <tr><td>name /history</td><td>Temporal history table with valid_from/valid_to (23ai+)</td></tr>
+                        <tr><td>name /soda</td><td>SODA JSON document collection with fixed schema (21c+)</td></tr>
+                    </table>
+                    <p class="hdw-note" style="margin-top:8px">Tables indented under another table automatically become children with a FK to the parent.</p>
+                    <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#table-directives" target="_blank">→ Full reference</a></p>
+                </div>
+            </details>
+            <details class="hdw-sec">
+                <summary>Column Directives</summary>
+                <div class="hdw-content">
+                    <table class="ref">
+                        <tr><td>/nn</td><td>NOT NULL constraint</td></tr>
+                        <tr><td>/unique</td><td>UNIQUE constraint</td></tr>
+                        <tr><td>/index</td><td>Non-unique index on the column</td></tr>
+                        <tr><td>/lower</td><td>Trigger: force all lowercase</td></tr>
+                        <tr><td>/upper</td><td>Trigger: force all uppercase</td></tr>
+                        <tr><td>/default <em>val</em></td><td>DEFAULT value</td></tr>
+                        <tr><td>/check <em>A,B,C</em></td><td>CHECK IN (A, B, C)</td></tr>
+                        <tr><td>/between <em>A,B</em></td><td>CHECK BETWEEN A AND B</td></tr>
+                        <tr><td>/fk <em>table</em></td><td>Explicit foreign key reference</td></tr>
+                        <tr><td>/cascade</td><td>ON DELETE CASCADE on the FK</td></tr>
+                        <tr><td>/setnull</td><td>ON DELETE SET NULL on the FK</td></tr>
+                        <tr><td>/pk</td><td>Declare column as primary key</td></tr>
+                        <tr><td>/domain <em>name</em></td><td>Use Oracle SQL Domain as column type (23ai+)</td></tr>
+                        <tr><td>/trans</td><td>Multi-lingual column — generates <code>_trans</code> table + <code>_resolved</code> view</td></tr>
+                        <tr><td>/values <em>v1,v2</em></td><td>Custom values pool for sample INSERT data</td></tr>
+                        <tr><td>/constant <em>val</em></td><td>Fix this column to a constant in all sample INSERTs</td></tr>
+                    </table>
+                    <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#column-directives" target="_blank">→ Full reference</a></p>
+                </div>
+            </details>
+        </div>
 
-        <details class="hdw-sec">
-            <summary>Data Types</summary>
-            <div class="hdw-content">
-                <table class="ref">
-                    <tr><td>vc / vc<em>N</em></td><td>varchar2(4000) / varchar2(N)</td></tr>
-                    <tr><td>vc<em>N</em>k</td><td>varchar2(N*1024) — e.g. <code>vc4k</code></td></tr>
-                    <tr><td>vc32k</td><td>varchar2(32767) — requires <code># longvc: yes</code></td></tr>
-                    <tr><td>num / num(<em>p,s</em>)</td><td>number / number(p,s)</td></tr>
-                    <tr><td>int</td><td>integer</td></tr>
-                    <tr><td>date</td><td>date</td></tr>
-                    <tr><td>ts</td><td>timestamp</td></tr>
-                    <tr><td>tstz / tswtz</td><td>timestamp with time zone</td></tr>
-                    <tr><td>tswltz</td><td>timestamp with local time zone</td></tr>
-                    <tr><td>bool</td><td>boolean (23c) or number(1)</td></tr>
-                    <tr><td>json</td><td>json (23c) or clob check is json</td></tr>
-                    <tr><td>clob / blob</td><td>clob / blob</td></tr>
-                    <tr><td>vect</td><td>vector(*,*,*) — any dimension (23c+)</td></tr>
-                    <tr><td>vect<em>N</em></td><td>vector(N,*,*) — fixed dimension (23c+)</td></tr>
-                    <tr><td>file</td><td>APEX file upload columns</td></tr>
-                </table>
-                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#datatypes" target="_blank">→ Full reference</a></p>
-            </div>
-        </details>
-
-        <details class="hdw-sec">
-            <summary>Column Directives</summary>
-            <div class="hdw-content">
-                <table class="ref">
-                    <tr><td>/nn</td><td>NOT NULL constraint</td></tr>
-                    <tr><td>/unique</td><td>UNIQUE constraint</td></tr>
-                    <tr><td>/index</td><td>Non-unique index on the column</td></tr>
-                    <tr><td>/lower</td><td>Trigger: force all lowercase</td></tr>
-                    <tr><td>/upper</td><td>Trigger: force all uppercase</td></tr>
-                    <tr><td>/default <em>val</em></td><td>DEFAULT value</td></tr>
-                    <tr><td>/check <em>A,B,C</em></td><td>CHECK IN (A, B, C)</td></tr>
-                    <tr><td>/between <em>A,B</em></td><td>CHECK BETWEEN A AND B</td></tr>
-                    <tr><td>/fk <em>table</em></td><td>Explicit foreign key reference</td></tr>
-                    <tr><td>/cascade</td><td>ON DELETE CASCADE on the FK</td></tr>
-                    <tr><td>/setnull</td><td>ON DELETE SET NULL on the FK</td></tr>
-                    <tr><td>/pk</td><td>Declare column as primary key</td></tr>
-                    <tr><td>/domain <em>name</em></td><td>Use Oracle SQL Domain as column type (23ai+)</td></tr>
-                    <tr><td>/trans</td><td>Multi-lingual column — generates <code>_trans</code> table + <code>_resolved</code> view</td></tr>
-                    <tr><td>/values <em>v1,v2</em></td><td>Custom values pool for sample INSERT data</td></tr>
-                    <tr><td>/constant <em>val</em></td><td>Fix this column to a constant in all sample INSERTs</td></tr>
-                </table>
-                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#column-directives" target="_blank">→ Full reference</a></p>
-            </div>
-        </details>
-
-        <details class="hdw-sec">
-            <summary>Annotations</summary>
-            <div class="hdw-content">
-                <p class="hdw-note">Oracle SQL annotations can be added to tables, columns, and views using curly braces <code>{}</code> after the name or directive list.</p>
-                <table class="ref">
-                    <tr><td>{Key 'value'}</td><td>Key-value annotation — single or double quotes</td></tr>
-                    <tr><td>{FlagKey}</td><td>Flag annotation (no value)</td></tr>
-                    <tr><td>{DESCRIPTION 'text'}</td><td>Also generates <code>COMMENT ON TABLE/COLUMN</code></td></tr>
-                    <tr><td>{GROUP 'name'}</td><td>Creates an Oracle annotation group</td></tr>
-                </table>
-                <code class="hdw-eg">departments {DESCRIPTION 'HR departments', Classification 'HR'}
+        <div class="hdw-pane" data-pane="types">
+            <details class="hdw-sec" open>
+                <summary>Data Types</summary>
+                <div class="hdw-content">
+                    <table class="ref">
+                        <tr><td>vc / vc<em>N</em></td><td>varchar2(4000) / varchar2(N)</td></tr>
+                        <tr><td>vc<em>N</em>k</td><td>varchar2(N*1024) — e.g. <code>vc4k</code></td></tr>
+                        <tr><td>vc32k</td><td>varchar2(32767) — requires <code># longvc: yes</code></td></tr>
+                        <tr><td>num / num(<em>p,s</em>)</td><td>number / number(p,s)</td></tr>
+                        <tr><td>int</td><td>integer</td></tr>
+                        <tr><td>date</td><td>date</td></tr>
+                        <tr><td>ts</td><td>timestamp</td></tr>
+                        <tr><td>tstz / tswtz</td><td>timestamp with time zone</td></tr>
+                        <tr><td>tswltz</td><td>timestamp with local time zone</td></tr>
+                        <tr><td>bool</td><td>boolean (23c) or number(1)</td></tr>
+                        <tr><td>json</td><td>json (23c) or clob check is json</td></tr>
+                        <tr><td>clob / blob</td><td>clob / blob</td></tr>
+                        <tr><td>vect</td><td>vector(*,*,*) — any dimension (23c+)</td></tr>
+                        <tr><td>vect<em>N</em></td><td>vector(N,*,*) — fixed dimension (23c+)</td></tr>
+                        <tr><td>file</td><td>APEX file upload columns</td></tr>
+                    </table>
+                    <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#datatypes" target="_blank">→ Full reference</a></p>
+                </div>
+            </details>
+            <details class="hdw-sec">
+                <summary>Annotations</summary>
+                <div class="hdw-content">
+                    <p class="hdw-note">Oracle SQL annotations can be added to tables, columns, and views using curly braces <code>{}</code> after the name or directive list.</p>
+                    <table class="ref">
+                        <tr><td>{Key 'value'}</td><td>Key-value annotation — single or double quotes</td></tr>
+                        <tr><td>{FlagKey}</td><td>Flag annotation (no value)</td></tr>
+                        <tr><td>{DESCRIPTION 'text'}</td><td>Also generates <code>COMMENT ON TABLE/COLUMN</code></td></tr>
+                        <tr><td>{GROUP 'name'}</td><td>Creates an Oracle annotation group</td></tr>
+                    </table>
+                    <code class="hdw-eg">departments {DESCRIPTION 'HR departments', Classification 'HR'}
    name /nn {DESCRIPTION 'Department name'}</code>
-                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#annotations" target="_blank">→ Full reference</a></p>
-            </div>
-        </details>
+                    <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#annotations" target="_blank">→ Full reference</a></p>
+                </div>
+            </details>
+            <details class="hdw-sec">
+                <summary>Comments</summary>
+                <div class="hdw-content">
+                    <p class="hdw-note">Comments are ignored by the DDL generator.</p>
+                    <table class="ref">
+                        <tr><td>-- text</td><td>Single-line comment</td></tr>
+                        <tr><td>/* text */</td><td>Multi-line comment</td></tr>
+                        <tr><td>[text]</td><td>Inline comment (square brackets)</td></tr>
+                    </table>
+                    <code class="hdw-eg">-- My schema
+employees   [main workforce table]
+   name vc100 /* full legal name */</code>
+                    <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#comments" target="_blank">→ Full reference</a></p>
+                </div>
+            </details>
+        </div>
 
-        <details class="hdw-sec">
-            <summary>Schema Migration</summary>
-            <div class="hdw-content">
-                <p class="hdw-note">Write the old schema, add a separator line starting with <code>#</code> and at least two dashes, then write the new schema. The DDL panel switches to migration mode automatically.</p>
-                <code class="hdw-eg">employees
+        <div class="hdw-pane" data-pane="views">
+            <details class="hdw-sec" open>
+                <summary>Views &amp; JSON Duality</summary>
+                <div class="hdw-content">
+                    <table class="ref">
+                        <tr><td>name = t1 t2</td><td>Join view across tables</td></tr>
+                        <tr><td>dv name = t1</td><td>JSON Duality View (Oracle 23c)</td></tr>
+                        <tr><td>&gt; t1</td><td>Star schema: dimension table</td></tr>
+                        <tr><td>&lt; t1</td><td>Snowflake: sub-hierarchy</td></tr>
+                    </table>
+                    <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#views" target="_blank">→ Full reference</a></p>
+                </div>
+            </details>
+            <details class="hdw-sec">
+                <summary>Schema Migration</summary>
+                <div class="hdw-content">
+                    <p class="hdw-note">Write the old schema, add a separator line starting with <code>#</code> and at least two dashes, then write the new schema. The DDL panel switches to migration mode automatically.</p>
+                    <code class="hdw-eg">employees
    name vc100 /nn
    email vc200
 
@@ -446,62 +513,33 @@ employees
    name vc100 /nn
    email vc200 /nn
    phone vc50</code>
-                <p class="hdw-note" style="margin-top:8px">Any number of dashes works — <code>#--</code>, <code># ---</code>, <code>#----</code> are all equivalent.</p>
-                <p class="hdw-note" style="margin-top:4px">Use the <strong>⇄ Compare</strong> button (above the editor) to insert the separator automatically. The button has no effect if the separator is already present.</p>
-                <table class="ref" style="margin-top:6px">
-                    <tr><td>No separator</td><td>Normal DDL mode — full CREATE TABLE script</td></tr>
-                    <tr><td>With separator</td><td>Migration mode — ALTER TABLE / CREATE TABLE incremental script</td></tr>
-                    <tr><td>⚠ DESTRUCTIVE</td><td>Column dropped, NOT NULL added — requires manual step</td></tr>
-                    <tr><td>⚠ LOSSY</td><td>Column size reduced or type changed — data may be truncated</td></tr>
-                    <tr><td>INFO</td><td>Suspected column rename — verify before applying</td></tr>
-                </table>
-                <p class="hdw-note" style="margin-top:6px"><a href="doc/user/espresql-grammar.md#schema-migration" target="_blank">→ Full reference: Schema Migration</a></p>
-            </div>
-        </details>
+                    <p class="hdw-note" style="margin-top:8px">Use the <strong>⇄ Compare</strong> button to insert the separator automatically.</p>
+                    <table class="ref" style="margin-top:6px">
+                        <tr><td>No separator</td><td>Normal DDL mode — full CREATE TABLE script</td></tr>
+                        <tr><td>With separator</td><td>Migration mode — ALTER TABLE / CREATE TABLE incremental script</td></tr>
+                        <tr><td>⚠ DESTRUCTIVE</td><td>Column dropped, NOT NULL added — requires manual step</td></tr>
+                        <tr><td>⚠ LOSSY</td><td>Column size reduced or type changed — data may be truncated</td></tr>
+                        <tr><td>INFO</td><td>Suspected column rename — verify before applying</td></tr>
+                    </table>
+                    <p class="hdw-note" style="margin-top:6px"><a href="doc/user/espresql-grammar.md#schema-migration" target="_blank">→ Full reference: Schema Migration</a></p>
+                </div>
+            </details>
+            <details class="hdw-sec">
+                <summary>Settings</summary>
+                <div class="hdw-content">
+                    <p class="hdw-note">Use the <strong>⚙ Settings</strong> panel in the header to configure options visually, or add a <code># settings = { … }</code> line to your script.</p>
+                    <code class="hdw-eg"># settings = { pk: seq, semantics: CHAR, db: 23c }</code>
+                    <p class="hdw-note" style="margin-top:6px"><a href="doc/user/espresql-grammar.md#settings" target="_blank">→ Full settings reference (all keys and values)</a></p>
+                </div>
+            </details>
+        </div>
 
-        <details class="hdw-sec">
-            <summary>Comments</summary>
-            <div class="hdw-content">
-                <p class="hdw-note">Comments are ignored by the DDL generator.</p>
-                <table class="ref">
-                    <tr><td>-- text</td><td>Single-line comment</td></tr>
-                    <tr><td>/* text */</td><td>Multi-line comment</td></tr>
-                    <tr><td>[text]</td><td>Inline comment (square brackets)</td></tr>
-                </table>
-                <code class="hdw-eg">-- My schema
-employees   [main workforce table]
-   name vc100 /* full legal name */</code>
-                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#comments" target="_blank">→ Full reference</a></p>
-            </div>
-        </details>
-
-        <details class="hdw-sec">
-            <summary>Views &amp; JSON Duality</summary>
-            <div class="hdw-content">
-                <table class="ref">
-                    <tr><td>name = t1 t2</td><td>Join view across tables</td></tr>
-                    <tr><td>dv name = t1</td><td>JSON Duality View (Oracle 23c)</td></tr>
-                    <tr><td>&gt; t1</td><td>Star schema: dimension table</td></tr>
-                    <tr><td>&lt; t1</td><td>Snowflake: sub-hierarchy</td></tr>
-                </table>
-                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#views" target="_blank">→ Full reference</a></p>
-            </div>
-        </details>
-
-        <details class="hdw-sec">
-            <summary>Settings</summary>
-            <div class="hdw-content">
-                <p class="hdw-note">Use the <strong>⚙ Settings</strong> panel in the header to configure options visually, or add a <code># settings = { … }</code> line to your script.</p>
-                <code class="hdw-eg"># settings = { pk: seq, semantics: CHAR, db: 23c }</code>
-                <p class="hdw-note" style="margin-top:6px"><a href="doc/user/espresql-grammar.md#settings" target="_blank">→ Full settings reference (all keys and values)</a></p>
-            </div>
-        </details>
-
-        <details class="hdw-sec">
-            <summary>Quick Examples</summary>
-            <div class="hdw-content">
-                <p class="hdw-note"><strong>Schema migration</strong> — write the old schema, then <code># ---</code>, then the new schema. The DDL panel switches to migration mode automatically (or use the <strong>⇄ Compare</strong> button):</p>
-                <code class="hdw-eg">employees
+        <div class="hdw-pane" data-pane="api">
+            <details class="hdw-sec" open>
+                <summary>Quick Examples</summary>
+                <div class="hdw-content">
+                    <p class="hdw-note"><strong>Schema migration</strong> — write the old schema, then <code># ---</code>, then the new schema:</p>
+                    <code class="hdw-eg">employees
    name vc100 /nn
    email vc200
 
@@ -514,85 +552,47 @@ employees
 
 departments
    dept_name vc100 /nn</code>
-                <p class="hdw-note" style="margin-top:10px">Schema with automatic parent-child hierarchy:</p>
-                <code class="hdw-eg">departments /insert 2
+                    <p class="hdw-note" style="margin-top:10px">Schema with automatic parent-child hierarchy:</p>
+                    <code class="hdw-eg">departments /insert 2
    name /nn
    employees /insert 5
       name /nn vc50
       email /lower
       salary num(10,2)</code>
-                <p class="hdw-note" style="margin-top:10px">Table with trigger and JSON column:</p>
-                <code class="hdw-eg">products /audit
-   name vc100 /nn /upper
-   price num(10,2) /nn
-   specs json</code>
-                <p class="hdw-note" style="margin-top:10px">Explicit FK + audit columns:</p>
-                <code class="hdw-eg">orders /audit /insert 10
+                    <p class="hdw-note" style="margin-top:10px">Explicit FK + audit columns:</p>
+                    <code class="hdw-eg">orders /audit /insert 10
    customer_id /fk customers
    total num(10,2) /nn
    status /check OPEN,CLOSED,PENDING</code>
-                <p class="hdw-note" style="margin-top:10px">Layered TAPI — six tiers per table (<code>lookup</code> → <code>lookup+hks</code> → <code>service</code> → <code>service+hks</code> → <code>full</code> → <code>full+hks</code>). Comments show the generated package names:</p>
-                <code class="hdw-eg">-- lookup  → codes_apx
-codes /api lookup
-   code vc20 /nn
-
--- service+hks  → orders_hks, orders_svc, orders_apx
-orders /api service+hks
-   total num(12,2)
-   row_version num /nn
-
--- full+hks  → emp_dal, emp_hks, emp_svc, emp_apx
-employees /api full+hks
+                    <p class="hdw-note" style="margin-top:10px">Layered TAPI:</p>
+                    <code class="hdw-eg">employees /api full+hks
    name vc100 /nn
    row_version num /nn</code>
-                <p class="hdw-note" style="margin-top:10px">Audit log — <code>/auditlog</code> generates <code>employees_aud</code> (autonomous CDC writer) on top of the layered stack:</p>
-                <code class="hdw-eg">app_audit_log /api full+hks
-   entity vc128 /nn
-   entity_id num /nn
-   operation vc6 /nn
-
-employees /api full+hks /auditlog app_audit_log
-   name vc100 /nn
-   row_version num /nn</code>
-                <p class="hdw-note" style="margin-top:10px"><a href="doc/user/examples.md" target="_blank">→ 21 annotated scenarios with DDL output</a></p>
-            </div>
-        </details>
-
-        <details class="hdw-sec">
-            <summary>API &amp; Further Reading</summary>
-            <div class="hdw-content">
-                <p class="hdw-note">JavaScript / MLE public functions:</p>
-                <table class="ref">
-                    <tr><td><code>toDDL(qsql, optionsJson?)</code></td><td>Convert QSQL to Oracle DDL string</td></tr>
-                    <tr><td><code>toERD(qsql, optionsJson?)</code></td><td>Return ER diagram graph object</td></tr>
-                    <tr><td><code>toErrors(qsql)</code></td><td>Return array of <code>{from, to, message, severity}</code></td></tr>
-                    <tr><td><code>toDiff(oldQsql, newQsql, optionsJson?)</code></td><td>Compute incremental Oracle ALTER TABLE migration between two QSQL versions; returns <code>{sql, statements, warnings, summary}</code></td></tr>
-                    <tr><td><code>fromJSON(json)</code></td><td>Convert JSON document to QSQL string</td></tr>
-                    <tr><td><code>qsql_version()</code></td><td>Return library version string</td></tr>
-                </table>
-                <p class="hdw-note" style="margin-top:8px">Full reference documentation:</p>
-                <table class="ref">
-                    <tr><td><a href="doc/user/espresql-grammar.md" target="_blank">Grammar Reference</a></td><td>All directives, types, settings, API</td></tr>
-                    <tr><td><a href="doc/user/examples.md" target="_blank">Examples</a></td><td>21 end-to-end practical scenarios</td></tr>
-                    <tr><td><a href="doc/user/multitenant-design.md" target="_blank">Multi-Tenant Design</a></td><td>Enterprise multi-tenancy: indexes, FK integrity, VPD</td></tr>
-                    <tr><td><a href="doc/user/quick-erd.md" target="_blank">ERD Guide</a></td><td>Diagram rendering and theming</td></tr>
-                    <tr><td><a href="ORACLE_MLE_INTEGRATION.md" target="_blank">Oracle MLE Integration</a></td><td>Server-side use inside Oracle 23ai+</td></tr>
-                </table>
-            </div>
-        </details>
-
-        <details class="hdw-sec">
-            <summary>Keyboard Shortcuts</summary>
-            <div class="hdw-content">
-                <table class="ref">
-                    <tr><td><kbd>Tab</kbd></td><td>Indent 3 spaces</td></tr>
-                    <tr><td><kbd>Enter</kbd></td><td>Auto-indent to match current line</td></tr>
-                    <tr><td><kbd>Esc</kbd></td><td>Close Help and Settings panels</td></tr>
-                </table>
-                <p class="hdw-note" style="margin-top:8px">DDL updates in real time on every keystroke. The ER diagram updates 350 ms after the last keypress.</p>
-                <p class="hdw-note">QSQL text is auto-saved to localStorage and restored on next visit. Each schema tab has its own content. <strong>Share link</strong> encodes the schema and ERD positions in the URL.</p>
-            </div>
-        </details>
+                    <p class="hdw-note" style="margin-top:10px"><a href="doc/user/examples.md" target="_blank">→ Full examples guide</a></p>
+                </div>
+            </details>
+            <details class="hdw-sec">
+                <summary>API &amp; Further Reading</summary>
+                <div class="hdw-content">
+                    <p class="hdw-note">JavaScript / MLE public functions:</p>
+                    <table class="ref">
+                        <tr><td><code>toDDL(qsql, optionsJson?)</code></td><td>Convert QSQL to Oracle DDL string</td></tr>
+                        <tr><td><code>toERD(qsql, optionsJson?)</code></td><td>Return ER diagram graph object</td></tr>
+                        <tr><td><code>toErrors(qsql)</code></td><td>Return array of <code>{from, to, message, severity}</code></td></tr>
+                        <tr><td><code>toDiff(oldQsql, newQsql, optionsJson?)</code></td><td>Compute incremental migration; returns <code>{sql, statements, warnings, summary}</code></td></tr>
+                        <tr><td><code>fromJSON(json)</code></td><td>Convert JSON document to QSQL string</td></tr>
+                        <tr><td><code>espresql_version()</code></td><td>Return library version string</td></tr>
+                    </table>
+                    <p class="hdw-note" style="margin-top:8px">Full reference documentation:</p>
+                    <table class="ref">
+                        <tr><td><a href="doc/user/espresql-grammar.md" target="_blank">Grammar Reference</a></td><td>All directives, types, settings, API</td></tr>
+                        <tr><td><a href="doc/user/examples.md" target="_blank">Examples</a></td><td>21 end-to-end practical scenarios</td></tr>
+                        <tr><td><a href="doc/user/multitenant-design.md" target="_blank">Multi-Tenant Design</a></td><td>Enterprise multi-tenancy patterns</td></tr>
+                        <tr><td><a href="doc/user/apex-embedding.md" target="_blank">APEX Embedding</a></td><td>iframe integration, themes, URL parameters</td></tr>
+                    </table>
+                </div>
+            </details>
+        </div>
 
     </div>
 </aside>

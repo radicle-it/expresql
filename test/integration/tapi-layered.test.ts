@@ -1382,7 +1382,7 @@ describe('layered TAPI — tenantid:yes', () => {
 
 describe('per-table tier system — package selection', () => {
 
-    test('lookup tier emits only _apx (no dal, hks, svc)', () => {
+    test('lookup tier emits only _app (no dal, hks, svc)', () => {
         const out = ddl('doctors /api lookup\n  name vc200');
         expect(out).toContain('create or replace package doctors_app');
         expect(out).not.toContain('create or replace package doctors_dal');
@@ -1390,7 +1390,7 @@ describe('per-table tier system — package selection', () => {
         expect(out).not.toContain('create or replace package doctors_svc');
     });
 
-    test('lookup+hks tier emits _hks and _apx only', () => {
+    test('lookup+hks tier emits _hks and _app only', () => {
         const out = ddl('doctors /api lookup+hks\n  name vc200');
         expect(out).toContain('create or replace package doctors_hks');
         expect(out).toContain('create or replace package doctors_app');
@@ -1398,7 +1398,7 @@ describe('per-table tier system — package selection', () => {
         expect(out).not.toContain('create or replace package doctors_svc');
     });
 
-    test('service tier emits _svc and _apx only', () => {
+    test('service tier emits _svc and _app only', () => {
         const out = ddl('doctors /api service\n  name vc200');
         expect(out).toContain('create or replace package doctors_svc');
         expect(out).toContain('create or replace package doctors_app');
@@ -1406,7 +1406,7 @@ describe('per-table tier system — package selection', () => {
         expect(out).not.toContain('create or replace package doctors_hks');
     });
 
-    test('service+hks tier emits _hks, _svc, and _apx', () => {
+    test('service+hks tier emits _hks, _svc, and _app', () => {
         const out = ddl('doctors /api service+hks\n  name vc200');
         expect(out).toContain('create or replace package doctors_hks');
         expect(out).toContain('create or replace package doctors_svc');
@@ -1414,7 +1414,7 @@ describe('per-table tier system — package selection', () => {
         expect(out).not.toContain('create or replace package doctors_dal');
     });
 
-    test('full tier emits _dal, _svc, and _apx (no _hks)', () => {
+    test('full tier emits _dal, _svc, and _app (no _hks)', () => {
         const out = ddl('doctors /api full\n  name vc200');
         expect(out).toContain('create or replace package doctors_dal');
         expect(out).toContain('create or replace package doctors_svc');
@@ -1422,7 +1422,7 @@ describe('per-table tier system — package selection', () => {
         expect(out).not.toContain('create or replace package doctors_hks');
     });
 
-    test('full+hks tier emits _dal, _hks, _svc, and _apx', () => {
+    test('full+hks tier emits _dal, _hks, _svc, and _app', () => {
         const out = ddl('doctors /api full+hks\n  name vc200');
         expect(out).toContain('create or replace package doctors_dal');
         expect(out).toContain('create or replace package doctors_hks');

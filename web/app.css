@@ -515,20 +515,67 @@ footer.status-error  { background: var(--error-bg); color: var(--error-text); bo
 #examples-panel {
     position: fixed; background: var(--bg-panel);
     border: 1px solid var(--border); border-radius: 5px;
-    min-width: 240px; z-index: 500; display: none;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.45); overflow: hidden;
+    min-width: 560px; max-height: calc(100vh - 64px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+    display: none; flex-direction: column; overflow: hidden;
 }
-#examples-panel.open { display: block; }
-.ex-item {
-    display: block; width: 100%; padding: 8px 14px 7px;
-    background: none; border: none; border-bottom: 1px solid var(--border);
-    text-align: left; font: inherit; cursor: pointer;
+#examples-panel.open { display: flex; }
+.ex-tag-bar {
+    display: flex; gap: 4px; padding: 8px 10px;
+    border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap;
+}
+.ex-tag {
+    padding: 3px 10px; border-radius: 12px; border: 1px solid var(--border);
+    background: none; color: var(--text-muted); font: inherit; font-size: 11px;
+    cursor: pointer; transition: all .12s;
+}
+.ex-tag:hover   { border-color: var(--border-hover); color: var(--text); }
+.ex-tag.active  { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ex-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 1px; background: var(--border);
+    overflow-y: auto; flex: 1;
+}
+.ex-card {
+    display: flex; flex-direction: column; padding: 10px 14px 9px;
+    background: var(--bg-panel); border: none;
+    text-align: left; cursor: pointer; color: var(--text);
     transition: background .12s;
 }
-.ex-item:last-child { border-bottom: none; }
-.ex-item:hover { background: var(--bg-hover); }
-.ex-item strong { display: block; color: var(--text); font-size: 12px; margin-bottom: 2px; }
-.ex-item span   { font-size: 10px; color: var(--text-muted); }
+.ex-card:hover  { background: var(--bg-hover); }
+.ex-card strong { display: block; color: var(--text); font-size: 12px; margin-bottom: 3px; }
+.ex-card span   { font-size: 10px; color: var(--text-muted); line-height: 1.4; }
+
+/* ── Shared tab bar ──────────────────────────────────────────────── */
+.sett-tab-bar,
+.hdw-tab-bar {
+    display: flex; flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-ui);
+}
+.sett-tab,
+.hdw-tab {
+    flex: 1; padding: 7px 4px; border: none;
+    background: none; color: var(--text-muted);
+    font: inherit; font-size: 11px; cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color .12s, border-color .12s;
+}
+.sett-tab:hover,
+.hdw-tab:hover  { color: var(--text); }
+.sett-tab.active,
+.hdw-tab.active {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+}
+.sett-searching .sett-tab-bar { opacity: 0.4; pointer-events: none; }
+
+/* Settings panes — managed by JS */
+.sett-pane { display: none; }
+
+/* Help panes */
+.hdw-pane         { display: none; }
+.hdw-pane.active  { display: block; }
 
 /* ── Settings dropdown ────────────────────────────────────────────── */
 #settings-panel {
@@ -537,7 +584,7 @@ footer.status-error  { background: var(--error-bg); color: var(--error-text); bo
     border: 1px solid var(--border);
     border-radius: 5px;
     padding: 0;
-    min-width: 360px;
+    min-width: 380px;
     z-index: 500;
     display: none;
     box-shadow: 0 8px 32px rgba(0,0,0,0.45);
@@ -559,12 +606,12 @@ footer.status-error  { background: var(--error-bg); color: var(--error-text); bo
     flex-shrink: 0;
 }
 .sett-close:hover { color: var(--text); }
-.sett-body { flex: 1; overflow-y: auto; padding: 10px 14px 6px; }
+.sett-body { flex: 1; overflow-y: auto; padding: 6px 14px 6px; }
 .sett-group {
     font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px;
     color: var(--rw-red); margin: 10px 0 5px; opacity: 0.9; font-weight: 700;
 }
-.sett-group:first-child { margin-top: 0; }
+.sett-group:first-child { margin-top: 4px; }
 .sett-row { display: flex; align-items: center; margin-bottom: 6px; gap: 8px; font-size: 11px; }
 .sett-row label:not(.sett-toggle) { color: var(--text-muted); min-width: 148px; }
 .sett-row select,
@@ -576,7 +623,7 @@ footer.status-error  { background: var(--error-bg); color: var(--error-text); bo
 .sett-row select:focus,
 .sett-row input[type=text]:focus { outline: none; border-color: var(--accent); }
 .sett-search-wrap {
-    position: relative; margin-bottom: 10px;
+    position: relative; padding: 8px 14px 0; flex-shrink: 0;
 }
 .sett-search-icon {
     position: absolute; left: 7px; top: 50%; transform: translateY(-50%);
@@ -666,7 +713,7 @@ html.embedded #help-drawer.open { transform: translateX(0); }
     font-size: 22px; cursor: pointer; line-height: 1; padding: 0;
 }
 .hdw-close:hover { color: var(--text); }
-.hdw-body { flex: 1; overflow-y: auto; }
+.hdw-body { flex: 1; overflow-y: auto; padding: 8px 16px 12px; }
 details.hdw-sec { border-bottom: 1px solid var(--border); }
 details.hdw-sec > summary {
     padding: 8px 16px; font-size: 10px; text-transform: uppercase;
