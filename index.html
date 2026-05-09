@@ -11,8 +11,13 @@
     <!-- Apply saved theme before first paint to avoid flash -->
     <script>
         (function(){
-            var t = localStorage.getItem('qsql-theme') || 'dark';
+            var params = new URLSearchParams(window.location.search);
+            var t = params.get('theme') || localStorage.getItem('qsql-theme') || 'dark';
             document.documentElement.dataset.theme = t;
+            var embedded = false;
+            try { embedded = window.self !== window.top; } catch(e) { embedded = true; }
+            if (!embedded && params.has('embed')) embedded = true;
+            if (embedded) document.documentElement.classList.add('embedded');
         })();
     </script>
 </head>

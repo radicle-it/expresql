@@ -103,6 +103,61 @@
     --sql-constraint: #6B3694;
 }
 
+/* ── APEX Redwood Ocean dark theme ──────────────────────────────── */
+[data-theme="apex"] {
+    --bg:             #13202f;
+    --bg-ui:          #0d1a28;
+    --bg-panel:       #1a2d40;
+    --bg-btn:         #1e3347;
+    --bg-hover:       #264057;
+    --border:         #2a3e52;
+    --border-hover:   #3d5a72;
+
+    --text:           #e4eaf2;
+    --text-muted:     #7a9ab5;
+    --caret:          #c0d0e0;
+
+    --accent:         #0078ba;
+    --accent-hover:   #006aa6;
+    --accent-dark:    #072840;
+    --accent-mid:     #051e30;
+
+    --error-bg:       #3a1010;
+    --error-border:   #c74634;
+    --error-text:     #f4a090;
+    --danger:         #f4a090;
+
+    --ln-color:       #3d5a72;
+    --ln-border:      #1a2d40;
+
+    --qs-comment:     #5a8a6a;
+    --qs-setting:     #4a7a5a;
+    --qs-table:       #4fc1ff;
+    --qs-column:      #9cdcfe;
+    --qs-directive:   #c586c0;
+    --qs-datatype:    #4ec9b0;
+    --qs-number:      #b5cea8;
+    --qs-annotation:  #d7ba7d;
+    --qs-keyword:     #569cd6;
+
+    --sql-keyword:    #569cd6;
+    --sql-datatype:   #4ec9b0;
+    --sql-string:     #ce9178;
+    --sql-number:     #b5cea8;
+    --sql-comment:    #5a8a6a;
+    --sql-identifier: #9cdcfe;
+    --sql-constraint: #c586c0;
+}
+
+/* ── Embedded mode (iframe) ──────────────────────────────────────── */
+html.embedded body > header,
+html.embedded body > footer {
+    display: none;
+}
+html.embedded .panels {
+    height: 100vh;
+}
+
 /* ── Base ─────────────────────────────────────────────────────────── */
 body {
     font-family: 'Oracle Sans', 'Segoe UI', system-ui, sans-serif;

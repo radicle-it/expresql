@@ -137,6 +137,13 @@ function update() {
     const btn  = document.getElementById('btn-theme');
     const html = document.documentElement;
 
+    // Fixed themes (e.g. apex) are set externally via ?theme= and not user-toggled
+    if (html.dataset.theme === 'apex') {
+        btn.style.display = 'none';
+        applyErdTheme();
+        return;
+    }
+
     function applyTheme(theme) {
         html.dataset.theme   = theme;
         btn.textContent      = theme === 'light' ? '🌙' : '☀';
