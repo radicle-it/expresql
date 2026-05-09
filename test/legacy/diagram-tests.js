@@ -1,4 +1,4 @@
-import  {quicksql, toERD} from "../../src/ddl.js";
+import  {espresql, toERD} from "../../src/ddl.js";
 import { computeHighlightTree, highlightColor, normalizeTableName } from "../../src/quick-erd/highlight.js";
 
 import fs from "fs";
@@ -52,7 +52,7 @@ export default function diagram_tests() {
 `Bug35827754
     data file
     `
-    output = new quicksql(input).getERD();
+    output = new espresql(input).getERD();
 
     assert( "output.items[0].columns[2].name == 'data_filename'" );
     assert( "output.items[0].columns[2].datatype == 'varchar2(255 char)'" );
@@ -64,7 +64,7 @@ export default function diagram_tests() {
     name vc40
     customer_addresses /cascade
         street vc40`
-    output = new quicksql(input).getERD();
+    output = new espresql(input).getERD();
 
     input =
     `customers
@@ -73,7 +73,7 @@ export default function diagram_tests() {
 customer_addresses /cascade
     customer_id /fk customers
     street vc40`
-    output1 = new quicksql(input).getERD();
+    output1 = new espresql(input).getERD();
 
     //console.log(output.items[1].columns[1]);
     assert( "output.items[1].columns[1].name == output1.items[1].columns[1].name" );
@@ -93,7 +93,7 @@ projects {TGROUP "PM"}
 tasks {TGROUP "PM"}
     projects_id /fk projects
     name`
-    output = new quicksql(input).getERD();
+    output = new espresql(input).getERD();
 
     assert( "output.groups != null" );
     assert( "typeof output.groups === 'object'" );
@@ -115,7 +115,7 @@ tasks {TGROUP "PM"}
 order_items
     orders_id /fk orders
     quantity num`
-    output = new quicksql(input).getERD();
+    output = new espresql(input).getERD();
 
     assert( "output.groups != null" );
     assert( "Object.keys(output.groups).length === 0" );
@@ -125,7 +125,7 @@ order_items
 `departments {TGROUP "Core"}
     name
 # settings = { "prefix": "app" }`
-    output = new quicksql(input).getERD();
+    output = new espresql(input).getERD();
 
     assert( "output.groups['Core'] != null" );
     assert( "output.groups['Core'].length === 1" );

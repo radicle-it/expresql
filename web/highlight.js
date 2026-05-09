@@ -46,7 +46,7 @@ function tokenize(text, tokens, defaultCls) {
     return html;
 }
 
-// ── Quick SQL ─────────────────────────────────────────────────────
+// ── EspreSQL ─────────────────────────────────────────────────────
 // All regexes pre-compiled once at module load with 'i' flag.
 
 const QS_INLINE = [
@@ -80,7 +80,7 @@ function qsLineContent(content, nameClass) {
     return html;
 }
 
-export function highlightQuickSQL(text) {
+export function highlightEspreSQL(text) {
     const lines  = text.split('\n');
     const result = [];
     let inBlock  = false;

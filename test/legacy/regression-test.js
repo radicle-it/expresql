@@ -69,9 +69,9 @@ function processFile( subdir, file ) {
         }        
         return;
     }
-    let ext = '.quicksql';
+    let ext = '.espresql';
     if( !file.endsWith(ext) ) {
-        ext = '.qsql';
+        ext = '.esql';
         if( !file.endsWith(ext) ) {
             ext = '.json';
             if( !file.endsWith(ext) ) 
@@ -90,11 +90,11 @@ function processFile( subdir, file ) {
     let output = null;
     resetSeed();
     if( 0 < subdir.indexOf('/erd/') )
-        output = JSON.stringify(new quicksql(text).getERD(),null,3);
+        output = JSON.stringify(new espresql(text).getERD(),null,3);
     else if( ext == '.json' )
         output = fromJSON(text, file);
     else {
-        const p = new quicksql(text);
+        const p = new espresql(text);
         output = p.getDDL();
         const errors =  p.getErrors(text);
         checkNoError(errors);
@@ -104,7 +104,7 @@ function processFile( subdir, file ) {
     if(  0 < subdir.indexOf('/erd/') )
         cmp = fs.readFileSync(subdir+file+'.erd').toString(); 
     else if( ext == '.json' )
-        cmp = fs.readFileSync(subdir+file+'.qsql').toString(); 
+        cmp = fs.readFileSync(subdir+file+'.esql').toString(); 
     else
         cmp = fs.readFileSync(subdir+file+'.sql').toString(); 
 
@@ -169,6 +169,6 @@ console.log("              590 ms     as of 2/8/2024");
 console.log("              486 ms     as of 3/22/2024");
 
 
-import {quicksql} from '../../dist/quick-sql.js';
-console.log("Version "+quicksql.version());
+import {espresql} from '../../dist/espresql.js';
+console.log("Version "+espresql.version());
 

@@ -1,4 +1,4 @@
-# QuickSQL — Diff / Migration Generator (EX-10)
+# EspreSQL — Diff / Migration Generator (EX-10)
 
 **Status**: Draft specification  
 **Version**: 0.6  
@@ -9,7 +9,7 @@
 
 ## 1. Purpose
 
-`toDiff()` computes an incremental migration script between two QuickSQL definitions — an **old** definition (what is currently deployed) and a **new** definition (the desired target state). The output is a sequence of ordered Oracle DDL statements that transition the database from old to new without data loss where avoidable.
+`toDiff()` computes an incremental migration script between two EspreSQL definitions — an **old** definition (what is currently deployed) and a **new** definition (the desired target state). The output is a sequence of ordered Oracle DDL statements that transition the database from old to new without data loss where avoidable.
 
 This solves the core production gap: once a schema is deployed, `toDDL()` cannot be re-run safely. `toDiff()` generates the `ALTER TABLE`, `CREATE INDEX`, `DROP COLUMN`, etc. statements that are safe to apply incrementally.
 
@@ -193,7 +193,7 @@ All PK migrations emit a `DESTRUCTIVE` warning and one or more `requiresManualIn
 
 ### 4.8 Shadow State
 
-`toDiff()` has no visibility into the live database. If a DBA manually created an index, added a constraint, or altered a column outside of QuickSQL, the generated script may fail with object-already-exists or integrity-violation errors.
+`toDiff()` has no visibility into the live database. If a DBA manually created an index, added a constraint, or altered a column outside of EspreSQL, the generated script may fail with object-already-exists or integrity-violation errors.
 
 Mitigations within scope:
 - Index creation and `ADD CONSTRAINT` statements use idempotency wrappers (§7.5) that silently skip ORA-00955 / ORA-02261 errors.
@@ -456,7 +456,7 @@ alter table orders
 
 ### 7.5 Idempotency wrappers
 
-Shadow-state objects (created manually outside QuickSQL) cause ORA-00955 / ORA-02261 on add operations. For Oracle < 23c, creation statements that cannot use `CREATE OR REPLACE` are wrapped in PL/SQL exception handlers:
+Shadow-state objects (created manually outside EspreSQL) cause ORA-00955 / ORA-02261 on add operations. For Oracle < 23c, creation statements that cannot use `CREATE OR REPLACE` are wrapped in PL/SQL exception handlers:
 
 ```sql
 -- Index (ORA-00955 = name already used by existing object)
@@ -500,7 +500,7 @@ The first block in the generated SQL is a human-readable header:
 
 ```sql
 -- ============================================================
--- QuickSQL Migration Script — v0.4
+-- EspreSQL Migration Script — v0.4
 -- Generated : 2026-05-06T14:32:00Z
 -- ============================================================
 --
@@ -749,7 +749,7 @@ Tests live in `test/integration/diff.test.ts`.
 - **PK changes — manual only**: PK structural changes (surrogate → business, composite add/remove/reorder) are supported but require DBA execution of the manual-intervention blocks. Automated pipelines must gate on `requiresManualIntervention`. See `COMPOSITE-PK-SPEC.md`.
 - **Pre-flight check**: shadow-state collisions on non-index / non-constraint objects (e.g., a DBA-added column with the same name) are not mitigated and will cause script failure.
 - **Package drop window**: `DROP PACKAGE` for permanently removed packages is DDL (auto-committed). There is a brief unavoidable window between the drop and the next package creation during which dependent objects reference a missing package. Apply package removals during a maintenance window.
-- **View invalidation**: views defined outside QuickSQL that reference dropped tables are marked `INVALID` by Oracle. The diff only drops views explicitly defined in `oldQsql`.
+- **View invalidation**: views defined outside EspreSQL that reference dropped tables are marked `INVALID` by Oracle. The diff only drops views explicitly defined in `oldQsql`.
 - **Inter-view dependency detection**: topological sort for views requires parsing view column definitions for cross-view references. If view definitions use QSQL constructs that do not expose view-to-view references, declaration order is used as fallback.
 - **NOT NULL without incremental migration**: when the incremental pattern (§7.2) is not followed, NOT NULL column additions require `requiresManualIntervention` and block automated pipelines. Use `/default` to provide a known populate value so the manual block emits a specific `UPDATE` rather than `???`.
 

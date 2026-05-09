@@ -1,4 +1,4 @@
-# QuickSQL — Layered TAPI Architecture Specification
+# EspreSQL — Layered TAPI Architecture Specification
 
 **Status**: Specification  
 **Version**: 1.9  
@@ -15,7 +15,7 @@
 Add `/api <tier>` on any table. The global `api: layered` setting is still required when
 using bare `/api` (no tier argument, defaults to `full+hks`).
 
-```quicksql
+```espresql
 -- lookup      → generated: tbl_apx
 lookup_codes /api lookup
   code vc20 /nn
@@ -53,7 +53,7 @@ Numeric aliases: `1`=`lookup`, `1h`=`lookup+hks`, `2`=`service`, `2h`=`service+h
 
 ### Audit log
 
-```quicksql
+```espresql
 app_audit_log /api full+hks
   entity vc128 /nn
   entity_id num /nn
@@ -76,7 +76,7 @@ Generated extra package: `employees_aud` (autonomous-transaction CDC writer).
 | `rest` | `_rst` | ORDS REST endpoints |
 | `both` | `_apx` + `_rst` | Dual access |
 
-```quicksql
+```espresql
 # settings = { ifc: rest }
 
 employees /api full+hks
@@ -90,13 +90,13 @@ employees /api full+hks
 - **Per-table tier selection**: [doc/user/examples.md §19](../user/examples.md#19-layered-tapi--per-table-tier-selection)
 - **Degradation rule**: [doc/user/examples.md §20](../user/examples.md#20-layered-tapi--degradation-absorbed-layers)
 - **REST interface**: [doc/user/examples.md §21](../user/examples.md#21-layered-tapi--rest-interface-ifc-rest)
-- **Grammar reference**: [doc/user/quick-sql-grammar.md §api](../user/quick-sql-grammar.md#api)
+- **Grammar reference**: [doc/user/espresql-grammar.md §api](../user/espresql-grammar.md#api)
 
 ---
 
 ## 1. Critical Analysis of the Current Generated TAPI
 
-The TAPI produced by QuickSQL (`/api` directive) is a functional scaffold, not a production-ready API. Before defining the target architecture, the defects must be understood explicitly.
+The TAPI produced by EspreSQL (`/api` directive) is a functional scaffold, not a production-ready API. Before defining the target architecture, the defects must be understood explicitly.
 
 ### 1.1 Structural Defects
 
@@ -157,9 +157,9 @@ Adequate for APEX rapid prototyping. Not suitable as a contract-stable enterpris
 
 ---
 
-## 2. QuickSQL Default vs. Layered TAPI — At a Glance
+## 2. EspreSQL Default vs. Layered TAPI — At a Glance
 
-| Capability | QuickSQL Default (`/api`) | Layered TAPI (this spec) |
+| Capability | EspreSQL Default (`/api`) | Layered TAPI (this spec) |
 |---|---|---|
 | Signature stability | Low — scalar params break on new columns | High — DAL uses `%ROWTYPE`; SVC uses `t_rec` |
 | Concurrent write safety | None — lost updates possible | Native optimistic locking via `row_version` |
@@ -272,7 +272,7 @@ Not every table justifies four separate packages. The tier is specified directly
 
 Only `_apx` (and `_rst` when generated) is granted to external consumers. `_dal`, `_svc`, and `_hks` are schema-internal regardless of tier.
 
-#### QuickSQL syntax
+#### EspreSQL syntax
 
 The tier is the argument to `/api`. When omitted, the default is `full+hks` (backward-compatible with the old `layered` value). The `api` key is not needed in the settings block.
 
@@ -805,7 +805,7 @@ Mitigation: deploy hooks body changes during a maintenance window or low-traffic
 
 ### 6.2 Deployment Convention — Single Script Output
 
-QuickSQL generates a **single SQL block** containing all packages in compilation order. It does not manage individual files. The hooks body is included in this output as a no-op stub.
+EspreSQL generates a **single SQL block** containing all packages in compilation order. It does not manage individual files. The hooks body is included in this output as a no-op stub.
 
 The responsibility for protecting custom hooks code from accidental overwrite belongs entirely to the developer's deployment workflow, not to the generator.
 
@@ -813,20 +813,20 @@ The responsibility for protecting custom hooks code from accidental overwrite be
 
 ```
 First generation:
-  1. Run QuickSQL → copy the full output into your SQL client
+  1. Run EspreSQL → copy the full output into your SQL client
   2. Execute the full script — installs dal, hks spec, hks body (no-op), svc, apx
   3. Save the hks body block into a separate developer-owned file
      (e.g. doctors_hks_impl.sql) in version control
   4. Replace the no-op stubs with custom logic in that file
 
 Subsequent regenerations (e.g. new column added):
-  1. Run QuickSQL → new output contains updated spec + refreshed no-op body
+  1. Run EspreSQL → new output contains updated spec + refreshed no-op body
   2. Execute ONLY the packages you want to refresh:
        dal spec + body     ← always safe to re-run
        hks spec            ← safe to re-run (spec is generated, fixed interface)
        svc spec + body     ← always safe to re-run
        apx spec + body     ← always safe to re-run
-  3. Do NOT re-execute the hks body block from QuickSQL output
+  3. Do NOT re-execute the hks body block from EspreSQL output
   4. If the hks spec changed (new hook added), update doctors_hks_impl.sql manually
      to add the new stub, then re-execute your custom body
 ```
@@ -888,14 +888,14 @@ For tiers without `_dal` (`service+hks`, `lookup+hks`) the generator emits `doct
 
 ### 6.4 Default No-Op Body
 
-QuickSQL includes this block in the generated output. Execute it once to install the stub. Save it separately and replace the `NULL` stubs with custom logic — do not re-execute this block from subsequent QuickSQL output.
+EspreSQL includes this block in the generated output. Execute it once to install the stub. Save it separately and replace the `NULL` stubs with custom logic — do not re-execute this block from subsequent EspreSQL output.
 
 The type of `p_id` in `before_delete` and `after_delete` matches the spec (see §6.3): `doctors_dal.t_id` when `_dal` is present, `doctors.id%TYPE` otherwise.
 
 ```sql
 -- WARNING: execute once only. Do not re-run after adding custom logic.
 -- Save this block as a developer-owned file (e.g. doctors_hks_impl.sql)
--- and manage it independently from the QuickSQL output.
+-- and manage it independently from the EspreSQL output.
 CREATE OR REPLACE PACKAGE BODY doctors_hks AS
 
     PROCEDURE validate (
@@ -1431,7 +1431,7 @@ In a single-schema deployment, only the last two grants apply.
 
 ---
 
-## 11. QuickSQL Generator Integration
+## 11. EspreSQL Generator Integration
 
 The tier is the argument to `/api` on each table. When omitted, the default is `full+hks` (backward-compatible with the old `layered` value). The `api` key is not used in the settings block — tier selection is always per-table.
 
@@ -1530,7 +1530,7 @@ SELECT application_id, page_id, process_name, process_text
 
 **Step 3** — Migrate APEX page processes one at a time to use `doctors_apx`. Switch from manual bind-variable process code to APEX Invoke API. Disable APEX Lost Update Protection. Map `row_version` to a hidden page item.
 
-**Step 4** — Move existing validation logic into the hooks body. Execute the no-op stub from QuickSQL output once, save it as a developer-owned file, then replace the stubs with the custom logic ported from the old package.
+**Step 4** — Move existing validation logic into the hooks body. Execute the no-op stub from EspreSQL output once, save it as a developer-owned file, then replace the stubs with the custom logic ported from the old package.
 
 **Step 5** — When Step 1 queries return zero rows: `DROP PACKAGE doctors_api`.
 
@@ -1547,6 +1547,6 @@ SELECT application_id, page_id, process_name, process_text
 | 1.4     | 2026-04-27 | Roberto Capancioni | Audit layer: `/auditlog` directive generates `{entity}_audit` package with `PRAGMA AUTONOMOUS_TRANSACTION`; layer map, file naming table, and generator section updated |
 | 1.5     | 2026-04-27 | Roberto Capancioni | `app_audit_log` is now developer-owned; `_audit.p_log` calls `app_audit_log_svc.create_rec` |
 | 1.6     | 2026-05-05 | Roberto Capancioni | Four-layer architecture: IFC layer added (`_apx` / `_rst`); SVC switches from scalar params to `t_rec` record (business columns only, no PK/rowversion/audit — all trigger-managed); `x_version OUT` removed from SVC; hooks renamed to `_hks` throughout; `ifc` setting controls which IFC package is generated (default: `apex`); APX procedures: `get / ins / upd / del` with `p_`-prefix for APEX Invoke API auto-mapping; grants model updated — only IFC layer is public; `p_row_version` in APX `get`/`upd` only when `/rowversion` active; audit OUT params in APX `get` only when `auditcols: yes` active |
-| 1.7     | 2026-05-05 | Roberto Capancioni | DAL: `lock_by_id` function added (SELECT FOR UPDATE NOWAIT); `c_err_locked` constant (-20003); `resource_busy` exception with PRAGMA EXCEPTION_INIT(-54) declared at body level; §4.3 extended with check-then-act pattern, SVC usage example, and guidance on when to use `lock_by_id` vs `get_by_id`; §7.2.3 APEX error handler updated with -20003 mapping; §8 audit body corrected to `l_rec t_rec` pattern (was showing old scalar named-param call); §9 error range and `app_errors` package updated with `c_locked`; §6.2 rewritten — QuickSQL generates a single SQL block, not separate files; file management is a deployment discipline, not a generator feature; `_hks_impl.sql` naming is a developer convention, not enforced by QuickSQL |
+| 1.7     | 2026-05-05 | Roberto Capancioni | DAL: `lock_by_id` function added (SELECT FOR UPDATE NOWAIT); `c_err_locked` constant (-20003); `resource_busy` exception with PRAGMA EXCEPTION_INIT(-54) declared at body level; §4.3 extended with check-then-act pattern, SVC usage example, and guidance on when to use `lock_by_id` vs `get_by_id`; §7.2.3 APEX error handler updated with -20003 mapping; §8 audit body corrected to `l_rec t_rec` pattern (was showing old scalar named-param call); §9 error range and `app_errors` package updated with `c_locked`; §6.2 rewritten — EspreSQL generates a single SQL block, not separate files; file management is a deployment discipline, not a generator feature; `_hks_impl.sql` naming is a developer convention, not enforced by EspreSQL |
 | 1.8     | 2026-05-08 | Roberto Capancioni | §3.4 Tier Model: 6-tier system (`lookup` `lookup+hks` `service` `service+hks` `full` `full+hks`) selects minimum package set per table; tier is the argument to `/api` on each table — `api` key removed from settings block; `+hks` suffix formalises developer-owned `_hks` body; cross-entity coupling constraint and tier selection guide added; `_audit` noted as orthogonal to tier; §3.4 Design Decisions renumbered to §3.5; §3 title "Four-Layer" → "Layered"; §7.1 and §8 settings examples updated; §11 TypeScript simplified with `hasDal`/`hasHks`/`hasSvc` flags and legacy numeric alias mapping |
 | 1.9     | 2026-05-08 | Roberto Capancioni | §3.4 Degradation rule: explicit principle — each layer calls the one below if present, absorbs it as private procedures if absent; cascading table and per-tier consequences added; `service+hks` complete body example showing private DML section; `lookup+hks` pattern described; `_rst` and `_audit` noted as orthogonal to tier in tier table; §6.3 `_hks` spec: `before/after_delete` parameter type is `_dal.t_id` when `_dal` is present, `table.id%TYPE` otherwise — documented with both variants; §6.4/§6.5 bodies updated with conditional type note; §7.1 `ifc` setting: three explicit values (`"apex"` / `"rest"` / `"both"`) replace the previous two-value implicit behaviour; §8 output order updated with `_rst` conditional line; §11 TypeScript: `getOption` → `getOptionValue`; `hasDal` passed to `_generateHksSpec` and `_generateHksBody`; `hasDal`/`hasHks` passed to `_generateSvcBody`; `hasSvc`/`hasDal` passed to `_generateApxBody` and `_generateRstBody`; IFC generation replaced with explicit three-way `ifc` switch |

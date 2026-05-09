@@ -56,8 +56,8 @@ const erd = bundle.toERD('departments\n  name /nn\n  employees\n    name /nn');
 assert(erd && typeof erd === 'object', 'toERD: ritorna oggetto');
 
 // Test 6: versione bundle
-const ver = bundle.qsql_version();
-assert(typeof ver === 'string' && ver.length > 0, 'qsql_version: stringa non vuota', ver);
+const ver = bundle.espresql_version();
+assert(typeof ver === 'string' && ver.length > 0, 'espresql_version: stringa non vuota', ver);
 
 console.log('\nRisultato: ' + passed + ' passed, ' + failed + ' failed\n');
 if (failed > 0) process.exit(1);

@@ -1,4 +1,4 @@
-import  {quicksql,toErrors} from "../../src/ddl.js";
+import  {espresql,toErrors} from "../../src/ddl.js";
 import errorMsgs from '../../src/utils/error-msgs.js'
 
 var assertionCnt = 0;
@@ -34,7 +34,7 @@ export function error_msg_tests() {
     `);
     checkError(output, 1, 4, errorMsgs.messages.duplicateId);
   
-    output = new quicksql(`dept
+    output = new espresql(`dept
     name vc-200
     name vc0
     `).getErrors();
@@ -42,7 +42,7 @@ export function error_msg_tests() {
     checkError(output, 2, 4+4+1, errorMsgs.messages.invalidDatatype);
     checkNoError(output, errorMsgs.messages.misalignedAttribute);
 
-    output = new quicksql(`dept
+    output = new espresql(`dept
     name
 customer
     dept /fk department    
@@ -50,48 +50,48 @@ customer
     checkError(output, 3, 4+4+1+3+1, errorMsgs.messages.undefinedObject+'department');
     checkNoError(output, errorMsgs.messages.misalignedAttribute);
 
-    output = new quicksql(`dept
+    output = new espresql(`dept
     name
 view customer_view customer
     `).getErrors();
     checkError(output, 2, 4+1+13+1, errorMsgs.messages.undefinedObject+'customer');
     checkNoError(output, errorMsgs.messages.misalignedAttribute);
 
-    output = new quicksql(`dept
+    output = new espresql(`dept
    col1
     "is this table or misaligned column?"
     `).getErrors();
     checkError(output, 2, 4, errorMsgs.messages.misalignedAttribute+"3");
 
-    output = new quicksql(`dept
+    output = new espresql(`dept
    col1
    col2
     "is this table or misaligned column?"
     `).getErrors();
     checkError(output, 3, 4, errorMsgs.messages.misalignedAttribute+"3");
 
-    output = new quicksql(`dept
+    output = new espresql(`dept
    name
    emp
       name
     `).getErrors();
     checkNoError(output, errorMsgs.messages.misalignedAttribute);
 
-    output = new quicksql(`dept
+    output = new espresql(`dept
    name
    
 x = dept   
     `).getErrors();
     checkNoError(output);
 
-    output = new quicksql(`# apex:Y
+    output = new espresql(`# apex:Y
 team_statuses
     name /fk undefined
     `).getErrors();
 checkError(output, 2, 4+4+1+3+1, errorMsgs.messages.undefinedObject+'undefined');
 
 
-    output = new quicksql(`team_statuses
+    output = new espresql(`team_statuses
     name  
     
 teams
@@ -100,14 +100,14 @@ teams
     `).getErrors();
     checkNoError(output);
 
-    output = new quicksql(`/* line1
+    output = new espresql(`/* line1
     line2 */
 team_statuses
     name /fk undefined
     `).getErrors();
     checkError(output, 3, 4+4+1+3+1, errorMsgs.messages.undefinedObject+'undefined');
 
-    output = new quicksql(`emp
+    output = new espresql(`emp
     ename
     deptno /fk dept
   
@@ -115,7 +115,7 @@ dept
    dname`).getErrors();
     checkError(output, 5, 3, errorMsgs.messages.misalignedAttribute+"4");
   
-    output = new quicksql(`emp /fk
+    output = new espresql(`emp /fk
     ename  /audit
     `).getErrors();
     checkError(output, 0, 5, errorMsgs.messages.tableDirectiveTypo);

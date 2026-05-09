@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Radicle QuickSQL — Interactive</title>
+    <title>Radicle EspreSQL — Interactive</title>
     <!-- AntV X6 v2 — UMD bundle (local copy) -->
     <script src="dist/antv-x6/2.18.1/index.min.js"></script>
     <link rel="stylesheet" href="web/app.css">
@@ -23,7 +23,7 @@
         <img src="img/radicle_01.png" class="logo-img" alt="Radicle">
     </a>
     <span class="header-divider"></span>
-    <span class="title">QuickSQL</span>
+    <span class="title">EspreSQL</span>
     <span class="subtitle">— write shorthand, get Oracle DDL in real time</span>
     <span class="spacer"></span>
     <button id="btn-examples" class="tool-btn">Examples ▾</button>
@@ -316,7 +316,7 @@ emp_v = departments employees
 <div id="help-overlay"></div>
 <aside id="help-drawer">
     <div class="hdw-hdr">
-        <strong>QuickSQL Reference</strong>
+        <strong>EspreSQL Reference</strong>
         <button class="hdw-close" id="help-close">&times;</button>
     </div>
     <div class="hdw-body">
@@ -358,7 +358,7 @@ emp_v = departments employees
                     <tr><td>name /soda</td><td>SODA JSON document collection with fixed schema (21c+)</td></tr>
                 </table>
                 <p class="hdw-note" style="margin-top:8px">Tables indented under another table automatically become children with a FK to the parent.</p>
-                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/quick-sql-grammar.md#table-directives" target="_blank">→ Full reference</a></p>
+                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#table-directives" target="_blank">→ Full reference</a></p>
             </div>
         </details>
 
@@ -382,7 +382,7 @@ emp_v = departments employees
                     <tr><td>vect<em>N</em></td><td>vector(N,*,*) — fixed dimension (23c+)</td></tr>
                     <tr><td>file</td><td>APEX file upload columns</td></tr>
                 </table>
-                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/quick-sql-grammar.md#datatypes" target="_blank">→ Full reference</a></p>
+                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#datatypes" target="_blank">→ Full reference</a></p>
             </div>
         </details>
 
@@ -407,7 +407,7 @@ emp_v = departments employees
                     <tr><td>/values <em>v1,v2</em></td><td>Custom values pool for sample INSERT data</td></tr>
                     <tr><td>/constant <em>val</em></td><td>Fix this column to a constant in all sample INSERTs</td></tr>
                 </table>
-                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/quick-sql-grammar.md#column-directives" target="_blank">→ Full reference</a></p>
+                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#column-directives" target="_blank">→ Full reference</a></p>
             </div>
         </details>
 
@@ -423,7 +423,7 @@ emp_v = departments employees
                 </table>
                 <code class="hdw-eg">departments {DESCRIPTION 'HR departments', Classification 'HR'}
    name /nn {DESCRIPTION 'Department name'}</code>
-                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/quick-sql-grammar.md#annotations" target="_blank">→ Full reference</a></p>
+                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#annotations" target="_blank">→ Full reference</a></p>
             </div>
         </details>
 
@@ -450,7 +450,7 @@ employees
                     <tr><td>⚠ LOSSY</td><td>Column size reduced or type changed — data may be truncated</td></tr>
                     <tr><td>INFO</td><td>Suspected column rename — verify before applying</td></tr>
                 </table>
-                <p class="hdw-note" style="margin-top:6px"><a href="doc/user/quick-sql-grammar.md#schema-migration" target="_blank">→ Full reference: Schema Migration</a></p>
+                <p class="hdw-note" style="margin-top:6px"><a href="doc/user/espresql-grammar.md#schema-migration" target="_blank">→ Full reference: Schema Migration</a></p>
             </div>
         </details>
 
@@ -466,7 +466,7 @@ employees
                 <code class="hdw-eg">-- My schema
 employees   [main workforce table]
    name vc100 /* full legal name */</code>
-                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/quick-sql-grammar.md#comments" target="_blank">→ Full reference</a></p>
+                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#comments" target="_blank">→ Full reference</a></p>
             </div>
         </details>
 
@@ -479,7 +479,7 @@ employees   [main workforce table]
                     <tr><td>&gt; t1</td><td>Star schema: dimension table</td></tr>
                     <tr><td>&lt; t1</td><td>Snowflake: sub-hierarchy</td></tr>
                 </table>
-                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/quick-sql-grammar.md#views" target="_blank">→ Full reference</a></p>
+                <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#views" target="_blank">→ Full reference</a></p>
             </div>
         </details>
 
@@ -488,7 +488,7 @@ employees   [main workforce table]
             <div class="hdw-content">
                 <p class="hdw-note">Use the <strong>⚙ Settings</strong> panel in the header to configure options visually, or add a <code># settings = { … }</code> line to your script.</p>
                 <code class="hdw-eg"># settings = { pk: seq, semantics: CHAR, db: 23c }</code>
-                <p class="hdw-note" style="margin-top:6px"><a href="doc/user/quick-sql-grammar.md#settings" target="_blank">→ Full settings reference (all keys and values)</a></p>
+                <p class="hdw-note" style="margin-top:6px"><a href="doc/user/espresql-grammar.md#settings" target="_blank">→ Full settings reference (all keys and values)</a></p>
             </div>
         </details>
 
@@ -567,7 +567,7 @@ employees /api full+hks /auditlog app_audit_log
                 </table>
                 <p class="hdw-note" style="margin-top:8px">Full reference documentation:</p>
                 <table class="ref">
-                    <tr><td><a href="doc/user/quick-sql-grammar.md" target="_blank">Grammar Reference</a></td><td>All directives, types, settings, API</td></tr>
+                    <tr><td><a href="doc/user/espresql-grammar.md" target="_blank">Grammar Reference</a></td><td>All directives, types, settings, API</td></tr>
                     <tr><td><a href="doc/user/examples.md" target="_blank">Examples</a></td><td>21 end-to-end practical scenarios</td></tr>
                     <tr><td><a href="doc/user/multitenant-design.md" target="_blank">Multi-Tenant Design</a></td><td>Enterprise multi-tenancy: indexes, FK integrity, VPD</td></tr>
                     <tr><td><a href="doc/user/quick-erd.md" target="_blank">ERD Guide</a></td><td>Diagram rendering and theming</td></tr>

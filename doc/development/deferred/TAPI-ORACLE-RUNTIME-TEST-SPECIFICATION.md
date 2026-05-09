@@ -1,4 +1,4 @@
-# QuickSQL Layered TAPI — Test Implementation Specification
+# EspreSQL Layered TAPI — Test Implementation Specification
 
 **Status**: Specification  
 **Version**: 1.0  
@@ -558,7 +558,7 @@ The suite package must follow this structure (implementation bodies are separate
 ```sql
 CREATE OR REPLACE PACKAGE test_suite_doctors AS
     --%suite(Doctors TAPI)
-    --%suitepath(quicksql.tapi)
+    --%suitepath(espresql.tapi)
 
     -- Runs before each test: ensures a clean doctors table and known specialties
     --%beforeeach
@@ -710,7 +710,7 @@ The following specialties must be present before any test runs. These are create
 
 The implementation is accepted when:
 
-1. `ut.run('quicksql.tapi')` exits with zero failures and zero errors.
+1. `ut.run('espresql.tapi')` exits with zero failures and zero errors.
 2. All 20 TC-DR scenarios pass.
 3. All 14 TC-AP scenarios pass.
 4. All 6 TC-INT scenarios pass.

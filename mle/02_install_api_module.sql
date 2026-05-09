@@ -1,6 +1,6 @@
 -- Auto-generato da scripts/generate-mle-sql.mjs — non modificare manualmente
--- Sorgente: mle/quicksql-api.mjs  (799 byte, 1 chunk da 2000 char)
-PROMPT >>> Caricamento quicksql_api_module (1 chunk)...
+-- Sorgente: mle/espresql-api.mjs  (799 byte, 1 chunk da 2000 char)
+PROMPT >>> Caricamento espresql_api_module (1 chunk)...
 
 -- Disabilita sostituzione variabili (&/&&) per non interferire con il codice JavaScript
 SET DEFINE OFF
@@ -9,10 +9,10 @@ DECLARE
   l_src CLOB;
 BEGIN
   DBMS_LOB.CREATETEMPORARY(l_src, TRUE);
-  DBMS_LOB.APPEND(l_src, TO_CLOB('// Sorgente per quicksql_api_module (MLE).
-// Importa dal modulo quicksql caricato nell''environment Oracle MLE.
+  DBMS_LOB.APPEND(l_src, TO_CLOB('// Sorgente per espresql_api_module (MLE).
+// Importa dal modulo espresql caricato nell''environment Oracle MLE.
 // NON usare JSON.parse sulle opzioni: toDDL/toERD accettano la stringa JSON direttamente.
-import { toDDL, toERD, toErrors, qsql_version } from ''quicksql'';
+import { toDDL, toERD, toErrors, espresql_version } from ''espresql'';
 
 export function getDDL(qsql, optionsJson) {
     // optionsJson è già una stringa JSON — NON fare JSON.parse
@@ -30,15 +30,15 @@ export function validate(qsql) {
 }
 
 export function version() {
-    return qsql_version();
+    return espresql_version();
 }
 '));
   EXECUTE IMMEDIATE
-    'CREATE OR REPLACE MLE MODULE quicksql_api_module LANGUAGE JAVASCRIPT AS $QSQL$' ||
+    'CREATE OR REPLACE MLE MODULE espresql_api_module LANGUAGE JAVASCRIPT AS $QSQL$' ||
     l_src ||
     '$QSQL$';
   DBMS_LOB.FREETEMPORARY(l_src);
-  DBMS_OUTPUT.PUT_LINE('OK  quicksql_api_module caricato.');
+  DBMS_OUTPUT.PUT_LINE('OK  espresql_api_module caricato.');
 EXCEPTION
   WHEN OTHERS THEN
     DBMS_LOB.FREETEMPORARY(l_src);

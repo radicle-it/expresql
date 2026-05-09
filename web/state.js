@@ -6,7 +6,7 @@ export const LS_ERD_POS = 'radicle-qsql-erd-pos-v1';
 export const LS_ERD_COL = 'radicle-qsql-erd-col-v1';
 export const LS_TABS    = 'radicle-qsql-tabs-v1';
 
-export const DEFAULT_QSQL =
+export const DEFAULT_ESQL =
 `departments /insert 2
    name /nn
    location

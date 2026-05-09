@@ -7,10 +7,10 @@
  * Architecture:   doc/development/TAPI-LAYERED-ARCHITECTURE.md (v1.3)
  */
 import { describe, test, expect } from 'vitest';
-import quicksql from '../../src/ddl.js';
+import espresql from '../../src/ddl.js';
 
 function ddl(input: string, opts?: string): string {
-    return new (quicksql as any)(input, opts).getDDL();
+    return new (espresql as any)(input, opts).getDDL();
 }
 
 function segment(out: string, startMarker: string, endMarker: string): string {

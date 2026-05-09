@@ -146,7 +146,7 @@ A direct comparison of the rapid-DDL-generation tooling market:
 
 | Tool | Oracle | PostgreSQL | MySQL | SQL Server | Db2 |
 |---|---|---|---|---|---|
-| Oracle Quick SQL | ✓ | — | — | — | — |
+| Oracle EspreSQL | ✓ | — | — | — | — |
 | **ExpreSQL** | ✓ | planned? | — | — | **gap** |
 | SchemaHero | — | ✓ | ✓ | ✓ | — |
 | Liquibase | migration | migration | migration | migration | migration |
@@ -429,7 +429,7 @@ registerGenerator('db2', (ctx) => new Db2DDLGenerator(ctx));
 Invoke via CLI or API:
 
 ```bash
-node bin/index.js --dialect db2 schema.qsql
+node bin/index.js --dialect db2 schema.esql
 # or in settings block:
 # settings = {"dialect": "db2"}
 ```

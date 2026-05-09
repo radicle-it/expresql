@@ -1,6 +1,6 @@
-# Quick SQL — Practical Examples <!-- omit in toc -->
+# EspreSQL — Practical Examples <!-- omit in toc -->
 
-This document collects end-to-end Quick SQL examples. Each scenario shows the QSQL shorthand input, the key parts of the generated Oracle DDL, and a brief explanation of what the pattern achieves.
+This document collects end-to-end EspreSQL examples. Each scenario shows the QSQL shorthand input, the key parts of the generated Oracle DDL, and a brief explanation of what the pattern achieves.
 
 ## Table of Contents <!-- omit in toc -->
 
@@ -37,7 +37,7 @@ Indenting a table under another automatically creates a foreign key from child t
 
 **Input:**
 
-```quicksql
+```espresql
 departments /insert 2
   name /nn
   location
@@ -104,7 +104,7 @@ left join employees on employees.department_id = departments.id;
 
 **Input:**
 
-```quicksql
+```espresql
 projects
   name vc200 /nn
   status /check OPEN,ACTIVE,CLOSED /nn
@@ -150,7 +150,7 @@ end projects_biu;
 
 **Input:**
 
-```quicksql
+```espresql
 order_lines /colprefix ol
   order_id   /fk orders /nn
   product_id /fk products /nn
@@ -185,7 +185,7 @@ The underscore separator is added automatically if not included in the prefix va
 
 **Input:**
 
-```quicksql
+```espresql
 invoices
   customer_id /fk customers /nn
   currency_code vc3 /fk ref_currencies /nn
@@ -212,7 +212,7 @@ create table invoices (
 );
 ```
 
-If the referenced table does not exist at parse time QuickSQL still generates the constraint; the FK will validate at install time.
+If the referenced table does not exist at parse time EspreSQL still generates the constraint; the FK will validate at install time.
 
 ---
 
@@ -222,7 +222,7 @@ The `>` prefix in front of a child table name reverses the FK direction: instead
 
 **Input:**
 
-```quicksql
+```espresql
 sales /insert 2
   quantity
   > products /insert 1
@@ -276,7 +276,7 @@ create index sales_i2 on sales (customers_id);
 
 **Input:**
 
-```quicksql
+```espresql
 departments
   name vc200 /nn
   employees
@@ -333,7 +333,7 @@ Each row in `departments` becomes a JSON document. The `employees` array is embe
 
 **Input:**
 
-```quicksql
+```espresql
 products
   name       vc200 /nn /trans
   description       /trans
@@ -394,7 +394,7 @@ left join shop_products_trans t
 
 **Input:**
 
-```quicksql
+```espresql
 audit_log /immutable
   entity    vc128 /nn
   entity_id num /nn
@@ -461,7 +461,7 @@ create table contract_versions_history (
 
 **Input:**
 
-```quicksql
+```espresql
 sensor_readings /soda
 events /soda /rest
 ```
@@ -513,7 +513,7 @@ SODA tables are managed through the Oracle SODA API (Java, Python, REST) and are
 
 **Input:**
 
-```quicksql
+```espresql
 salaries /flashback payroll_fda
   employee_id /fk employees /nn
   amount      num(12,2) /nn
@@ -559,7 +559,7 @@ Flashback Data Archive requires an archive configured by a DBA (`CREATE FLASHBAC
 
 **Input:**
 
-```quicksql
+```espresql
 orders /insert 5
   customer_id num /nn /constant 42
   status      /values OPEN,PENDING,SHIPPED /nn
@@ -583,7 +583,7 @@ values (42, 'OPEN', 'EMEA', 392.10);
 
 To generate clean DDL without any INSERT statements:
 
-```quicksql
+```espresql
 orders /insert 100   -- directive is ignored when inserts is false
   name vc100
 
@@ -598,7 +598,7 @@ Curly-brace `{...}` syntax adds Oracle SQL annotations to tables, columns, and v
 
 **Input:**
 
-```quicksql
+```espresql
 employees {DESCRIPTION 'HR workforce table', Classification 'HR', GROUP 'PII'}
   name     vc200 /nn {DESCRIPTION 'Full legal name', Sensitivity 'Private'}
   email    vc200      {DESCRIPTION 'Work email address'}
@@ -639,7 +639,7 @@ values ('PII', 'EMPLOYEES');
 
 **Input:**
 
-```quicksql
+```espresql
 products /rest /insert 3
   name  vc200 /nn
   price num(10,2) /nn
@@ -694,7 +694,7 @@ ORDS must be installed and configured in the database. After running the script,
 
 ### Simple API
 
-```quicksql
+```espresql
 products /api
   name  vc200 /nn
   price num(10,2)
@@ -706,7 +706,7 @@ Generated: `products_api` — single package with four procedures.
 
 ### Layered API — all six tiers
 
-```quicksql
+```espresql
 -- tier: lookup (app interface only)
 -- generated: items_app
 items /api lookup
@@ -765,7 +765,7 @@ if the outer transaction rolls back.
 **Requirements:** the audit log table must exist in the schema (or be defined in the same
 QSQL input), and both tables must use a layered tier.
 
-```quicksql
+```espresql
 -- 1. Define the audit log table (also gets layered API for querying)
 app_audit_log /api full+hks
   entity     vc128 /nn
@@ -809,7 +809,7 @@ A realistic schema that combines several features: prefix, audit columns, APEX, 
 
 **Input:**
 
-```quicksql
+```espresql
 customers {DESCRIPTION 'Registered customers'}
   full_name  vc200 /nn {DESCRIPTION 'Legal full name'}
   email      vc200 /nn /unique /lower
@@ -905,7 +905,7 @@ This pattern is typical for Oracle APEX applications: prefix isolates the schema
 
 ## 17. Shared-schema multi-tenancy with `tenantid: yes`
 
-The `tenantid: yes` setting implements the shared-schema (discriminator) multi-tenancy pattern. QuickSQL automatically wires the schema for tenant isolation, leaving only optional hardening steps for the developer.
+The `tenantid: yes` setting implements the shared-schema (discriminator) multi-tenancy pattern. EspreSQL automatically wires the schema for tenant isolation, leaving only optional hardening steps for the developer.
 
 **Supra-tenant vs tenant tables**
 
@@ -913,7 +913,7 @@ Tables marked `/notenantid` are shared across all tenants (lookup data, tenant m
 
 **Input:**
 
-```quicksql
+```espresql
 subscription_plans /notenantid    -- supra-tenant lookup: shared, no TENANT_ID
   code  vc20 /nn /pk
   name  vc100 /nn
@@ -997,7 +997,7 @@ alter table app_order_lines add constraint app_order_lines_order_id_fk
     references app_orders (tenant_id, id) on delete cascade;
 ```
 
-**What QuickSQL generates automatically:**
+**What EspreSQL generates automatically:**
 
 | Feature | How to declare |
 |---|---|
@@ -1034,7 +1034,7 @@ See [Multi-Tenant Design](./multitenant-design.md) for the complete enterprise g
 
 **Interactive (editor):** write both schema versions in the same editor separated by `# ---`. The DDL panel switches to migration mode automatically — no extra tabs or buttons needed. Use **⇄ Compare versions** to insert the delimiter.
 
-```quicksql
+```espresql
 employees
   name vc100 /nn
   email vc200
@@ -1050,7 +1050,7 @@ departments
   dept_name vc100 /nn
 ```
 
-The panel shows the migration script, a status bar with counts, and warning bars for destructive operations. See the [Schema Migration](quick-sql-grammar.md#schema-migration) section of the grammar reference for all details.
+The panel shows the migration script, a status bar with counts, and warning bars for destructive operations. See the [Schema Migration](espresql-grammar.md#schema-migration) section of the grammar reference for all details.
 
 **Programmatic:** `toDiff(oldQsql, newQsql)` computes the incremental Oracle DDL migration script between two schema versions. The output is a `DiffResult` containing a runnable SQL script, per-statement metadata, and warnings for destructive or lossy operations.
 
@@ -1058,7 +1058,7 @@ The panel shows the migration script, a status bar with counts, and warning bars
 
 **v1 (old):**
 
-```quicksql
+```espresql
 employees
   name vc100 /nn
   email vc200
@@ -1066,7 +1066,7 @@ employees
 
 **v2 (new):**
 
-```quicksql
+```espresql
 employees
   name  vc100 /nn
   email vc200 /nn
@@ -1086,7 +1086,7 @@ const result = toDiff(v1, v2);
 
 ```sql
 -- ============================================================
--- QuickSQL Migration Script
+-- EspreSQL Migration Script
 -- Generated : 2026-05-06T10:00:00.000Z
 -- ============================================================
 -- ⚠ MANUAL STEPS REQUIRED (statementsRequiringIntervention = 1)
@@ -1127,7 +1127,7 @@ alter table employees add (phone varchar2(50 char));
 
 ### Dropping a column
 
-```quicksql
+```espresql
 -- v1
 employees
   name  vc100 /nn
@@ -1154,7 +1154,7 @@ Warning emitted: `DESTRUCTIVE — column dropped: phone`.
 
 When exactly one column is dropped and one of the same base type is added, `toDiff` emits a `rename_hint` instead of a destructive DROP + ADD:
 
-```quicksql
+```espresql
 -- v1: old_email  vc200
 -- v2: new_email  vc200  (same base type → suspected rename)
 ```
@@ -1206,7 +1206,7 @@ const result = toDiff(v1 + db23, v2 + db23);
 Different tables in the same schema often need different levels of API complexity.
 The `/api <tier>` syntax selects the tier per table independently of the global default.
 
-```quicksql
+```espresql
 -- reference data: app interface only
 -- generated: lookup_codes_app
 lookup_codes /api lookup
@@ -1246,7 +1246,7 @@ When a lower layer is absent, its logic is absorbed as private procedures in the
 
 **Service tier (no `_dal` — DML absorbed into `_svc`):**
 
-```quicksql
+```espresql
 -- _svc body contains private p_get_by_id, p_insert_row, etc.
 departments /api service
   name    vc100 /nn
@@ -1282,7 +1282,7 @@ Use `ifc: rest` to generate ORDS handler packages (`_rst`) instead of applicatio
 
 **Input:**
 
-```quicksql
+```espresql
 employees /api full+hks
   name        vc100 /nn
   email       vc200 /nn /unique
@@ -1309,7 +1309,7 @@ end employees_rst;
 
 For dual access (APEX + REST simultaneously):
 
-```quicksql
+```espresql
 # settings = { ifc: both }
 
 employees /api full+hks
@@ -1332,7 +1332,7 @@ Set `dialect: db2` to target IBM Db2 LUW 11.1+.  All column types, constraints, 
 
 **Input:**
 
-```quicksql
+```espresql
 departments
   name         vc100 /nn
   location     vc200
@@ -1398,7 +1398,7 @@ The `/auditcols` directive generates Db2-compatible BEFORE INSERT and BEFORE UPD
 
 **Input:**
 
-```quicksql
+```espresql
 employees /auditcols
   name    vc100 /nn
   salary  num(12,2)
@@ -1460,7 +1460,7 @@ The `/api` directive generates a layered Table API in Db2 SQL PL.  Because Db2 h
 
 **Input:**
 
-```quicksql
+```espresql
 employees /api full+hks
   name    vc100 /nn
   email   vc200 /nn /unique

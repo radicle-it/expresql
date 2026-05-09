@@ -1,4 +1,4 @@
-// Directive autocomplete popup for the QuickSQL editor.
+// Directive autocomplete popup for the EspreSQL editor.
 
 let _update;
 

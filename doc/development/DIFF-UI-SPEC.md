@@ -1,4 +1,4 @@
-# QuickSQL — Specifiche UX per Diff / Migration
+# EspreSQL — Specifiche UX per Diff / Migration
 
 **Versione:** 2.0  
 **Data:** 2026-05-06  
@@ -95,7 +95,7 @@ Il pannello DDL **cambia automaticamente** output e label:
 ⚠ DESTRUCTIVE  [employees.email]  adding NOT NULL — manual step
 ──────────────────────────────────────────────────────────────────
 -- ============================================================
--- QuickSQL Migration Script
+-- EspreSQL Migration Script
 -- Generated: 2026-05-06T...
 -- ============================================================
 ...
@@ -160,7 +160,7 @@ La sezione Quick Examples aggiunge un esempio cliccabile che carica un template 
 | Zero stato esterno | ✅ | Il testo dell'editor è l'unica sorgente di verità |
 | Deterministico | ✅ | Stesso testo → stesso output, sempre |
 | Parlante | ✅ | `# ---` è autoesplicativo nel testo |
-| Serializzabile | ✅ | Share link funziona, il file `.qsql` salvato contiene tutto |
+| Serializzabile | ✅ | Share link funziona, il file `.esql` salvato contiene tutto |
 | Un solo editor | ✅ | Nessun secondo textarea o pannello aggiuntivo |
 | Compatibile con schema tabs | ✅ | Ogni tab può avere il proprio `# ---` o no |
 | Compatibile con settings | ✅ | v1 e v2 possono avere `# settings` distinte |
@@ -203,5 +203,5 @@ La sezione Quick Examples aggiunge un esempio cliccabile che carica un template 
 2. Implementazione in `web/app.js` — parsing del delimitatore + switch `toDDL`/`toDiff`
 3. Stile separatore in `web/highlight.js` + `web/app.css`
 4. Pulsante `⇄ Compare versions`
-5. Aggiornamento `doc/user/quick-sql-grammar.md` — documentare la sintassi `# ---`
+5. Aggiornamento `doc/user/espresql-grammar.md` — documentare la sintassi `# ---`
 6. Aggiornamento `doc/user/examples.md` — esempio 17 aggiornato con la nuova sintassi

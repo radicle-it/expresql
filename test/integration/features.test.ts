@@ -1,7 +1,7 @@
 /**
  * Integration tests for DDL features not covered (or only shallowly covered)
  * in small.test.ts. Organised by feature area, derived directly from
- * doc/user/quick-sql-grammar.md and doc/user/examples.md.
+ * doc/user/espresql-grammar.md and doc/user/examples.md.
  *
  * Covered here:
  *  - /upper and /lower triggers

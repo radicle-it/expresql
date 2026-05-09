@@ -9,7 +9,7 @@ import fs   from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import quicksql, { toDDL, fromJSON }    from '../../src/ddl.js';
+import espresql, { toDDL, fromJSON }    from '../../src/ddl.js';
 import lexer,    { LexerToken }          from '../../src/compiler/lexer.js';
 import errorMsgs                         from '../../src/utils/error-msgs.js';
 import { resetSeed }                     from '../../src/utils/sample.js';
@@ -87,7 +87,7 @@ function checkNoError(msgList: unknown[], msgPrefix?: string): void {
 interface TestCase {
     label:    string;
     inputPath: string;
-    ext:      '.quicksql' | '.qsql' | '.json';
+    ext:      '.esql' | '.json';
     isERD:    boolean;
     strict:   boolean;
 }
@@ -103,7 +103,7 @@ function collectCases(dir: string): TestCase[] {
             if (entry === 'experimental') continue;    // skip experimental subtree
             results.push(...collectCases(full));
         } else {
-            const ext = (['.quicksql', '.qsql', '.json'] as const)
+            const ext = (['.esql', '.json'] as const)
                 .find(e => entry.endsWith(e));
             if (!ext) continue;
             results.push({
@@ -133,17 +133,17 @@ describe('DDL regression (TypeScript sources)', () => {
 
             let output: string;
             if (tc.isERD) {
-                output = JSON.stringify(new (quicksql as any)(text).getERD(), null, 3);
+                output = JSON.stringify(new (espresql as any)(text).getERD(), null, 3);
             } else if (tc.ext === '.json') {
                 const fileName = path.basename(baseName);
                 output = fromJSON(text, fileName);
             } else {
-                const p = new (quicksql as any)(text);
+                const p = new (espresql as any)(text);
                 output = p.getDDL();
                 checkNoError(p.getErrors());
             }
 
-            const cmpExt = tc.isERD ? '.erd' : tc.ext === '.json' ? '.qsql' : '.sql';
+            const cmpExt = tc.isERD ? '.erd' : tc.ext === '.json' ? '.esql' : '.sql';
             let expected = fs.readFileSync(baseName + cmpExt, 'utf8');
 
             if (tc.isERD) {

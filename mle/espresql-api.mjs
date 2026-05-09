@@ -1,7 +1,7 @@
-// Sorgente per quicksql_api_module (MLE).
-// Importa dal modulo quicksql caricato nell'environment Oracle MLE.
+// Sorgente per espresql_api_module (MLE).
+// Importa dal modulo espresql caricato nell'environment Oracle MLE.
 // NON usare JSON.parse sulle opzioni: toDDL/toERD accettano la stringa JSON direttamente.
-import { toDDL, toERD, toErrors, qsql_version } from 'quicksql';
+import { toDDL, toERD, toErrors, espresql_version } from 'espresql';
 
 export function getDDL(qsql, optionsJson) {
     // optionsJson è già una stringa JSON — NON fare JSON.parse
@@ -19,5 +19,5 @@ export function validate(qsql) {
 }
 
 export function version() {
-    return qsql_version();
+    return espresql_version();
 }

@@ -1,21 +1,21 @@
 {
-  "name": "@radicle-it/expresql",
+  "name": "@radicle-it/espresql",
   "version": "2.0.0",
-  "description": "ExpreSQL — Quick SQL to DDL and ERD translator (fork of @oracle/quicksql)",
-  "main": "./dist/quick-sql.js",
+  "description": "EspreSQL — ESQL shorthand to DDL, ERD and PL/SQL scaffolding (fork of @oracle/quicksql)",
+  "main": "./dist/espresql.js",
   "type": "module",
   "exports": {
-    ".": "./dist/quick-sql.js"
+    ".": "./dist/espresql.js"
   },
   "engines": {
     "node": ">=16"
   },
   "bin": {
-    "quicksql": "bin/index.js"
+    "espresql": "bin/index.js"
   },
   "config": {
-    "ddlLibraryName": "quickSQL",
-    "ddlLibraryFileName": "quick-sql"
+    "ddlLibraryName": "espresql",
+    "ddlLibraryFileName": "espresql"
   },
   "scripts": {
     "build": "run-p build:ddl build:ddl-oracle build:ddl-db2 && npm run build:mle",
@@ -39,7 +39,7 @@
   "keywords": [
     "ExpreSQL",
     "Oracle",
-    "Quick SQL",
+    "EspreSQL",
     "SQL",
     "DDL",
     "ERD",

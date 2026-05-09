@@ -1,6 +1,6 @@
 # Quick ERD <!-- omit in toc -->
 
-Used to transform Quick SQL into an Entity-Relationship Diagram (ERD)
+Used to transform EspreSQL into an Entity-Relationship Diagram (ERD)
 
 ## Table of Contents <!-- omit in toc -->
 
@@ -62,7 +62,7 @@ You need to add the following dependencies to your HTML:
         <script src="./examples/diagram-generator/libs/rappid.min.js"></script>
 
         <script type="module">
-            import { toERD } from './dist/quick-sql.js';
+            import { toERD } from './dist/espresql.js';
             import { Diagram  } from './dist/quick-erd.js';
 
             new Diagram( toERD(
@@ -129,7 +129,7 @@ view emp_v departments employees
         <!-- Assuming you put the rappid.min.js file in this path -->
         <script src="./examples/diagram-generator/libs/rappid.min.js"></script>
 
-        <script src="./dist/quick-sql.umd.cjs"></script>
+        <script src="./dist/espresql.umd.cjs"></script>
         <script src="./dist/quick-erd.umd.cjs"></script>
 
         <script>

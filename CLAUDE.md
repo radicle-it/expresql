@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ExpreSQL is a Quick SQL (QSQL) shorthand-to-DDL compiler. It takes indentation-based shorthand and produces relational DDL, ERD metadata, and PL/SQL scaffolding. Forked from Oracle's Quick SQL, rewritten in TypeScript with a multi-dialect architecture.
+ExpreSQL is a EspreSQL (QSQL) shorthand-to-DDL compiler. It takes indentation-based shorthand and produces relational DDL, ERD metadata, and PL/SQL scaffolding. Forked from Oracle's EspreSQL, rewritten in TypeScript with a multi-dialect architecture.
 
 ## Commands
 
@@ -31,7 +31,7 @@ npm run lint               # All lint tasks
 npm run lint:markdown      # Markdown files only
 
 # CLI usage
-node bin/index.js <file.qsql or file.json>
+node bin/index.js <file.esql or file.json>
 ```
 
 ## Architecture
@@ -58,7 +58,7 @@ node bin/index.js <file.qsql or file.json>
 
 ### Main entry point
 
-`src/ddl.ts` — exports `quicksql` class with `toDDL()`, `toERD()`, `fromJSON()`. The `toDDL` convenience function combines lexing, parsing, and generation.
+`src/ddl.ts` — exports `espresql` class with `toDDL()`, `toERD()`, `fromJSON()`. The `toDDL` convenience function combines lexing, parsing, and generation.
 
 ## Key Directories
 
@@ -70,19 +70,19 @@ node bin/index.js <file.qsql or file.json>
 - `mle/` — Oracle MLE (Multilingual Engine) SQL installation scripts
 - `test/unit/` — Vitest unit tests
 - `test/integration/` — Vitest integration tests
-- `test/apex/`, `test/bugs/`, `test/JSON/`, `test/star/` — `.qsql` test fixtures with expected `.sql` output
+- `test/apex/`, `test/bugs/`, `test/JSON/`, `test/star/` — `.esql` test fixtures with expected `.sql` output
 
 ## Build System
 
 Vite builds two separate libraries controlled by `TARGET_LIBRARY` env var:
-- **DDL**: entry `src/ddl.ts` → `dist/quick-sql.js`
+- **DDL**: entry `src/ddl.ts` → `dist/espresql.js`
 - **ERD**: entry `src/quick-erd/quick-erd.js` → `dist/quick-erd.js`
 
 A custom Vite plugin redirects legacy `./legacy/xxx.js` imports to `src/xxx.ts` files.
 
 ## Testing Conventions
 
-- Vitest tests use `toDDL()` / `quicksql` class, assert on output strings with `toContain()` / `toMatch()`
+- Vitest tests use `toDDL()` / `espresql` class, assert on output strings with `toContain()` / `toMatch()`
 - Call `resetSeed()` in `beforeEach` for deterministic sample data
 - Legacy `.js` regression tests compare token-by-token output against `.sql` baselines
 - Both test suites must pass: `npm test` (legacy) and `npm run test:ts` (vitest)

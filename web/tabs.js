@@ -1,4 +1,4 @@
-import { state, LS_TABS, LS_KEY, LS_ERD_POS, LS_ERD_COL, DEFAULT_QSQL } from './state.js';
+import { state, LS_TABS, LS_KEY, LS_ERD_POS, LS_ERD_COL, DEFAULT_ESQL } from './state.js';
 
 // Callbacks injected by app.js to avoid circular imports
 let _update;
@@ -25,7 +25,7 @@ export function saveTabs() {
 export function saveActiveTab() {
     const tab = state.tabs.find(t => t.id === state.activeSchemaTabId);
     if (!tab) return;
-    tab.qsql = document.getElementById('input').value;
+    tab.esql = document.getElementById('input').value;
     tab.pos  = [...state.lastErdPos.entries()];
     tab.col  = [...state.collapsed];
 }
@@ -33,7 +33,7 @@ export function saveActiveTab() {
 export function applyActiveTab() {
     const tab = state.tabs.find(t => t.id === state.activeSchemaTabId);
     if (!tab) return;
-    document.getElementById('input').value = tab.qsql;
+    document.getElementById('input').value = tab.esql;
     state.lastErdPos = new Map(tab.pos || []);
     state.collapsed.clear();
     for (const id of (tab.col || [])) state.collapsed.add(id);
@@ -66,7 +66,7 @@ export function initTabs() {
         const saved = localStorage.getItem(LS_TABS);
         if (saved) {
             const data = JSON.parse(saved);
-            state.tabs = (data.tabs || []).map(t => ({ id: t.id, name: t.name, qsql: t.qsql || '', pos: t.pos || [], col: t.col || [] }));
+            state.tabs = (data.tabs || []).map(t => ({ id: t.id, name: t.name, esql: t.esql || '', pos: t.pos || [], col: t.col || [] }));
             state.activeSchemaTabId = data.active || (state.tabs[0] && state.tabs[0].id);
             restored = state.tabs.length > 0;
         }
@@ -74,7 +74,7 @@ export function initTabs() {
 
     if (!restored) {
         try {
-            const legacyQsql = localStorage.getItem(LS_KEY) || DEFAULT_QSQL;
+            const legacyQsql = localStorage.getItem(LS_KEY) || DEFAULT_ESQL;
             let legacyPos = [], legacyCol = [];
             try {
                 const sp = localStorage.getItem(LS_ERD_POS);
@@ -86,7 +86,7 @@ export function initTabs() {
             t.pos = legacyPos; t.col = legacyCol;
             state.tabs = [t]; state.activeSchemaTabId = t.id;
         } catch (_) {
-            const t = newTabData('Schema 1', DEFAULT_QSQL);
+            const t = newTabData('Schema 1', DEFAULT_ESQL);
             state.tabs = [t]; state.activeSchemaTabId = t.id;
         }
     }
@@ -94,7 +94,7 @@ export function initTabs() {
     if (hashQsql !== null) {
         const tab = state.tabs.find(t => t.id === state.activeSchemaTabId);
         if (tab) {
-            tab.qsql = hashQsql;
+            tab.esql = hashQsql;
             tab.pos  = hashPos ? [...hashPos.entries()] : [];
             tab.col  = hashCol ? [...hashCol] : [];
         }

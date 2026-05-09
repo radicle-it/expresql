@@ -1,4 +1,4 @@
-import  {quicksql,fromJSON} from "../../src/ddl.js";
+import  {espresql,fromJSON} from "../../src/ddl.js";
 
 import {checkNoError} from './error-msg-tests.js'
 
@@ -11,11 +11,11 @@ try {
     //var chance = new Chance(15555);
     //console.log(chance.address());
 
-    let file = '//bugs/Bug35063257.quicksql';
+    let file = '//bugs/Bug35063257.espresql';
     //file = '//experimental/food_product.json';
-    file = '//erd/Bug35814250/1-3.qsql';
-    file = '//apex/project_management.quicksql';
-    file = '//star/sales_product_customers.qsql';
+    file = '//erd/Bug35814250/1-3.esql';
+    file = '//apex/project_management.espresql';
+    file = '//star/sales_product_customers.esql';
 
     let args = process.argv.slice(2);
     if( 0 < args.length )
@@ -39,7 +39,7 @@ try {
         output = fromJSON(input, key);
         console.log("JSON Time = "+(Date.now()-t1));
         if( 0 <= ofile.indexOf('/experimental/') )
-            fs.writeFileSync(ofile+'.qsql', output);
+            fs.writeFileSync(ofile+'.esql', output);
         else {
             output += '\n\n-- =========================================\n\n';
             console.log(output);
@@ -48,10 +48,10 @@ try {
     }
     let t1 = Date.now();
     if( 0 <= file.indexOf('/erd/') ) {
-        const p = new quicksql(input);
+        const p = new espresql(input);
         output = JSON.stringify(p.getERD(), null, 4);
     } else {
-        const p = new quicksql(input);
+        const p = new espresql(input);
         const errors =  p.getErrors(text);
         checkNoError(errors);
         output = p.getDDL();
