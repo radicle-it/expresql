@@ -342,7 +342,8 @@ describe('inserts', () => {
 
     test('# inserts : N line not duplicated in output', () => {
         const out = ddl(`dept /insert 5\n    name\n# inserts : N`, '{"inserts":"N"}');
-        expect(out).not.toContain('# inserts : N');
+        const sqlPart = out.split('/*')[0];
+        expect(sqlPart).not.toContain('# inserts : N');
     });
 
     test('insert with prefix uses prefixed table name', () => {

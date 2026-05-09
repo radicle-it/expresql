@@ -5,8 +5,7 @@
   "main": "./dist/quick-sql.js",
   "type": "module",
   "exports": {
-    ".": "./dist/quick-sql.js",
-    "./erd": "./dist/quick-erd.js"
+    ".": "./dist/quick-sql.js"
   },
   "engines": {
     "node": ">=16"
@@ -16,15 +15,12 @@
   },
   "config": {
     "ddlLibraryName": "quickSQL",
-    "ddlLibraryFileName": "quick-sql",
-    "erdLibraryName": "quickERD",
-    "erdLibraryFileName": "quick-erd"
+    "ddlLibraryFileName": "quick-sql"
   },
   "scripts": {
-    "build": "run-p build:ddl build:ddl-oracle build:ddl-db2 build:erd && npm run build:mle",
+    "build": "run-p build:ddl build:ddl-oracle build:ddl-db2 && npm run build:mle",
     "prebuild": "node -e \"const fs=require('fs');fs.rmSync('./dist',{recursive:true,force:true});fs.mkdirSync('./dist/antv-x6/2.18.1',{recursive:true});fs.copyFileSync('./node_modules/@antv/x6/dist/index.js','./dist/antv-x6/2.18.1/index.min.js');\"",
     "build:ddl": "cross-env TARGET_LIBRARY=DDL vite build",
-    "build:erd": "cross-env TARGET_LIBRARY=ERD vite build",
     "test": "./test/regression_test.js",
     "test:ts": "vitest run",
     "test:ts:watch": "vitest",
@@ -58,8 +54,7 @@
   "license": "UPL-1.0",
   "dependencies": {
     "@antv/x6": "^2.18.1",
-    "chance": "^1.1.11",
-    "dagre": "^0.8.5"
+    "chance": "^1.1.11"
   },
   "bundledDependencies": true,
   "devDependencies": {
@@ -69,8 +64,7 @@
     "npm-run-all": "^4.1.5",
     "typescript": "^6.0.3",
     "vite": "^8.0.11",
-    "vitest": "^4.1.5",
-    "webpack-cli": "^6.0.1"
+    "vitest": "^4.1.5"
   },
   "bundleDependencies": [
     "chance"
