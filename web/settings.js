@@ -204,8 +204,14 @@ export function initSettingsPanel() {
             syncSettingsForm();
             captureSnapshot();
             const r = btnSettings.getBoundingClientRect();
-            panel.style.top   = r.bottom + 4 + 'px';
-            panel.style.right = window.innerWidth - r.right + 'px';
+            panel.style.top = r.bottom + 4 + 'px';
+            if (r.left < window.innerWidth / 2) {
+                panel.style.left  = r.left + 'px';
+                panel.style.right = '';
+            } else {
+                panel.style.left  = '';
+                panel.style.right = (window.innerWidth - r.right) + 'px';
+            }
         } else {
             clearDirty();
             resetSearch();
