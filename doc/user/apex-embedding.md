@@ -65,10 +65,17 @@ When `theme=apex` is active:
 
 Adds the `embedded` CSS class to the root `<html>` element before the first render. Use this when you need to force embedded mode regardless of the frame context (e.g. during development when testing the page standalone).
 
-Parameters can be combined:
+### `?share`
+
+Shows the **↗ Share** button in the DDL toolbar. The button copies a URL that encodes the current schema and ERD positions into a `#` fragment, allowing the state to be restored in a new tab.
+
+The Share button is hidden by default because in APEX the application URL is managed by APEX itself; a fragment-encoded link would bypass session management and is generally not suitable for production use. Enable it explicitly when you need to share schemas outside of APEX (e.g. during development or for standalone deployments).
+
+### Combining parameters
 
 ```
-index.html?theme=apex&embed=1
+index.html?theme=apex&share
+index.html?theme=apex&embed=1&share
 ```
 
 ---

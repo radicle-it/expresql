@@ -170,8 +170,6 @@ initAcCallbacks({ update });
 loadTabs();   // parse URL hash / localStorage → state.tabs
 update();     // initial render
 
-const verEl = document.getElementById('app-version');
-if (verEl) verEl.textContent = 'v' + espresql_version();
 
 // ── Output tab switching ──────────────────────────────────────────
 

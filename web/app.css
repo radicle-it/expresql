@@ -163,6 +163,10 @@ html.embedded body > footer {
     display: none;
 }
 
+/* Share button — hidden by default, opt-in via ?share */
+#btn-share { display: none; }
+html.show-share #btn-share { display: inline-flex; }
+
 /* ── Base ─────────────────────────────────────────────────────────── */
 body {
     font-family: 'Oracle Sans', 'Segoe UI', system-ui, sans-serif;
@@ -217,12 +221,6 @@ header .title {
 header .subtitle {
     color: var(--text-muted);
     font-size: 12px;
-}
-header .app-version {
-    color: var(--text-muted);
-    font-size: 10px;
-    letter-spacing: 0.4px;
-    flex-shrink: 0;
 }
 header .spacer { flex: 1; }
 

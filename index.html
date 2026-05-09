@@ -18,6 +18,7 @@
             try { embedded = window.self !== window.top; } catch(e) { embedded = true; }
             if (!embedded && params.has('embed')) embedded = true;
             if (embedded) document.documentElement.classList.add('embedded');
+            if (params.has('share')) document.documentElement.classList.add('show-share');
         })();
     </script>
 </head>
@@ -35,7 +36,6 @@
     <button id="btn-settings" class="tool-btn">⚙ Settings</button>
     <button id="btn-help"     class="tool-btn" aria-label="Help">ⓘ Help</button>
     <button id="btn-theme"    class="tool-btn" aria-pressed="true">☀</button>
-    <span class="app-version" id="app-version"></span>
 </header>
 
 <!-- Examples dropdown -->
