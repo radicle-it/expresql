@@ -201,7 +201,6 @@ export function initSettingsPanel() {
         e.stopPropagation();
         document.getElementById('examples-panel').classList.remove('open');
         document.getElementById('help-drawer').classList.remove('open');
-        document.getElementById('help-overlay').classList.remove('open');
         const isOpen = panel.classList.toggle('open');
         if (isOpen) {
             syncSettingsForm();
