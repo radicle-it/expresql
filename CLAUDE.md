@@ -4,17 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ExpreSQL is a EspreSQL (QSQL) shorthand-to-DDL compiler. It takes indentation-based shorthand and produces relational DDL, ERD metadata, and PL/SQL scaffolding. Forked from Oracle's EspreSQL, rewritten in TypeScript with a multi-dialect architecture.
+EspreSQL is an ESQL shorthand-to-DDL compiler. It takes indentation-based shorthand and produces relational DDL, ERD metadata, and PL/SQL scaffolding. Forked from Oracle's Quick SQL, rewritten in TypeScript with a multi-dialect architecture.
 
 ## Commands
 
 ```bash
-# Build (DDL + ERD + MLE)
+# Build (DDL + MLE)
 npm run build
 
 # Build individual targets
-npm run build:ddl          # Vite build for DDL library
-npm run build:erd          # Vite build for ERD library
+npm run build:ddl          # Vite build for DDL library (all dialects)
 npm run build:mle          # Generate MLE SQL modules
 
 # Tests
@@ -63,10 +62,10 @@ node bin/index.js <file.esql or file.json>
 ## Key Directories
 
 - `src/compiler/` — Core pipeline: lexer, parser, node semantics, base generator, factory, types
-- `src/utils/` — Utilities: naming, error messages, sample data, string splitting, translation, JSON-to-QSQL
+- `src/utils/` — Utilities: naming, error messages, sample data, string splitting, translation, JSON-to-ESQL
 - `src/oracle/` — Oracle-specific: type mapping, views, PL/SQL, diff/migration generation, reserved words
-- `src/quick-erd/` — ERD visualization (JavaScript, not TypeScript). AntV X6 and Mermaid renderers.
-- `web/` — Browser UI (vanilla JS)
+- `src/db2/` — Db2-specific: type mapping, PL/SQL, TAPI packages
+- `web/` — Browser UI (vanilla JS) with AntV X6 ERD visualization
 - `mle/` — Oracle MLE (Multilingual Engine) SQL installation scripts
 - `test/unit/` — Vitest unit tests
 - `test/integration/` — Vitest integration tests
@@ -74,17 +73,16 @@ node bin/index.js <file.esql or file.json>
 
 ## Build System
 
-Vite builds two separate libraries controlled by `TARGET_LIBRARY` env var:
-- **DDL**: entry `src/ddl.ts` → `dist/espresql.js`
-- **ERD**: entry `src/quick-erd/quick-erd.js` → `dist/quick-erd.js`
-
-A custom Vite plugin redirects legacy `./legacy/xxx.js` imports to `src/xxx.ts` files.
+Vite builds three separate libraries controlled by `TARGET_LIBRARY` env var:
+- **DDL**: entry `src/ddl.ts` → `dist/espresql.js` (core + all dialects)
+- **DDL-ORACLE**: entry `src/ddl-oracle.ts` → `dist/espresql-oracle.js`
+- **DDL-DB2**: entry `src/ddl-db2.ts` → `dist/espresql-db2.js`
 
 ## Testing Conventions
 
 - Vitest tests use `toDDL()` / `espresql` class, assert on output strings with `toContain()` / `toMatch()`
 - Call `resetSeed()` in `beforeEach` for deterministic sample data
-- Legacy `.js` regression tests compare token-by-token output against `.sql` baselines
+- Legacy JS regression tests (`npm test`) compare output against `.sql` baselines in `test/` fixture dirs
 - Both test suites must pass: `npm test` (legacy) and `npm run test:ts` (vitest)
 
 ## Adding a New Dialect

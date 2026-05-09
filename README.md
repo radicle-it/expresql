@@ -1,18 +1,18 @@
-# ExpreSQL
+# EspreSQL
 
-ExpreSQL is a fork of [Oracle EspreSQL](https://github.com/oracle/espresql), a tool that translates an indentation-based shorthand syntax (QSQL) into relational DDL, ERD metadata, and PL/SQL scaffolding.
+EspreSQL è un fork di [Oracle Quick SQL](https://github.com/oracle/quicksql), uno strumento che traduce una sintassi shorthand indentation-based (ESQL) in DDL relazionale, metadati ERD e scaffolding PL/SQL.
 
-The v2.0.0 rewrite introduces a multi-dialect architecture in TypeScript, replacing the original monolithic JavaScript codebase.
+La riscrittura v2.0.0 introduce un'architettura multi-dialetto in TypeScript, sostituendo il codebase JavaScript monolitico originale.
 
 ## Repository structure
 
-- **`src/`** — Compilatore QSQL: lexer, parser, analisi semantica e generatore astratto multi-dialetto
+- **`src/`** — Compilatore ESQL: lexer, parser, analisi semantica e generatore astratto multi-dialetto
 - **`src/oracle/`** — Dialetto Oracle: generatore DDL, viste, PL/SQL, TAPI e diff/migration
-- **`src/quick-erd/`** — Visualizzazione ERD con renderer AntV X6 e Mermaid
-- **`web/`** — Interfaccia browser con editor QSQL e visualizzazione ERD
+- **`src/db2/`** — Dialetto IBM Db2: generatore DDL e TAPI
+- **`web/`** — Interfaccia browser con editor ESQL e visualizzazione ERD (AntV X6)
 - **`mle/`** — Script di installazione per Oracle MLE (esecuzione in-database)
-- **`test/`** — Test Vitest (unit + integration) e suite di regressione legacy JS
-- **`dist/`** — Output compilato (`espresql.js`, `quick-erd.js`, `espresql.mle.cjs`)
+- **`test/`** — Test Vitest (unit + integration) e suite di regressione JS
+- **`dist/`** — Output compilato (`espresql.js`, `espresql-oracle.js`, `espresql-db2.js`)
 - **`doc/`** — Documentazione utente e di sviluppo
 
 ## License

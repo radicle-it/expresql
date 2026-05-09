@@ -54,7 +54,7 @@ npm run test
 Once you have built the library, you can run the example CLI by executing:
 
 ```bash
-npm run example-cli -- ./test/department_employees.quicksql
+npm run example-cli -- ./test/department_employees.esql
 ```
 
 ## Pull request process
