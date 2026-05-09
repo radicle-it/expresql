@@ -228,7 +228,7 @@ export function initGraph() {
     const X6 = window.X6;
     const erdContainer = document.getElementById('erd-container');
     if (!X6 || !X6.Graph) {
-        erdContainer.innerHTML = '<div style="padding:20px;color:#f48771;font-size:12px">X6 not loaded — check the path dist/antv-x6/2.18.1/index.min.js</div>';
+        erdContainer.innerHTML = '<div style="padding:20px;color:#f48771;font-size:12px">X6 not loaded — check the path dist/antv-x6.min.js</div>';
         return;
     }
     const theme = currentTheme();

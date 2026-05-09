@@ -12,7 +12,7 @@ const polyfill = `if (typeof Buffer === 'undefined') {
 }
 `;
 
-const bundle = readFileSync('dist/quick-sql.js', 'utf8');
+const bundle = readFileSync('dist/espresql.js', 'utf8');
 const output = polyfill + bundle;
-writeFileSync('dist/quick-sql.mle.cjs', output, 'utf8');
-console.log('MLE bundle written: dist/quick-sql.mle.cjs (' + output.length + ' bytes)');
+writeFileSync('dist/espresql.mle.cjs', output, 'utf8');
+console.log('MLE bundle written: dist/espresql.mle.cjs (' + output.length + ' bytes)');

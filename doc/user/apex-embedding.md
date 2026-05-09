@@ -167,7 +167,7 @@ Upload the following files to your APEX application's static files (Application 
 | `web/erd.js` | Yes | ERD diagram rendering |
 | `web/state.js` | Yes | Shared state |
 | `dist/espresql.js` | Yes | Compiler library |
-| `dist/antv-x6/2.18.1/index.min.js` | Yes | ERD graph engine |
+| `dist/antv-x6.min.js` | Yes | ERD graph engine |
 | `img/radicle_01.png` | No | Logo (not shown in embedded mode) |
 | `img/favicon.svg` | No | Browser tab icon |
 

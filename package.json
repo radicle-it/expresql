@@ -19,7 +19,7 @@
   },
   "scripts": {
     "build": "run-p build:ddl build:ddl-oracle build:ddl-db2 && npm run build:mle",
-    "prebuild": "node -e \"const fs=require('fs');fs.rmSync('./dist',{recursive:true,force:true});fs.mkdirSync('./dist/antv-x6/2.18.1',{recursive:true});fs.copyFileSync('./node_modules/@antv/x6/dist/index.js','./dist/antv-x6/2.18.1/index.min.js');\"",
+    "prebuild": "node -e \"const fs=require('fs');fs.rmSync('./dist',{recursive:true,force:true});fs.mkdirSync('./dist',{recursive:true});fs.copyFileSync('./node_modules/@antv/x6/dist/index.js','./dist/antv-x6.min.js');\"",
     "build:ddl": "cross-env TARGET_LIBRARY=DDL vite build",
     "test": "./test/regression_test.js",
     "test:ts": "vitest run",

@@ -1,5 +1,5 @@
 -- Auto-generato da scripts/generate-mle-sql.mjs — non modificare manualmente
--- Sorgente: mle/espresql-api.mjs  (799 byte, 1 chunk da 2000 char)
+-- Sorgente: mle/espresql-api.mjs  (784 byte, 1 chunk da 2000 char)
 PROMPT >>> Caricamento espresql_api_module (1 chunk)...
 
 -- Disabilita sostituzione variabili (&/&&) per non interferire con il codice JavaScript
@@ -53,11 +53,11 @@ SELECT module_name,
        status,
        ROUND(LENGTH(module_source) / 1024, 1) AS size_kb
 FROM   user_mle_modules
-WHERE  module_name = 'QUICKSQL_API_MODULE';
+WHERE  module_name = 'ESPRESQL_API_MODULE';
 
 SELECT name, line, text
 FROM   user_errors
-WHERE  name = 'QUICKSQL_API_MODULE'
+WHERE  name = 'ESPRESQL_API_MODULE'
 ORDER  BY line;
 
 PROMPT >>> mle/02_install_api_module.sql completato.
