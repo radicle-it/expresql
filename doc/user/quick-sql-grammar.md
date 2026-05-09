@@ -25,6 +25,7 @@
     - [createdCol](#createdcol)
     - [date](#date)
     - [db](#db)
+    - [dialect](#dialect)
     - [drop](#drop)
     - [language](#language)
     - [longVC](#longvc)
@@ -80,49 +81,52 @@ A comment can appear between any keywords, parameters, or punctuation marks in a
 ## Datatypes
 
 <!-- markdownlint-disable MD013 -->
-| Type                                        | DB Type                       |
-| ------------------------------------------- | ----------------------------- |
-| boolean, bool                               | `BOOLEAN` native type on `db: 23c` or higher; `NUMBER(1) CHECK (col IN (0,1))` on older versions. Override with the [`boolean`](#boolean) setting. |
-| num, number                                 | NUMBER                        |
-| int, integer                                | INTEGER                       |
-| d, date                                     | DATE                          |
-| ts, timestamp                               | TIMESTAMP                     |
-| tstz, tswtz, timestamp with local time zone | TIMESTAMP WITH LOCAL TIMEZONE |
-| char, vc, varchar, varchar2, string         | VARCHAR2(4000)                |
-| vcNNN,vc(NNN)                               | VARCHAR2(NNN)                 |
-| vc32k                                       | VARCHAR2(32767)               |
-| geometry, sdo_geometry                      | SDO_GEOMETRY                  |
-| vect, vector                                | VECTOR(\*,\*,\*) — requires `db: 23c` or higher |
-| vectNNN, vect(NNN)                          | VECTOR(NNN,\*,\*) — fixed dimensionality, requires `db: 23c` or higher |
-| vcNk                                        | VARCHAR2(N*1024) — e.g. `vc4k` → `VARCHAR2(4096)` |
-| clob                                        | CLOB                          |
-| blob                                        | BLOB                          |
-| json                                        | `JSON` native type when `db: 23c` or higher; `CLOB CHECK (<COLUMN_NAME> IS JSON)` on older versions |
-| file                                        | Adds a BLOB column and `_FILENAME`, `_CHARSET`, `_MIMETYPE`, `_LASTUPD` columns that support file download via a browser (APEX file upload pattern) |
+| QSQL shorthand | Oracle DDL type | Db2 LUW DDL type |
+| --- | --- | --- |
+| `boolean`, `bool` | `BOOLEAN` (23c+) · `CHAR(1) CHECK (col IN ('Y','N'))` on older. Override with the [`boolean`](#boolean) setting. | `BOOLEAN` (11.5+, always native) |
+| `num`, `number` | `NUMBER` | `DECIMAL(15,4)` |
+| `num(p,s)` | `NUMBER(p,s)` | `DECIMAL(p,s)` |
+| `int`, `integer` | `INTEGER` | `INTEGER` |
+| `d`, `date` | `DATE` | `DATE` |
+| `ts`, `timestamp` | `TIMESTAMP` | `TIMESTAMP` |
+| `tstz`, `tswtz`, `timestamp with local time zone` | `TIMESTAMP WITH LOCAL TIME ZONE` | `TIMESTAMP WITH TIME ZONE` |
+| `char`, `vc`, `varchar`, `varchar2`, `string` | `VARCHAR2(4000 char)` | `VARCHAR(4000)` |
+| `vcNNN`, `vc(NNN)` | `VARCHAR2(NNN char)` | `VARCHAR(NNN)` |
+| `vc32k` | `VARCHAR2(32767)` | `VARCHAR(32672)` |
+| `vcNk` | `VARCHAR2(N×1024)` — e.g. `vc4k` → `VARCHAR2(4096)` | `VARCHAR(N×1024)` |
+| `clob` | `CLOB` | `CLOB` |
+| `blob` | `BLOB` | `BLOB` |
+| `json` | `JSON` (23c+) · `CLOB CHECK (col IS JSON)` on older | `JSON` (11.5+) |
+| `xml` | `XMLTYPE` | `XML` |
+| `geometry`, `sdo_geometry` | `SDO_GEOMETRY` | `DB2GSE.ST_GEOMETRY` |
+| `vect`, `vector` | `VECTOR(*,*,*)` (23c+) | `CLOB` _(placeholder — use `VECTOR(n)` on Db2 12+/watsonx)_ |
+| `vectNNN`, `vect(NNN)` | `VECTOR(NNN,*,*)` (23c+) | `CLOB` _(placeholder)_ |
+| `file` | `BLOB` + `_FILENAME`, `_CHARSET`, `_MIMETYPE`, `_LASTUPD` columns (APEX upload pattern) | `BLOB` + same metadata columns |
 <!-- markdownlint-enable MD013 -->
 
 ## Table Directives
 
 <!-- markdownlint-disable MD013 -->
-| Directive                               | Description                       |
-| --------------------------------------- | --------------------------------- |
-| /api [*tier*]                           | Generate PL/SQL package API to query, insert, update, and delete data within a table. Adds Oracle auditing, by default AUDIT ALL ON &lt;TABLE NAME&gt;. The optional *tier* argument selects which layers are generated for this specific table: `lookup`, `lookup+hks`, `service`, `service+hks`, `full`, or `full+hks` (default). See [api](#api) setting for details. |
-| /audit                                  | Adds Oracle auditing, by default AUDIT ALL ON &lt;TABLE NAME&gt;. |
-| /auditcols, /audit cols, /audit columns | Automatically adds CREATED, CREATED_BY, UPDATED, and UPDATED_BY columns and the trigger logic to set column values. |
-| /auditlog [*table*]                     | Generates an audit package with `PRAGMA AUTONOMOUS_TRANSACTION` that logs all DML operations to a developer-supplied audit log table. Typically combined with `/api`. The generated package calls `<log_table>_svc.create_rec` inside an autonomous transaction so that audit records persist even if the outer transaction rolls back. The optional *table* argument names the log table (without prefix); defaults to `app_audit_log` if omitted. |
-| /check                                  | Table level CHECK constraint.     |
-| /colprefix                              | Prefix all columns of a given table with this value. Automatically adds an underscore if not provided. |
-| /compress, /compressed                  | Table will be created compressed. |
-| /flashback, /fda                        | Enable Flashback Data Archive on the table. Optionally specify an archive name, e.g. `/flashback myarchive`. |
-| /history                                | *(23ai+)* Temporal history tracking. Generates a `<table>_history` shadow table and triggers that capture every row version with `valid_from` / `valid_to` timestamps. |
-| /immutable                              | *(21c+)* Append-only table. A BEFORE UPDATE OR DELETE trigger raises an application error to prevent modifications. Use for ledger-style or compliance data that must never be changed after insertion. |
-| /insert NN                              | Generate NN SQL INSERT statement(s) with random data, for example: `/insert 20`. (Maximum = 1000) |
-| /rest                                   | Generate REST enablement of the table using Oracle REST Data Services (ORDS). |
-| /rowversion                             | Adds a `ROW_VERSION NUMBER DEFAULT 0` column and a BEFORE UPDATE trigger that increments it by 1 on every update. Use for optimistic concurrency control (OCC). |
-| /soda                                   | *(21c+)* Creates a SODA-compatible JSON document collection table with fixed schema: `ID RAW(16)`, `CREATED_ON TIMESTAMP`, `LAST_MODIFIED TIMESTAMP`, `VERSION VARCHAR2(255)`, `JSON_DOCUMENT BLOB CHECK (JSON_DOCUMENT IS JSON)`. |
-| /unique, /uk                            | Generate table level UNIQUE constraint. |
-| /pk                                     | Generate primary key constraint (on table level it is usually a composite key). |
-| {annotations}                           | Oracle SQL annotations on the table. See [Annotations](#annotations). A `DESCRIPTION` annotation automatically generates a `COMMENT ON TABLE` statement. |
+| Directive | Description | Dialect |
+| --- | --- | --- |
+| `/api [tier]` | Generate layered Table API. The optional *tier* selects which layers are generated: `lookup`, `lookup+hks`, `service`, `service+hks`, `full`, `full+hks` (default). **Oracle:** generates PL/SQL packages (`_dal`, `_hks`, `_svc`, `_apx`/`_rst`). **Db2:** generates schema-scoped SQL PL procedures (`_dal`, `_hks`, `_svc`, `_rst`). See [api](#api) setting. | All |
+| `/audit` | Adds Oracle auditing (`AUDIT ALL ON <TABLE>`). On Db2, emits a comment recommending an IBM Db2 Audit Policy instead. | All *(Oracle feature)* |
+| `/auditcols`, `/audit cols` | Adds `CREATED`, `CREATED_BY`, `UPDATED`, `UPDATED_BY` columns and trigger logic. **Oracle:** `SYSDATE` / `v('APP_USER')`. **Db2:** `CURRENT TIMESTAMP` / `CURRENT USER`. | All |
+| `/auditlog [table]` | Generates an audit package with `PRAGMA AUTONOMOUS_TRANSACTION` that logs all DML to a developer-supplied audit table. The generated package calls `<log_table>_svc.create_rec` inside an autonomous transaction. | Oracle only |
+| `/check` | Table-level CHECK constraint. | All |
+| `/colprefix` | Prefix all columns of the table with this value (underscore appended automatically). | All |
+| `/compress`, `/compressed` | Creates the table compressed. | Oracle only |
+| `/flashback`, `/fda` | Enable Flashback Data Archive. Optionally specify an archive name, e.g. `/flashback myarchive`. | Oracle only |
+| `/history` | *(23ai+)* Temporal history: generates a `<table>_history` shadow table and triggers with `valid_from` / `valid_to` timestamps. | Oracle only |
+| `/immutable` | *(21c+)* Append-only table. A BEFORE UPDATE OR DELETE trigger raises an application error. | Oracle only |
+| `/insert NN` | Generate NN random INSERT statements (max 1000). | All |
+| `/notenantid` | Marks a table as supra-tenant (no `TENANT_ID` column). Used with the [`tenantid`](#tenantid) setting. | Oracle only |
+| `/rest` | REST-enable the table using Oracle REST Data Services (ORDS). | Oracle only |
+| `/rowversion` | Adds a `ROW_VERSION` column and a BEFORE UPDATE trigger that increments it. **Oracle:** `NUMBER`. **Db2:** `INTEGER`, SQL PL syntax. | All |
+| `/soda` | *(21c+)* Creates a SODA-compatible JSON document collection table. | Oracle only |
+| `/unique`, `/uk` | Table-level UNIQUE constraint. | All |
+| `/pk` | Explicit primary key constraint (composite on the table level). | All |
+| `{annotations}` | Oracle SQL Annotations on the table. `DESCRIPTION` generates `COMMENT ON TABLE`. See [Annotations](#annotations). | Oracle only |
 <!-- markdownlint-enable MD013 -->
 
 ### Star/Snowflake schema relationship direction indicators
@@ -151,26 +155,26 @@ and is usually omitted from QSQL schema definition.
 ## Column Directives
 
 <!-- markdownlint-disable MD013 -->
-| Directive                      | Description                                |
-| ------------------------------ | ------------------------------------------ |
-| /idx, /index, /indexed         | Creates a non unique index                 |
-| /unique, /uk                   | Creates a unique constraint                |
-| /check                         | Creates a check constraint with comma or white space delimited values e.g. /check Yes, No |
-| /constant                      | When generating data set this column to a constant value. For example /constant NYC. |
-| /default                       | Adds default value if the column is null   |
-| /domain                        | Use an Oracle SQL Domain as the column type (23ai+). The domain name becomes the column's type, e.g. `/domain email_d`. |
-| /values                        | Comma separated list of values to use when generating data. For example /values 1, 2, 3, 4 or /values Yes, No. |
-| /upper                         | Forces column values to upper case         |
-| /lower                         | Forces column values to lower case         |
-| /nn, /not null                 | Adds a not null constraint on the column   |
-| /between                       | Adds a between check constraint on the column, for example /between 1 and 100 |
-| /references, /reference, /fk   | Foreign key references e.g. /references table_name. Note you can reference tables that are not part of your model. |
-| /cascade                       | on delete cascade                          |
-| /setnull                       | on delete set null                         |
-| /pk                            | Identifies column as the primary key of the table. It is recommended not manually specify primary keys and let this app create primary key columns automatically. |
-| /trans, /translation, /translations | Marks a column for multi-lingual translation support. Generates a shared `language` table, a `<table>_trans` table with translated column variants, and a `<table>_resolved` view that joins them using `sys_context` for the current language. See the [`transcontext`](#transcontext) setting. |
-| --, [comments]                 | Enclose comments using square brackets or using dash-dash syntax. |
-| {annotations}                  | Oracle SQL annotations on the column. See [Annotations](#annotations). A `DESCRIPTION` annotation automatically generates a `COMMENT ON COLUMN` statement. |
+| Directive | Description | Dialect |
+| --- | --- | --- |
+| `/idx`, `/index`, `/indexed` | Creates a non-unique index on the column. | All |
+| `/unique`, `/uk` | Creates a unique constraint on the column. | All |
+| `/check` | Check constraint with comma-delimited values, e.g. `/check Yes, No`. | All |
+| `/constant` | Sets this column to a constant value in generated INSERT data, e.g. `/constant NYC`. | All |
+| `/default` | Adds a DEFAULT value clause to the column. | All |
+| `/domain` | *(23ai+)* Use an Oracle SQL Domain as the column type, e.g. `/domain email_d`. | Oracle only |
+| `/values` | Comma-separated list of values to use in generated INSERT data, e.g. `/values 1, 2, 3`. | All |
+| `/upper` | Forces column values to upper case via a BEFORE INSERT OR UPDATE trigger. | Oracle only |
+| `/lower` | Forces column values to lower case via a BEFORE INSERT OR UPDATE trigger. | Oracle only |
+| `/nn`, `/not null` | Adds a NOT NULL constraint. | All |
+| `/between` | Adds a BETWEEN check constraint, e.g. `/between 1 and 100`. | All |
+| `/references`, `/reference`, `/fk` | Foreign key reference, e.g. `/fk departments`. Can reference tables outside the model. | All |
+| `/cascade` | ON DELETE CASCADE on the FK column. | All |
+| `/setnull` | ON DELETE SET NULL on the FK column. | All |
+| `/pk` | Marks this column as the explicit primary key. Prefer auto-generated PKs when possible. | All |
+| `/trans`, `/translation` | Marks a column for multi-lingual support. Generates a shared `language` table, a `<table>_trans` table, and a `<table>_resolved` view using `sys_context`. See [`transcontext`](#transcontext). | Oracle only |
+| `--`, `[comments]` | Inline comment — double-dash or square-bracket syntax. | All |
+| `{annotations}` | Oracle SQL Annotations on the column. `DESCRIPTION` generates `COMMENT ON COLUMN`. See [Annotations](#annotations). | Oracle only |
 <!-- markdownlint-enable MD013 -->
 
 ### Multi-lingual columns (/trans)
@@ -428,7 +432,53 @@ ignored. To have all settings generated use:
 
 The available settings are listed in the below sections.
 
+### Settings by dialect
+
+| Setting | All dialects | Oracle only | Notes |
+|---|---|---|---|
+| `api` | ✓ | | Oracle: PL/SQL packages. Db2: schema-scoped SQL PL procedures. |
+| `apex` | | ✓ | Oracle APEX user function for audit columns. |
+| `auditcols` | ✓ | | Oracle: `SYSDATE` / `v('APP_USER')`. Db2: `CURRENT TIMESTAMP` / `CURRENT USER`. |
+| `boolean` | | ✓ | Oracle Y/N vs native control. Db2 always generates native `BOOLEAN`. |
+| `compress` | | ✓ | |
+| `createdByCol` | ✓ | | |
+| `createdCol` | ✓ | | |
+| `datalimit` | ✓ | | |
+| `date` | | ✓ | Oracle DATE type variant. Db2 always maps `d` → `DATE`. |
+| `db` | | ✓ | Oracle version targeting (11g → 26ai). |
+| `dialect` | ✓ | | Selects the SQL dialect. |
+| `drop` | ✓ | | Oracle: `DROP … CASCADE CONSTRAINTS`. Db2: `DROP … IF EXISTS`. |
+| `dv` | | ✓ | JSON Duality Views (23ai+). |
+| `editionable` | | ✓ | Oracle EBR. |
+| `aienrichment` | | ✓ | Oracle 26ai metadata annotations. |
+| `genPK` | ✓ | | |
+| `ifc` | ✓ (`rest`) | ✓ (`apex`, `both`) | `rest` works for both dialects. `apex` / `both` are Oracle only. |
+| `inserts` | ✓ | | |
+| `language` | ✓ | | |
+| `longVC` | ✓ | | |
+| `namelen` | ✓ | | |
+| `ondelete` | ✓ | | |
+| `overrideSettings` | ✓ | | |
+| `pk` | ✓ | | `guid` → `SYS_GUID()` on Oracle; maps to `IDENTITY` on Db2. |
+| `prefix` | ✓ | | |
+| `prefixPKwithTname` | ✓ | | |
+| `resetsettings` | ✓ | | |
+| `rowkey` | | ✓ | |
+| `rowVersion` | ✓ | | Oracle: `NUMBER`. Db2: `INTEGER`, SQL PL trigger. |
+| `schema` | ✓ | | |
+| `semantics` | | ✓ | Oracle `CHAR`/`BYTE` semantics for VARCHAR2. |
+| `tenantID` | | ✓ | |
+| `tenantRef` | | ✓ | |
+| `transcontext` | | ✓ | Oracle application context for `/trans`. |
+| `updatedByCol` | ✓ | | |
+| `updatedCol` | ✓ | | |
+| `verbose` | ✓ | | |
+
+---
+
 ### apex
+
+> **Dialect:** Oracle only
 
 **Possible values**: `true`, `false`  
 **Default value**: `false`
@@ -555,6 +605,8 @@ table created.
 
 ### boolean
 
+> **Dialect:** Oracle only — Db2 always generates native `BOOLEAN`; this setting is ignored.
+
 **Possible Values**: `yn`, `native`  
 **Default Value**: inferred from `#db`
 
@@ -569,12 +621,16 @@ This setting takes priority over `#db`, allowing you to use the legacy `yn` repr
 
 ### compress
 
+> **Dialect:** Oracle only
+
 **Possible Values**: `true`, `false`  
 **Default Value**: `false`
 
 When enabled creates all tables compressed.
 
 ### transcontext
+
+> **Dialect:** Oracle only — tied to `/trans` which uses Oracle `sys_context`.
 
 **Default Value**: `sys_context('APP_CTX','LANG')`
 
@@ -604,6 +660,8 @@ name.
 
 ### date
 
+> **Dialect:** Oracle only — controls how the `d`/`date` QSQL shorthand maps to Oracle SQL types. Db2 always maps `d` → `DATE`.
+
 **Possible Values**: `date`, `timestamp`, `timestamp with timezone`, `TSWTZ`,
 `timestamp with local time zone`, `TSWLTZ`  
 **Default Value**: `date`
@@ -613,10 +671,44 @@ setting to override this default.
 
 ### db
 
+> **Dialect:** Oracle only — targets a specific Oracle version. Ignored when `dialect: db2`.
+
 **Possible Values**: `11g`, `12c`, `19c`, `21c`, `23c`, `26ai`
 **Default Value**: `19c`
 
 Specifies the database version the syntax should be compatible with. The version string is reduced to major version number.  Therefore, 23, 23c, 23ai, and 23.1.1 are all legitimate values equivalent to 23.
+
+### dialect
+
+**Possible Values**: `oracle`, `db2`  
+**Default Value**: `oracle`
+
+Selects the SQL dialect for DDL generation.
+
+| Value | Target database | Notes |
+|-------|----------------|-------|
+| `oracle` | Oracle Database (default) | Full feature set: packages, APEX, ORDS, JSON Duality Views, MLE |
+| `db2` | IBM Db2 LUW 11.1+ | SQL PL stored procedures, schema-based namespacing, no APEX/ORDS |
+
+**Example:**
+
+```quicksql
+employees
+  name         vc100 /nn
+  hire_date    d
+  salary       num(12,2)
+
+# settings = {"dialect":"db2"}
+```
+
+**Db2-specific behaviour:**
+
+- Column types: `VARCHAR` (not `VARCHAR2`), `DECIMAL(p,s)` (not `NUMBER`), `BOOLEAN` (11.5+), `JSON` (11.5+), `DOUBLE` for float.
+- Primary key default: `INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY`. Use `pk: seq` for a sequence-based PK.
+- Triggers: Db2 SQL PL syntax — `REFERENCING NEW AS n [OLD AS o]`, `SET n.col = value`, `CURRENT TIMESTAMP`, `CURRENT USER`.  The statement terminator is changed to `@` via `--#SET TERMINATOR @`.
+- DROP: `DROP TABLE IF EXISTS` (no `CASCADE CONSTRAINTS`).
+- Layered TAPI (`/api`): schemas replace Oracle packages — each tier gets its own schema (`_dal`, `_hks`, `_svc`, `_rst`) containing `CREATE OR REPLACE PROCEDURE` statements.  The APEX interface (`_apx`) and ORDS tie-in are not available for Db2; the default interface is `rst`.
+- No `ifc: apex` support; `ifc: rest` (or bare `/api`) is the only interface tier.
 
 ### drop
 
@@ -665,6 +757,8 @@ ignored and only settings set in the script will be used.
 Determines how the primary key will be set. Primary keys can be set using
 SYS_GUID, identity column or sequence.
 
+> **Db2 note:** `guid` is Oracle-specific (`SYS_GUID()`). When `dialect: db2` and `pk: guid` is set, the PK is generated as `INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY` (Db2 has no native UUID PK by default). Use `pk: seq` for a sequence-driven PK on Db2.
+
 ### prefix
 
 Database object prefix. An underscore will be appended if not provided.
@@ -694,6 +788,8 @@ settings currently active for your session will be ignored.
 
 ### rowkey
 
+> **Dialect:** Oracle only
+
 **Possible Values**: `true`, `false`  
 **Default Value**: `false`
 
@@ -702,6 +798,8 @@ identifier. Values of the ROW_KEY column will be set by generated database table
 trigger logic.
 
 ### tenantID
+
+> **Dialect:** Oracle only
 
 **Possible Values**: `true`, `false`  
 **Default Value**: `false`
@@ -775,6 +873,8 @@ When `api: yes` (or `api: true`) is combined with `tenantid: yes`, the generated
 
 ### tenantRef
 
+> **Dialect:** Oracle only
+
 **Possible Values**: any table name string  
 **Default Value**: `"tenants"`
 
@@ -807,6 +907,8 @@ Prefix object names with a schema name. The default is no schema prefix for
 object names.
 
 ### semantics
+
+> **Dialect:** Oracle only — Oracle `VARCHAR2` supports `CHAR` and `BYTE` semantics; Db2 `VARCHAR` uses byte-length sizing only.
 
 **Possible Values**:  `char`, `byte`  
 
@@ -866,15 +968,17 @@ The `/insert 10` directive is ignored and no INSERT statements are generated.
 
 ### ifc
 
+> **Dialect:** All dialects support `rest`. `apex` and `both` are Oracle only.
+
 **Possible Values**: `apex`, `rest`, `both`  
-**Default Value**: `apex`
+**Default Value**: `apex` (Oracle) · `rest` (Db2)
 
 Controls which interface package is generated for layered TAPI tables.
 
-| Value | Package generated | Use when |
-|---|---|---|
-| `apex` | `_apx` | Consuming the API from Oracle APEX (default). |
-| `rest` | `_rst` | Exposing the API as ORDS REST endpoints. |
+| Value | Package generated | Dialect | Use when |
+|---|---|---|---|
+| `apex` | `_apx` | Oracle only | Consuming the API from Oracle APEX. |
+| `rest` | `_rst` | All | Exposing the API as REST endpoints. |
 | `both` | `_apx` and `_rst` | Dual access: APEX UI and REST clients simultaneously. |
 
 The `_rst` package contains no-parameter procedures (`get`, `ins`, `upd`, `del`) that use ORDS bind variables (`:body_text`, `:p_id`, `:status`) and emit JSON via `htp.p`.
@@ -897,6 +1001,8 @@ employees /api
 
 ### dv
 
+> **Dialect:** Oracle only — requires Oracle 23c+.
+
 **Possible Values**: `true`, `false`  
 **Default Value**: `false`
 
@@ -913,6 +1019,8 @@ departments
 
 ### editionable
 
+> **Dialect:** Oracle only — Oracle Edition-Based Redefinition (EBR).
+
 **Possible Values**: `true`, `false`  
 **Default Value**: `false`
 
@@ -925,6 +1033,8 @@ employees /api
 ```
 
 ### aienrichment
+
+> **Dialect:** Oracle only — requires Oracle 26ai.
 
 **Possible Values**: `true`, `false`  
 **Default Value**: `false`

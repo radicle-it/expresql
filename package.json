@@ -21,7 +21,7 @@
     "erdLibraryFileName": "quick-erd"
   },
   "scripts": {
-    "build": "run-p build:ddl build:erd && npm run build:mle",
+    "build": "run-p build:ddl build:ddl-oracle build:ddl-db2 build:erd && npm run build:mle",
     "prebuild": "node -e \"const fs=require('fs');fs.rmSync('./dist',{recursive:true,force:true});fs.mkdirSync('./dist/antv-x6/2.18.1',{recursive:true});fs.copyFileSync('./node_modules/@antv/x6/dist/index.js','./dist/antv-x6/2.18.1/index.min.js');\"",
     "build:ddl": "cross-env TARGET_LIBRARY=DDL vite build",
     "build:erd": "cross-env TARGET_LIBRARY=ERD vite build",
@@ -32,7 +32,9 @@
     "lint": "run-p lint:*",
     "example-cli": "./examples/cli.js",
     "postversion": "run-s build",
-    "build:mle": "node scripts/build-mle.mjs && node scripts/generate-mle-sql.mjs"
+    "build:mle": "node scripts/build-mle.mjs && node scripts/generate-mle-sql.mjs",
+    "build:ddl-oracle": "cross-env TARGET_LIBRARY=DDL-ORACLE vite build",
+    "build:ddl-db2": "cross-env TARGET_LIBRARY=DDL-DB2 vite build"
   },
   "repository": {
     "type": "git",

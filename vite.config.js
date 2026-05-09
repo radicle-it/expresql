@@ -38,16 +38,24 @@ const __dirname = path.dirname( __filename );
 
 const gTargetLibrary = process.env[ 'TARGET_LIBRARY' ] || 'DDL';
 
-if ( ![ 'DDL', 'ERD' ].includes( gTargetLibrary ) ) {
-    throw new Error( 'Invalid TARGET_LIBRARY value. Please use either of "DDL" or "ERD"' );
+if ( ![ 'DDL', 'DDL-ORACLE', 'DDL-DB2', 'ERD' ].includes( gTargetLibrary ) ) {
+    throw new Error( 'Invalid TARGET_LIBRARY value. Please use one of: DDL, DDL-ORACLE, DDL-DB2, ERD' );
 }
 
-const gBuildOptions = gTargetLibrary === 'DDL' ?
+/** Entry-point → output file name map for each DDL dialect bundle. */
+const DDL_ENTRIES = {
+    'DDL':        { entry: 'src/ddl.ts',        fileName: buildConstants.__DDL_LIBRARY_FILE_NAME__ },
+    'DDL-ORACLE': { entry: 'src/ddl-oracle.ts', fileName: buildConstants.__DDL_LIBRARY_FILE_NAME__ + '-oracle' },
+    'DDL-DB2':    { entry: 'src/ddl-db2.ts',    fileName: buildConstants.__DDL_LIBRARY_FILE_NAME__ + '-db2' },
+};
+
+const gBuildOptions = DDL_ENTRIES[ gTargetLibrary ] !== undefined
+    ?
     {
         lib: {
-            entry: path.join( __dirname, 'src/ddl.ts' ),
-            formats: [ 'es' ],
-            fileName: buildConstants.__DDL_LIBRARY_FILE_NAME__
+            entry:    path.join( __dirname, DDL_ENTRIES[ gTargetLibrary ].entry ),
+            formats:  [ 'es' ],
+            fileName: DDL_ENTRIES[ gTargetLibrary ].fileName,
         }
     }
     :

@@ -1,7 +1,5 @@
 import type { DdlContext, DDLGenerator } from './types.js';
 import type { DiffGenerator } from './diff-types.js';
-import { OracleDDLGenerator } from '../oracle/generator.js';
-import { OracleDiffGenerator } from '../oracle/diff-generator.js';
 
 /** A function that constructs a DDLGenerator for a given context. */
 export type GeneratorFactory = (ctx: DdlContext) => DDLGenerator;
@@ -9,13 +7,9 @@ export type GeneratorFactory = (ctx: DdlContext) => DDLGenerator;
 /** A function that constructs a DiffGenerator for a given context. */
 export type DiffGeneratorFactory = (ctx: DdlContext) => DiffGenerator;
 
-const registry: Record<string, GeneratorFactory> = {
-    oracle: ctx => new OracleDDLGenerator(ctx),
-};
+const registry: Record<string, GeneratorFactory> = {};
 
-const diffRegistry: Record<string, DiffGeneratorFactory> = {
-    oracle: _ctx => new OracleDiffGenerator(),
-};
+const diffRegistry: Record<string, DiffGeneratorFactory> = {};
 
 /**
  * Register a DDL generator factory for a SQL dialect.

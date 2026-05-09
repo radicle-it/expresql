@@ -1,24 +1,3 @@
--- Auto-generato da scripts/generate-mle-sql.mjs — non modificare manualmente
--- Sorgente: dist/quick-sql.mle.cjs  (483212 byte, 242 chunk da 2000 char)
-PROMPT >>> Caricamento quicksql_module (242 chunk)...
-
--- Disabilita sostituzione variabili (&/&&) per non interferire con il codice JavaScript
-SET DEFINE OFF
-
-DECLARE
-  l_src CLOB;
-BEGIN
-  DBMS_LOB.CREATETEMPORARY(l_src, TRUE);
-  DBMS_LOB.APPEND(l_src, TO_CLOB('if (typeof Buffer === ''undefined'') {
-    globalThis.Buffer = {
-        from: function(arr) {
-            if (typeof arr === ''string'') return { toString: () => arr };
-            return { toString: () => {
-                try { return String.fromCharCode.apply(null, arr); } catch(e) { return ''''; }
-            }};
-        }
-    };
-}
 //#region \0rolldown/runtime.js
 var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescriptor, r = Object.getOwnPropertyNames, i = Object.getPrototypeOf, a = Object.prototype.hasOwnProperty, o = (e, t) => () => (t || (e((t = { exports: {} }).exports, t), e = null), t.exports), s = (e, i, o, s) => {
 	if (i && typeof i == "object" || typeof i == "function") for (var c = r(i), l = 0, u = c.length, d; l < u; l++) d = c[l], !a.call(e, d) && d !== o && t(e, d, {
@@ -57,8 +36,7 @@ function d(e) {
 }
 function f(e, t, n) {
 	let r = n ?? "", i = !1, a = e, o = t, s = r;
-	a.charAt(0) === "\"" && (i = !0, a = a'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('.slice(1, -1)), o.charAt(0) === "\"" && (i = !0, o = o.slice(1, -1)), s.charAt(0) === "\"" && (i = !0, s = s.slice(1, -1));
+	a.charAt(0) === "\"" && (i = !0, a = a.slice(1, -1)), o.charAt(0) === "\"" && (i = !0, o = o.slice(1, -1)), s.charAt(0) === "\"" && (i = !0, s = s.slice(1, -1));
 	let c = a + o + s;
 	return i ? "\"" + c + "\"" : c.toLowerCase();
 }
@@ -87,13 +65,13 @@ var h = -10, g = -11, _ = class {
 	isStandardLiteral() {
 		if (this.value.length < 2) return !1;
 		let e = this.value.charAt(0);
-		if (e !== "''" && e !== "n" && e !== "N") return !1;
+		if (e !== "'" && e !== "n" && e !== "N") return !1;
 		let t = this.value;
 		if (e === "n" || e === "N") {
 			if (t.length < 3) return !1;
 			t = t.substring(1);
 		}
-		return t.charAt(0) === "''" && t.charAt(t.length - 1) === "''";
+		return t.charAt(0) === "'" && t.charAt(t.length - 1) === "'";
 	}
 	isAltLiteral() {
 		if (this.value.length < 5) return !1;
@@ -105,7 +83,7 @@ var h = -10, g = -11, _ = class {
 			if (t.length < 6) return !1;
 			t = t.substring(2);
 		} else return !1;
-		if (t.charAt(0) === "''" && t.charAt(t.length - 1) === "''") t = t.substring(1, t.length - 1);
+		if (t.charAt(0) === "'" && t.charAt(t.length - 1) === "'") t = t.substring(1, t.length - 1);
 		else return !1;
 		return v(t.charAt(0)) === t.charAt(t.length - 1);
 	}
@@ -115,8 +93,7 @@ function v(e) {
 }
 function y(e, t, n, r) {
 	let i = e.indexOf("e"), a = e.indexOf("f"), o = e.indexOf("d");
-	if (i < 0 && a < 0 && '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('o < 0) return !1;
+	if (i < 0 && a < 0 && o < 0) return !1;
 	let s = n, c = m(e, "efd");
 	for (let e of c) {
 		s += e.length;
@@ -126,7 +103,7 @@ function y(e, t, n, r) {
 	return !0;
 }
 function b(e, t, n) {
-	let r = [], i = "(){}[]^-|!*+.><=''\",;:%@?/\\#~" + n, a = " \n\r	", o = m(e, i + a), s = 0, c = 0, l = 0;
+	let r = [], i = "(){}[]^-|!*+.><='\",;:%@?/\\#~" + n, a = " \n\r	", o = m(e, i + a), s = 0, c = 0, l = 0;
 	for (let n = 0; n < o.length; n++) {
 		let u = o[n], d = r.length > 0 ? r[r.length - 1] : null;
 		if (u === "\n" ? (c++, l = 0) : l = n > 0 && o[n - 1] !== "\n" ? l + o[n - 1].length : 0, s += u.length, d?.type === "comment" && (d.value.lastIndexOf("*/") !== d.value.length - 2 || d.value === "/*/")) {
@@ -167,11 +144,10 @@ function b(e, t, n) {
 				d.value += u;
 				continue;
 			}
-			d.end = s - 1, r.pus'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('h(new _(u, s - 1, s, "ws", c, l));
+			d.end = s - 1, r.push(new _(u, s - 1, s, "ws", c, l));
 			continue;
 		}
-		if (t && u === "''") {
+		if (t && u === "'") {
 			let e = d !== null && d.value.length <= 2 ? d.value.toLowerCase() : "";
 			e === "q" || e === "n" || e === "u" || e === "nq" ? (d.value += u, d.type = "quoted-string") : r.push(new _(u, s - 1, h, "quoted-string", c, l));
 			continue;
@@ -222,8 +198,7 @@ function x(e, t, n, r) {
 		}
 		if ((e.type === "identifier" || e.type === "constant.numeric") && o !== null && o.value.endsWith("#") && o.type === "identifier") {
 			o.end += e.value.length, o.value += e.value;
-			c'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ontinue;
+			continue;
 		}
 		e.value.startsWith("$$") && (e.value = "$$VAR"), (t || e.type !== "ws" && e.type !== "comment" && e.type !== "line-comment") && i.push(e), o = e;
 	}
@@ -354,8 +329,7 @@ var w = "timestamp with local time zone", T = "timestamp with time zone", E = "t
 	uk: "_uk",
 	ck: "_ck",
 	bet: "_bet",
-	'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('bi: "_bi",
+	bi: "_bi",
 	bu: "_bu",
 	seq: "_seq",
 	idx: "_i",
@@ -426,8 +400,7 @@ var M = class {
 		let a = this.content.indexOf("{");
 		if (a > 0 && (this.content.charAt(a - 1) === " " || this.content.charAt(a - 1) === "	")) {
 			let e = this.content.indexOf("}", a);
-			e > a && (th'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('is.annotations = this.content.substring(a + 1, e).trim(), this.content = this.content.substring(0, a) + this.content.substring(e + 1));
+			e > a && (this.annotations = this.content.substring(a + 1, e).trim(), this.content = this.content.substring(0, a) + this.content.substring(e + 1));
 		}
 		this.src = x(this.content, !1, !0, "`");
 		let o = this.getOptionValue("colprefix");
@@ -479,13 +452,12 @@ var M = class {
 	}
 	getAnnotationValue(e) {
 		if (this.annotations === null) return null;
-		let t = RegExp(e + ":?\\s+[''\"]([^''\"]*)[''\"]", "i"), n = this.annotations.match(t);
+		let t = RegExp(e + ":?\\s+['\"]([^'\"]*)['\"]", "i"), n = this.annotations.match(t);
 		return n ? n[1] : null;
 	}
 	getAnnotationPairs() {
-		if (this.'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('annotations === null) return [];
-		let e = [], t = /(\w+)(?:\s+[''"]([^''"]*)[''"''])?/g, n;
+		if (this.annotations === null) return [];
+		let e = [], t = /(\w+)(?:\s+['"]([^'"]*)['"'])?/g, n;
 		for (; (n = t.exec(this.annotations)) !== null;) e.push({
 			label: n[1],
 			value: n[2] === void 0 ? null : n[2]
@@ -505,7 +477,7 @@ var M = class {
 		return this.children.filter((e) => e.children.length === 0 && e.refId() === null);
 	}
 	apexUser() {
-		return this._ctx.optionEQvalue("apex", "yes") ? "coalesce(sys_context(''APEX$SESSION'',''APP_USER''),user)" : "user";
+		return this._ctx.optionEQvalue("apex", "yes") ? "coalesce(sys_context('APEX$SESSION','APP_USER'),user)" : "user";
 	}
 	auditSysDateFn() {
 		return String(this._ctx.getOptionValue("auditdate") || this._ctx.getOptionValue("Date Data Type") || "").toLowerCase().indexOf("timestamp") >= 0 ? "systimestamp" : "sysdate";
@@ -531,8 +503,7 @@ var M = class {
 		let t = this.indexOf(e);
 		if (t < 2 || this.src[t - 1].value !== "/") return null;
 		let n = "";
-		for (let e = t + 1; e < this.src.length && this.src[e].value !== "/" && this.src[e].value !== "["; e++) n += this.src[e'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('].value;
+		for (let e = t + 1; e < this.src.length && this.src[e].value !== "/" && this.src[e].value !== "["; e++) n += this.src[e].value;
 		return n;
 	}
 	sugarcoatName(e, t) {
@@ -574,8 +545,7 @@ var M = class {
 		return this.sugarcoatName(e, i);
 	}
 	_inferTypeFull() {
-		let e = this.src, t = e[0].value, n ='));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' t.endsWith("_name") || t.startsWith("name") || t.startsWith("email") ? this._ctx.getOptionValue("namelen") || 255 : 4e3, r = this.indexOf("vc", !0);
+		let e = this.src, t = e[0].value, n = t.endsWith("_name") || t.startsWith("name") || t.startsWith("email") ? this._ctx.getOptionValue("namelen") || 255 : 4e3, r = this.indexOf("vc", !0);
 		if (0 < r) {
 			let t = e[r].value.substring(2);
 			t === "" && this.indexOf("(") === r + 1 && (t = e[r + 2].value), n = re(e, r, t === "" ? n : parseInt(t));
@@ -607,8 +577,7 @@ var M = class {
 			i = "geometry";
 			break;
 		}
-		this.isOption("domain") && g && g.length > 0 && 23 <= (p(g) ?? 0) && (i = this.getOptionValue("domain") ?? i), t'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('his.occursBeforeOption("tswltz") && o !== 0 ? i = "tswltz" : this.occursBeforeOption("tswtz") || this.occursBeforeOption("tstz") ? i = "tswtz" : this.occursBeforeOption("ts") && (i = "timestamp");
+		this.isOption("domain") && g && g.length > 0 && 23 <= (p(g) ?? 0) && (i = this.getOptionValue("domain") ?? i), this.occursBeforeOption("tswltz") && o !== 0 ? i = "tswltz" : this.occursBeforeOption("tswtz") || this.occursBeforeOption("tstz") ? i = "tswtz" : this.occursBeforeOption("ts") && (i = "timestamp");
 		let b = {
 			base: i,
 			colName: t,
@@ -660,8 +629,7 @@ var M = class {
 			let n = f(e, this.parseName()), r = O;
 			this.parent !== null && (r = " ".repeat(this.parent.maxChildNameLen()));
 			let i = this.getGeneralConstraint();
-			if (i !== null) return this.children !== null && 0 < this.children.length ? (t += O + "constraint " + f(this._ctx.objPrefix(), n, D.ck), t += "  check " + i + ",\n") : (t += " constraint " + f(this._ctx.objPrefi'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('x(), n, D.ck) + "\n", t += O + O + r + "check " + i), t;
+			if (i !== null) return this.children !== null && 0 < this.children.length ? (t += O + "constraint " + f(this._ctx.objPrefix(), n, D.ck), t += "  check " + i + ",\n") : (t += " constraint " + f(this._ctx.objPrefix(), n, D.ck) + "\n", t += O + O + r + "check " + i), t;
 			let a = this.getValues("check");
 			t += " constraint " + f(this._ctx.objPrefix(), n, D.ck) + "\n", t += O + O + r + "check (" + this.parseName() + " in (" + a + "))";
 		}
@@ -689,8 +657,7 @@ var M = class {
 			let n = e.substr(0, t) + "s";
 			if (this._ctx.find(n) !== null || (n = e.substr(0, t), this._ctx.find(n) !== null)) return n;
 		}
-		return t = e.indexOf("/fk"), 0 < t ? (e = e.substr(t + 3).trim(), t = e.indexOf("/"), 0 < t && (e = e.substring(0, t).trim()), t = e.indexOf("["), 0 < t && (e = e.substring(0, t).trim()), e.replace(" ", "_")) : (t = e.indexOf("/reference"), 0 < t ? (e = e.substr(t + 10).trim(), e.indexOf("s") === 0 && (e = e.substring(1).trim()), t = e.indexOf("/"), 0 < t && (e = e.substring(0, t).trim()), t = e.indexOf("["), 0 < t && (e = e.substring(0, t).trim()), e.replace(" ", "_")) : nu'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ll);
+		return t = e.indexOf("/fk"), 0 < t ? (e = e.substr(t + 3).trim(), t = e.indexOf("/"), 0 < t && (e = e.substring(0, t).trim()), t = e.indexOf("["), 0 < t && (e = e.substring(0, t).trim()), e.replace(" ", "_")) : (t = e.indexOf("/reference"), 0 < t ? (e = e.substr(t + 10).trim(), e.indexOf("s") === 0 && (e = e.substring(1).trim()), t = e.indexOf("/"), 0 < t && (e = e.substring(0, t).trim()), t = e.indexOf("["), 0 < t && (e = e.substring(0, t).trim()), e.replace(" ", "_")) : null);
 	}
 	getGeneralConstraint() {
 		let e = this.indexOf("check");
@@ -714,7 +681,7 @@ var M = class {
 		if (r === " ") {
 			for (let e = n + 1; e < this.src.length && this.src[e].value !== "/" && this.src[e].value !== "["; e++) {
 				let n = this.src[e].value;
-				this.src[e].type === "identifier" && n !== "null" && (n = "''" + n + "''"), n.charAt(0) === "`" && (n = n.substring(1, n.length - 1)), t.push(n);
+				this.src[e].type === "identifier" && n !== "null" && (n = "'" + n + "'"), n.charAt(0) === "`" && (n = n.substring(1, n.length - 1)), t.push(n);
 			}
 			return t;
 		}
@@ -722,12 +689,12 @@ var M = class {
 		for (let e = n + 1; e < this.src.length && this.src[e].value !== "/" && this.src[e].value !== "["; e++) {
 			let n = this.src[e].value, o = this.content.substring(this.src[e - 1].end, this.src[e].begin);
 			if (n === r) {
-				a === "identifier" && i !== "null" && (i = "''" + i + "''"), t.push(i), i = null, a = null;
+				a === "identifier" && i !== "null" && (i = "'" + i + "'"), t.push(i), i = null, a = null;
 				continue;
 			}
 			n === "(" || n === ")" || (n.charAt(0) === "`" ? n = n.substring(1, n.length - 1) : this.src[e].type === "identifier" && (a = "identifier"), i = i === null ? n : i + o + n);
 		}
-		return a === "identifier" && (i = "''" + i + "''"), t.push(i), t;
+		return a === "identifier" && (i = "'" + i + "'"), t.push(i), t;
 	}
 	getValues(e) {
 		let t = "", n = this.listValues(e);
@@ -737,8 +704,7 @@ var M = class {
 	getDefaultValue() {
 		if (!this.isOption("default")) return null;
 		let e = "";
-		for (let t = this.indexOf("default") + 1; t < this.src.leng'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('th; t++) {
+		for (let t = this.indexOf("default") + 1; t < this.src.length; t++) {
 			let n = this.src[t].getValue();
 			if (n === "/" || n === "-" || n === "[") break;
 			e += n;
@@ -803,8 +769,7 @@ var M = class {
 	}
 	lateInitFks() {
 		if (this.fks === null && (this.fks = {}), !this.isMany2One()) {
-			this.parent !== null && this.inferType() === "table" && ((this.parent.getPkName() ?? "").indexOf(",") < 0 ? this.fks[(l(this.parent.parseName()) ?? this.paren'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('t.parseName()) + "_id"] = this.parent.parseName() : this.fks[l(this.parent.getPkName() ?? "") ?? this.parent.parseName()] = this.parent.parseName());
+			this.parent !== null && this.inferType() === "table" && ((this.parent.getPkName() ?? "").indexOf(",") < 0 ? this.fks[(l(this.parent.parseName()) ?? this.parent.parseName()) + "_id"] = this.parent.parseName() : this.fks[l(this.parent.getPkName() ?? "") ?? this.parent.parseName()] = this.parent.parseName());
 			for (let e = 0; e < this.children.length; e++) {
 				let t = this.children[e].refId();
 				t !== null && (this.fks[this.children[e].parseName()] = t);
@@ -860,8 +825,7 @@ function oe(e) {
 					let r = n[a - 1];
 					t = new M(s.line - 1, o, r, e), n[a] = t, n = n.slice(0, a + 1), i = !0;
 					break;
-				} else n[0] = t, n = n.slice(0, 1), r.push(t), i = !0'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(';
+				} else n[0] = t, n = n.slice(0, 1), r.push(t), i = !0;
 			}
 			if (!i) {
 				if (0 < n.length) {
@@ -971,11 +935,10 @@ var se = [
 ];
 function ue(e, t) {
 	if (typeof t != "string") return t;
-	let n = e.substring(0, 2).'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('toLowerCase();
+	let n = e.substring(0, 2).toLowerCase();
 	if (n === "en") return t;
-	let r = t.startsWith("''") ? t.slice(1, -1) : t, i = se.indexOf(r);
-	return i < 0 ? t : n === "jp" && i < ce.length ? "''" + ce[i] + "''" : n === "kr" && i < le.length ? "''" + le[i] + "''" : t;
+	let r = t.startsWith("'") ? t.slice(1, -1) : t, i = se.indexOf(r);
+	return i < 0 ? t : n === "jp" && i < ce.length ? "'" + ce[i] + "'" : n === "kr" && i < le.length ? "'" + le[i] + "'" : t;
 }
 //#endregion
 //#region src/utils/sample.ts
@@ -1022,8 +985,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 		};
 		(function() {
 			typeof btoa == "function" ? m = btoa : typeof Buffer == "function" && (m = function(e) {
-				return new Buffer(e).toString'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('("base64");
+				return new Buffer(e).toString("base64");
 			});
 		})(), u.prototype.bool = function(e) {
 			return e = d(e, { likelihood: 50 }), p(e.likelihood < 0 || e.likelihood > 100, "Chance: Likelihood accepts values from 0 to 100."), this.random() * 100 < e.likelihood;
@@ -1072,8 +1034,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				min: r,
 				max: n
 			}), p(e.min > e.max, "Chance: Min cannot be greater than Max."), Math.floor(this.random() * (e.max - e.min + 1) + e.min);
-		}, u.prototype.natural = '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('function(e) {
+		}, u.prototype.natural = function(e) {
 			if (e = d(e, {
 				min: 0,
 				max: n
@@ -1123,8 +1084,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			e = d(e, {
 				min: 5,
 				max: 20
-			}), e.length !== 0 && !e.l'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ength && (e.length = this.natural({
+			}), e.length !== 0 && !e.length && (e.length = this.natural({
 				min: e.min,
 				max: e.max
 			})), p(e.length < 0, "Chance: Length cannot be less than zero.");
@@ -1197,8 +1157,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			var t = e.length, n = this.n(this.character, t, e);
 			return Buffer.from(n);
 		}, u.prototype.capitalize = function(e) {
-			return e.charAt(0).toUp'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('perCase() + e.substr(1);
+			return e.charAt(0).toUpperCase() + e.substr(1);
 		}, u.prototype.mixin = function(e) {
 			for (var t in e) this[t] = e[t];
 			return this;
@@ -1237,8 +1196,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				return n[e] = n[r], t;
 			}, Math.min(r, t));
 		}, u.prototype.shuffle = function(e) {
-			for (var t = [], n = 0, r = Number(e.length), i = f(r), a = r - 1, o, s = 0; s < r; '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('s++) o = this.natural({ max: a }), n = i[o], t[s] = e[n], i[o] = i[a], --a;
+			for (var t = [], n = 0, r = Number(e.length), i = f(r), a = r - 1, o, s = 0; s < r; s++) o = this.natural({ max: a }), n = i[o], t[s] = e[n], i[o] = i[a], --a;
 			return t;
 		}, u.prototype.weighted = function(e, t, n) {
 			if (e.length !== t.length) throw RangeError("Chance: Length of array and weights must match");
@@ -1291,8 +1249,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				do
 					n += this.syllable();
 				while (n.length < e.length);
-				n = n.su'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('bstring(0, e.length);
+				n = n.substring(0, e.length);
 			} else for (var r = 0; r < t; r++) n += this.syllable();
 			return e.capitalize && (n = this.capitalize(n)), n;
 		}, u.prototype.emoji = function(e) {
@@ -1359,8 +1316,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			} else if (e && (e.minAge !== void 0 || e.maxAge !== void 0)) {
 				p(e.minAge < 0, "Chance: MinAge cannot be less than zero."), p(e.minAge > e.maxAge, "Chance: MinAge cannot be greater than MaxAge.");
 				var o = e.minAge === void 0 ? 0 : e.minAge, s = e.maxAge === void 0 ? 100 : e.maxAge, c = new Date(r - s - 1, n.getMonth(), n.getDate()), l = new Date(r - o, n.getMonth(), n.getDate());
-				c.setDate(c.getDate() + 1), l.setDate(l.getDate() + 1), l.setMilliseco'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('nds(l.getMilliseconds() - 1), e = d(e, {
+				c.setDate(c.getDate() + 1), l.setDate(l.getDate() + 1), l.setMilliseconds(l.getMilliseconds() - 1), e = d(e, {
 					min: c,
 					max: l
 				});
@@ -1397,8 +1353,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 		}, u.prototype.company = function() {
 			return this.pick(this.get("company"));
 		}, u.prototype.gender = function(e) {
-			return e = d(e, { extraGenders: [] }), this.pick(["Male", "Female"].co'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ncat(e.extraGenders));
+			return e = d(e, { extraGenders: [] }), this.pick(["Male", "Female"].concat(e.extraGenders));
 		}, u.prototype.last = function(e) {
 			if (e = d(e, { nationality: "*" }), e.nationality === "*") {
 				var t = [], n = this.get("lastNames");
@@ -1465,8 +1420,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					].join("");
 				}(),
 				expiry: function() {
-		'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('			var e = /* @__PURE__ */ new Date();
+					var e = /* @__PURE__ */ new Date();
 					return [
 						(e.getFullYear() + 5).toString().substr(2),
 						r.pad(e.getMonth() + 1, 2),
@@ -1534,8 +1488,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			}), n;
 		}, u.prototype.aadhar = function(e) {
 			e = d(e, {
-				onlyLast'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('Four: !1,
+				onlyLastFour: !1,
 				separatedByWhiteSpace: !0
 			});
 			var t = "1234567890", n, r = e.separatedByWhiteSpace ? " " : "";
@@ -1630,8 +1583,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				"Libra",
 				"Scorpio",
 				"Sagittarius",
-				"Caprico'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('rn",
+				"Capricorn",
 				"Aquarius",
 				"Pisces"
 			]);
@@ -1688,8 +1640,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			else if (typeof e == "string") s.email = e, e = {};
 			else if (typeof e != "object") return null;
 			else if (e.constructor === "Array") return null;
-			return s = d(e, s), s.email ||= this.email(), s.protocol = r[s.protocol] ? s.protocol + ":" : "", s.size = parseInt(s.size, 0) ? s.size : "", s.rating = o[s.rating] ? s.rating : "", s.fallback = a[s.fallback] ? s.fallback : "", s.fileExtension = i[s.fileExtension] ? s.fileExtension : "", t = s.protocol + n + this.bimd5.md5(s.email) + (s.fileExtension ? "." + s.fileExtension : "") + (s.size || s.rating || s.fallback ? "?" : "") + (s.size ? "&s=" + s.size.toString() : "") + (s.rating ? "&r=" + s.rating : "") + (s.fallback ? "&d=" + s.fallback : '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('""), t;
+			return s = d(e, s), s.email ||= this.email(), s.protocol = r[s.protocol] ? s.protocol + ":" : "", s.size = parseInt(s.size, 0) ? s.size : "", s.rating = o[s.rating] ? s.rating : "", s.fallback = a[s.fallback] ? s.fallback : "", s.fileExtension = i[s.fileExtension] ? s.fileExtension : "", t = s.protocol + n + this.bimd5.md5(s.email) + (s.fileExtension ? "." + s.fileExtension : "") + (s.size || s.rating || s.fallback ? "?" : "") + (s.size ? "&s=" + s.size.toString() : "") + (s.rating ? "&r=" + s.rating : "") + (s.fallback ? "&d=" + s.fallback : ""), t;
 		}, u.prototype.color = function(e) {
 			function t(e, t) {
 				return [
@@ -1773,8 +1724,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				min_alpha: 0,
 				max_alpha: 1
 			});
-			var i = e.grayscale, a = e.min, o = e.max, s = e.min_red, c = e.max_red, l = e.min_green, u = e.max_green, f = e.min_blue, p = e.max_blue, m = e.min_alpha, h = '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('e.max_alpha;
+			var i = e.grayscale, a = e.min, o = e.max, s = e.min_red, c = e.max_red, l = e.min_green, u = e.max_green, f = e.min_blue, p = e.max_blue, m = e.min_alpha, h = e.max_alpha;
 			e.min_red === void 0 && (s = a), e.max_red === void 0 && (c = o), e.min_green === void 0 && (l = a), e.max_green === void 0 && (u = o), e.min_blue === void 0 && (f = a), e.max_blue === void 0 && (p = o), e.min_alpha === void 0 && (m = 0), e.max_alpha === void 0 && (h = 1), i && a === 0 && o === 255 && s !== void 0 && c !== void 0 && (a = (s + l + f) / 3, o = (c + u + p) / 3);
 			var g;
 			if (e.format === "hex") g = r.call(this, 2, 6, !0);
@@ -1814,8 +1764,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				min: 1,
 				max: 99
 			});
-		}, u.prototype.mac = function'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('(e) {
+		}, u.prototype.mac = function(e) {
 			return e = d(e, { delimiter: ":" }), this.pad(this.natural({ max: 255 }).toString(16), 2) + e.delimiter + this.pad(this.natural({ max: 255 }).toString(16), 2) + e.delimiter + this.pad(this.natural({ max: 255 }).toString(16), 2) + e.delimiter + this.pad(this.natural({ max: 255 }).toString(16), 2) + e.delimiter + this.pad(this.natural({ max: 255 }).toString(16), 2) + e.delimiter + this.pad(this.natural({ max: 255 }).toString(16), 2);
 		}, u.prototype.semver = function(e) {
 			e = d(e, { include_prerelease: !0 });
@@ -1853,8 +1802,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				domain: this.domain(e),
 				domain_prefix: "",
 				path: this.word(),
-				extensio'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ns: []
+				extensions: []
 			});
 			var t = e.extensions.length > 0 ? "." + this.pick(e.extensions) : "", n = e.domain_prefix ? e.domain_prefix + "." + e.domain : e.domain;
 			return e.protocol + "://" + n + "/" + e.path + t;
@@ -1917,8 +1865,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 		}, u.prototype.depth = function(e) {
 			return e = d(e, {
 				fixed: 5,
-				min: '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('-10994,
+				min: -10994,
 				max: 0
 			}), this.floating({
 				min: e.min,
@@ -1993,8 +1940,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				format: r
 			});
 			var i = e.format.toLowerCase();
-			switch ((i === t || i === n) && (p(e.min < 0 || e.min > 179, "Chance: Min specified is out of range. Should be between 0 - 179"), p(e.max < 0 || e.max > 179, "Chance: Max specified is o'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ut of range. Should be between 0 - 179"), p(e.fixed > 4, "Chance: Fixed specified should be below or equal to 4")), i) {
+			switch ((i === t || i === n) && (p(e.min < 0 || e.min > 179, "Chance: Min specified is out of range. Should be between 0 - 179"), p(e.max < 0 || e.max > 179, "Chance: Max specified is out of range. Should be between 0 - 179"), p(e.fixed > 4, "Chance: Fixed specified should be below or equal to 4")), i) {
 				case t: return this.integer({
 					min: e.min,
 					max: e.max
@@ -2056,8 +2002,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 							pool: "0123456789",
 							length: 6
 						}),
-						"04" + this.pick(/* @__PURE__ */ "11.13.15.20.22.'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('26.27.30.32.34.37.42.43.44.50.56.57.63.66.67.68.69.70.71.72.73.74.75.76.77.78.79.80.81.82.83.84.85.86.88.89.90.91.92.93.94.95.97.98".split(".")) + t.string({
+						"04" + this.pick(/* @__PURE__ */ "11.13.15.20.22.26.27.30.32.34.37.42.43.44.50.56.57.63.66.67.68.69.70.71.72.73.74.75.76.77.78.79.80.81.82.83.84.85.86.88.89.90.91.92.93.94.95.97.98".split(".")) + t.string({
 							pool: "0123456789",
 							length: 6
 						}),
@@ -2149,8 +2094,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 							area: "015" + this.pick([
 								"24",
 								"27",
-								"'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('62",
+								"62",
 								"66"
 							]) + " ",
 							sections: [6]
@@ -2274,8 +2218,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 							"3",
 							"4",
 							"5",
-'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('							"6",
+							"6",
 							"7",
 							"8"
 						]) + t.string({
@@ -2364,8 +2307,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			return i;
 		}, u.prototype.postal = function() {
 			var e = this.character({ pool: "XVTSRPNKLMHJGECBA" }) + this.natural({ max: 9 }) + this.character({
-				alph'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('a: !0,
+				alpha: !0,
 				casing: "upper"
 			}), t = this.natural({ max: 9 }) + this.character({
 				alpha: !0,
@@ -2422,8 +2364,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			var t;
 			switch (e.country.toLowerCase()) {
 				case "us":
-					t = this.word({ syllables:'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' e.syllables }), t = this.capitalize(t), t += " ", t += e.short_suffix ? this.street_suffix(e).abbreviation : this.street_suffix(e).name;
+					t = this.word({ syllables: e.syllables }), t = this.capitalize(t), t += " ", t += e.short_suffix ? this.street_suffix(e).abbreviation : this.street_suffix(e).name;
 					break;
 				case "it":
 					t = this.word({ syllables: e.syllables }), t = this.capitalize(t), t = (e.short_suffix ? this.street_suffix(e).abbreviation : this.street_suffix(e).name) + " " + t;
@@ -2471,8 +2412,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			return t = e.american ? n.getMonth() + 1 + "/" + n.getDate() + "/" + n.getFullYear() : n.getDate() + "/" + (n.getMonth() + 1) + "/" + n.getFullYear(), e.string ? t : n;
 		}, u.prototype.hammertime = function(e) {
 			return this.date(e).getTime();
-'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('		}, u.prototype.hour = function(e) {
+		}, u.prototype.hour = function(e) {
 			return e = d(e, {
 				min: e && e.twentyfour ? 0 : 1,
 				max: e && e.twentyfour ? 23 : 12
@@ -2518,8 +2458,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			return e.weekday_only || (t.push("Saturday"), t.push("Sunday")), this.pickone(t);
 		}, u.prototype.year = function(e) {
 			return e = d(e, { min: (/* @__PURE__ */ new Date()).getFullYear() }), e.max = e.max === void 0 ? e.min + 100 : e.max, this.natural(e).toString();
-		}, u.prototype.cc = '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('function(e) {
+		}, u.prototype.cc = function(e) {
 			e = d(e);
 			var t = e.type ? this.cc_type({
 				name: e.type,
@@ -2539,7 +2478,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					n = t[r];
 					break;
 				}
-				if (n === null) throw RangeError("Chance: Credit card type ''" + e.name + "'' is not supported");
+				if (n === null) throw RangeError("Chance: Credit card type '" + e.name + "' is not supported");
 			} else n = this.pick(t);
 			return e.raw ? n : n.name;
 		}, u.prototype.currency_types = function() {
@@ -2573,8 +2512,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 		}, u.prototype.exp = function(e) {
 			e = d(e);
 			var t = {};
-			return t.year = this.exp_year(), t.year === (/* @__PURE__ */ new Date()).getFullYear().toString() ? t.month = this.exp_month({ future: '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('!0 }) : t.month = this.exp_month(), e.raw ? t : t.month + "/" + t.year;
+			return t.year = this.exp_year(), t.year === (/* @__PURE__ */ new Date()).getFullYear().toString() ? t.month = this.exp_month({ future: !0 }) : t.month = this.exp_month(), e.raw ? t : t.month + "/" + t.year;
 		}, u.prototype.exp_month = function(e) {
 			e = d(e);
 			var t, n, r = (/* @__PURE__ */ new Date()).getMonth() + 1;
@@ -2635,8 +2573,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			]) + this.pad(this.natural({ max: 999 }), 3), o = [], s = function(e, t) {
 				var n, r = [];
 				return e.length < 3 ? r = e.split("").concat("XXX".split("")).splice(0, 3) : (n = e.toUpperCase().split("").map(function(e) {
-					return "BCDFGHJKLMNPRSTVWZ".indexOf(e) === -1 ? void 0'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' : e;
+					return "BCDFGHJKLMNPRSTVWZ".indexOf(e) === -1 ? void 0 : e;
 				}).join(""), n.length > 3 && (n = t ? n.substr(0, 3) : n[0] + n.substr(2, 2)), n.length < 3 && (r = n, n = e.toUpperCase().split("").map(function(e) {
 					return "AEIOU".indexOf(e) === -1 ? void 0 : e;
 				}).join("").substr(0, 3 - r.length)), r += n), r;
@@ -2679,8 +2616,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				min: 1,
 				max: 99999999
 			}), t = this.pad(e, 8).split(""), n = 0; n < t.length; n++) t[n] = parseInt(t[n]);
-			var r = (8 * t[0] + 9 * t[1] + 2 * t[2] + 3 * t[3] + 4 * t[4] + 5 * t['));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('5] + 6 * t[6] + 7 * t[7]) % 11;
+			var r = (8 * t[0] + 9 * t[1] + 2 * t[2] + 3 * t[3] + 4 * t[4] + 5 * t[5] + 6 * t[6] + 7 * t[7]) % 11;
 			return r === 10 && (r = 0), t.join("") + r;
 		}, u.prototype.music_genre = function(e = "general") {
 			if (!(e.toLowerCase() in b.music_genres)) throw Error(`Unsupported genre: ${e}`);
@@ -2780,8 +2716,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 		}), u.prototype.d30 = y({
 			min: 1,
 			max: 30
-		}), u.prototype'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('.d100 = y({
+		}), u.prototype.d100 = y({
 			min: 1,
 			max: 100
 		}), u.prototype.rpg = function(e, t) {
@@ -2844,8 +2779,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			else if (typeof e == "string") t.str = e, e = {};
 			else if (typeof e != "object") return null;
 			else if (e.constructor === "Array") return null;
-			if (t = d(e, t), !t.str) '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('throw Error("A parameter is required to return an md5 hash.");
+			if (t = d(e, t), !t.str) throw Error("A parameter is required to return an md5 hash.");
 			return this.bimd5.md5(t.str, t.key, t.raw);
 		}, u.prototype.file = function(e) {
 			var t = e || {}, n = "fileExtension", r = Object.keys(this.get("fileExtension")), i = this.word({ length: t.length }), a;
@@ -2861,7 +2795,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			if (t.fileType) {
 				var c = t.fileType;
 				if (r.indexOf(c) !== -1) return a = this.pickone(this.get(n)[c]), i + "." + a;
-				throw RangeError("Chance: Expect file type value to be ''raster'', ''vector'', ''3d'' or ''document''");
+				throw RangeError("Chance: Expect file type value to be 'raster', 'vector', '3d' or 'document'");
 			}
 			return a = this.pickone(this.get(n)[this.pickone(r)]), i + "." + a;
 		}, u.prototype.fileWithContent = function(e) {
@@ -2875,44 +2809,26 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 		var b = {
 			firstNames: {
 				male: {
-					en: /* @__PURE__ */ "James.John.Robert.Michael.William.David.Richard.Joseph.Charles.Thomas.Christopher.Daniel.Matthew.George.Donald.Anthony.Paul.Mark.Edward.Steven.Kenneth.Andrew.Brian.Joshua.Kevin.Ronald.Timothy.Jason.Jeffrey.Frank.Gary.Ryan.Nicholas.Eric.Stephen.Jacob.Larry.Jonathan.Scott.Raymond.Justin.Brandon.Gregory.Samuel.Benjamin.Patrick.Jack.Henry.Walter.Dennis.Jerry.Alexander.Peter.Tyler.Douglas.Harold.Aaron.Jose.Adam.Arthur.Zachary.Carl.Nathan.Albert.Kyle.Lawrence.Joe.Willie.Gerald.Roger.Keith.Jeremy.Terry.Harry.Ralph.Sean.Jesse.Roy.Louis.Billy.Austin.Bruce.Eugene'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('.Christian.Bryan.Wayne.Russell.Howard.Fred.Ethan.Jordan.Philip.Alan.Juan.Randy.Vincent.Bobby.Dylan.Johnny.Phillip.Victor.Clarence.Ernest.Martin.Craig.Stanley.Shawn.Travis.Bradley.Leonard.Earl.Gabriel.Jimmy.Francis.Todd.Noah.Danny.Dale.Cody.Carlos.Allen.Frederick.Logan.Curtis.Alex.Joel.Luis.Norman.Marvin.Glenn.Tony.Nathaniel.Rodney.Melvin.Alfred.Steve.Cameron.Chad.Edwin.Caleb.Evan.Antonio.Lee.Herbert.Jeffery.Isaac.Derek.Ricky.Marcus.Theodore.Elijah.Luke.Jesus.Eddie.Troy.Mike.Dustin.Ray.Adrian.Bernard.Leroy.Angel.Randall.Wesley.Ian.Jared.Mason.Hunter.Calvin.Oscar.Clifford.Jay.Shane.Ronnie.Barry.Lucas.Corey.Manuel.Leo.Tommy.Warren.Jackson.Isaiah.Connor.Don.Dean.Jon.Julian.Miguel.Bill.Lloyd.Charlie.Mitchell.Leon.Jerome.Darrell.Jeremiah.Alvin.Brett.Seth.Floyd.Jim.Blake.Micheal.Gordon.Trevor.Lewis.Erik.Edgar.Vernon.Devin.Gavin.Jayden.Chris.Clyde.Tom.Derrick.Mario.Brent.Marc.Herman.Chase.Dominic.Ricardo.Franklin.Maurice.Max.Aiden.Owen.Lester.Gilbert.Elmer.Gene.Francisco.Glen.Cory.Garrett.Clayton.Sam.Jorge.Chester.Alejandro.Jeff.Harvey.Milton.Cole.Ivan.Andre.Duane.Landon".split("."),
-					it: /* @__PURE__ */ "Adolfo.Alberto.Aldo.Alessandro.Alessio.Alfredo.Alvaro.Andrea.Angelo.Angiolo.Antonino.Antonio.Attilio.Benito.Bernardo.Bruno.Carlo.Cesare.Christian.Claudio.Corrado.Cosimo.Cristian.Cristiano.Daniele.Dario.David.Davide.Diego.Dino.Domenico.Duccio.Edoardo.Elia.Elio.Emanuele.Emiliano.Emilio.Enrico.Enzo.Ettore.Fabio.Fabrizio.Federico.Ferdinando.Fernando.Filippo.Francesco.Franco.Gabriele.Giacomo.Giampaolo.Giampiero.Giancarlo.Gianfranco.Gianluca.Gianmarco.Gianni.Gino.Giorgio.Giovanni.Giuliano.Giulio.Giuseppe.Graziano.Gregorio.Guido.Iacopo.Jacopo.Lapo.Leonardo.Lorenzo.Luca.Luciano.Luigi.Manuel.Marcello.Marco.Marino.Mario.Massimiliano.Massimo.Matteo.Mattia.Maurizio.Mauro.Michele.Mirko.Mohamed.Nello.Neri.Niccolò.Nicola.Osvaldo.Otello.Paolo.Pier Luigi.Piero.Pietro.Raffaele.Remo.Renato.Renzo.Riccardo.Roberto.Rolando.Romano.Salvatore.Samuele.Sandro.Sergio.Silvano.Simone.Stefano.Thomas'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('.Tommaso.Ubaldo.Ugo.Umberto.Valerio.Valter.Vasco.Vincenzo.Vittorio".split("."),
+					en: /* @__PURE__ */ "James.John.Robert.Michael.William.David.Richard.Joseph.Charles.Thomas.Christopher.Daniel.Matthew.George.Donald.Anthony.Paul.Mark.Edward.Steven.Kenneth.Andrew.Brian.Joshua.Kevin.Ronald.Timothy.Jason.Jeffrey.Frank.Gary.Ryan.Nicholas.Eric.Stephen.Jacob.Larry.Jonathan.Scott.Raymond.Justin.Brandon.Gregory.Samuel.Benjamin.Patrick.Jack.Henry.Walter.Dennis.Jerry.Alexander.Peter.Tyler.Douglas.Harold.Aaron.Jose.Adam.Arthur.Zachary.Carl.Nathan.Albert.Kyle.Lawrence.Joe.Willie.Gerald.Roger.Keith.Jeremy.Terry.Harry.Ralph.Sean.Jesse.Roy.Louis.Billy.Austin.Bruce.Eugene.Christian.Bryan.Wayne.Russell.Howard.Fred.Ethan.Jordan.Philip.Alan.Juan.Randy.Vincent.Bobby.Dylan.Johnny.Phillip.Victor.Clarence.Ernest.Martin.Craig.Stanley.Shawn.Travis.Bradley.Leonard.Earl.Gabriel.Jimmy.Francis.Todd.Noah.Danny.Dale.Cody.Carlos.Allen.Frederick.Logan.Curtis.Alex.Joel.Luis.Norman.Marvin.Glenn.Tony.Nathaniel.Rodney.Melvin.Alfred.Steve.Cameron.Chad.Edwin.Caleb.Evan.Antonio.Lee.Herbert.Jeffery.Isaac.Derek.Ricky.Marcus.Theodore.Elijah.Luke.Jesus.Eddie.Troy.Mike.Dustin.Ray.Adrian.Bernard.Leroy.Angel.Randall.Wesley.Ian.Jared.Mason.Hunter.Calvin.Oscar.Clifford.Jay.Shane.Ronnie.Barry.Lucas.Corey.Manuel.Leo.Tommy.Warren.Jackson.Isaiah.Connor.Don.Dean.Jon.Julian.Miguel.Bill.Lloyd.Charlie.Mitchell.Leon.Jerome.Darrell.Jeremiah.Alvin.Brett.Seth.Floyd.Jim.Blake.Micheal.Gordon.Trevor.Lewis.Erik.Edgar.Vernon.Devin.Gavin.Jayden.Chris.Clyde.Tom.Derrick.Mario.Brent.Marc.Herman.Chase.Dominic.Ricardo.Franklin.Maurice.Max.Aiden.Owen.Lester.Gilbert.Elmer.Gene.Francisco.Glen.Cory.Garrett.Clayton.Sam.Jorge.Chester.Alejandro.Jeff.Harvey.Milton.Cole.Ivan.Andre.Duane.Landon".split("."),
+					it: /* @__PURE__ */ "Adolfo.Alberto.Aldo.Alessandro.Alessio.Alfredo.Alvaro.Andrea.Angelo.Angiolo.Antonino.Antonio.Attilio.Benito.Bernardo.Bruno.Carlo.Cesare.Christian.Claudio.Corrado.Cosimo.Cristian.Cristiano.Daniele.Dario.David.Davide.Diego.Dino.Domenico.Duccio.Edoardo.Elia.Elio.Emanuele.Emiliano.Emilio.Enrico.Enzo.Ettore.Fabio.Fabrizio.Federico.Ferdinando.Fernando.Filippo.Francesco.Franco.Gabriele.Giacomo.Giampaolo.Giampiero.Giancarlo.Gianfranco.Gianluca.Gianmarco.Gianni.Gino.Giorgio.Giovanni.Giuliano.Giulio.Giuseppe.Graziano.Gregorio.Guido.Iacopo.Jacopo.Lapo.Leonardo.Lorenzo.Luca.Luciano.Luigi.Manuel.Marcello.Marco.Marino.Mario.Massimiliano.Massimo.Matteo.Mattia.Maurizio.Mauro.Michele.Mirko.Mohamed.Nello.Neri.Niccolò.Nicola.Osvaldo.Otello.Paolo.Pier Luigi.Piero.Pietro.Raffaele.Remo.Renato.Renzo.Riccardo.Roberto.Rolando.Romano.Salvatore.Samuele.Sandro.Sergio.Silvano.Simone.Stefano.Thomas.Tommaso.Ubaldo.Ugo.Umberto.Valerio.Valter.Vasco.Vincenzo.Vittorio".split("."),
 					nl: /* @__PURE__ */ "Aaron.Abel.Adam.Adriaan.Albert.Alexander.Ali.Arjen.Arno.Bart.Bas.Bastiaan.Benjamin.Bob.Boris.Bram.Brent.Cas.Casper.Chris.Christiaan.Cornelis.Daan.Daley.Damian.Dani.Daniel.Daniël.David.Dean.Dirk.Dylan.Egbert.Elijah.Erik.Erwin.Evert.Ezra.Fabian.Fedde.Finn.Florian.Floris.Frank.Frans.Frederik.Freek.Geert.Gerard.Gerben.Gerrit.Gijs.Guus.Hans.Hendrik.Henk.Herman.Hidde.Hugo.Jaap.Jan Jaap.Jan-Willem.Jack.Jacob.Jan.Jason.Jasper.Jayden.Jelle.Jelte.Jens.Jeroen.Jesse.Jim.Job.Joep.Johannes.John.Jonathan.Joris.Joshua.Joël.Julian.Kees.Kevin.Koen.Lars.Laurens.Leendert.Lennard.Lodewijk.Luc.Luca.Lucas.Lukas.Luuk.Maarten.Marcus.Martijn.Martin.Matthijs.Maurits.Max.Mees.Melle.Mick.Mika.Milan.Mohamed.Mohammed.Morris.Muhammed.Nathan.Nick.Nico.Niek.Niels.Noah.Noud.Olivier.Oscar.Owen.Paul.Pepijn.Peter.Pieter.Pim.Quinten.Reinier.Rens.Robin.Ruben.Sam.Samuel.Sander.Sebastiaan.Sem.Sep.Sepp.Siem.Simon.Stan.Stef.Steven.Stijn.Sven.Teun.Thijmen.Thijs.Thomas.Tijn.Tim.Timo.Tobias.Tom.Victor.Vince.Willem.Wim.Wouter.Yusuf".split("."),
-					fr: /* @__PURE__ */ "Aaron.Abdon.Abel.Abélard.Abelin.Abondance.Abraham.Absalon.Acace.Achaire.Achille.Adalard.Adalbald.Adalbéron.Adalbert.Adalric.Adam.Adegrin.Adel.Adelin.Andelin.Adelphe.Adam.Adéodat.Adhémar.Adjutor.Adolphe.Adonis.Adon.Adrien.Agapet.Agathange.Agathon.Agilbert.Agénor.Agnan.Aignan.Agrippin.Aimable.Aimé.Alain.Alban.Albin.Aubin.Albéric.Albert.Albertet.Alcibiade.Alcide.Alcée.Alcime.Aldonce.Aldric.Aldéric.Aleaume.Alexandre.Alexis.Alix.Alliaume.Aleaume.Almine.Almire.Aloïs.Alphée.Alphonse.Alpinien.Alverède.Amalric.Amaury.Amandin.Amant.Ambroise.Amédée.Amélien.Amiel.Amour.Anaël.Anastase.Anatole.Ancelin.Andéol.Andoche.André.Andoche.Ange.Angelin.Angilbe.Anglebert.Angoustan.Anicet.Anne.Annibal.Ansbert.Anselme.Anthelme.Antheaume.Anthime.Antide.Antoine.Antonius.Antonin.Apollinaire.Apollon.Aquilin.Arcade.Archambaud.Archambeau.Archange.Archibald.Arian.Ariel.Ariste.'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('Aristide.Armand.Armel.Armin.Arnould.Arnaud.Arolde.Arsène.Arsinoé.Arthaud.Arthème.Arthur.Ascelin.Athanase.Aubry.Audebert.Audouin.Audran.Audric.Auguste.Augustin.Aurèle.Aurélien.Aurian.Auxence.Axel.Aymard.Aymeric.Aymon.Aymond.Balthazar.Baptiste.Barnabé.Barthélemy.Bartimée.Basile.Bastien.Baudouin.Bénigne.Benjamin.Benoît.Bérenger.Bérard.Bernard.Bertrand.Blaise.Bon.Boniface.Bouchard.Brice.Brieuc.Bruno.Brunon.Calixte.Calliste.Camélien.Camille.Camillien.Candide.Caribert.Carloman.Cassandre.Cassien.Cédric.Céleste.Célestin.Célien.Césaire.César.Charles.Charlemagne.Childebert.Chilpéric.Chrétien.Christian.Christodule.Christophe.Chrysostome.Clarence.Claude.Claudien.Cléandre.Clément.Clotaire.Côme.Constance.Constant.Constantin.Corentin.Cyprien.Cyriaque.Cyrille.Cyril.Damien.Daniel.David.Delphin.Denis.Désiré.Didier.Dieudonné.Dimitri.Dominique.Dorian.Dorothée.Edgard.Edmond.Édouard.Éleuthère.Élie.Élisée.Émeric.Émile.Émilien.Emmanuel.Enguerrand.Épiphane.Éric.Esprit.Ernest.Étienne.Eubert.Eudes.Eudoxe.Eugène.Eusèbe.Eustache.Évariste.Évrard.Fabien.Fabrice.Falba.Félicité.Félix.Ferdinand.Fiacre.Fidèle.Firmin.Flavien.Flodoard.Florent.Florentin.Florestan.Florian.Fortuné.Foulques.Francisque.François.Français.Franciscus.Francs.Frédéric.Fulbert.Fulcran.Fulgence.Gabin.Gabriel.Gaël.Garnier.Gaston.Gaspard.Gatien.Gaud.Gautier.Gédéon.Geoffroy.Georges.Géraud.Gérard.Gerbert.Germain.Gervais.Ghislain.Gilbert.Gilles.Girart.Gislebert.Gondebaud.Gonthier.Gontran.Gonzague.Grégoire.Guérin.Gui.Guillaume.Gustave.Guy.Guyot.Hardouin.Hector.Hédelin.Hélier.Henri.Herbert.Herluin.Hervé.Hilaire.Hildebert.Hincmar.Hippolyte.Honoré.Hubert.Hugues.Innocent.Isabeau.Isidore.Jacques.Japhet.Jason.Jean.Jeannel.Jeannot.Jérémie.Jérôme.Joachim.Joanny.Job.Jocelyn.Joël.Johan.Jonas.Jonathan.Joseph.Josse.Josselin.Jourdain.Jude.Judicaël.Jules.Julien.Juste.Justin.Lambert.Landry.Laurent.Lazare.Léandre.Léon.Léonard.Léopold.Leu.Loup.Leufroy.Libère.Liétald.Lionel.Loïc.Longin.Lorrain.Lorraine.Lothaire.Louis.Loup.Luc.Lucas.Lucien.Ludolphe.Ludovi'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('c.Macaire.Malo.Mamert.Manassé.Marc.Marceau.Marcel.Marcelin.Marius.Marseille.Martial.Martin.Mathurin.Matthias.Mathias.Matthieu.Maugis.Maurice.Mauricet.Maxence.Maxime.Maximilien.Mayeul.Médéric.Melchior.Mence.Merlin.Mérovée.Michaël.Michel.Moïse.Morgan.Nathan.Nathanaël.Narcisse.Néhémie.Nestor.Nestor.Nicéphore.Nicolas.Noé.Noël.Norbert.Normand.Normands.Octave.Odilon.Odon.Oger.Olivier.Oury.Pacôme.Palémon.Parfait.Pascal.Paterne.Patrice.Paul.Pépin.Perceval.Philémon.Philibert.Philippe.Philothée.Pie.Pierre.Pierrick.Prosper.Quentin.Raoul.Raphaël.Raymond.Régis.Réjean.Rémi.Renaud.René.Reybaud.Richard.Robert.Roch.Rodolphe.Rodrigue.Roger.Roland.Romain.Romuald.Roméo.Rome.Ronan.Roselin.Salomon.Samuel.Savin.Savinien.Scholastique.Sébastien.Séraphin.Serge.Séverin.Sidoine.Sigebert.Sigismond.Silvère.Simon.Siméon.Sixte.Stanislas.Stéphane.Stephan.Sylvain.Sylvestre.Tancrède.Tanguy.Taurin.Théodore.Théodose.Théophile.Théophraste.Thibault.Thibert.Thierry.Thomas.Timoléon.Timothée.Titien.Tonnin.Toussaint.Trajan.Tristan.Turold.Tim.Ulysse.Urbain.Valentin.Valère.Valéry.Venance.Venant.Venceslas.Vianney.Victor.Victorien.Victorin.Vigile.Vincent.Vital.Vitalien.Vivien.Waleran.Wandrille.Xavier.Xénophon.Yves.Zacharie.Zaché.Zéphirin".split(".")
+					fr: /* @__PURE__ */ "Aaron.Abdon.Abel.Abélard.Abelin.Abondance.Abraham.Absalon.Acace.Achaire.Achille.Adalard.Adalbald.Adalbéron.Adalbert.Adalric.Adam.Adegrin.Adel.Adelin.Andelin.Adelphe.Adam.Adéodat.Adhémar.Adjutor.Adolphe.Adonis.Adon.Adrien.Agapet.Agathange.Agathon.Agilbert.Agénor.Agnan.Aignan.Agrippin.Aimable.Aimé.Alain.Alban.Albin.Aubin.Albéric.Albert.Albertet.Alcibiade.Alcide.Alcée.Alcime.Aldonce.Aldric.Aldéric.Aleaume.Alexandre.Alexis.Alix.Alliaume.Aleaume.Almine.Almire.Aloïs.Alphée.Alphonse.Alpinien.Alverède.Amalric.Amaury.Amandin.Amant.Ambroise.Amédée.Amélien.Amiel.Amour.Anaël.Anastase.Anatole.Ancelin.Andéol.Andoche.André.Andoche.Ange.Angelin.Angilbe.Anglebert.Angoustan.Anicet.Anne.Annibal.Ansbert.Anselme.Anthelme.Antheaume.Anthime.Antide.Antoine.Antonius.Antonin.Apollinaire.Apollon.Aquilin.Arcade.Archambaud.Archambeau.Archange.Archibald.Arian.Ariel.Ariste.Aristide.Armand.Armel.Armin.Arnould.Arnaud.Arolde.Arsène.Arsinoé.Arthaud.Arthème.Arthur.Ascelin.Athanase.Aubry.Audebert.Audouin.Audran.Audric.Auguste.Augustin.Aurèle.Aurélien.Aurian.Auxence.Axel.Aymard.Aymeric.Aymon.Aymond.Balthazar.Baptiste.Barnabé.Barthélemy.Bartimée.Basile.Bastien.Baudouin.Bénigne.Benjamin.Benoît.Bérenger.Bérard.Bernard.Bertrand.Blaise.Bon.Boniface.Bouchard.Brice.Brieuc.Bruno.Brunon.Calixte.Calliste.Camélien.Camille.Camillien.Candide.Caribert.Carloman.Cassandre.Cassien.Cédric.Céleste.Célestin.Célien.Césaire.César.Charles.Charlemagne.Childebert.Chilpéric.Chrétien.Christian.Christodule.Christophe.Chrysostome.Clarence.Claude.Claudien.Cléandre.Clément.Clotaire.Côme.Constance.Constant.Constantin.Corentin.Cyprien.Cyriaque.Cyrille.Cyril.Damien.Daniel.David.Delphin.Denis.Désiré.Didier.Dieudonné.Dimitri.Dominique.Dorian.Dorothée.Edgard.Edmond.Édouard.Éleuthère.Élie.Élisée.Émeric.Émile.Émilien.Emmanuel.Enguerrand.Épiphane.Éric.Esprit.Ernest.Étienne.Eubert.Eudes.Eudoxe.Eugène.Eusèbe.Eustache.Évariste.Évrard.Fabien.Fabrice.Falba.Félicité.Félix.Ferdinand.Fiacre.Fidèle.Firmin.Flavien.Flodoard.Florent.Florentin.Florestan.Florian.Fortuné.Foulques.Francisque.François.Français.Franciscus.Francs.Frédéric.Fulbert.Fulcran.Fulgence.Gabin.Gabriel.Gaël.Garnier.Gaston.Gaspard.Gatien.Gaud.Gautier.Gédéon.Geoffroy.Georges.Géraud.Gérard.Gerbert.Germain.Gervais.Ghislain.Gilbert.Gilles.Girart.Gislebert.Gondebaud.Gonthier.Gontran.Gonzague.Grégoire.Guérin.Gui.Guillaume.Gustave.Guy.Guyot.Hardouin.Hector.Hédelin.Hélier.Henri.Herbert.Herluin.Hervé.Hilaire.Hildebert.Hincmar.Hippolyte.Honoré.Hubert.Hugues.Innocent.Isabeau.Isidore.Jacques.Japhet.Jason.Jean.Jeannel.Jeannot.Jérémie.Jérôme.Joachim.Joanny.Job.Jocelyn.Joël.Johan.Jonas.Jonathan.Joseph.Josse.Josselin.Jourdain.Jude.Judicaël.Jules.Julien.Juste.Justin.Lambert.Landry.Laurent.Lazare.Léandre.Léon.Léonard.Léopold.Leu.Loup.Leufroy.Libère.Liétald.Lionel.Loïc.Longin.Lorrain.Lorraine.Lothaire.Louis.Loup.Luc.Lucas.Lucien.Ludolphe.Ludovic.Macaire.Malo.Mamert.Manassé.Marc.Marceau.Marcel.Marcelin.Marius.Marseille.Martial.Martin.Mathurin.Matthias.Mathias.Matthieu.Maugis.Maurice.Mauricet.Maxence.Maxime.Maximilien.Mayeul.Médéric.Melchior.Mence.Merlin.Mérovée.Michaël.Michel.Moïse.Morgan.Nathan.Nathanaël.Narcisse.Néhémie.Nestor.Nestor.Nicéphore.Nicolas.Noé.Noël.Norbert.Normand.Normands.Octave.Odilon.Odon.Oger.Olivier.Oury.Pacôme.Palémon.Parfait.Pascal.Paterne.Patrice.Paul.Pépin.Perceval.Philémon.Philibert.Philippe.Philothée.Pie.Pierre.Pierrick.Prosper.Quentin.Raoul.Raphaël.Raymond.Régis.Réjean.Rémi.Renaud.René.Reybaud.Richard.Robert.Roch.Rodolphe.Rodrigue.Roger.Roland.Romain.Romuald.Roméo.Rome.Ronan.Roselin.Salomon.Samuel.Savin.Savinien.Scholastique.Sébastien.Séraphin.Serge.Séverin.Sidoine.Sigebert.Sigismond.Silvère.Simon.Siméon.Sixte.Stanislas.Stéphane.Stephan.Sylvain.Sylvestre.Tancrède.Tanguy.Taurin.Théodore.Théodose.Théophile.Théophraste.Thibault.Thibert.Thierry.Thomas.Timoléon.Timothée.Titien.Tonnin.Toussaint.Trajan.Tristan.Turold.Tim.Ulysse.Urbain.Valentin.Valère.Valéry.Venance.Venant.Venceslas.Vianney.Victor.Victorien.Victorin.Vigile.Vincent.Vital.Vitalien.Vivien.Waleran.Wandrille.Xavier.Xénophon.Yves.Zacharie.Zaché.Zéphirin".split(".")
 				},
 				female: {
-					en: /* @__PURE__ */ "Mary.Emma.Elizabeth.Minnie.Margaret.Ida.Alice.Bertha.Sarah.Annie.Clara.Ella.Florence.Cora.Martha.Laura.Nellie.Grace.Carrie.Maude.Mabel.Bessie.Jennie.Gertrude.Julia.Hattie.Edith.Mattie.Rose.Catherine.Lillian.Ada.Lillie.Helen.Jessie.Louise.Ethel.Lula.Myrtle.Eva.Frances.Lena.Lucy.Edna.Maggie.Pearl.Daisy.Fannie.Josephine.Dora.Rosa.Katherine.Agnes.Marie.Nora.May.Mamie.Blanche.Stella.Ellen.Nancy.Effie.Sallie.Nettie.Della.Lizzie.Flora.Susie.Maud.Mae.Etta.Harriet.Sadie.Caroline.Katie.Lydia.Elsie.Kate.Susan.Mollie.Alma.Addie.Georgia.Eliza.Lulu.Nannie.Lottie.Amanda.Belle.Charlotte.Rebecca.Ruth.Viola.Olive.Amelia.Hannah.Jane.Virginia.Emily.Matilda.Irene.Kathryn.Esther.Willie.Henrietta.Ollie.Amy.Rachel.Sara.Estella.Theresa.Augusta.O'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ra.Pauline.Josie.Lola.Sophia.Leona.Anne.Mildred.Ann.Beulah.Callie.Lou.Delia.Eleanor.Barbara.Iva.Louisa.Maria.Mayme.Evelyn.Estelle.Nina.Betty.Marion.Bettie.Dorothy.Luella.Inez.Lela.Rosie.Allie.Millie.Janie.Cornelia.Victoria.Ruby.Winifred.Alta.Celia.Christine.Beatrice.Birdie.Harriett.Mable.Myra.Sophie.Tillie.Isabel.Sylvia.Carolyn.Isabelle.Leila.Sally.Ina.Essie.Bertie.Nell.Alberta.Katharine.Lora.Rena.Mina.Rhoda.Mathilda.Abbie.Eula.Dollie.Hettie.Eunice.Fanny.Ola.Lenora.Adelaide.Christina.Lelia.Nelle.Sue.Johanna.Lilly.Lucinda.Minerva.Lettie.Roxie.Cynthia.Helena.Hilda.Hulda.Bernice.Genevieve.Jean.Cordelia.Marian.Francis.Jeanette.Adeline.Gussie.Leah.Lois.Lura.Mittie.Hallie.Isabella.Olga.Phoebe.Teresa.Hester.Lida.Lina.Winnie.Claudia.Marguerite.Vera.Cecelia.Bess.Emilie.Rosetta.Verna.Myrtie.Cecilia.Elva.Olivia.Ophelia.Georgie.Elnora.Violet.Adele.Lily.Linnie.Loretta.Madge.Polly.Virgie.Eugenia.Lucile.Lucille.Mabelle.Rosalie".split("."),
-					it: /* @__PURE__ */ "Ada.Adriana.Alessandra.Alessia.Alice.Angela.Anna.Anna Maria.Annalisa.Annita.Annunziata.Antonella.Arianna.Asia.Assunta.Aurora.Barbara.Beatrice.Benedetta.Bianca.Bruna.Camilla.Carla.Carlotta.Carmela.Carolina.Caterina.Catia.Cecilia.Chiara.Cinzia.Clara.Claudia.Costanza.Cristina.Daniela.Debora.Diletta.Dina.Donatella.Elena.Eleonora.Elisa.Elisabetta.Emanuela.Emma.Eva.Federica.Fernanda.Fiorella.Fiorenza.Flora.Franca.Francesca.Gabriella.Gaia.Gemma.Giada.Gianna.Gina.Ginevra.Giorgia.Giovanna.Giulia.Giuliana.Giuseppa.Giuseppina.Grazia.Graziella.Greta.Ida.Ilaria.Ines.Iolanda.Irene.Irma.Isabella.Jessica.Laura.Lea.Letizia.Licia.Lidia.Liliana.Lina.Linda.Lisa.Livia.Loretta.Luana.Lucia.Luciana.Lucrezia.Luisa.Manuela.Mara.Marcella.Margherita.Maria.Maria Cristina.Maria Grazia.Maria Luisa.Maria Pia.Maria Teresa.Marina.Marisa.Marta.Martina.Marzia.Matilde.Melissa.Michela.Milena.Mirella.Monica.Natalina.Nella.Nicoletta.Noemi.Olga.Paola.Patrizia.Piera.Pierina.Raffaella.Rebecca.Renata.Rina.Rita.Roberta.Rosa.Rosanna.Rossana.Rossella.Sabrina.Sandra.'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('Sara.Serena.Silvana.Silvia.Simona.Simonetta.Sofia.Sonia.Stefania.Susanna.Teresa.Tina.Tiziana.Tosca.Valentina.Valeria.Vanda.Vanessa.Vanna.Vera.Veronica.Vilma.Viola.Virginia.Vittoria".split("."),
+					en: /* @__PURE__ */ "Mary.Emma.Elizabeth.Minnie.Margaret.Ida.Alice.Bertha.Sarah.Annie.Clara.Ella.Florence.Cora.Martha.Laura.Nellie.Grace.Carrie.Maude.Mabel.Bessie.Jennie.Gertrude.Julia.Hattie.Edith.Mattie.Rose.Catherine.Lillian.Ada.Lillie.Helen.Jessie.Louise.Ethel.Lula.Myrtle.Eva.Frances.Lena.Lucy.Edna.Maggie.Pearl.Daisy.Fannie.Josephine.Dora.Rosa.Katherine.Agnes.Marie.Nora.May.Mamie.Blanche.Stella.Ellen.Nancy.Effie.Sallie.Nettie.Della.Lizzie.Flora.Susie.Maud.Mae.Etta.Harriet.Sadie.Caroline.Katie.Lydia.Elsie.Kate.Susan.Mollie.Alma.Addie.Georgia.Eliza.Lulu.Nannie.Lottie.Amanda.Belle.Charlotte.Rebecca.Ruth.Viola.Olive.Amelia.Hannah.Jane.Virginia.Emily.Matilda.Irene.Kathryn.Esther.Willie.Henrietta.Ollie.Amy.Rachel.Sara.Estella.Theresa.Augusta.Ora.Pauline.Josie.Lola.Sophia.Leona.Anne.Mildred.Ann.Beulah.Callie.Lou.Delia.Eleanor.Barbara.Iva.Louisa.Maria.Mayme.Evelyn.Estelle.Nina.Betty.Marion.Bettie.Dorothy.Luella.Inez.Lela.Rosie.Allie.Millie.Janie.Cornelia.Victoria.Ruby.Winifred.Alta.Celia.Christine.Beatrice.Birdie.Harriett.Mable.Myra.Sophie.Tillie.Isabel.Sylvia.Carolyn.Isabelle.Leila.Sally.Ina.Essie.Bertie.Nell.Alberta.Katharine.Lora.Rena.Mina.Rhoda.Mathilda.Abbie.Eula.Dollie.Hettie.Eunice.Fanny.Ola.Lenora.Adelaide.Christina.Lelia.Nelle.Sue.Johanna.Lilly.Lucinda.Minerva.Lettie.Roxie.Cynthia.Helena.Hilda.Hulda.Bernice.Genevieve.Jean.Cordelia.Marian.Francis.Jeanette.Adeline.Gussie.Leah.Lois.Lura.Mittie.Hallie.Isabella.Olga.Phoebe.Teresa.Hester.Lida.Lina.Winnie.Claudia.Marguerite.Vera.Cecelia.Bess.Emilie.Rosetta.Verna.Myrtie.Cecilia.Elva.Olivia.Ophelia.Georgie.Elnora.Violet.Adele.Lily.Linnie.Loretta.Madge.Polly.Virgie.Eugenia.Lucile.Lucille.Mabelle.Rosalie".split("."),
+					it: /* @__PURE__ */ "Ada.Adriana.Alessandra.Alessia.Alice.Angela.Anna.Anna Maria.Annalisa.Annita.Annunziata.Antonella.Arianna.Asia.Assunta.Aurora.Barbara.Beatrice.Benedetta.Bianca.Bruna.Camilla.Carla.Carlotta.Carmela.Carolina.Caterina.Catia.Cecilia.Chiara.Cinzia.Clara.Claudia.Costanza.Cristina.Daniela.Debora.Diletta.Dina.Donatella.Elena.Eleonora.Elisa.Elisabetta.Emanuela.Emma.Eva.Federica.Fernanda.Fiorella.Fiorenza.Flora.Franca.Francesca.Gabriella.Gaia.Gemma.Giada.Gianna.Gina.Ginevra.Giorgia.Giovanna.Giulia.Giuliana.Giuseppa.Giuseppina.Grazia.Graziella.Greta.Ida.Ilaria.Ines.Iolanda.Irene.Irma.Isabella.Jessica.Laura.Lea.Letizia.Licia.Lidia.Liliana.Lina.Linda.Lisa.Livia.Loretta.Luana.Lucia.Luciana.Lucrezia.Luisa.Manuela.Mara.Marcella.Margherita.Maria.Maria Cristina.Maria Grazia.Maria Luisa.Maria Pia.Maria Teresa.Marina.Marisa.Marta.Martina.Marzia.Matilde.Melissa.Michela.Milena.Mirella.Monica.Natalina.Nella.Nicoletta.Noemi.Olga.Paola.Patrizia.Piera.Pierina.Raffaella.Rebecca.Renata.Rina.Rita.Roberta.Rosa.Rosanna.Rossana.Rossella.Sabrina.Sandra.Sara.Serena.Silvana.Silvia.Simona.Simonetta.Sofia.Sonia.Stefania.Susanna.Teresa.Tina.Tiziana.Tosca.Valentina.Valeria.Vanda.Vanessa.Vanna.Vera.Veronica.Vilma.Viola.Virginia.Vittoria".split("."),
 					nl: /* @__PURE__ */ "Ada.Arianne.Afke.Amanda.Amber.Amy.Aniek.Anita.Anja.Anna.Anne.Annelies.Annemarie.Annette.Anouk.Astrid.Aukje.Barbara.Bianca.Carla.Carlijn.Carolien.Chantal.Charlotte.Claudia.Daniëlle.Debora.Diane.Dora.Eline.Elise.Ella.Ellen.Emma.Esmee.Evelien.Esther.Erica.Eva.Femke.Fleur.Floor.Froukje.Gea.Gerda.Hanna.Hanneke.Heleen.Hilde.Ilona.Ina.Inge.Ingrid.Iris.Isabel.Isabelle.Janneke.Jasmijn.Jeanine.Jennifer.Jessica.Johanna.Joke.Julia.Julie.Karen.Karin.Katja.Kim.Lara.Laura.Lena.Lianne.Lieke.Lilian.Linda.Lisa.Lisanne.Lotte.Louise.Maaike.Manon.Marga.Maria.Marissa.Marit.Marjolein.Martine.Marleen.Melissa.Merel.Miranda.Michelle.Mirjam.Mirthe.Naomi.Natalie.Nienke.Nina.Noortje.Olivia.Patricia.Paula.Paulien.Ramona.Ria.Rianne.Roos.Rosanne.Ruth.Sabrina.Sandra.Sanne.Sara.Saskia.Silvia.Sofia.Sophie.Sonja.Suzanne.Tamara.Tess.Tessa.Tineke.Valerie.Vanessa.Veerle.Vera.Victoria.Wendy.Willeke.Yvonne.Zoë".split("."),
-					fr: /* @__PURE__ */ "Abdon.Abel.Abigaëlle.Abigaïl.Acacius.Acanthe.Adalbert.Adalsinde.Adegrine.Adélaïde.Adèle.Adélie.Adeline.Adeltrude.Adolphe.Adonis.Adrastée.Adrehilde.Adrienne.Agathe.Agilbert.Aglaé.Aignan.Agneflète.Agnès.Agrippine.Aimé.Alaine.Alaïs.Albane.Albérade.Alberte.Alcide.Alcine.Alcyone.Aldegonde.Aleth.Alexandrine.Alexine.Alice.Aliénor.Aliette.Aline.Alix.Alizé.Aloïse.Aloyse.Alphonsine.Althée.Amaliane.Amalthée.Amande.Amandine.Amant.Amarande.Amaranthe.Amaryllis.Ambre.Ambroisie.Amélie.Améthyste.Aminte.Anaël.Anaïs.Anastasie.Anatole.Ancelin.Andrée.Anémone.Angadrême.Angèle.Angeline.Angélique.Angilbert.Anicet.Annabelle.Anne.Annette.Annick.Annie.Annonciade.Ansbert.Anstrudie.Anthelme.Antigone.Antoinette.Antonine.Aphélie.Apolline.Apollonie.Aquiline.Arabelle.Arcadie.Archange.Argine.Ariane.Aricie.Ariel.Arielle.Arlette.Armance.Armande.Armandine.Armelle.Armide.Armelle.Armi'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('n.Arnaud.Arsène.Arsinoé.Artémis.Arthur.Ascelin.Ascension.Assomption.Astarté.Astérie.Astrée.Astrid.Athalie.Athanasie.Athina.Aube.Albert.Aude.Audrey.Augustine.Aure.Aurélie.Aurélien.Aurèle.Aurore.Auxence.Aveline.Abigaëlle.Avoye.Axelle.Aymard.Azalée.Adèle.Adeline.Barbe.Basilisse.Bathilde.Béatrice.Béatrix.Bénédicte.Bérengère.Bernadette.Berthe.Bertille.Beuve.Blanche.Blanc.Blandine.Brigitte.Brune.Brunehilde.Callista.Camille.Capucine.Carine.Caroline.Cassandre.Catherine.Cécile.Céleste.Célestine.Céline.Chantal.Charlène.Charline.Charlotte.Chloé.Christelle.Christiane.Christine.Claire.Clara.Claude.Claudine.Clarisse.Clémence.Clémentine.Cléo.Clio.Clotilde.Coline.Conception.Constance.Coralie.Coraline.Corentine.Corinne.Cyrielle.Daniel.Daniel.Daphné.Débora.Delphine.Denise.Diane.Dieudonné.Dominique.Doriane.Dorothée.Douce.Édith.Edmée.Éléonore.Éliane.Élia.Éliette.Élisabeth.Élise.Ella.Élodie.Éloïse.Elsa.Émeline.Émérance.Émérentienne.Émérencie.Émilie.Emma.Emmanuelle.Emmelie.Ernestine.Esther.Estelle.Eudoxie.Eugénie.Eulalie.Euphrasie.Eusébie.Évangéline.Eva.Ève.Évelyne.Fanny.Fantine.Faustine.Félicie.Fernande.Flavie.Fleur.Flore.Florence.Florie.Fortuné.France.Francia.Françoise.Francine.Gabrielle.Gaëlle.Garance.Geneviève.Georgette.Gerberge.Germaine.Gertrude.Gisèle.Guenièvre.Guilhemine.Guillemette.Gustave.Gwenael.Hélène.Héloïse.Henriette.Hermine.Hermione.Hippolyte.Honorine.Hortense.Huguette.Ines.Irène.Irina.Iris.Isabeau.Isabelle.Iseult.Isolde.Ismérie.Jacinthe.Jacqueline.Jade.Janine.Jeanne.Jocelyne.Joëlle.Joséphine.Judith.Julia.Julie.Jules.Juliette.Justine.Katy.Kathy.Katie.Laura.Laure.Laureline.Laurence.Laurene.Lauriane.Laurianne.Laurine.Léa.Léna.Léonie.Léon.Léontine.Lorraine.Lucie.Lucienne.Lucille.Ludivine.Lydie.Lydie.Megane.Madeleine.Magali.Maguelone.Mallaury.Manon.Marceline.Margot.Marguerite.Marianne.Marie.Myriam.Marie.Marine.Marion.Marlène.Marthe.Martine.Mathilde.Maud.Maureen.Mauricette.Maxime.Mélanie.Melissa.Mélissandre.Mélisande.Mélodie.Michel.Micheline.Mireille.Miriam.Moïse.Monique.Morgane'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('.Muriel.Mylène.Nadège.Nadine.Nathalie.Nicole.Nicolette.Nine.Noël.Noémie.Océane.Odette.Odile.Olive.Olivia.Olympe.Ombline.Ombeline.Ophélie.Oriande.Oriane.Ozanne.Pascale.Pascaline.Paule.Paulette.Pauline.Priscille.Prisca.Prisque.Pécine.Pélagie.Pénélope.Perrine.Pétronille.Philippine.Philomène.Philothée.Primerose.Prudence.Pulchérie.Quentine.Quiéta.Quintia.Quintilla.Rachel.Raphaëlle.Raymonde.Rebecca.Régine.Réjeanne.René.Rita.Rita.Rolande.Romane.Rosalie.Rose.Roseline.Sabine.Salomé.Sandra.Sandrine.Sarah.Ségolène.Séverine.Sibylle.Simone.Sixt.Solange.Soline.Solène.Sophie.Stéphanie.Suzanne.Sylvain.Sylvie.Tatiana.Thaïs.Théodora.Thérèse.Tiphaine.Ursule.Valentine.Valérie.Véronique.Victoire.Victorine.Vinciane.Violette.Virginie.Viviane.Xavière.Yolande.Ysaline.Yvette.Yvonne.Zélie.Zita.Zoé".split(".")
+					fr: /* @__PURE__ */ "Abdon.Abel.Abigaëlle.Abigaïl.Acacius.Acanthe.Adalbert.Adalsinde.Adegrine.Adélaïde.Adèle.Adélie.Adeline.Adeltrude.Adolphe.Adonis.Adrastée.Adrehilde.Adrienne.Agathe.Agilbert.Aglaé.Aignan.Agneflète.Agnès.Agrippine.Aimé.Alaine.Alaïs.Albane.Albérade.Alberte.Alcide.Alcine.Alcyone.Aldegonde.Aleth.Alexandrine.Alexine.Alice.Aliénor.Aliette.Aline.Alix.Alizé.Aloïse.Aloyse.Alphonsine.Althée.Amaliane.Amalthée.Amande.Amandine.Amant.Amarande.Amaranthe.Amaryllis.Ambre.Ambroisie.Amélie.Améthyste.Aminte.Anaël.Anaïs.Anastasie.Anatole.Ancelin.Andrée.Anémone.Angadrême.Angèle.Angeline.Angélique.Angilbert.Anicet.Annabelle.Anne.Annette.Annick.Annie.Annonciade.Ansbert.Anstrudie.Anthelme.Antigone.Antoinette.Antonine.Aphélie.Apolline.Apollonie.Aquiline.Arabelle.Arcadie.Archange.Argine.Ariane.Aricie.Ariel.Arielle.Arlette.Armance.Armande.Armandine.Armelle.Armide.Armelle.Armin.Arnaud.Arsène.Arsinoé.Artémis.Arthur.Ascelin.Ascension.Assomption.Astarté.Astérie.Astrée.Astrid.Athalie.Athanasie.Athina.Aube.Albert.Aude.Audrey.Augustine.Aure.Aurélie.Aurélien.Aurèle.Aurore.Auxence.Aveline.Abigaëlle.Avoye.Axelle.Aymard.Azalée.Adèle.Adeline.Barbe.Basilisse.Bathilde.Béatrice.Béatrix.Bénédicte.Bérengère.Bernadette.Berthe.Bertille.Beuve.Blanche.Blanc.Blandine.Brigitte.Brune.Brunehilde.Callista.Camille.Capucine.Carine.Caroline.Cassandre.Catherine.Cécile.Céleste.Célestine.Céline.Chantal.Charlène.Charline.Charlotte.Chloé.Christelle.Christiane.Christine.Claire.Clara.Claude.Claudine.Clarisse.Clémence.Clémentine.Cléo.Clio.Clotilde.Coline.Conception.Constance.Coralie.Coraline.Corentine.Corinne.Cyrielle.Daniel.Daniel.Daphné.Débora.Delphine.Denise.Diane.Dieudonné.Dominique.Doriane.Dorothée.Douce.Édith.Edmée.Éléonore.Éliane.Élia.Éliette.Élisabeth.Élise.Ella.Élodie.Éloïse.Elsa.Émeline.Émérance.Émérentienne.Émérencie.Émilie.Emma.Emmanuelle.Emmelie.Ernestine.Esther.Estelle.Eudoxie.Eugénie.Eulalie.Euphrasie.Eusébie.Évangéline.Eva.Ève.Évelyne.Fanny.Fantine.Faustine.Félicie.Fernande.Flavie.Fleur.Flore.Florence.Florie.Fortuné.France.Francia.Françoise.Francine.Gabrielle.Gaëlle.Garance.Geneviève.Georgette.Gerberge.Germaine.Gertrude.Gisèle.Guenièvre.Guilhemine.Guillemette.Gustave.Gwenael.Hélène.Héloïse.Henriette.Hermine.Hermione.Hippolyte.Honorine.Hortense.Huguette.Ines.Irène.Irina.Iris.Isabeau.Isabelle.Iseult.Isolde.Ismérie.Jacinthe.Jacqueline.Jade.Janine.Jeanne.Jocelyne.Joëlle.Joséphine.Judith.Julia.Julie.Jules.Juliette.Justine.Katy.Kathy.Katie.Laura.Laure.Laureline.Laurence.Laurene.Lauriane.Laurianne.Laurine.Léa.Léna.Léonie.Léon.Léontine.Lorraine.Lucie.Lucienne.Lucille.Ludivine.Lydie.Lydie.Megane.Madeleine.Magali.Maguelone.Mallaury.Manon.Marceline.Margot.Marguerite.Marianne.Marie.Myriam.Marie.Marine.Marion.Marlène.Marthe.Martine.Mathilde.Maud.Maureen.Mauricette.Maxime.Mélanie.Melissa.Mélissandre.Mélisande.Mélodie.Michel.Micheline.Mireille.Miriam.Moïse.Monique.Morgane.Muriel.Mylène.Nadège.Nadine.Nathalie.Nicole.Nicolette.Nine.Noël.Noémie.Océane.Odette.Odile.Olive.Olivia.Olympe.Ombline.Ombeline.Ophélie.Oriande.Oriane.Ozanne.Pascale.Pascaline.Paule.Paulette.Pauline.Priscille.Prisca.Prisque.Pécine.Pélagie.Pénélope.Perrine.Pétronille.Philippine.Philomène.Philothée.Primerose.Prudence.Pulchérie.Quentine.Quiéta.Quintia.Quintilla.Rachel.Raphaëlle.Raymonde.Rebecca.Régine.Réjeanne.René.Rita.Rita.Rolande.Romane.Rosalie.Rose.Roseline.Sabine.Salomé.Sandra.Sandrine.Sarah.Ségolène.Séverine.Sibylle.Simone.Sixt.Solange.Soline.Solène.Sophie.Stéphanie.Suzanne.Sylvain.Sylvie.Tatiana.Thaïs.Théodora.Thérèse.Tiphaine.Ursule.Valentine.Valérie.Véronique.Victoire.Victorine.Vinciane.Violette.Virginie.Viviane.Xavière.Yolande.Ysaline.Yvette.Yvonne.Zélie.Zita.Zoé".split(".")
 				}
 			},
 			lastNames: {
-				en: /* @__PURE__ */ "Smith.Johnson.Williams.Jones.Brown.Davis.Miller.Wilson.Moore.Taylor.Anderson.Thomas.Jackson.White.Harris.Martin.Thompson.Garcia.Martinez.Robinson.Clark.Rodriguez.Lewis.Lee.Walker.Hall.Allen.Young.Hernandez.King.Wright.Lopez.Hill.Scott.Green.Adams.Baker.Gonzalez.Nelson.Carter.Mitchell.Perez.Roberts.Turner.Phillips.Campbell.Parker.Evans.Edwards.Collins.Stewart.Sanchez.Morris.Rogers.Reed.Cook.Morgan.Bell.Murphy.Bailey.Rivera.Cooper.Richardson.Cox.Howard.Ward.Torres.Peterson.Gray.Ramirez.James.Watson.Brooks.Kelly.Sanders.Price.Bennett.Wood.Barnes.Ross.Henderson.Coleman.Jenkins.Perry.Powell.Long.Patterson.Hughes.Flores.Washington.Butler.Simmons.Foster.Gonzales.Bryant.Alexander.Russell.Griffin.Diaz.Hayes.Myers.Ford.Hamilton.Graham.Sullivan.Wallace.Woods.Cole.West.Jordan.Owens.Reynolds.Fisher.Ellis.Harrison.Gibson.McDonald.Cruz.Marshall.Ortiz.Gomez.Murray.Freeman.Wells.Webb.Simpson.Stevens.Tucker.Porter.Hunter.Hicks.Crawford.Henry.Boyd.Mason.Morales.Kennedy.Warren.Dixon.Ramos.Reyes.Burns.Gordon.Shaw.Holmes.Rice.Robertson.Hunt.Black.Daniels.Palmer.Mills.Nichols.Grant.Knight.Ferguson.Rose.Stone.Hawkins.Dunn.Perkins.Hudson.Spencer.Gardner.Stephe'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ns.Payne.Pierce.Berry.Matthews.Arnold.Wagner.Willis.Ray.Watkins.Olson.Carroll.Duncan.Snyder.Hart.Cunningham.Bradley.Lane.Andrews.Ruiz.Harper.Fox.Riley.Armstrong.Carpenter.Weaver.Greene.Lawrence.Elliott.Chavez.Sims.Austin.Peters.Kelley.Franklin.Lawson.Fields.Gutierrez.Ryan.Schmidt.Carr.Vasquez.Castillo.Wheeler.Chapman.Oliver.Montgomery.Richards.Williamson.Johnston.Banks.Meyer.Bishop.McCoy.Howell.Alvarez.Morrison.Hansen.Fernandez.Garza.Harvey.Little.Burton.Stanley.Nguyen.George.Jacobs.Reid.Kim.Fuller.Lynch.Dean.Gilbert.Garrett.Romero.Welch.Larson.Frazier.Burke.Hanson.Day.Mendoza.Moreno.Bowman.Medina.Fowler.Brewer.Hoffman.Carlson.Silva.Pearson.Holland.Douglas.Fleming.Jensen.Vargas.Byrd.Davidson.Hopkins.May.Terry.Herrera.Wade.Soto.Walters.Curtis.Neal.Caldwell.Lowe.Jennings.Barnett.Graves.Jimenez.Horton.Shelton.Barrett.Obrien.Castro.Sutton.Gregory.McKinney.Lucas.Miles.Craig.Rodriquez.Chambers.Holt.Lambert.Fletcher.Watts.Bates.Hale.Rhodes.Pena.Beck.Newman.Haynes.McDaniel.Mendez.Bush.Vaughn.Parks.Dawson.Santiago.Norris.Hardy.Love.Steele.Curry.Powers.Schultz.Barker.Guzman.Page.Munoz.Ball.Keller.Chandler.Weber.Leonard.Walsh.Lyons.Ramsey.Wolfe.Schneider.Mullins.Benson.Sharp.Bowen.Daniel.Barber.Cummings.Hines.Baldwin.Griffith.Valdez.Hubbard.Salazar.Reeves.Warner.Stevenson.Burgess.Santos.Tate.Cross.Garner.Mann.Mack.Moss.Thornton.Dennis.McGee.Farmer.Delgado.Aguilar.Vega.Glover.Manning.Cohen.Harmon.Rodgers.Robbins.Newton.Todd.Blair.Higgins.Ingram.Reese.Cannon.Strickland.Townsend.Potter.Goodwin.Walton.Rowe.Hampton.Ortega.Patton.Swanson.Joseph.Francis.Goodman.Maldonado.Yates.Becker.Erickson.Hodges.Rios.Conner.Adkins.Webster.Norman.Malone.Hammond.Flowers.Cobb.Moody.Quinn.Blake.Maxwell.Pope.Floyd.Osborne.Paul.McCarthy.Guerrero.Lindsey.Estrada.Sandoval.Gibbs.Tyler.Gross.Fitzgerald.Stokes.Doyle.Sherman.Saunders.Wise.Colon.Gill.Alvarado.Greer.Padilla.Simon.Waters.Nunez.Ballard.Schwartz.McBride.Houston.Christensen.Klein.Pratt.Briggs.Parsons.McLaughlin.Zimmerman.French.Buchanan.Moran.Cope'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('land.Roy.Pittman.Brady.McCormick.Holloway.Brock.Poole.Frank.Logan.Owen.Bass.Marsh.Drake.Wong.Jefferson.Park.Morton.Abbott.Sparks.Patrick.Norton.Huff.Clayton.Massey.Lloyd.Figueroa.Carson.Bowers.Roberson.Barton.Tran.Lamb.Harrington.Casey.Boone.Cortez.Clarke.Mathis.Singleton.Wilkins.Cain.Bryan.Underwood.Hogan.McKenzie.Collier.Luna.Phelps.McGuire.Allison.Bridges.Wilkerson.Nash.Summers.Atkins".split("."),
-				it: /* @__PURE__ */ "Acciai.Aglietti.Agostini.Agresti.Ahmed.Aiazzi.Albanese.Alberti.Alessi.Alfani.Alinari.Alterini.Amato.Ammannati.Ancillotti.Andrei.Andreini.Andreoni.Angeli.Anichini.Antonelli.Antonini.Arena.Ariani.Arnetoli.Arrighi.Baccani.Baccetti.Bacci.Bacherini.Badii.Baggiani.Baglioni.Bagni.Bagnoli.Baldassini.Baldi.Baldini.Ballerini.Balli.Ballini.Balloni.Bambi.Banchi.Bandinelli.Bandini.Bani.Barbetti.Barbieri.Barchielli.Bardazzi.Bardelli.Bardi.Barducci.Bargellini.Bargiacchi.Barni.Baroncelli.Baroncini.Barone.Baroni.Baronti.Bartalesi.Bartoletti.Bartoli.Bartolini.Bartoloni.Bartolozzi.Basagni.Basile.Bassi.Batacchi.Battaglia.Battaglini.Bausi.Becagli.Becattini.Becchi.Becucci.Bellandi.Bellesi.Belli.Bellini.Bellucci.Bencini.Benedetti.Benelli.Beni.Benini.Bensi.Benucci.Benvenuti.Berlincioni.Bernacchioni.Bernardi.Bernardini.Berni.Bernini.Bertelli.Berti.Bertini.Bessi.Betti.Bettini.Biagi.Biagini.Biagioni.Biagiotti.Biancalani.Bianchi.Bianchini.Bianco.Biffoli.Bigazzi.Bigi.Biliotti.Billi.Binazzi.Bindi.Bini.Biondi.Bizzarri.Bocci.Bogani.Bolognesi.Bonaiuti.Bonanni.Bonciani.Boncinelli.Bondi.Bonechi.Bongini.Boni.Bonini.Borchi.Boretti.Borghi.Borghini.Borgioli.Borri.Borselli.Boschi.Bottai.Bracci.Braccini.Brandi.Braschi.Bravi.Brazzini.Breschi.Brilli.Brizzi.Brogelli.Brogi.Brogioni.Brunelli.Brunetti.Bruni.Bruno.Brunori.Bruschi.Bucci.Bucciarelli.Buccioni.Bucelli.Bulli.Burberi.Burchi.Burgassi.Burroni.Bussotti.Buti.Caciolli.Caiani.Calabrese.Calamai.Calamandrei.Caldini.Calo''.Calonaci.Calosi.Calvelli.Cambi.Camiciottoli.Cammelli.Cammilli.Campolmi.Cantini.Capanni.Capecchi.Caponi.Cappelletti.Capp'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('elli.Cappellini.Cappugi.Capretti.Caputo.Carbone.Carboni.Cardini.Carlesi.Carletti.Carli.Caroti.Carotti.Carrai.Carraresi.Carta.Caruso.Casalini.Casati.Caselli.Casini.Castagnoli.Castellani.Castelli.Castellucci.Catalano.Catarzi.Catelani.Cavaciocchi.Cavallaro.Cavallini.Cavicchi.Cavini.Ceccarelli.Ceccatelli.Ceccherelli.Ceccherini.Cecchi.Cecchini.Cecconi.Cei.Cellai.Celli.Cellini.Cencetti.Ceni.Cenni.Cerbai.Cesari.Ceseri.Checcacci.Checchi.Checcucci.Cheli.Chellini.Chen.Cheng.Cherici.Cherubini.Chiaramonti.Chiarantini.Chiarelli.Chiari.Chiarini.Chiarugi.Chiavacci.Chiesi.Chimenti.Chini.Chirici.Chiti.Ciabatti.Ciampi.Cianchi.Cianfanelli.Cianferoni.Ciani.Ciapetti.Ciappi.Ciardi.Ciatti.Cicali.Ciccone.Cinelli.Cini.Ciobanu.Ciolli.Cioni.Cipriani.Cirillo.Cirri.Ciucchi.Ciuffi.Ciulli.Ciullini.Clemente.Cocchi.Cognome.Coli.Collini.Colombo.Colzi.Comparini.Conforti.Consigli.Conte.Conti.Contini.Coppini.Coppola.Corsi.Corsini.Corti.Cortini.Cosi.Costa.Costantini.Costantino.Cozzi.Cresci.Crescioli.Cresti.Crini.Curradi.D''Agostino.D''Alessandro.D''Amico.D''Angelo.Daddi.Dainelli.Dallai.Danti.Davitti.De Angelis.De Luca.De Marco.De Rosa.De Santis.De Simone.De Vita.Degl''Innocenti.Degli Innocenti.Dei.Del Lungo.Del Re.Di Marco.Di Stefano.Dini.Diop.Dobre.Dolfi.Donati.Dondoli.Dong.Donnini.Ducci.Dumitru.Ermini.Esposito.Evangelisti.Fabbri.Fabbrini.Fabbrizzi.Fabbroni.Fabbrucci.Fabiani.Facchini.Faggi.Fagioli.Failli.Faini.Falciani.Falcini.Falcone.Fallani.Falorni.Falsini.Falugiani.Fancelli.Fanelli.Fanetti.Fanfani.Fani.Fantappie''.Fantechi.Fanti.Fantini.Fantoni.Farina.Fattori.Favilli.Fedi.Fei.Ferrante.Ferrara.Ferrari.Ferraro.Ferretti.Ferri.Ferrini.Ferroni.Fiaschi.Fibbi.Fiesoli.Filippi.Filippini.Fini.Fioravanti.Fiore.Fiorentini.Fiorini.Fissi.Focardi.Foggi.Fontana.Fontanelli.Fontani.Forconi.Formigli.Forte.Forti.Fortini.Fossati.Fossi.Francalanci.Franceschi.Franceschini.Franchi.Franchini.Franci.Francini.Francioni.Franco.Frassineti.Frati.Fratini.Frilli.Frizzi.Frosali.Frosini.Frullini.Fusco.Fusi.Gabbrielli.Gabellini.Gagli'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ardi.Galanti.Galardi.Galeotti.Galletti.Galli.Gallo.Gallori.Gambacciani.Gargani.Garofalo.Garuglieri.Gashi.Gasperini.Gatti.Gelli.Gensini.Gentile.Gentili.Geri.Gerini.Gheri.Ghini.Giachetti.Giachi.Giacomelli.Gianassi.Giani.Giannelli.Giannetti.Gianni.Giannini.Giannoni.Giannotti.Giannozzi.Gigli.Giordano.Giorgetti.Giorgi.Giovacchini.Giovannelli.Giovannetti.Giovannini.Giovannoni.Giuliani.Giunti.Giuntini.Giusti.Gonnelli.Goretti.Gori.Gradi.Gramigni.Grassi.Grasso.Graziani.Grazzini.Greco.Grifoni.Grillo.Grimaldi.Grossi.Gualtieri.Guarducci.Guarino.Guarnieri.Guasti.Guerra.Guerri.Guerrini.Guidi.Guidotti.He.Hoxha.Hu.Huang.Iandelli.Ignesti.Innocenti.Jin.La Rosa.Lai.Landi.Landini.Lanini.Lapi.Lapini.Lari.Lascialfari.Lastrucci.Latini.Lazzeri.Lazzerini.Lelli.Lenzi.Leonardi.Leoncini.Leone.Leoni.Lepri.Li.Liao.Lin.Linari.Lippi.Lisi.Livi.Lombardi.Lombardini.Lombardo.Longo.Lopez.Lorenzi.Lorenzini.Lorini.Lotti.Lu.Lucchesi.Lucherini.Lunghi.Lupi.Madiai.Maestrini.Maffei.Maggi.Maggini.Magherini.Magini.Magnani.Magnelli.Magni.Magnolfi.Magrini.Malavolti.Malevolti.Manca.Mancini.Manetti.Manfredi.Mangani.Mannelli.Manni.Mannini.Mannucci.Manuelli.Manzini.Marcelli.Marchese.Marchetti.Marchi.Marchiani.Marchionni.Marconi.Marcucci.Margheri.Mari.Mariani.Marilli.Marinai.Marinari.Marinelli.Marini.Marino.Mariotti.Marsili.Martelli.Martinelli.Martini.Martino.Marzi.Masi.Masini.Masoni.Massai.Materassi.Mattei.Matteini.Matteucci.Matteuzzi.Mattioli.Mattolini.Matucci.Mauro.Mazzanti.Mazzei.Mazzetti.Mazzi.Mazzini.Mazzocchi.Mazzoli.Mazzoni.Mazzuoli.Meacci.Mecocci.Meini.Melani.Mele.Meli.Mengoni.Menichetti.Meoni.Merlini.Messeri.Messina.Meucci.Miccinesi.Miceli.Micheli.Michelini.Michelozzi.Migliori.Migliorini.Milani.Miniati.Misuri.Monaco.Montagnani.Montagni.Montanari.Montelatici.Monti.Montigiani.Montini.Morandi.Morandini.Morelli.Moretti.Morganti.Mori.Morini.Moroni.Morozzi.Mugnai.Mugnaini.Mustafa.Naldi.Naldini.Nannelli.Nanni.Nannini.Nannucci.Nardi.Nardini.Nardoni.Natali.Ndiaye.Nencetti.Nencini.Nencioni.Neri.Nesi.Nesti.Niccolai.Nic'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('coli.Niccolini.Nigi.Nistri.Nocentini.Noferini.Novelli.Nucci.Nuti.Nutini.Oliva.Olivieri.Olmi.Orlandi.Orlandini.Orlando.Orsini.Ortolani.Ottanelli.Pacciani.Pace.Paci.Pacini.Pagani.Pagano.Paggetti.Pagliai.Pagni.Pagnini.Paladini.Palagi.Palchetti.Palloni.Palmieri.Palumbo.Pampaloni.Pancani.Pandolfi.Pandolfini.Panerai.Panichi.Paoletti.Paoli.Paolini.Papi.Papini.Papucci.Parenti.Parigi.Parisi.Parri.Parrini.Pasquini.Passeri.Pecchioli.Pecorini.Pellegrini.Pepi.Perini.Perrone.Peruzzi.Pesci.Pestelli.Petri.Petrini.Petrucci.Pettini.Pezzati.Pezzatini.Piani.Piazza.Piazzesi.Piazzini.Piccardi.Picchi.Piccini.Piccioli.Pieraccini.Pieraccioni.Pieralli.Pierattini.Pieri.Pierini.Pieroni.Pietrini.Pini.Pinna.Pinto.Pinzani.Pinzauti.Piras.Pisani.Pistolesi.Poggesi.Poggi.Poggiali.Poggiolini.Poli.Pollastri.Porciani.Pozzi.Pratellesi.Pratesi.Prosperi.Pruneti.Pucci.Puccini.Puccioni.Pugi.Pugliese.Puliti.Querci.Quercioli.Raddi.Radu.Raffaelli.Ragazzini.Ranfagni.Ranieri.Rastrelli.Raugei.Raveggi.Renai.Renzi.Rettori.Ricci.Ricciardi.Ridi.Ridolfi.Rigacci.Righi.Righini.Rinaldi.Risaliti.Ristori.Rizzo.Rocchi.Rocchini.Rogai.Romagnoli.Romanelli.Romani.Romano.Romei.Romeo.Romiti.Romoli.Romolini.Rontini.Rosati.Roselli.Rosi.Rossetti.Rossi.Rossini.Rovai.Ruggeri.Ruggiero.Russo.Sabatini.Saccardi.Sacchetti.Sacchi.Sacco.Salerno.Salimbeni.Salucci.Salvadori.Salvestrini.Salvi.Salvini.Sanesi.Sani.Sanna.Santi.Santini.Santoni.Santoro.Santucci.Sardi.Sarri.Sarti.Sassi.Sbolci.Scali.Scarpelli.Scarselli.Scopetani.Secci.Selvi.Senatori.Senesi.Serafini.Sereni.Serra.Sestini.Sguanci.Sieni.Signorini.Silvestri.Simoncini.Simonetti.Simoni.Singh.Sodi.Soldi.Somigli.Sorbi.Sorelli.Sorrentino.Sottili.Spina.Spinelli.Staccioli.Staderini.Stefanelli.Stefani.Stefanini.Stella.Susini.Tacchi.Tacconi.Taddei.Tagliaferri.Tamburini.Tanganelli.Tani.Tanini.Tapinassi.Tarchi.Tarchiani.Targioni.Tassi.Tassini.Tempesti.Terzani.Tesi.Testa.Testi.Tilli.Tinti.Tirinnanzi.Toccafondi.Tofanari.Tofani.Tognaccini.Tonelli.Tonini.Torelli.Torrini.Tosi.Toti.Tozzi.Trambusti.Trapani.T'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ucci.Turchi.Ugolini.Ulivi.Valente.Valenti.Valentini.Vangelisti.Vanni.Vannini.Vannoni.Vannozzi.Vannucchi.Vannucci.Ventura.Venturi.Venturini.Vestri.Vettori.Vichi.Viciani.Vieri.Vigiani.Vignoli.Vignolini.Vignozzi.Villani.Vinci.Visani.Vitale.Vitali.Viti.Viviani.Vivoli.Volpe.Volpi.Wang.Wu.Xu.Yang.Ye.Zagli.Zani.Zanieri.Zanobini.Zecchi.Zetti.Zhang.Zheng.Zhou.Zhu.Zingoni.Zini.Zoppi".split("."),
-				nl: /* @__PURE__ */ "Albers.Alblas.Appelman.Baars.Baas.Bakker.Blank.Bleeker.Blok.Blom.Boer.Boers.Boldewijn.Boon.Boot.Bos.Bosch.Bosma.Bosman.Bouma.Bouman.Bouwman.Brands.Brouwer.Burger.Buijs.Buitenhuis.Ceder.Cohen.Dekker.Dekkers.Dijkman.Dijkstra.Driessen.Drost.Engel.Evers.Faber.Franke.Gerritsen.Goedhart.Goossens.Groen.Groenenberg.Groot.Haan.Hart.Heemskerk.Hendriks.Hermans.Hoekstra.Hofman.Hopman.Huisman.Jacobs.Jansen.Janssen.Jonker.Jaspers.Keijzer.Klaassen.Klein.Koek.Koenders.Kok.Kool.Koopman.Koopmans.Koning.Koster.Kramer.Kroon.Kuijpers.Kuiper.Kuipers.Kurt.Koster.Kwakman.Los.Lubbers.Maas.Markus.Martens.Meijer.Mol.Molenaar.Mulder.Nieuwenhuis.Peeters.Peters.Pengel.Pieters.Pool.Post.Postma.Prins.Pronk.Reijnders.Rietveld.Roest.Roos.Sanders.Schaap.Scheffer.Schenk.Schilder.Schipper.Schmidt.Scholten.Schouten.Schut.Schutte.Schuurman.Simons.Smeets.Smit.Smits.Snel.Swinkels.Tas.Terpstra.Timmermans.Tol.Tromp.Troost.Valk.Veenstra.Veldkamp.Verbeek.Verheul.Verhoeven.Vermeer.Vermeulen.Verweij.Vink.Visser.Voorn.Vos.Wagenaar.Wiersema.Willems.Willemsen.Witteveen.Wolff.Wolters.Zijlstra.Zwart.de Beer.de Boer.de Bruijn.de Bruin.de Graaf.de Groot.de Haan.de Haas.de Jager.de Jong.de Jonge.de Koning.de Lange.de Leeuw.de Ridder.de Rooij.de Ruiter.de Vos.de Vries.de Waal.de Wit.de Zwart.van Beek.van Boven.van Dam.van Dijk.van Dongen.van Doorn.van Egmond.van Eijk.van Es.van Gelder.van Gelderen.van Houten.van Hulst.van Kempen.van Kesteren.van Leeuwen.van Loon.van Mill.van Noord.van Ommen.van Ommeren.van Oosten.van Oostveen.van Rijn.van Schaik.van Veen.van Vliet.van Wijk.van Wijngaarden.van den Poel.van de Pol.va'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('n den Ploeg.van de Ven.van den Berg.van den Bosch.van den Brink.van den Broek.van den Heuvel.van der Heijden.van der Horst.van der Hulst.van der Kroon.van der Laan.van der Linden.van der Meer.van der Meij.van der Meulen.van der Molen.van der Sluis.van der Spek.van der Veen.van der Velde.van der Velden.van der Vliet.van der Wal".split("."),
-				uk: /* @__PURE__ */ "Smith.Jones.Williams.Taylor.Brown.Davies.Evans.Wilson.Thomas.Johnson.Roberts.Robinson.Thompson.Wright.Walker.White.Edwards.Hughes.Green.Hall.Lewis.Harris.Clarke.Patel.Jackson.Wood.Turner.Martin.Cooper.Hill.Ward.Morris.Moore.Clark.Lee.King.Baker.Harrison.Morgan.Allen.James.Scott.Phillips.Watson.Davis.Parker.Price.Bennett.Young.Griffiths.Mitchell.Kelly.Cook.Carter.Richardson.Bailey.Collins.Bell.Shaw.Murphy.Miller.Cox.Richards.Khan.Marshall.Anderson.Simpson.Ellis.Adams.Singh.Begum.Wilkinson.Foster.Chapman.Powell.Webb.Rogers.Gray.Mason.Ali.Hunt.Hussain.Campbell.Matthews.Owen.Palmer.Holmes.Mills.Barnes.Knight.Lloyd.Butler.Russell.Barker.Fisher.Stevens.Jenkins.Murray.Dixon.Harvey.Graham.Pearson.Ahmed.Fletcher.Walsh.Kaur.Gibson.Howard.Andrews.Stewart.Elliott.Reynolds.Saunders.Payne.Fox.Ford.Pearce.Day.Brooks.West.Lawrence.Cole.Atkinson.Bradley.Spencer.Gill.Dawson.Ball.Burton.O''brien.Watts.Rose.Booth.Perry.Ryan.Grant.Wells.Armstrong.Francis.Rees.Hayes.Hart.Hudson.Newman.Barrett.Webster.Hunter.Gregory.Carr.Lowe.Page.Marsh.Riley.Dunn.Woods.Parsons.Berry.Stone.Reid.Holland.Hawkins.Harding.Porter.Robertson.Newton.Oliver.Reed.Kennedy.Williamson.Bird.Gardner.Shah.Dean.Lane.Cooke.Bates.Henderson.Parry.Burgess.Bishop.Walton.Burns.Nicholson.Shepherd.Ross.Cross.Long.Freeman.Warren.Nicholls.Hamilton.Byrne.Sutton.Mcdonald.Yates.Hodgson.Robson.Curtis.Hopkins.O''connor.Harper.Coleman.Watkins.Moss.Mccarthy.Chambers.O''neill.Griffin.Sharp.Hardy.Wheeler.Potter.Osborne.Johnston.Gordon.Doyle.Wallace.George.Jordan.Hutchinson.Rowe.Burke.May.Pritchard.Gilbert.Willis.Higgins.Read.Miles.Stevenson.Stephenson.Hammond.Arnold.Buckley.Walter'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('s.Hewitt.Barber.Nelson.Slater.Austin.Sullivan.Whitehead.Mann.Frost.Lambert.Stephens.Blake.Akhtar.Lynch.Goodwin.Barton.Woodward.Thomson.Cunningham.Quinn.Barnett.Baxter.Bibi.Clayton.Nash.Greenwood.Jennings.Holt.Kemp.Poole.Gallagher.Bond.Stokes.Tucker.Davidson.Fowler.Heath.Norman.Middleton.Lawson.Banks.French.Stanley.Jarvis.Gibbs.Ferguson.Hayward.Carroll.Douglas.Dickinson.Todd.Barlow.Peters.Lucas.Knowles.Hartley.Miah.Simmons.Morton.Alexander.Field.Morrison.Norris.Townsend.Preston.Hancock.Thornton.Baldwin.Burrows.Briggs.Parkinson.Reeves.Macdonald.Lamb.Black.Abbott.Sanders.Thorpe.Holden.Tomlinson.Perkins.Ashton.Rhodes.Fuller.Howe.Bryant.Vaughan.Dale.Davey.Weston.Bartlett.Whittaker.Davison.Kent.Skinner.Birch.Morley.Daniels.Glover.Howell.Cartwright.Pugh.Humphreys.Goddard.Brennan.Wall.Kirby.Bowen.Savage.Bull.Wong.Dobson.Smart.Wilkins.Kirk.Fraser.Duffy.Hicks.Patterson.Bradshaw.Little.Archer.Warner.Waters.O''sullivan.Farrell.Brookes.Atkins.Kay.Dodd.Bentley.Flynn.John.Schofield.Short.Haynes.Wade.Butcher.Henry.Sanderson.Crawford.Sheppard.Bolton.Coates.Giles.Gould.Houghton.Gibbons.Pratt.Manning.Law.Hooper.Noble.Dyer.Rahman.Clements.Moran.Sykes.Chan.Doherty.Connolly.Joyce.Franklin.Hobbs.Coles.Herbert.Steele.Kerr.Leach.Winter.Owens.Duncan.Naylor.Fleming.Horton.Finch.Fitzgerald.Randall.Carpenter.Marsden.Browne.Garner.Pickering.Hale.Dennis.Vincent.Chadwick.Chandler.Sharpe.Nolan.Lyons.Hurst.Collier.Peacock.Howarth.Faulkner.Rice.Pollard.Welch.Norton.Gough.Sinclair.Blackburn.Bryan.Conway.Power.Cameron.Daly.Allan.Hanson.Gardiner.Boyle.Myers.Turnbull.Wallis.Mahmood.Sims.Swift.Iqbal.Pope.Brady.Chamberlain.Rowley.Tyler.Farmer.Metcalfe.Hilton.Godfrey.Holloway.Parkin.Bray.Talbot.Donnelly.Nixon.Charlton.Benson.Whitehouse.Barry.Hope.Lord.North.Storey.Connor.Potts.Bevan.Hargreaves.Mclean.Mistry.Bruce.Howells.Hyde.Parkes.Wyatt.Fry.Lees.O''donnell.Craig.Forster.Mckenzie.Humphries.Mellor.Carey.Ingram.Summers.Leonard".split("."),
-				de: /* @__PURE__ */ "Müller.Schmidt.Schneider.Fischer.Weber.Meyer'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('.Wagner.Becker.Schulz.Hoffmann.Schäfer.Koch.Bauer.Richter.Klein.Wolf.Schröder.Neumann.Schwarz.Zimmermann.Braun.Krüger.Hofmann.Hartmann.Lange.Schmitt.Werner.Schmitz.Krause.Meier.Lehmann.Schmid.Schulze.Maier.Köhler.Herrmann.König.Walter.Mayer.Huber.Kaiser.Fuchs.Peters.Lang.Scholz.Möller.Weiß.Jung.Hahn.Schubert.Vogel.Friedrich.Keller.Günther.Frank.Berger.Winkler.Roth.Beck.Lorenz.Baumann.Franke.Albrecht.Schuster.Simon.Ludwig.Böhm.Winter.Kraus.Martin.Schumacher.Krämer.Vogt.Stein.Jäger.Otto.Sommer.Groß.Seidel.Heinrich.Brandt.Haas.Schreiber.Graf.Schulte.Dietrich.Ziegler.Kuhn.Kühn.Pohl.Engel.Horn.Busch.Bergmann.Thomas.Voigt.Sauer.Arnold.Wolff.Pfeiffer".split("."),
+				en: /* @__PURE__ */ "Smith.Johnson.Williams.Jones.Brown.Davis.Miller.Wilson.Moore.Taylor.Anderson.Thomas.Jackson.White.Harris.Martin.Thompson.Garcia.Martinez.Robinson.Clark.Rodriguez.Lewis.Lee.Walker.Hall.Allen.Young.Hernandez.King.Wright.Lopez.Hill.Scott.Green.Adams.Baker.Gonzalez.Nelson.Carter.Mitchell.Perez.Roberts.Turner.Phillips.Campbell.Parker.Evans.Edwards.Collins.Stewart.Sanchez.Morris.Rogers.Reed.Cook.Morgan.Bell.Murphy.Bailey.Rivera.Cooper.Richardson.Cox.Howard.Ward.Torres.Peterson.Gray.Ramirez.James.Watson.Brooks.Kelly.Sanders.Price.Bennett.Wood.Barnes.Ross.Henderson.Coleman.Jenkins.Perry.Powell.Long.Patterson.Hughes.Flores.Washington.Butler.Simmons.Foster.Gonzales.Bryant.Alexander.Russell.Griffin.Diaz.Hayes.Myers.Ford.Hamilton.Graham.Sullivan.Wallace.Woods.Cole.West.Jordan.Owens.Reynolds.Fisher.Ellis.Harrison.Gibson.McDonald.Cruz.Marshall.Ortiz.Gomez.Murray.Freeman.Wells.Webb.Simpson.Stevens.Tucker.Porter.Hunter.Hicks.Crawford.Henry.Boyd.Mason.Morales.Kennedy.Warren.Dixon.Ramos.Reyes.Burns.Gordon.Shaw.Holmes.Rice.Robertson.Hunt.Black.Daniels.Palmer.Mills.Nichols.Grant.Knight.Ferguson.Rose.Stone.Hawkins.Dunn.Perkins.Hudson.Spencer.Gardner.Stephens.Payne.Pierce.Berry.Matthews.Arnold.Wagner.Willis.Ray.Watkins.Olson.Carroll.Duncan.Snyder.Hart.Cunningham.Bradley.Lane.Andrews.Ruiz.Harper.Fox.Riley.Armstrong.Carpenter.Weaver.Greene.Lawrence.Elliott.Chavez.Sims.Austin.Peters.Kelley.Franklin.Lawson.Fields.Gutierrez.Ryan.Schmidt.Carr.Vasquez.Castillo.Wheeler.Chapman.Oliver.Montgomery.Richards.Williamson.Johnston.Banks.Meyer.Bishop.McCoy.Howell.Alvarez.Morrison.Hansen.Fernandez.Garza.Harvey.Little.Burton.Stanley.Nguyen.George.Jacobs.Reid.Kim.Fuller.Lynch.Dean.Gilbert.Garrett.Romero.Welch.Larson.Frazier.Burke.Hanson.Day.Mendoza.Moreno.Bowman.Medina.Fowler.Brewer.Hoffman.Carlson.Silva.Pearson.Holland.Douglas.Fleming.Jensen.Vargas.Byrd.Davidson.Hopkins.May.Terry.Herrera.Wade.Soto.Walters.Curtis.Neal.Caldwell.Lowe.Jennings.Barnett.Graves.Jimenez.Horton.Shelton.Barrett.Obrien.Castro.Sutton.Gregory.McKinney.Lucas.Miles.Craig.Rodriquez.Chambers.Holt.Lambert.Fletcher.Watts.Bates.Hale.Rhodes.Pena.Beck.Newman.Haynes.McDaniel.Mendez.Bush.Vaughn.Parks.Dawson.Santiago.Norris.Hardy.Love.Steele.Curry.Powers.Schultz.Barker.Guzman.Page.Munoz.Ball.Keller.Chandler.Weber.Leonard.Walsh.Lyons.Ramsey.Wolfe.Schneider.Mullins.Benson.Sharp.Bowen.Daniel.Barber.Cummings.Hines.Baldwin.Griffith.Valdez.Hubbard.Salazar.Reeves.Warner.Stevenson.Burgess.Santos.Tate.Cross.Garner.Mann.Mack.Moss.Thornton.Dennis.McGee.Farmer.Delgado.Aguilar.Vega.Glover.Manning.Cohen.Harmon.Rodgers.Robbins.Newton.Todd.Blair.Higgins.Ingram.Reese.Cannon.Strickland.Townsend.Potter.Goodwin.Walton.Rowe.Hampton.Ortega.Patton.Swanson.Joseph.Francis.Goodman.Maldonado.Yates.Becker.Erickson.Hodges.Rios.Conner.Adkins.Webster.Norman.Malone.Hammond.Flowers.Cobb.Moody.Quinn.Blake.Maxwell.Pope.Floyd.Osborne.Paul.McCarthy.Guerrero.Lindsey.Estrada.Sandoval.Gibbs.Tyler.Gross.Fitzgerald.Stokes.Doyle.Sherman.Saunders.Wise.Colon.Gill.Alvarado.Greer.Padilla.Simon.Waters.Nunez.Ballard.Schwartz.McBride.Houston.Christensen.Klein.Pratt.Briggs.Parsons.McLaughlin.Zimmerman.French.Buchanan.Moran.Copeland.Roy.Pittman.Brady.McCormick.Holloway.Brock.Poole.Frank.Logan.Owen.Bass.Marsh.Drake.Wong.Jefferson.Park.Morton.Abbott.Sparks.Patrick.Norton.Huff.Clayton.Massey.Lloyd.Figueroa.Carson.Bowers.Roberson.Barton.Tran.Lamb.Harrington.Casey.Boone.Cortez.Clarke.Mathis.Singleton.Wilkins.Cain.Bryan.Underwood.Hogan.McKenzie.Collier.Luna.Phelps.McGuire.Allison.Bridges.Wilkerson.Nash.Summers.Atkins".split("."),
+				it: /* @__PURE__ */ "Acciai.Aglietti.Agostini.Agresti.Ahmed.Aiazzi.Albanese.Alberti.Alessi.Alfani.Alinari.Alterini.Amato.Ammannati.Ancillotti.Andrei.Andreini.Andreoni.Angeli.Anichini.Antonelli.Antonini.Arena.Ariani.Arnetoli.Arrighi.Baccani.Baccetti.Bacci.Bacherini.Badii.Baggiani.Baglioni.Bagni.Bagnoli.Baldassini.Baldi.Baldini.Ballerini.Balli.Ballini.Balloni.Bambi.Banchi.Bandinelli.Bandini.Bani.Barbetti.Barbieri.Barchielli.Bardazzi.Bardelli.Bardi.Barducci.Bargellini.Bargiacchi.Barni.Baroncelli.Baroncini.Barone.Baroni.Baronti.Bartalesi.Bartoletti.Bartoli.Bartolini.Bartoloni.Bartolozzi.Basagni.Basile.Bassi.Batacchi.Battaglia.Battaglini.Bausi.Becagli.Becattini.Becchi.Becucci.Bellandi.Bellesi.Belli.Bellini.Bellucci.Bencini.Benedetti.Benelli.Beni.Benini.Bensi.Benucci.Benvenuti.Berlincioni.Bernacchioni.Bernardi.Bernardini.Berni.Bernini.Bertelli.Berti.Bertini.Bessi.Betti.Bettini.Biagi.Biagini.Biagioni.Biagiotti.Biancalani.Bianchi.Bianchini.Bianco.Biffoli.Bigazzi.Bigi.Biliotti.Billi.Binazzi.Bindi.Bini.Biondi.Bizzarri.Bocci.Bogani.Bolognesi.Bonaiuti.Bonanni.Bonciani.Boncinelli.Bondi.Bonechi.Bongini.Boni.Bonini.Borchi.Boretti.Borghi.Borghini.Borgioli.Borri.Borselli.Boschi.Bottai.Bracci.Braccini.Brandi.Braschi.Bravi.Brazzini.Breschi.Brilli.Brizzi.Brogelli.Brogi.Brogioni.Brunelli.Brunetti.Bruni.Bruno.Brunori.Bruschi.Bucci.Bucciarelli.Buccioni.Bucelli.Bulli.Burberi.Burchi.Burgassi.Burroni.Bussotti.Buti.Caciolli.Caiani.Calabrese.Calamai.Calamandrei.Caldini.Calo'.Calonaci.Calosi.Calvelli.Cambi.Camiciottoli.Cammelli.Cammilli.Campolmi.Cantini.Capanni.Capecchi.Caponi.Cappelletti.Cappelli.Cappellini.Cappugi.Capretti.Caputo.Carbone.Carboni.Cardini.Carlesi.Carletti.Carli.Caroti.Carotti.Carrai.Carraresi.Carta.Caruso.Casalini.Casati.Caselli.Casini.Castagnoli.Castellani.Castelli.Castellucci.Catalano.Catarzi.Catelani.Cavaciocchi.Cavallaro.Cavallini.Cavicchi.Cavini.Ceccarelli.Ceccatelli.Ceccherelli.Ceccherini.Cecchi.Cecchini.Cecconi.Cei.Cellai.Celli.Cellini.Cencetti.Ceni.Cenni.Cerbai.Cesari.Ceseri.Checcacci.Checchi.Checcucci.Cheli.Chellini.Chen.Cheng.Cherici.Cherubini.Chiaramonti.Chiarantini.Chiarelli.Chiari.Chiarini.Chiarugi.Chiavacci.Chiesi.Chimenti.Chini.Chirici.Chiti.Ciabatti.Ciampi.Cianchi.Cianfanelli.Cianferoni.Ciani.Ciapetti.Ciappi.Ciardi.Ciatti.Cicali.Ciccone.Cinelli.Cini.Ciobanu.Ciolli.Cioni.Cipriani.Cirillo.Cirri.Ciucchi.Ciuffi.Ciulli.Ciullini.Clemente.Cocchi.Cognome.Coli.Collini.Colombo.Colzi.Comparini.Conforti.Consigli.Conte.Conti.Contini.Coppini.Coppola.Corsi.Corsini.Corti.Cortini.Cosi.Costa.Costantini.Costantino.Cozzi.Cresci.Crescioli.Cresti.Crini.Curradi.D'Agostino.D'Alessandro.D'Amico.D'Angelo.Daddi.Dainelli.Dallai.Danti.Davitti.De Angelis.De Luca.De Marco.De Rosa.De Santis.De Simone.De Vita.Degl'Innocenti.Degli Innocenti.Dei.Del Lungo.Del Re.Di Marco.Di Stefano.Dini.Diop.Dobre.Dolfi.Donati.Dondoli.Dong.Donnini.Ducci.Dumitru.Ermini.Esposito.Evangelisti.Fabbri.Fabbrini.Fabbrizzi.Fabbroni.Fabbrucci.Fabiani.Facchini.Faggi.Fagioli.Failli.Faini.Falciani.Falcini.Falcone.Fallani.Falorni.Falsini.Falugiani.Fancelli.Fanelli.Fanetti.Fanfani.Fani.Fantappie'.Fantechi.Fanti.Fantini.Fantoni.Farina.Fattori.Favilli.Fedi.Fei.Ferrante.Ferrara.Ferrari.Ferraro.Ferretti.Ferri.Ferrini.Ferroni.Fiaschi.Fibbi.Fiesoli.Filippi.Filippini.Fini.Fioravanti.Fiore.Fiorentini.Fiorini.Fissi.Focardi.Foggi.Fontana.Fontanelli.Fontani.Forconi.Formigli.Forte.Forti.Fortini.Fossati.Fossi.Francalanci.Franceschi.Franceschini.Franchi.Franchini.Franci.Francini.Francioni.Franco.Frassineti.Frati.Fratini.Frilli.Frizzi.Frosali.Frosini.Frullini.Fusco.Fusi.Gabbrielli.Gabellini.Gagliardi.Galanti.Galardi.Galeotti.Galletti.Galli.Gallo.Gallori.Gambacciani.Gargani.Garofalo.Garuglieri.Gashi.Gasperini.Gatti.Gelli.Gensini.Gentile.Gentili.Geri.Gerini.Gheri.Ghini.Giachetti.Giachi.Giacomelli.Gianassi.Giani.Giannelli.Giannetti.Gianni.Giannini.Giannoni.Giannotti.Giannozzi.Gigli.Giordano.Giorgetti.Giorgi.Giovacchini.Giovannelli.Giovannetti.Giovannini.Giovannoni.Giuliani.Giunti.Giuntini.Giusti.Gonnelli.Goretti.Gori.Gradi.Gramigni.Grassi.Grasso.Graziani.Grazzini.Greco.Grifoni.Grillo.Grimaldi.Grossi.Gualtieri.Guarducci.Guarino.Guarnieri.Guasti.Guerra.Guerri.Guerrini.Guidi.Guidotti.He.Hoxha.Hu.Huang.Iandelli.Ignesti.Innocenti.Jin.La Rosa.Lai.Landi.Landini.Lanini.Lapi.Lapini.Lari.Lascialfari.Lastrucci.Latini.Lazzeri.Lazzerini.Lelli.Lenzi.Leonardi.Leoncini.Leone.Leoni.Lepri.Li.Liao.Lin.Linari.Lippi.Lisi.Livi.Lombardi.Lombardini.Lombardo.Longo.Lopez.Lorenzi.Lorenzini.Lorini.Lotti.Lu.Lucchesi.Lucherini.Lunghi.Lupi.Madiai.Maestrini.Maffei.Maggi.Maggini.Magherini.Magini.Magnani.Magnelli.Magni.Magnolfi.Magrini.Malavolti.Malevolti.Manca.Mancini.Manetti.Manfredi.Mangani.Mannelli.Manni.Mannini.Mannucci.Manuelli.Manzini.Marcelli.Marchese.Marchetti.Marchi.Marchiani.Marchionni.Marconi.Marcucci.Margheri.Mari.Mariani.Marilli.Marinai.Marinari.Marinelli.Marini.Marino.Mariotti.Marsili.Martelli.Martinelli.Martini.Martino.Marzi.Masi.Masini.Masoni.Massai.Materassi.Mattei.Matteini.Matteucci.Matteuzzi.Mattioli.Mattolini.Matucci.Mauro.Mazzanti.Mazzei.Mazzetti.Mazzi.Mazzini.Mazzocchi.Mazzoli.Mazzoni.Mazzuoli.Meacci.Mecocci.Meini.Melani.Mele.Meli.Mengoni.Menichetti.Meoni.Merlini.Messeri.Messina.Meucci.Miccinesi.Miceli.Micheli.Michelini.Michelozzi.Migliori.Migliorini.Milani.Miniati.Misuri.Monaco.Montagnani.Montagni.Montanari.Montelatici.Monti.Montigiani.Montini.Morandi.Morandini.Morelli.Moretti.Morganti.Mori.Morini.Moroni.Morozzi.Mugnai.Mugnaini.Mustafa.Naldi.Naldini.Nannelli.Nanni.Nannini.Nannucci.Nardi.Nardini.Nardoni.Natali.Ndiaye.Nencetti.Nencini.Nencioni.Neri.Nesi.Nesti.Niccolai.Niccoli.Niccolini.Nigi.Nistri.Nocentini.Noferini.Novelli.Nucci.Nuti.Nutini.Oliva.Olivieri.Olmi.Orlandi.Orlandini.Orlando.Orsini.Ortolani.Ottanelli.Pacciani.Pace.Paci.Pacini.Pagani.Pagano.Paggetti.Pagliai.Pagni.Pagnini.Paladini.Palagi.Palchetti.Palloni.Palmieri.Palumbo.Pampaloni.Pancani.Pandolfi.Pandolfini.Panerai.Panichi.Paoletti.Paoli.Paolini.Papi.Papini.Papucci.Parenti.Parigi.Parisi.Parri.Parrini.Pasquini.Passeri.Pecchioli.Pecorini.Pellegrini.Pepi.Perini.Perrone.Peruzzi.Pesci.Pestelli.Petri.Petrini.Petrucci.Pettini.Pezzati.Pezzatini.Piani.Piazza.Piazzesi.Piazzini.Piccardi.Picchi.Piccini.Piccioli.Pieraccini.Pieraccioni.Pieralli.Pierattini.Pieri.Pierini.Pieroni.Pietrini.Pini.Pinna.Pinto.Pinzani.Pinzauti.Piras.Pisani.Pistolesi.Poggesi.Poggi.Poggiali.Poggiolini.Poli.Pollastri.Porciani.Pozzi.Pratellesi.Pratesi.Prosperi.Pruneti.Pucci.Puccini.Puccioni.Pugi.Pugliese.Puliti.Querci.Quercioli.Raddi.Radu.Raffaelli.Ragazzini.Ranfagni.Ranieri.Rastrelli.Raugei.Raveggi.Renai.Renzi.Rettori.Ricci.Ricciardi.Ridi.Ridolfi.Rigacci.Righi.Righini.Rinaldi.Risaliti.Ristori.Rizzo.Rocchi.Rocchini.Rogai.Romagnoli.Romanelli.Romani.Romano.Romei.Romeo.Romiti.Romoli.Romolini.Rontini.Rosati.Roselli.Rosi.Rossetti.Rossi.Rossini.Rovai.Ruggeri.Ruggiero.Russo.Sabatini.Saccardi.Sacchetti.Sacchi.Sacco.Salerno.Salimbeni.Salucci.Salvadori.Salvestrini.Salvi.Salvini.Sanesi.Sani.Sanna.Santi.Santini.Santoni.Santoro.Santucci.Sardi.Sarri.Sarti.Sassi.Sbolci.Scali.Scarpelli.Scarselli.Scopetani.Secci.Selvi.Senatori.Senesi.Serafini.Sereni.Serra.Sestini.Sguanci.Sieni.Signorini.Silvestri.Simoncini.Simonetti.Simoni.Singh.Sodi.Soldi.Somigli.Sorbi.Sorelli.Sorrentino.Sottili.Spina.Spinelli.Staccioli.Staderini.Stefanelli.Stefani.Stefanini.Stella.Susini.Tacchi.Tacconi.Taddei.Tagliaferri.Tamburini.Tanganelli.Tani.Tanini.Tapinassi.Tarchi.Tarchiani.Targioni.Tassi.Tassini.Tempesti.Terzani.Tesi.Testa.Testi.Tilli.Tinti.Tirinnanzi.Toccafondi.Tofanari.Tofani.Tognaccini.Tonelli.Tonini.Torelli.Torrini.Tosi.Toti.Tozzi.Trambusti.Trapani.Tucci.Turchi.Ugolini.Ulivi.Valente.Valenti.Valentini.Vangelisti.Vanni.Vannini.Vannoni.Vannozzi.Vannucchi.Vannucci.Ventura.Venturi.Venturini.Vestri.Vettori.Vichi.Viciani.Vieri.Vigiani.Vignoli.Vignolini.Vignozzi.Villani.Vinci.Visani.Vitale.Vitali.Viti.Viviani.Vivoli.Volpe.Volpi.Wang.Wu.Xu.Yang.Ye.Zagli.Zani.Zanieri.Zanobini.Zecchi.Zetti.Zhang.Zheng.Zhou.Zhu.Zingoni.Zini.Zoppi".split("."),
+				nl: /* @__PURE__ */ "Albers.Alblas.Appelman.Baars.Baas.Bakker.Blank.Bleeker.Blok.Blom.Boer.Boers.Boldewijn.Boon.Boot.Bos.Bosch.Bosma.Bosman.Bouma.Bouman.Bouwman.Brands.Brouwer.Burger.Buijs.Buitenhuis.Ceder.Cohen.Dekker.Dekkers.Dijkman.Dijkstra.Driessen.Drost.Engel.Evers.Faber.Franke.Gerritsen.Goedhart.Goossens.Groen.Groenenberg.Groot.Haan.Hart.Heemskerk.Hendriks.Hermans.Hoekstra.Hofman.Hopman.Huisman.Jacobs.Jansen.Janssen.Jonker.Jaspers.Keijzer.Klaassen.Klein.Koek.Koenders.Kok.Kool.Koopman.Koopmans.Koning.Koster.Kramer.Kroon.Kuijpers.Kuiper.Kuipers.Kurt.Koster.Kwakman.Los.Lubbers.Maas.Markus.Martens.Meijer.Mol.Molenaar.Mulder.Nieuwenhuis.Peeters.Peters.Pengel.Pieters.Pool.Post.Postma.Prins.Pronk.Reijnders.Rietveld.Roest.Roos.Sanders.Schaap.Scheffer.Schenk.Schilder.Schipper.Schmidt.Scholten.Schouten.Schut.Schutte.Schuurman.Simons.Smeets.Smit.Smits.Snel.Swinkels.Tas.Terpstra.Timmermans.Tol.Tromp.Troost.Valk.Veenstra.Veldkamp.Verbeek.Verheul.Verhoeven.Vermeer.Vermeulen.Verweij.Vink.Visser.Voorn.Vos.Wagenaar.Wiersema.Willems.Willemsen.Witteveen.Wolff.Wolters.Zijlstra.Zwart.de Beer.de Boer.de Bruijn.de Bruin.de Graaf.de Groot.de Haan.de Haas.de Jager.de Jong.de Jonge.de Koning.de Lange.de Leeuw.de Ridder.de Rooij.de Ruiter.de Vos.de Vries.de Waal.de Wit.de Zwart.van Beek.van Boven.van Dam.van Dijk.van Dongen.van Doorn.van Egmond.van Eijk.van Es.van Gelder.van Gelderen.van Houten.van Hulst.van Kempen.van Kesteren.van Leeuwen.van Loon.van Mill.van Noord.van Ommen.van Ommeren.van Oosten.van Oostveen.van Rijn.van Schaik.van Veen.van Vliet.van Wijk.van Wijngaarden.van den Poel.van de Pol.van den Ploeg.van de Ven.van den Berg.van den Bosch.van den Brink.van den Broek.van den Heuvel.van der Heijden.van der Horst.van der Hulst.van der Kroon.van der Laan.van der Linden.van der Meer.van der Meij.van der Meulen.van der Molen.van der Sluis.van der Spek.van der Veen.van der Velde.van der Velden.van der Vliet.van der Wal".split("."),
+				uk: /* @__PURE__ */ "Smith.Jones.Williams.Taylor.Brown.Davies.Evans.Wilson.Thomas.Johnson.Roberts.Robinson.Thompson.Wright.Walker.White.Edwards.Hughes.Green.Hall.Lewis.Harris.Clarke.Patel.Jackson.Wood.Turner.Martin.Cooper.Hill.Ward.Morris.Moore.Clark.Lee.King.Baker.Harrison.Morgan.Allen.James.Scott.Phillips.Watson.Davis.Parker.Price.Bennett.Young.Griffiths.Mitchell.Kelly.Cook.Carter.Richardson.Bailey.Collins.Bell.Shaw.Murphy.Miller.Cox.Richards.Khan.Marshall.Anderson.Simpson.Ellis.Adams.Singh.Begum.Wilkinson.Foster.Chapman.Powell.Webb.Rogers.Gray.Mason.Ali.Hunt.Hussain.Campbell.Matthews.Owen.Palmer.Holmes.Mills.Barnes.Knight.Lloyd.Butler.Russell.Barker.Fisher.Stevens.Jenkins.Murray.Dixon.Harvey.Graham.Pearson.Ahmed.Fletcher.Walsh.Kaur.Gibson.Howard.Andrews.Stewart.Elliott.Reynolds.Saunders.Payne.Fox.Ford.Pearce.Day.Brooks.West.Lawrence.Cole.Atkinson.Bradley.Spencer.Gill.Dawson.Ball.Burton.O'brien.Watts.Rose.Booth.Perry.Ryan.Grant.Wells.Armstrong.Francis.Rees.Hayes.Hart.Hudson.Newman.Barrett.Webster.Hunter.Gregory.Carr.Lowe.Page.Marsh.Riley.Dunn.Woods.Parsons.Berry.Stone.Reid.Holland.Hawkins.Harding.Porter.Robertson.Newton.Oliver.Reed.Kennedy.Williamson.Bird.Gardner.Shah.Dean.Lane.Cooke.Bates.Henderson.Parry.Burgess.Bishop.Walton.Burns.Nicholson.Shepherd.Ross.Cross.Long.Freeman.Warren.Nicholls.Hamilton.Byrne.Sutton.Mcdonald.Yates.Hodgson.Robson.Curtis.Hopkins.O'connor.Harper.Coleman.Watkins.Moss.Mccarthy.Chambers.O'neill.Griffin.Sharp.Hardy.Wheeler.Potter.Osborne.Johnston.Gordon.Doyle.Wallace.George.Jordan.Hutchinson.Rowe.Burke.May.Pritchard.Gilbert.Willis.Higgins.Read.Miles.Stevenson.Stephenson.Hammond.Arnold.Buckley.Walters.Hewitt.Barber.Nelson.Slater.Austin.Sullivan.Whitehead.Mann.Frost.Lambert.Stephens.Blake.Akhtar.Lynch.Goodwin.Barton.Woodward.Thomson.Cunningham.Quinn.Barnett.Baxter.Bibi.Clayton.Nash.Greenwood.Jennings.Holt.Kemp.Poole.Gallagher.Bond.Stokes.Tucker.Davidson.Fowler.Heath.Norman.Middleton.Lawson.Banks.French.Stanley.Jarvis.Gibbs.Ferguson.Hayward.Carroll.Douglas.Dickinson.Todd.Barlow.Peters.Lucas.Knowles.Hartley.Miah.Simmons.Morton.Alexander.Field.Morrison.Norris.Townsend.Preston.Hancock.Thornton.Baldwin.Burrows.Briggs.Parkinson.Reeves.Macdonald.Lamb.Black.Abbott.Sanders.Thorpe.Holden.Tomlinson.Perkins.Ashton.Rhodes.Fuller.Howe.Bryant.Vaughan.Dale.Davey.Weston.Bartlett.Whittaker.Davison.Kent.Skinner.Birch.Morley.Daniels.Glover.Howell.Cartwright.Pugh.Humphreys.Goddard.Brennan.Wall.Kirby.Bowen.Savage.Bull.Wong.Dobson.Smart.Wilkins.Kirk.Fraser.Duffy.Hicks.Patterson.Bradshaw.Little.Archer.Warner.Waters.O'sullivan.Farrell.Brookes.Atkins.Kay.Dodd.Bentley.Flynn.John.Schofield.Short.Haynes.Wade.Butcher.Henry.Sanderson.Crawford.Sheppard.Bolton.Coates.Giles.Gould.Houghton.Gibbons.Pratt.Manning.Law.Hooper.Noble.Dyer.Rahman.Clements.Moran.Sykes.Chan.Doherty.Connolly.Joyce.Franklin.Hobbs.Coles.Herbert.Steele.Kerr.Leach.Winter.Owens.Duncan.Naylor.Fleming.Horton.Finch.Fitzgerald.Randall.Carpenter.Marsden.Browne.Garner.Pickering.Hale.Dennis.Vincent.Chadwick.Chandler.Sharpe.Nolan.Lyons.Hurst.Collier.Peacock.Howarth.Faulkner.Rice.Pollard.Welch.Norton.Gough.Sinclair.Blackburn.Bryan.Conway.Power.Cameron.Daly.Allan.Hanson.Gardiner.Boyle.Myers.Turnbull.Wallis.Mahmood.Sims.Swift.Iqbal.Pope.Brady.Chamberlain.Rowley.Tyler.Farmer.Metcalfe.Hilton.Godfrey.Holloway.Parkin.Bray.Talbot.Donnelly.Nixon.Charlton.Benson.Whitehouse.Barry.Hope.Lord.North.Storey.Connor.Potts.Bevan.Hargreaves.Mclean.Mistry.Bruce.Howells.Hyde.Parkes.Wyatt.Fry.Lees.O'donnell.Craig.Forster.Mckenzie.Humphries.Mellor.Carey.Ingram.Summers.Leonard".split("."),
+				de: /* @__PURE__ */ "Müller.Schmidt.Schneider.Fischer.Weber.Meyer.Wagner.Becker.Schulz.Hoffmann.Schäfer.Koch.Bauer.Richter.Klein.Wolf.Schröder.Neumann.Schwarz.Zimmermann.Braun.Krüger.Hofmann.Hartmann.Lange.Schmitt.Werner.Schmitz.Krause.Meier.Lehmann.Schmid.Schulze.Maier.Köhler.Herrmann.König.Walter.Mayer.Huber.Kaiser.Fuchs.Peters.Lang.Scholz.Möller.Weiß.Jung.Hahn.Schubert.Vogel.Friedrich.Keller.Günther.Frank.Berger.Winkler.Roth.Beck.Lorenz.Baumann.Franke.Albrecht.Schuster.Simon.Ludwig.Böhm.Winter.Kraus.Martin.Schumacher.Krämer.Vogt.Stein.Jäger.Otto.Sommer.Groß.Seidel.Heinrich.Brandt.Haas.Schreiber.Graf.Schulte.Dietrich.Ziegler.Kuhn.Kühn.Pohl.Engel.Horn.Busch.Bergmann.Thomas.Voigt.Sauer.Arnold.Wolff.Pfeiffer".split("."),
 				jp: /* @__PURE__ */ "Sato.Suzuki.Takahashi.Tanaka.Watanabe.Ito.Yamamoto.Nakamura.Kobayashi.Kato.Yoshida.Yamada.Sasaki.Yamaguchi.Saito.Matsumoto.Inoue.Kimura.Hayashi.Shimizu.Yamazaki.Mori.Abe.Ikeda.Hashimoto.Yamashita.Ishikawa.Nakajima.Maeda.Fujita.Ogawa.Goto.Okada.Hasegawa.Murakami.Kondo.Ishii.Saito.Sakamoto.Endo.Aoki.Fujii.Nishimura.Fukuda.Ota.Miura.Fujiwara.Okamoto.Matsuda.Nakagawa.Nakano.Harada.Ono.Tamura.Takeuchi.Kaneko.Wada.Nakayama.Ishida.Ueda.Morita.Hara.Shibata.Sakai.Kudo.Yokoyama.Miyazaki.Miyamoto.Uchida.Takagi.Ando.Taniguchi.Ohno.Maruyama.Imai.Takada.Fujimoto.Takeda.Murata.Ueno.Sugiyama.Masuda.Sugawara.Hirano.Kojima.Otsuka.Chiba.Kubo.Matsui.Iwasaki.Sakurai.Kinoshita.Noguchi.Matsuo.Nomura.Kikuchi.Sano.Onishi.Sugimoto.Arai".split("."),
-				es: /* @__PURE__ */ "Garcia.Fernandez.Lopez.Martinez.Gonzalez.Rodriguez.Sanchez.Perez.Martin.Gomez.Ruiz.Diaz.Hernandez.Alvarez.Jimenez.Moreno.Munoz.Alonso.Romero.Navarro.Gutierrez.Torres.Dominguez.Gil.Vazquez.Blanco.Serrano.Ramos.Castro.Suarez.Sanz.Rubio.Ortega.Molina.Delgado.Ortiz.Morales.Ramirez.Marin.Iglesias.Santos.Castillo.Garrido.Calvo.Pena.Cruz.Cano.Nunez.Prieto.Diez.Lozano.Vidal.Pascual.Ferrer.Medina.Vega.Leon.Herrero.Vicente.Mendez.Guerrero.Fuentes.Campos.Nieto.Cortes.Caballero.Ibanez.Lorenzo.Pastor.Gimenez.Saez.Soler.Marquez.Carrasco.Herrera.Montero.Arias.C'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('respo.Flores.Andres.Aguilar.Hidalgo.Cabrera.Mora.Duran.Velasco.Rey.Pardo.Roman.Vila.Bravo.Merino.Moya.Soto.Izquierdo.Reyes.Redondo.Marcos.Carmona.Menendez".split("."),
+				es: /* @__PURE__ */ "Garcia.Fernandez.Lopez.Martinez.Gonzalez.Rodriguez.Sanchez.Perez.Martin.Gomez.Ruiz.Diaz.Hernandez.Alvarez.Jimenez.Moreno.Munoz.Alonso.Romero.Navarro.Gutierrez.Torres.Dominguez.Gil.Vazquez.Blanco.Serrano.Ramos.Castro.Suarez.Sanz.Rubio.Ortega.Molina.Delgado.Ortiz.Morales.Ramirez.Marin.Iglesias.Santos.Castillo.Garrido.Calvo.Pena.Cruz.Cano.Nunez.Prieto.Diez.Lozano.Vidal.Pascual.Ferrer.Medina.Vega.Leon.Herrero.Vicente.Mendez.Guerrero.Fuentes.Campos.Nieto.Cortes.Caballero.Ibanez.Lorenzo.Pastor.Gimenez.Saez.Soler.Marquez.Carrasco.Herrera.Montero.Arias.Crespo.Flores.Andres.Aguilar.Hidalgo.Cabrera.Mora.Duran.Velasco.Rey.Pardo.Roman.Vila.Bravo.Merino.Moya.Soto.Izquierdo.Reyes.Redondo.Marcos.Carmona.Menendez".split("."),
 				fr: /* @__PURE__ */ "Martin.Bernard.Thomas.Petit.Robert.Richard.Durand.Dubois.Moreau.Laurent.Simon.Michel.Lefèvre.Leroy.Roux.David.Bertrand.Morel.Fournier.Girard.Bonnet.Dupont.Lambert.Fontaine.Rousseau.Vincent.Müller.Lefèvre.Faure.André.Mercier.Blanc.Guérin.Boyer.Garnier.Chevalier.François.Legrand.Gauthier.Garcia.Perrin.Robin.Clément.Morin.Nicolas.Henry.Roussel.Matthieu.Gautier.Masson.Marchand.Duval.Denis.Dumont.Marie.Lemaire.Noël.Meyer.Dufour.Meunier.Brun.Blanchard.Giraud.Joly.Rivière.Lucas.Brunet.Gaillard.Barbier.Arnaud.Martínez.Gérard.Roche.Renard.Schmitt.Roy.Leroux.Colin.Vidal.Caron.Picard.Roger.Fabre.Aubert.Lemoine.Renaud.Dumas.Lacroix.Olivier.Philippe.Bourgeois.Pierre.Benoît.Rey.Leclerc.Payet.Rolland.Leclercq.Guillaume.Lecomte.López.Jean.Dupuy.Guillot.Hubert.Berger.Carpentier.Sánchez.Dupuis.Moulin.Louis.Deschamps.Huet.Vasseur.Perez.Boucher.Fleury.Royer.Klein.Jacquet.Adam.Paris.Poirier.Marty.Aubry.Guyot.Carré.Charles.Renault.Charpentier.Ménard.Maillard.Baron.Bertin.Bailly.Hervé.Schneider.Fernández.Le GallGall.Collet.Léger.Bouvier.Julien.Prévost.Millet.Perrot.Daniel.Le RouxRoux.Cousin.Germain.Breton.Besson.Langlois.Rémi.Le GoffGoff.Pelletier.Lévêque.Perrier.Leblanc.Barré.Lebrun.Marchal.Weber.Mallet.Hamon.Boulanger.Jacob.Monnier.Michaud.Rodríguez.Guichard.Gillet.Étienne.Grondin.Poulain.Tessier.Chevallier.Collin.Chauvin.Da SilvaSilva.Bouchet.Gay.Lemaître.Bénard.Maréchal.Humbert.Reynaud.Antoine.Hoarau.Perret.Barthélemy.Cordier.Pichon.Lejeune.Gilbert.Lamy.Delaunay.Pasquier.Carlier.LaporteLaporte".split(".")
 			},
 			postcodeAreas: [
@@ -2929,8 +2845,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				{ code: "BS" },
 				{ code: "BT" },
 				{ code: "CA" },
-				{ code'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(': "CB" },
+				{ code: "CB" },
 				{ code: "CF" },
 				{ code: "CH" },
 				{ code: "CM" },
@@ -3030,8 +2945,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				{ code: "TS" },
 				{ code: "TW" },
 				{ code: "UB" },
-				{ code: "W" '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('},
+				{ code: "W" },
 				{ code: "WA" },
 				{ code: "WC" },
 				{ code: "WD" },
@@ -3157,8 +3071,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					abbreviation: "BQ"
 				},
 				{
-					name: "Bosnia and Herzegovin'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('a",
+					name: "Bosnia and Herzegovina",
 					abbreviation: "BA"
 				},
 				{
@@ -3262,7 +3175,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					abbreviation: "CR"
 				},
 				{
-					name: "Côte d''Ivoire",
+					name: "Côte d'Ivoire",
 					abbreviation: "CI"
 				},
 				{
@@ -3286,8 +3199,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					abbreviation: "CZ"
 				},
 				{
-				'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('	name: "Denmark",
+					name: "Denmark",
 					abbreviation: "DK"
 				},
 				{
@@ -3416,8 +3328,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				},
 				{
 					name: "Guernsey",
-					abbr'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('eviation: "GG"
+					abbreviation: "GG"
 				},
 				{
 					name: "Guinea",
@@ -3520,7 +3431,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					abbreviation: "KI"
 				},
 				{
-					name: "Democratic People''s Republic of Korea",
+					name: "Democratic People's Republic of Korea",
 					abbreviation: "KP"
 				},
 				{
@@ -3536,7 +3447,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					abbreviation: "KG"
 				},
 				{
-					name: "Lao People''s Democratic Republic",
+					name: "Lao People's Democratic Republic",
 					abbreviation: "LA"
 				},
 				{
@@ -3545,8 +3456,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				},
 				{
 					name: "Lebanon",
-					abb'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('reviation: "LB"
+					abbreviation: "LB"
 				},
 				{
 					name: "Lesotho",
@@ -3677,8 +3587,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					abbreviation: "NL"
 				},
 				{
-		'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('			name: "New Caledonia",
+					name: "New Caledonia",
 					abbreviation: "NC"
 				},
 				{
@@ -3803,8 +3712,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				},
 				{
 					name: "Saint Lucia",
-					abbreviation: '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('"LC"
+					abbreviation: "LC"
 				},
 				{
 					name: "Saint Martin (French part)",
@@ -3926,8 +3834,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					name: "Tajikistan",
 					abbreviation: "TJ"
 				},
-		'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('		{
+				{
 					name: "United Republic of Tanzania",
 					abbreviation: "TZ"
 				},
@@ -4047,8 +3954,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					name: "Zimbabwe",
 					abbreviation: "ZW"
 				}
-		'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('	],
+			],
 			counties: { uk: [
 				{ name: "Bath and North East Somerset" },
 				{ name: "Aberdeenshire" },
@@ -4117,8 +4023,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				{ name: "Lothian" },
 				{ name: "Luton" },
 				{ name: "Medway" },
-				{ na'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('me: "Merseyside" },
+				{ name: "Merseyside" },
 				{ name: "Mid Glamorgan" },
 				{ name: "Middlesbrough" },
 				{ name: "Milton Keynes" },
@@ -4189,8 +4094,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					},
 					{
 						name: "British Columbia",
-						abbreviati'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('on: "BC"
+						abbreviation: "BC"
 					},
 					{
 						name: "Manitoba",
@@ -4259,7 +4163,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 						code: 7
 					},
 					{
-						name: "L''Aquila",
+						name: "L'Aquila",
 						abbreviation: "AQ",
 						code: 66
 					},
@@ -4314,8 +4218,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 						code: 96
 					},
 					{
-						n'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ame: "Bologna",
+						name: "Bologna",
 						abbreviation: "BO",
 						code: 37
 					},
@@ -4440,8 +4343,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 						code: 10
 					},
 					{
-						name: "Go'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('rizia",
+						name: "Gorizia",
 						abbreviation: "GO",
 						code: 31
 					},
@@ -4567,8 +4469,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					},
 					{
 						name: "Oristano",
-				'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('		abbreviation: "OR",
+						abbreviation: "OR",
 						code: 95
 					},
 					{
@@ -4693,8 +4594,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					},
 					{
 						name: "Siena",
-						abbreviation: "SI",'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('
+						abbreviation: "SI",
 						code: 52
 					},
 					{
@@ -4811,8 +4711,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				{ name: "Bahraini" },
 				{ name: "Bangladeshi" },
 				{ name: "Barbadian" },
-				{ name: "Barbudan'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('s" },
+				{ name: "Barbudans" },
 				{ name: "Batswana" },
 				{ name: "Belarusian" },
 				{ name: "Belgian" },
@@ -4888,8 +4787,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				{ name: "Jamaican" },
 				{ name: "Japanese" },
 				{ name: "Jordanian" },
-				{ name: "Kazakhsta'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ni" },
+				{ name: "Kazakhstani" },
 				{ name: "Kenyan" },
 				{ name: "Kittian and Nevisian" },
 				{ name: "Kuwaiti" },
@@ -4963,8 +4861,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				{ name: "South African" },
 				{ name: "South Korean" },
 				{ name: "Spanish" },
-				{ name: '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('"Sri Lankan" },
+				{ name: "Sri Lankan" },
 				{ name: "Sudanese" },
 				{ name: "Surinamer" },
 				{ name: "Swazi" },
@@ -4993,9 +4890,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				{ name: "Zimbabwe" }
 			],
 			locale_languages: /* @__PURE__ */ "aa.ab.ae.af.ak.am.an.ar.as.av.ay.az.ba.be.bg.bh.bi.bm.bn.bo.br.bs.ca.ce.ch.co.cr.cs.cu.cv.cy.da.de.dv.dz.ee.el.en.eo.es.et.eu.fa.ff.fi.fj.fo.fr.fy.ga.gd.gl.gn.gu.gv.ha.he.hi.ho.hr.ht.hu.hy.hz.ia.id.ie.ig.ii.ik.io.is.it.iu.ja.jv.ka.kg.ki.kj.kk.kl.km.kn.ko.kr.ks.ku.kv.kw.ky.la.lb.lg.li.ln.lo.lt.lu.lv.mg.mh.mi.mk.ml.mn.mr.ms.mt.my.na.nb.nd.ne.ng.nl.nn.no.nr.nv.ny.oc.oj.om.or.os.pa.pi.pl.ps.pt.qu.rm.rn.ro.ru.rw.sa.sc.sd.se.sg.si.sk.sl.sm.sn.so.sq.sr.ss.st.su.sv.sw.ta.te.tg.th.ti.tk.tl.tn.to.tr.ts.tt.tw.ty.ug.uk.ur.uz.ve.vi.vo.wa.wo.xh.yi.yo.za.zh.zu".split("."),
-			locale_regions: /* @__PURE__ */ "agq-CM.asa-TZ.ast-ES.bas-CM.bem-ZM.bez-TZ.brx-IN.cgg-UG.chr-US.dav-KE.dje-NE.dsb-DE.dua-CM.dyo-SN.ebu-KE.ewo-CM.fil-PH.fur-IT.gsw-CH.gsw-FR.gsw-LI.guz-KE.haw-US.hsb-DE.jgo-CM.jmc-TZ.kab-DZ.kam-KE.kde-TZ.kea-CV.khq-ML.kkj-CM.kln-KE.kok-IN.ksb-TZ.ksf-CM.ksh-DE.lag-TZ.lkt-US.luo-KE.luy-KE.mas-KE.mas-TZ.mer-KE.mfe-MU.mgh-MZ.mgo-CM.mua-CM.naq-NA.nmg-CM.nnh-CM.nus-SD.nyn-UG.rof-TZ.rwk-TZ.sah-RU.saq-KE.sbp-TZ.seh-MZ.ses-ML.shi-Latn.shi-Latn-MA.shi-Tfng.shi-Tfng-MA.smn-FI.teo-KE.teo-UG.twq-NE.tzm-Latn.tzm-Latn-MA.vai-Latn.vai-Latn-LR.vai-Vaii.vai-Vaii-LR.vun-TZ.wae-CH.xog-UG.yav-CM.zgh-MA.af-NA.af-ZA.ak-GH.am-ET.ar-001.ar-AE.ar-BH.ar-DJ.ar-DZ.ar-EG.ar-EH.ar-ER.ar-'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('IL.ar-IQ.ar-JO.ar-KM.ar-KW.ar-LB.ar-LY.ar-MA.ar-MR.ar-OM.ar-PS.ar-QA.ar-SA.ar-SD.ar-SO.ar-SS.ar-SY.ar-TD.ar-TN.ar-YE.as-IN.az-Cyrl.az-Cyrl-AZ.az-Latn.az-Latn-AZ.be-BY.bg-BG.bm-Latn.bm-Latn-ML.bn-BD.bn-IN.bo-CN.bo-IN.br-FR.bs-Cyrl.bs-Cyrl-BA.bs-Latn.bs-Latn-BA.ca-AD.ca-ES.ca-ES-VALENCIA.ca-FR.ca-IT.cs-CZ.cy-GB.da-DK.da-GL.de-AT.de-BE.de-CH.de-DE.de-LI.de-LU.dz-BT.ee-GH.ee-TG.el-CY.el-GR.en-001.en-150.en-AG.en-AI.en-AS.en-AU.en-BB.en-BE.en-BM.en-BS.en-BW.en-BZ.en-CA.en-CC.en-CK.en-CM.en-CX.en-DG.en-DM.en-ER.en-FJ.en-FK.en-FM.en-GB.en-GD.en-GG.en-GH.en-GI.en-GM.en-GU.en-GY.en-HK.en-IE.en-IM.en-IN.en-IO.en-JE.en-JM.en-KE.en-KI.en-KN.en-KY.en-LC.en-LR.en-LS.en-MG.en-MH.en-MO.en-MP.en-MS.en-MT.en-MU.en-MW.en-MY.en-NA.en-NF.en-NG.en-NR.en-NU.en-NZ.en-PG.en-PH.en-PK.en-PN.en-PR.en-PW.en-RW.en-SB.en-SC.en-SD.en-SG.en-SH.en-SL.en-SS.en-SX.en-SZ.en-TC.en-TK.en-TO.en-TT.en-TV.en-TZ.en-UG.en-UM.en-US.en-US-POSIX.en-VC.en-VG.en-VI.en-VU.en-WS.en-ZA.en-ZM.en-ZW.eo-001.es-419.es-AR.es-BO.es-CL.es-CO.es-CR.es-CU.es-DO.es-EA.es-EC.es-ES.es-GQ.es-GT.es-HN.es-IC.es-MX.es-NI.es-PA.es-PE.es-PH.es-PR.es-PY.es-SV.es-US.es-UY.es-VE.et-EE.eu-ES.fa-AF.fa-IR.ff-CM.ff-GN.ff-MR.ff-SN.fi-FI.fo-FO.fr-BE.fr-BF.fr-BI.fr-BJ.fr-BL.fr-CA.fr-CD.fr-CF.fr-CG.fr-CH.fr-CI.fr-CM.fr-DJ.fr-DZ.fr-FR.fr-GA.fr-GF.fr-GN.fr-GP.fr-GQ.fr-HT.fr-KM.fr-LU.fr-MA.fr-MC.fr-MF.fr-MG.fr-ML.fr-MQ.fr-MR.fr-MU.fr-NC.fr-NE.fr-PF.fr-PM.fr-RE.fr-RW.fr-SC.fr-SN.fr-SY.fr-TD.fr-TG.fr-TN.fr-VU.fr-WF.fr-YT.fy-NL.ga-IE.gd-GB.gl-ES.gu-IN.gv-IM.ha-Latn.ha-Latn-GH.ha-Latn-NE.ha-Latn-NG.he-IL.hi-IN.hr-BA.hr-HR.hu-HU.hy-AM.id-ID.ig-NG.ii-CN.is-IS.it-CH.it-IT.it-SM.ja-JP.ka-GE.ki-KE.kk-Cyrl.kk-Cyrl-KZ.kl-GL.km-KH.kn-IN.ko-KP.ko-KR.ks-Arab.ks-Arab-IN.kw-GB.ky-Cyrl.ky-Cyrl-KG.lb-LU.lg-UG.ln-AO.ln-CD.ln-CF.ln-CG.lo-LA.lt-LT.lu-CD.lv-LV.mg-MG.mk-MK.ml-IN.mn-Cyrl.mn-Cyrl-MN.mr-IN.ms-Latn.ms-Latn-BN.ms-Latn-MY.ms-Latn-SG.mt-MT.my-MM.nb-NO.nb-SJ.nd-ZW.ne-IN.ne-NP.nl-AW.nl-BE.nl-BQ.nl-CW.nl-NL.nl-SR.nl-SX.nn-NO.om-ET.om-KE.or-IN.os-GE.os-RU.pa-Arab.p'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('a-Arab-PK.pa-Guru.pa-Guru-IN.pl-PL.ps-AF.pt-AO.pt-BR.pt-CV.pt-GW.pt-MO.pt-MZ.pt-PT.pt-ST.pt-TL.qu-BO.qu-EC.qu-PE.rm-CH.rn-BI.ro-MD.ro-RO.ru-BY.ru-KG.ru-KZ.ru-MD.ru-RU.ru-UA.rw-RW.se-FI.se-NO.se-SE.sg-CF.si-LK.sk-SK.sl-SI.sn-ZW.so-DJ.so-ET.so-KE.so-SO.sq-AL.sq-MK.sq-XK.sr-Cyrl.sr-Cyrl-BA.sr-Cyrl-ME.sr-Cyrl-RS.sr-Cyrl-XK.sr-Latn.sr-Latn-BA.sr-Latn-ME.sr-Latn-RS.sr-Latn-XK.sv-AX.sv-FI.sv-SE.sw-CD.sw-KE.sw-TZ.sw-UG.ta-IN.ta-LK.ta-MY.ta-SG.te-IN.th-TH.ti-ER.ti-ET.to-TO.tr-CY.tr-TR.ug-Arab.ug-Arab-CN.uk-UA.ur-IN.ur-PK.uz-Arab.uz-Arab-AF.uz-Cyrl.uz-Cyrl-UZ.uz-Latn.uz-Latn-UZ.vi-VN.yi-001.yo-BJ.yo-NG.zh-Hans.zh-Hans-CN.zh-Hans-HK.zh-Hans-MO.zh-Hans-SG.zh-Hant.zh-Hant-HK.zh-Hant-MO.zh-Hant-TW.zu-ZA".split("."),
+			locale_regions: /* @__PURE__ */ "agq-CM.asa-TZ.ast-ES.bas-CM.bem-ZM.bez-TZ.brx-IN.cgg-UG.chr-US.dav-KE.dje-NE.dsb-DE.dua-CM.dyo-SN.ebu-KE.ewo-CM.fil-PH.fur-IT.gsw-CH.gsw-FR.gsw-LI.guz-KE.haw-US.hsb-DE.jgo-CM.jmc-TZ.kab-DZ.kam-KE.kde-TZ.kea-CV.khq-ML.kkj-CM.kln-KE.kok-IN.ksb-TZ.ksf-CM.ksh-DE.lag-TZ.lkt-US.luo-KE.luy-KE.mas-KE.mas-TZ.mer-KE.mfe-MU.mgh-MZ.mgo-CM.mua-CM.naq-NA.nmg-CM.nnh-CM.nus-SD.nyn-UG.rof-TZ.rwk-TZ.sah-RU.saq-KE.sbp-TZ.seh-MZ.ses-ML.shi-Latn.shi-Latn-MA.shi-Tfng.shi-Tfng-MA.smn-FI.teo-KE.teo-UG.twq-NE.tzm-Latn.tzm-Latn-MA.vai-Latn.vai-Latn-LR.vai-Vaii.vai-Vaii-LR.vun-TZ.wae-CH.xog-UG.yav-CM.zgh-MA.af-NA.af-ZA.ak-GH.am-ET.ar-001.ar-AE.ar-BH.ar-DJ.ar-DZ.ar-EG.ar-EH.ar-ER.ar-IL.ar-IQ.ar-JO.ar-KM.ar-KW.ar-LB.ar-LY.ar-MA.ar-MR.ar-OM.ar-PS.ar-QA.ar-SA.ar-SD.ar-SO.ar-SS.ar-SY.ar-TD.ar-TN.ar-YE.as-IN.az-Cyrl.az-Cyrl-AZ.az-Latn.az-Latn-AZ.be-BY.bg-BG.bm-Latn.bm-Latn-ML.bn-BD.bn-IN.bo-CN.bo-IN.br-FR.bs-Cyrl.bs-Cyrl-BA.bs-Latn.bs-Latn-BA.ca-AD.ca-ES.ca-ES-VALENCIA.ca-FR.ca-IT.cs-CZ.cy-GB.da-DK.da-GL.de-AT.de-BE.de-CH.de-DE.de-LI.de-LU.dz-BT.ee-GH.ee-TG.el-CY.el-GR.en-001.en-150.en-AG.en-AI.en-AS.en-AU.en-BB.en-BE.en-BM.en-BS.en-BW.en-BZ.en-CA.en-CC.en-CK.en-CM.en-CX.en-DG.en-DM.en-ER.en-FJ.en-FK.en-FM.en-GB.en-GD.en-GG.en-GH.en-GI.en-GM.en-GU.en-GY.en-HK.en-IE.en-IM.en-IN.en-IO.en-JE.en-JM.en-KE.en-KI.en-KN.en-KY.en-LC.en-LR.en-LS.en-MG.en-MH.en-MO.en-MP.en-MS.en-MT.en-MU.en-MW.en-MY.en-NA.en-NF.en-NG.en-NR.en-NU.en-NZ.en-PG.en-PH.en-PK.en-PN.en-PR.en-PW.en-RW.en-SB.en-SC.en-SD.en-SG.en-SH.en-SL.en-SS.en-SX.en-SZ.en-TC.en-TK.en-TO.en-TT.en-TV.en-TZ.en-UG.en-UM.en-US.en-US-POSIX.en-VC.en-VG.en-VI.en-VU.en-WS.en-ZA.en-ZM.en-ZW.eo-001.es-419.es-AR.es-BO.es-CL.es-CO.es-CR.es-CU.es-DO.es-EA.es-EC.es-ES.es-GQ.es-GT.es-HN.es-IC.es-MX.es-NI.es-PA.es-PE.es-PH.es-PR.es-PY.es-SV.es-US.es-UY.es-VE.et-EE.eu-ES.fa-AF.fa-IR.ff-CM.ff-GN.ff-MR.ff-SN.fi-FI.fo-FO.fr-BE.fr-BF.fr-BI.fr-BJ.fr-BL.fr-CA.fr-CD.fr-CF.fr-CG.fr-CH.fr-CI.fr-CM.fr-DJ.fr-DZ.fr-FR.fr-GA.fr-GF.fr-GN.fr-GP.fr-GQ.fr-HT.fr-KM.fr-LU.fr-MA.fr-MC.fr-MF.fr-MG.fr-ML.fr-MQ.fr-MR.fr-MU.fr-NC.fr-NE.fr-PF.fr-PM.fr-RE.fr-RW.fr-SC.fr-SN.fr-SY.fr-TD.fr-TG.fr-TN.fr-VU.fr-WF.fr-YT.fy-NL.ga-IE.gd-GB.gl-ES.gu-IN.gv-IM.ha-Latn.ha-Latn-GH.ha-Latn-NE.ha-Latn-NG.he-IL.hi-IN.hr-BA.hr-HR.hu-HU.hy-AM.id-ID.ig-NG.ii-CN.is-IS.it-CH.it-IT.it-SM.ja-JP.ka-GE.ki-KE.kk-Cyrl.kk-Cyrl-KZ.kl-GL.km-KH.kn-IN.ko-KP.ko-KR.ks-Arab.ks-Arab-IN.kw-GB.ky-Cyrl.ky-Cyrl-KG.lb-LU.lg-UG.ln-AO.ln-CD.ln-CF.ln-CG.lo-LA.lt-LT.lu-CD.lv-LV.mg-MG.mk-MK.ml-IN.mn-Cyrl.mn-Cyrl-MN.mr-IN.ms-Latn.ms-Latn-BN.ms-Latn-MY.ms-Latn-SG.mt-MT.my-MM.nb-NO.nb-SJ.nd-ZW.ne-IN.ne-NP.nl-AW.nl-BE.nl-BQ.nl-CW.nl-NL.nl-SR.nl-SX.nn-NO.om-ET.om-KE.or-IN.os-GE.os-RU.pa-Arab.pa-Arab-PK.pa-Guru.pa-Guru-IN.pl-PL.ps-AF.pt-AO.pt-BR.pt-CV.pt-GW.pt-MO.pt-MZ.pt-PT.pt-ST.pt-TL.qu-BO.qu-EC.qu-PE.rm-CH.rn-BI.ro-MD.ro-RO.ru-BY.ru-KG.ru-KZ.ru-MD.ru-RU.ru-UA.rw-RW.se-FI.se-NO.se-SE.sg-CF.si-LK.sk-SK.sl-SI.sn-ZW.so-DJ.so-ET.so-KE.so-SO.sq-AL.sq-MK.sq-XK.sr-Cyrl.sr-Cyrl-BA.sr-Cyrl-ME.sr-Cyrl-RS.sr-Cyrl-XK.sr-Latn.sr-Latn-BA.sr-Latn-ME.sr-Latn-RS.sr-Latn-XK.sv-AX.sv-FI.sv-SE.sw-CD.sw-KE.sw-TZ.sw-UG.ta-IN.ta-LK.ta-MY.ta-SG.te-IN.th-TH.ti-ER.ti-ET.to-TO.tr-CY.tr-TR.ug-Arab.ug-Arab-CN.uk-UA.ur-IN.ur-PK.uz-Arab.uz-Arab-AF.uz-Cyrl.uz-Cyrl-UZ.uz-Latn.uz-Latn-UZ.vi-VN.yi-001.yo-BJ.yo-NG.zh-Hans.zh-Hans-CN.zh-Hans-HK.zh-Hans-MO.zh-Hans-SG.zh-Hant.zh-Hant-HK.zh-Hant-MO.zh-Hant-TW.zu-ZA".split("."),
 			us_states_and_dc: [
 				{
 					name: "Alabama",
@@ -5082,8 +4977,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					abbreviation: "MD"
 				},
 				{
-		'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('			name: "Massachusetts",
+					name: "Massachusetts",
 					abbreviation: "MA"
 				},
 				{
@@ -5212,8 +5106,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					name: "Federated States of Micronesia",
 					abbreviation: "FM"
 				},
-'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('				{
+				{
 					name: "Guam",
 					abbreviation: "GU"
 				},
@@ -5251,7 +5144,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			country_regions: {
 				it: [
 					{
-						name: "Valle d''Aosta",
+						name: "Valle d'Aosta",
 						abbreviation: "VDA"
 					},
 					{
@@ -5334,8 +5227,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				mx: [
 					{
 						name: "Aguascalientes",
-						abb'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('reviation: "AGU"
+						abbreviation: "AGU"
 					},
 					{
 						name: "Baja California",
@@ -5456,8 +5348,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					{
 						name: "Yucatán",
 						abbreviation: "YUC"
-					}'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(',
+					},
 					{
 						name: "Zacatecas",
 						abbreviation: "ZAC"
@@ -5587,8 +5478,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 						abbreviation: "St"
 					},
 					{
-						name:'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' "Terrace",
+						name: "Terrace",
 						abbreviation: "Ter"
 					},
 					{
@@ -5711,8 +5601,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					},
 					{
 						name: "Corso",
-						abbrevia'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('tion: "C.so"
+						abbreviation: "C.so"
 					},
 					{
 						name: "Corte",
@@ -5835,8 +5724,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 						abbreviation: "Sal."
 					},
 					{
-						name:'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' "Scalinata",
+						name: "Scalinata",
 						abbreviation: "Scal."
 					},
 					{
@@ -5965,8 +5853,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			},
 			months: [
 				{
-					n'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ame: "January",
+					name: "January",
 					short_name: "Jan",
 					numeric: "01",
 					days: 31
@@ -6086,8 +5973,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					short_name: "discover",
 					prefix: "6011",
 					length: 16
-			'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('	},
+				},
 				{
 					name: "InstaPayment",
 					short_name: "instapay",
@@ -6214,8 +6100,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				},
 				{
 					code: "BND",
-					na'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('me: "Brunei Darussalam Dollar"
+					name: "Brunei Darussalam Dollar"
 				},
 				{
 					code: "BOB",
@@ -6347,8 +6232,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				},
 				{
 					code: "GIP",
-					'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('name: "Gibraltar Pound"
+					name: "Gibraltar Pound"
 				},
 				{
 					code: "GMD",
@@ -6484,8 +6368,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				},
 				{
 					code: "LSL",
-					name: "'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('Lesotho Loti"
+					name: "Lesotho Loti"
 				},
 				{
 					code: "LTL",
@@ -6619,8 +6502,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					code: "RSD",
 					name: "Serbia Dinar"
 				},
-'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('				{
+				{
 					code: "RUB",
 					name: "Russia Ruble"
 				},
@@ -6706,7 +6588,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				},
 				{
 					code: "TOP",
-					name: "Tonga Pa''anga"
+					name: "Tonga Pa'anga"
 				},
 				{
 					code: "TRY",
@@ -6750,8 +6632,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				},
 				{
 					code: "VEF",
-					name: "Venezuela Boli'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('var"
+					name: "Venezuela Bolivar"
 				},
 				{
 					code: "VND",
@@ -6802,19 +6683,8 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					name: "Zimbabwe Dollar"
 				}
 			],
-			colorNames: /* @__PURE__ */ "AliceBlue.Black.Navy.DarkBlue.MediumBlue.Blue.DarkGreen.Green.Teal.DarkCyan.DeepSkyBlue.DarkTurquoise.MediumSpringGreen.Lime.SpringGreen.Aqua.Cyan.MidnightBlue.DodgerBlue.LightSeaGreen.ForestGreen.SeaGreen.DarkSlateGray.LimeGreen.MediumSeaGreen.Turquoise.RoyalBlue.SteelBlue.DarkSlateBlue.MediumTurquoise.Indigo.DarkOliveGreen.CadetBlue.CornflowerBlue.RebeccaPurple.MediumAquaMarine.DimGray.SlateBlue.OliveDrab.SlateGray.LightSlateGray.MediumSlateBlue.LawnGreen.Chartreuse.Aquamarine.Maroon.Purple.Olive.Gray.SkyBlue.LightSkyBlue.BlueViolet.DarkRed.DarkMagenta.SaddleBrown.Ivory.White.DarkSeaGreen.LightGreen.MediumPurple.DarkViolet.PaleGreen.DarkOrchid.YellowGreen.Sienna.Brown.DarkGray.LightBlue.GreenYellow.PaleTurquoise.LightSteelBlue.PowderBlue.FireBrick.DarkGoldenRod.MediumOrchid.RosyBrown.DarkKhaki.Silver.MediumVioletRed.IndianRed.Peru.Chocolate.Tan.LightGray.Thistle.Orchid.GoldenRod.PaleVioletRed.Crimson.Gainsboro.Plum.BurlyWood.LightCyan.Lavender.DarkSalmon.Violet.PaleGoldenRod.LightCoral.Khaki.AliceBlue.HoneyDew.Azure.SandyBrown.Wheat.Beige.WhiteSmoke.MintCream.GhostWhite.Salmon.Antique'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('White.Linen.LightGoldenRodYellow.OldLace.Red.Fuchsia.Magenta.DeepPink.OrangeRed.Tomato.HotPink.Coral.DarkOrange.LightSalmon.Orange.LightPink.Pink.Gold.PeachPuff.NavajoWhite.Moccasin.Bisque.MistyRose.BlanchedAlmond.PapayaWhip.LavenderBlush.SeaShell.Cornsilk.LemonChiffon.FloralWhite.Snow.Yellow.LightYellow".split("."),
-			company: /* @__PURE__ */ "3Com Corp(3M Company(A.G. Edwards Inc.(Abbott Laboratories(Abercrombie & Fitch Co.(ABM Industries Incorporated(Ace Hardware Corporation(ACT Manufacturing Inc.(Acterna Corp.(Adams Resources & Energy, Inc.(ADC Telecommunications, Inc.(Adelphia Communications Corporation(Administaff, Inc.(Adobe Systems Incorporated(Adolph Coors Company(Advance Auto Parts, Inc.(Advanced Micro Devices, Inc.(AdvancePCS, Inc.(Advantica Restaurant Group, Inc.(The AES Corporation(Aetna Inc.(Affiliated Computer Services, Inc.(AFLAC Incorporated(AGCO Corporation(Agilent Technologies, Inc.(Agway Inc.(Apartment Investment and Management Company(Air Products and Chemicals, Inc.(Airborne, Inc.(Airgas, Inc.(AK Steel Holding Corporation(Alaska Air Group, Inc.(Alberto-Culver Company(Albertson''s, Inc.(Alcoa Inc.(Alleghany Corporation(Allegheny Energy, Inc.(Allegheny Technologies Incorporated(Allergan, Inc.(ALLETE, Inc.(Alliant Energy Corporation(Allied Waste Industries, Inc.(Allmerica Financial Corporation(The Allstate Corporation(ALLTEL Corporation(The Alpine Group, Inc.(Amazon.com, Inc.(AMC Entertainment Inc.(American Power Conversion Corporation(Amerada Hess Corporation(AMERCO(Ameren Corporation(America West Holdings Corporation(American Axle & Manufacturing Holdings, Inc.(American Eagle Outfitters, Inc.(American Electric Power Company, Inc.(American Express Company(American Financial Group, Inc.(American Greetings Corporation(American International Group, Inc.(American Standard Companies Inc.(American Water Works Company, Inc.(AmerisourceBergen Corporation(Ames Department Stores, Inc.(Amgen Inc.(Amkor Technology, Inc.(AMR Corporation(AmSouth Bancorp.(Amtr'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('an, Inc.(Anadarko Petroleum Corporation(Analog Devices, Inc.(Anheuser-Busch Companies, Inc.(Anixter International Inc.(AnnTaylor Inc.(Anthem, Inc.(AOL Time Warner Inc.(Aon Corporation(Apache Corporation(Apple Computer, Inc.(Applera Corporation(Applied Industrial Technologies, Inc.(Applied Materials, Inc.(Aquila, Inc.(ARAMARK Corporation(Arch Coal, Inc.(Archer Daniels Midland Company(Arkansas Best Corporation(Armstrong Holdings, Inc.(Arrow Electronics, Inc.(ArvinMeritor, Inc.(Ashland Inc.(Astoria Financial Corporation(AT&T Corp.(Atmel Corporation(Atmos Energy Corporation(Audiovox Corporation(Autoliv, Inc.(Automatic Data Processing, Inc.(AutoNation, Inc.(AutoZone, Inc.(Avaya Inc.(Avery Dennison Corporation(Avista Corporation(Avnet, Inc.(Avon Products, Inc.(Baker Hughes Incorporated(Ball Corporation(Bank of America Corporation(The Bank of New York Company, Inc.(Bank One Corporation(Banknorth Group, Inc.(Banta Corporation(Barnes & Noble, Inc.(Bausch & Lomb Incorporated(Baxter International Inc.(BB&T Corporation(The Bear Stearns Companies Inc.(Beazer Homes USA, Inc.(Beckman Coulter, Inc.(Becton, Dickinson and Company(Bed Bath & Beyond Inc.(Belk, Inc.(Bell Microproducts Inc.(BellSouth Corporation(Belo Corp.(Bemis Company, Inc.(Benchmark Electronics, Inc.(Berkshire Hathaway Inc.(Best Buy Co., Inc.(Bethlehem Steel Corporation(Beverly Enterprises, Inc.(Big Lots, Inc.(BJ Services Company(BJ''s Wholesale Club, Inc.(The Black & Decker Corporation(Black Hills Corporation(BMC Software, Inc.(The Boeing Company(Boise Cascade Corporation(Borders Group, Inc.(BorgWarner Inc.(Boston Scientific Corporation(Bowater Incorporated(Briggs & Stratton Corporation(Brightpoint, Inc.(Brinker International, Inc.(Bristol-Myers Squibb Company(Broadwing, Inc.(Brown Shoe Company, Inc.(Brown-Forman Corporation(Brunswick Corporation(Budget Group, Inc.(Burlington Coat Factory Warehouse Corporation(Burlington Industries, Inc.(Burlington Northern Santa Fe Corporation(Burlington Resources Inc.(C. H. Robinso'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('n Worldwide Inc.(Cablevision Systems Corp(Cabot Corp(Cadence Design Systems, Inc.(Calpine Corp.(Campbell Soup Co.(Capital One Financial Corp.(Cardinal Health Inc.(Caremark Rx Inc.(Carlisle Cos. Inc.(Carpenter Technology Corp.(Casey''s General Stores Inc.(Caterpillar Inc.(CBRL Group Inc.(CDI Corp.(CDW Computer Centers Inc.(CellStar Corp.(Cendant Corp(Cenex Harvest States Cooperatives(Centex Corp.(CenturyTel Inc.(Ceridian Corp.(CH2M Hill Cos. Ltd.(Champion Enterprises Inc.(Charles Schwab Corp.(Charming Shoppes Inc.(Charter Communications Inc.(Charter One Financial Inc.(ChevronTexaco Corp.(Chiquita Brands International Inc.(Chubb Corp(Ciena Corp.(Cigna Corp(Cincinnati Financial Corp.(Cinergy Corp.(Cintas Corp.(Circuit City Stores Inc.(Cisco Systems Inc.(Citigroup, Inc(Citizens Communications Co.(CKE Restaurants Inc.(Clear Channel Communications Inc.(The Clorox Co.(CMGI Inc.(CMS Energy Corp.(CNF Inc.(Coca-Cola Co.(Coca-Cola Enterprises Inc.(Colgate-Palmolive Co.(Collins & Aikman Corp.(Comcast Corp.(Comdisco Inc.(Comerica Inc.(Comfort Systems USA Inc.(Commercial Metals Co.(Community Health Systems Inc.(Compass Bancshares Inc(Computer Associates International Inc.(Computer Sciences Corp.(Compuware Corp.(Comverse Technology Inc.(ConAgra Foods Inc.(Concord EFS Inc.(Conectiv, Inc(Conoco Inc(Conseco Inc.(Consolidated Freightways Corp.(Consolidated Edison Inc.(Constellation Brands Inc.(Constellation Emergy Group Inc.(Continental Airlines Inc.(Convergys Corp.(Cooper Cameron Corp.(Cooper Industries Ltd.(Cooper Tire & Rubber Co.(Corn Products International Inc.(Corning Inc.(Costco Wholesale Corp.(Countrywide Credit Industries Inc.(Coventry Health Care Inc.(Cox Communications Inc.(Crane Co.(Crompton Corp.(Crown Cork & Seal Co. Inc.(CSK Auto Corp.(CSX Corp.(Cummins Inc.(CVS Corp.(Cytec Industries Inc.(D&K Healthcare Resources, Inc.(D.R. Horton Inc.(Dana Corporation(Danaher Corporation(Darden Restaurants Inc.(DaVita Inc.(Dean Foods Company(Deere & Company(Del Monte Foods Co(Dell Com'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('puter Corporation(Delphi Corp.(Delta Air Lines Inc.(Deluxe Corporation(Devon Energy Corporation(Di Giorgio Corporation(Dial Corporation(Diebold Incorporated(Dillard''s Inc.(DIMON Incorporated(Dole Food Company, Inc.(Dollar General Corporation(Dollar Tree Stores, Inc.(Dominion Resources, Inc.(Domino''s Pizza LLC(Dover Corporation, Inc.(Dow Chemical Company(Dow Jones & Company, Inc.(DPL Inc.(DQE Inc.(Dreyer''s Grand Ice Cream, Inc.(DST Systems, Inc.(DTE Energy Co.(E.I. Du Pont de Nemours and Company(Duke Energy Corp(Dun & Bradstreet Inc.(DURA Automotive Systems Inc.(DynCorp(Dynegy Inc.(E*Trade Group, Inc.(E.W. Scripps Company(Earthlink, Inc.(Eastman Chemical Company(Eastman Kodak Company(Eaton Corporation(Echostar Communications Corporation(Ecolab Inc.(Edison International(EGL Inc.(El Paso Corporation(Electronic Arts Inc.(Electronic Data Systems Corp.(Eli Lilly and Company(EMC Corporation(Emcor Group Inc.(Emerson Electric Co.(Encompass Services Corporation(Energizer Holdings Inc.(Energy East Corporation(Engelhard Corporation(Enron Corp.(Entergy Corporation(Enterprise Products Partners L.P.(EOG Resources, Inc.(Equifax Inc.(Equitable Resources Inc.(Equity Office Properties Trust(Equity Residential Properties Trust(Estee Lauder Companies Inc.(Exelon Corporation(Exide Technologies(Expeditors International of Washington Inc.(Express Scripts Inc.(ExxonMobil Corporation(Fairchild Semiconductor International Inc.(Family Dollar Stores Inc.(Farmland Industries Inc.(Federal Mogul Corp.(Federated Department Stores Inc.(Federal Express Corp.(Felcor Lodging Trust Inc.(Ferro Corp.(Fidelity National Financial Inc.(Fifth Third Bancorp(First American Financial Corp.(First Data Corp.(First National of Nebraska Inc.(First Tennessee National Corp.(FirstEnergy Corp.(Fiserv Inc.(Fisher Scientific International Inc.(FleetBoston Financial Co.(Fleetwood Enterprises Inc.(Fleming Companies Inc.(Flowers Foods Inc.(Flowserv Corp(Fluor Corp(FMC Corp(Foamex International Inc(Foot Locker Inc(Footstar'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' Inc.(Ford Motor Co(Forest Laboratories Inc.(Fortune Brands Inc.(Foster Wheeler Ltd.(FPL Group Inc.(Franklin Resources Inc.(Freeport McMoran Copper & Gold Inc.(Frontier Oil Corp(Furniture Brands International Inc.(Gannett Co., Inc.(Gap Inc.(Gateway Inc.(GATX Corporation(Gemstar-TV Guide International Inc.(GenCorp Inc.(General Cable Corporation(General Dynamics Corporation(General Electric Company(General Mills Inc(General Motors Corporation(Genesis Health Ventures Inc.(Gentek Inc.(Gentiva Health Services Inc.(Genuine Parts Company(Genuity Inc.(Genzyme Corporation(Georgia Gulf Corporation(Georgia-Pacific Corporation(Gillette Company(Gold Kist Inc.(Golden State Bancorp Inc.(Golden West Financial Corporation(Goldman Sachs Group Inc.(Goodrich Corporation(The Goodyear Tire & Rubber Company(Granite Construction Incorporated(Graybar Electric Company Inc.(Great Lakes Chemical Corporation(Great Plains Energy Inc.(GreenPoint Financial Corp.(Greif Bros. Corporation(Grey Global Group Inc.(Group 1 Automotive Inc.(Guidant Corporation(H&R Block Inc.(H.B. Fuller Company(H.J. Heinz Company(Halliburton Co.(Harley-Davidson Inc.(Harman International Industries Inc.(Harrah''s Entertainment Inc.(Harris Corp.(Harsco Corp.(Hartford Financial Services Group Inc.(Hasbro Inc.(Hawaiian Electric Industries Inc.(HCA Inc.(Health Management Associates Inc.(Health Net Inc.(Healthsouth Corp(Henry Schein Inc.(Hercules Inc.(Herman Miller Inc.(Hershey Foods Corp.(Hewlett-Packard Company(Hibernia Corp.(Hillenbrand Industries Inc.(Hilton Hotels Corp.(Hollywood Entertainment Corp.(Home Depot Inc.(Hon Industries Inc.(Honeywell International Inc.(Hormel Foods Corp.(Host Marriott Corp.(Household International Corp.(Hovnanian Enterprises Inc.(Hub Group Inc.(Hubbell Inc.(Hughes Supply Inc.(Humana Inc.(Huntington Bancshares Inc.(Idacorp Inc.(IDT Corporation(IKON Office Solutions Inc.(Illinois Tool Works Inc.(IMC Global Inc.(Imperial Sugar Company(IMS Health Inc.(Ingles Market Inc(Ingram Micro Inc.(Insight Enter'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('prises Inc.(Integrated Electrical Services Inc.(Intel Corporation(International Paper Co.(Interpublic Group of Companies Inc.(Interstate Bakeries Corporation(International Business Machines Corp.(International Flavors & Fragrances Inc.(International Multifoods Corporation(Intuit Inc.(IT Group Inc.(ITT Industries Inc.(Ivax Corp.(J.B. Hunt Transport Services Inc.(J.C. Penny Co.(J.P. Morgan Chase & Co.(Jabil Circuit Inc.(Jack In The Box Inc.(Jacobs Engineering Group Inc.(JDS Uniphase Corp.(Jefferson-Pilot Co.(John Hancock Financial Services Inc.(Johnson & Johnson(Johnson Controls Inc.(Jones Apparel Group Inc.(KB Home(Kellogg Company(Kellwood Company(Kelly Services Inc.(Kemet Corp.(Kennametal Inc.(Kerr-McGee Corporation(KeyCorp(KeySpan Corp.(Kimball International Inc.(Kimberly-Clark Corporation(Kindred Healthcare Inc.(KLA-Tencor Corporation(K-Mart Corp.(Knight-Ridder Inc.(Kohl''s Corp.(KPMG Consulting Inc.(Kroger Co.(L-3 Communications Holdings Inc.(Laboratory Corporation of America Holdings(Lam Research Corporation(LandAmerica Financial Group Inc.(Lands'' End Inc.(Landstar System Inc.(La-Z-Boy Inc.(Lear Corporation(Legg Mason Inc.(Leggett & Platt Inc.(Lehman Brothers Holdings Inc.(Lennar Corporation(Lennox International Inc.(Level 3 Communications Inc.(Levi Strauss & Co.(Lexmark International Inc.(Limited Inc.(Lincoln National Corporation(Linens ''n Things Inc.(Lithia Motors Inc.(Liz Claiborne Inc.(Lockheed Martin Corporation(Loews Corporation(Longs Drug Stores Corporation(Louisiana-Pacific Corporation(Lowe''s Companies Inc.(LSI Logic Corporation(The LTV Corporation(The Lubrizol Corporation(Lucent Technologies Inc.(Lyondell Chemical Company(M & T Bank Corporation(Magellan Health Services Inc.(Mail-Well Inc.(Mandalay Resort Group(Manor Care Inc.(Manpower Inc.(Marathon Oil Corporation(Mariner Health Care Inc.(Markel Corporation(Marriott International Inc.(Marsh & McLennan Companies Inc.(Marsh Supermarkets Inc.(Marshall & Ilsley Corporation(Martin Marietta Materials Inc.('));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('Masco Corporation(Massey Energy Company(MasTec Inc.(Mattel Inc.(Maxim Integrated Products Inc.(Maxtor Corporation(Maxxam Inc.(The May Department Stores Company(Maytag Corporation(MBNA Corporation(McCormick & Company Incorporated(McDonald''s Corporation(The McGraw-Hill Companies Inc.(McKesson Corporation(McLeodUSA Incorporated(M.D.C. Holdings Inc.(MDU Resources Group Inc.(MeadWestvaco Corporation(Medtronic Inc.(Mellon Financial Corporation(The Men''s Wearhouse Inc.(Merck & Co., Inc.(Mercury General Corporation(Merrill Lynch & Co. Inc.(Metaldyne Corporation(Metals USA Inc.(MetLife Inc.(Metris Companies Inc(MGIC Investment Corporation(MGM Mirage(Michaels Stores Inc.(Micron Technology Inc.(Microsoft Corporation(Milacron Inc.(Millennium Chemicals Inc.(Mirant Corporation(Mohawk Industries Inc.(Molex Incorporated(The MONY Group Inc.(Morgan Stanley Dean Witter & Co.(Motorola Inc.(MPS Group Inc.(Murphy Oil Corporation(Nabors Industries Inc(Nacco Industries Inc(Nash Finch Company(National City Corp.(National Commerce Financial Corporation(National Fuel Gas Company(National Oilwell Inc(National Rural Utilities Cooperative Finance Corporation(National Semiconductor Corporation(National Service Industries Inc(Navistar International Corporation(NCR Corporation(The Neiman Marcus Group Inc.(New Jersey Resources Corporation(New York Times Company(Newell Rubbermaid Inc(Newmont Mining Corporation(Nextel Communications Inc(Nicor Inc(Nike Inc(NiSource Inc(Noble Energy Inc(Nordstrom Inc(Norfolk Southern Corporation(Nortek Inc(North Fork Bancorporation Inc(Northeast Utilities System(Northern Trust Corporation(Northrop Grumman Corporation(NorthWestern Corporation(Novellus Systems Inc(NSTAR(NTL Incorporated(Nucor Corp(Nvidia Corp(NVR Inc(Northwest Airlines Corp(Occidental Petroleum Corp(Ocean Energy Inc(Office Depot Inc.(OfficeMax Inc(OGE Energy Corp(Oglethorpe Power Corp.(Ohio Casualty Corp.(Old Republic International Corp.(Olin Corp.(OM Group Inc(Omnicare Inc(Omnicom Group(On Semiconducto'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('r Corp(ONEOK Inc(Oracle Corp(Oshkosh Truck Corp(Outback Steakhouse Inc.(Owens & Minor Inc.(Owens Corning(Owens-Illinois Inc(Oxford Health Plans Inc(Paccar Inc(PacifiCare Health Systems Inc(Packaging Corp. of America(Pactiv Corp(Pall Corp(Pantry Inc(Park Place Entertainment Corp(Parker Hannifin Corp.(Pathmark Stores Inc.(Paychex Inc(Payless Shoesource Inc(Penn Traffic Co.(Pennzoil-Quaker State Company(Pentair Inc(Peoples Energy Corp.(PeopleSoft Inc(Pep Boys Manny, Moe & Jack(Potomac Electric Power Co.(Pepsi Bottling Group Inc.(PepsiAmericas Inc.(PepsiCo Inc.(Performance Food Group Co.(Perini Corp(PerkinElmer Inc(Perot Systems Corp(Petco Animal Supplies Inc.(Peter Kiewit Sons'', Inc.(PETsMART Inc(Pfizer Inc(Pacific Gas & Electric Corp.(Pharmacia Corp(Phar Mor Inc.(Phelps Dodge Corp.(Philip Morris Companies Inc.(Phillips Petroleum Co(Phillips Van Heusen Corp.(Phoenix Companies Inc(Pier 1 Imports Inc.(Pilgrim''s Pride Corporation(Pinnacle West Capital Corp(Pioneer-Standard Electronics Inc.(Pitney Bowes Inc.(Pittston Brinks Group(Plains All American Pipeline LP(PNC Financial Services Group Inc.(PNM Resources Inc(Polaris Industries Inc.(Polo Ralph Lauren Corp(PolyOne Corp(Popular Inc(Potlatch Corp(PPG Industries Inc(PPL Corp(Praxair Inc(Precision Castparts Corp(Premcor Inc.(Pride International Inc(Primedia Inc(Principal Financial Group Inc.(Procter & Gamble Co.(Pro-Fac Cooperative Inc.(Progress Energy Inc(Progressive Corporation(Protective Life Corp(Provident Financial Group(Providian Financial Corp.(Prudential Financial Inc.(PSS World Medical Inc(Public Service Enterprise Group Inc.(Publix Super Markets Inc.(Puget Energy Inc.(Pulte Homes Inc(Qualcomm Inc(Quanta Services Inc.(Quantum Corp(Quest Diagnostics Inc.(Questar Corp(Quintiles Transnational(Qwest Communications Intl Inc(R.J. Reynolds Tobacco Company(R.R. Donnelley & Sons Company(Radio Shack Corporation(Raymond James Financial Inc.(Raytheon Company(Reader''s Digest Association Inc.(Reebok International Ltd.(Regions '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('Financial Corp.(Regis Corporation(Reliance Steel & Aluminum Co.(Reliant Energy Inc.(Rent A Center Inc(Republic Services Inc(Revlon Inc(RGS Energy Group Inc(Rite Aid Corp(Riverwood Holding Inc.(RoadwayCorp(Robert Half International Inc.(Rock-Tenn Co(Rockwell Automation Inc(Rockwell Collins Inc(Rohm & Haas Co.(Ross Stores Inc(RPM Inc.(Ruddick Corp(Ryder System Inc(Ryerson Tull Inc(Ryland Group Inc.(Sabre Holdings Corp(Safeco Corp(Safeguard Scientifics Inc.(Safeway Inc(Saks Inc(Sanmina-SCI Inc(Sara Lee Corp(SBC Communications Inc(Scana Corp.(Schering-Plough Corp(Scholastic Corp(SCI Systems Onc.(Science Applications Intl. Inc.(Scientific-Atlanta Inc(Scotts Company(Seaboard Corp(Sealed Air Corp(Sears Roebuck & Co(Sempra Energy(Sequa Corp(Service Corp. International(ServiceMaster Co(Shaw Group Inc(Sherwin-Williams Company(Shopko Stores Inc(Siebel Systems Inc(Sierra Health Services Inc(Sierra Pacific Resources(Silgan Holdings Inc.(Silicon Graphics Inc(Simon Property Group Inc(SLM Corporation(Smith International Inc(Smithfield Foods Inc(Smurfit-Stone Container Corp(Snap-On Inc(Solectron Corp(Solutia Inc(Sonic Automotive Inc.(Sonoco Products Co.(Southern Company(Southern Union Company(SouthTrust Corp.(Southwest Airlines Co(Southwest Gas Corp(Sovereign Bancorp Inc.(Spartan Stores Inc(Spherion Corp(Sports Authority Inc(Sprint Corp.(SPX Corp(St. Jude Medical Inc(St. Paul Cos.(Staff Leasing Inc.(StanCorp Financial Group Inc(Standard Pacific Corp.(Stanley Works(Staples Inc(Starbucks Corp(Starwood Hotels & Resorts Worldwide Inc(State Street Corp.(Stater Bros. Holdings Inc.(Steelcase Inc(Stein Mart Inc(Stewart & Stevenson Services Inc(Stewart Information Services Corp(Stilwell Financial Inc(Storage Technology Corporation(Stryker Corp(Sun Healthcare Group Inc.(Sun Microsystems Inc.(SunGard Data Systems Inc.(Sunoco Inc.(SunTrust Banks Inc(Supervalu Inc(Swift Transportation, Co., Inc(Symbol Technologies Inc(Synovus Financial Corp.(Sysco Corp(Systemax Inc.(Target Corp.(Tech Data Corpor'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ation(TECO Energy Inc(Tecumseh Products Company(Tektronix Inc(Teleflex Incorporated(Telephone & Data Systems Inc(Tellabs Inc.(Temple-Inland Inc(Tenet Healthcare Corporation(Tenneco Automotive Inc.(Teradyne Inc(Terex Corp(Tesoro Petroleum Corp.(Texas Industries Inc.(Texas Instruments Incorporated(Textron Inc(Thermo Electron Corporation(Thomas & Betts Corporation(Tiffany & Co(Timken Company(TJX Companies Inc(TMP Worldwide Inc(Toll Brothers Inc(Torchmark Corporation(Toro Company(Tower Automotive Inc.(Toys ''R'' Us Inc(Trans World Entertainment Corp.(TransMontaigne Inc(Transocean Inc(TravelCenters of America Inc.(Triad Hospitals Inc(Tribune Company(Trigon Healthcare Inc.(Trinity Industries Inc(Trump Hotels & Casino Resorts Inc.(TruServ Corporation(TRW Inc(TXU Corp(Tyson Foods Inc(U.S. Bancorp(U.S. Industries Inc.(UAL Corporation(UGI Corporation(Unified Western Grocers Inc(Union Pacific Corporation(Union Planters Corp(Unisource Energy Corp(Unisys Corporation(United Auto Group Inc(United Defense Industries Inc.(United Parcel Service Inc(United Rentals Inc(United Stationers Inc(United Technologies Corporation(UnitedHealth Group Incorporated(Unitrin Inc(Universal Corporation(Universal Forest Products Inc(Universal Health Services Inc(Unocal Corporation(Unova Inc(UnumProvident Corporation(URS Corporation(US Airways Group Inc(US Oncology Inc(USA Interactive(USFreighways Corporation(USG Corporation(UST Inc(Valero Energy Corporation(Valspar Corporation(Value City Department Stores Inc(Varco International Inc(Vectren Corporation(Veritas Software Corporation(Verizon Communications Inc(VF Corporation(Viacom Inc(Viad Corp(Viasystems Group Inc(Vishay Intertechnology Inc(Visteon Corporation(Volt Information Sciences Inc(Vulcan Materials Company(W.R. Berkley Corporation(W.R. Grace & Co(W.W. Grainger Inc(Wachovia Corporation(Wakenhut Corporation(Walgreen Co(Wallace Computer Services Inc(Wal-Mart Stores Inc(Walt Disney Co(Walter Industries Inc(Washington Mutual Inc(Washington Post Co.(W'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('aste Management Inc(Watsco Inc(Weatherford International Inc(Weis Markets Inc.(Wellpoint Health Networks Inc(Wells Fargo & Company(Wendy''s International Inc(Werner Enterprises Inc(WESCO International Inc(Western Digital Inc(Western Gas Resources Inc(WestPoint Stevens Inc(Weyerhauser Company(WGL Holdings Inc(Whirlpool Corporation(Whole Foods Market Inc(Willamette Industries Inc.(Williams Companies Inc(Williams Sonoma Inc(Winn Dixie Stores Inc(Wisconsin Energy Corporation(Wm Wrigley Jr Company(World Fuel Services Corporation(WorldCom Inc(Worthington Industries Inc(WPS Resources Corporation(Wyeth(Wyndham International Inc(Xcel Energy Inc(Xerox Corp(Xilinx Inc(XO Communications Inc(Yellow Corporation(York International Corp(Yum Brands Inc.(Zale Corporation(Zions Bancorporation".split("("),
+			colorNames: /* @__PURE__ */ "AliceBlue.Black.Navy.DarkBlue.MediumBlue.Blue.DarkGreen.Green.Teal.DarkCyan.DeepSkyBlue.DarkTurquoise.MediumSpringGreen.Lime.SpringGreen.Aqua.Cyan.MidnightBlue.DodgerBlue.LightSeaGreen.ForestGreen.SeaGreen.DarkSlateGray.LimeGreen.MediumSeaGreen.Turquoise.RoyalBlue.SteelBlue.DarkSlateBlue.MediumTurquoise.Indigo.DarkOliveGreen.CadetBlue.CornflowerBlue.RebeccaPurple.MediumAquaMarine.DimGray.SlateBlue.OliveDrab.SlateGray.LightSlateGray.MediumSlateBlue.LawnGreen.Chartreuse.Aquamarine.Maroon.Purple.Olive.Gray.SkyBlue.LightSkyBlue.BlueViolet.DarkRed.DarkMagenta.SaddleBrown.Ivory.White.DarkSeaGreen.LightGreen.MediumPurple.DarkViolet.PaleGreen.DarkOrchid.YellowGreen.Sienna.Brown.DarkGray.LightBlue.GreenYellow.PaleTurquoise.LightSteelBlue.PowderBlue.FireBrick.DarkGoldenRod.MediumOrchid.RosyBrown.DarkKhaki.Silver.MediumVioletRed.IndianRed.Peru.Chocolate.Tan.LightGray.Thistle.Orchid.GoldenRod.PaleVioletRed.Crimson.Gainsboro.Plum.BurlyWood.LightCyan.Lavender.DarkSalmon.Violet.PaleGoldenRod.LightCoral.Khaki.AliceBlue.HoneyDew.Azure.SandyBrown.Wheat.Beige.WhiteSmoke.MintCream.GhostWhite.Salmon.AntiqueWhite.Linen.LightGoldenRodYellow.OldLace.Red.Fuchsia.Magenta.DeepPink.OrangeRed.Tomato.HotPink.Coral.DarkOrange.LightSalmon.Orange.LightPink.Pink.Gold.PeachPuff.NavajoWhite.Moccasin.Bisque.MistyRose.BlanchedAlmond.PapayaWhip.LavenderBlush.SeaShell.Cornsilk.LemonChiffon.FloralWhite.Snow.Yellow.LightYellow".split("."),
+			company: /* @__PURE__ */ "3Com Corp(3M Company(A.G. Edwards Inc.(Abbott Laboratories(Abercrombie & Fitch Co.(ABM Industries Incorporated(Ace Hardware Corporation(ACT Manufacturing Inc.(Acterna Corp.(Adams Resources & Energy, Inc.(ADC Telecommunications, Inc.(Adelphia Communications Corporation(Administaff, Inc.(Adobe Systems Incorporated(Adolph Coors Company(Advance Auto Parts, Inc.(Advanced Micro Devices, Inc.(AdvancePCS, Inc.(Advantica Restaurant Group, Inc.(The AES Corporation(Aetna Inc.(Affiliated Computer Services, Inc.(AFLAC Incorporated(AGCO Corporation(Agilent Technologies, Inc.(Agway Inc.(Apartment Investment and Management Company(Air Products and Chemicals, Inc.(Airborne, Inc.(Airgas, Inc.(AK Steel Holding Corporation(Alaska Air Group, Inc.(Alberto-Culver Company(Albertson's, Inc.(Alcoa Inc.(Alleghany Corporation(Allegheny Energy, Inc.(Allegheny Technologies Incorporated(Allergan, Inc.(ALLETE, Inc.(Alliant Energy Corporation(Allied Waste Industries, Inc.(Allmerica Financial Corporation(The Allstate Corporation(ALLTEL Corporation(The Alpine Group, Inc.(Amazon.com, Inc.(AMC Entertainment Inc.(American Power Conversion Corporation(Amerada Hess Corporation(AMERCO(Ameren Corporation(America West Holdings Corporation(American Axle & Manufacturing Holdings, Inc.(American Eagle Outfitters, Inc.(American Electric Power Company, Inc.(American Express Company(American Financial Group, Inc.(American Greetings Corporation(American International Group, Inc.(American Standard Companies Inc.(American Water Works Company, Inc.(AmerisourceBergen Corporation(Ames Department Stores, Inc.(Amgen Inc.(Amkor Technology, Inc.(AMR Corporation(AmSouth Bancorp.(Amtran, Inc.(Anadarko Petroleum Corporation(Analog Devices, Inc.(Anheuser-Busch Companies, Inc.(Anixter International Inc.(AnnTaylor Inc.(Anthem, Inc.(AOL Time Warner Inc.(Aon Corporation(Apache Corporation(Apple Computer, Inc.(Applera Corporation(Applied Industrial Technologies, Inc.(Applied Materials, Inc.(Aquila, Inc.(ARAMARK Corporation(Arch Coal, Inc.(Archer Daniels Midland Company(Arkansas Best Corporation(Armstrong Holdings, Inc.(Arrow Electronics, Inc.(ArvinMeritor, Inc.(Ashland Inc.(Astoria Financial Corporation(AT&T Corp.(Atmel Corporation(Atmos Energy Corporation(Audiovox Corporation(Autoliv, Inc.(Automatic Data Processing, Inc.(AutoNation, Inc.(AutoZone, Inc.(Avaya Inc.(Avery Dennison Corporation(Avista Corporation(Avnet, Inc.(Avon Products, Inc.(Baker Hughes Incorporated(Ball Corporation(Bank of America Corporation(The Bank of New York Company, Inc.(Bank One Corporation(Banknorth Group, Inc.(Banta Corporation(Barnes & Noble, Inc.(Bausch & Lomb Incorporated(Baxter International Inc.(BB&T Corporation(The Bear Stearns Companies Inc.(Beazer Homes USA, Inc.(Beckman Coulter, Inc.(Becton, Dickinson and Company(Bed Bath & Beyond Inc.(Belk, Inc.(Bell Microproducts Inc.(BellSouth Corporation(Belo Corp.(Bemis Company, Inc.(Benchmark Electronics, Inc.(Berkshire Hathaway Inc.(Best Buy Co., Inc.(Bethlehem Steel Corporation(Beverly Enterprises, Inc.(Big Lots, Inc.(BJ Services Company(BJ's Wholesale Club, Inc.(The Black & Decker Corporation(Black Hills Corporation(BMC Software, Inc.(The Boeing Company(Boise Cascade Corporation(Borders Group, Inc.(BorgWarner Inc.(Boston Scientific Corporation(Bowater Incorporated(Briggs & Stratton Corporation(Brightpoint, Inc.(Brinker International, Inc.(Bristol-Myers Squibb Company(Broadwing, Inc.(Brown Shoe Company, Inc.(Brown-Forman Corporation(Brunswick Corporation(Budget Group, Inc.(Burlington Coat Factory Warehouse Corporation(Burlington Industries, Inc.(Burlington Northern Santa Fe Corporation(Burlington Resources Inc.(C. H. Robinson Worldwide Inc.(Cablevision Systems Corp(Cabot Corp(Cadence Design Systems, Inc.(Calpine Corp.(Campbell Soup Co.(Capital One Financial Corp.(Cardinal Health Inc.(Caremark Rx Inc.(Carlisle Cos. Inc.(Carpenter Technology Corp.(Casey's General Stores Inc.(Caterpillar Inc.(CBRL Group Inc.(CDI Corp.(CDW Computer Centers Inc.(CellStar Corp.(Cendant Corp(Cenex Harvest States Cooperatives(Centex Corp.(CenturyTel Inc.(Ceridian Corp.(CH2M Hill Cos. Ltd.(Champion Enterprises Inc.(Charles Schwab Corp.(Charming Shoppes Inc.(Charter Communications Inc.(Charter One Financial Inc.(ChevronTexaco Corp.(Chiquita Brands International Inc.(Chubb Corp(Ciena Corp.(Cigna Corp(Cincinnati Financial Corp.(Cinergy Corp.(Cintas Corp.(Circuit City Stores Inc.(Cisco Systems Inc.(Citigroup, Inc(Citizens Communications Co.(CKE Restaurants Inc.(Clear Channel Communications Inc.(The Clorox Co.(CMGI Inc.(CMS Energy Corp.(CNF Inc.(Coca-Cola Co.(Coca-Cola Enterprises Inc.(Colgate-Palmolive Co.(Collins & Aikman Corp.(Comcast Corp.(Comdisco Inc.(Comerica Inc.(Comfort Systems USA Inc.(Commercial Metals Co.(Community Health Systems Inc.(Compass Bancshares Inc(Computer Associates International Inc.(Computer Sciences Corp.(Compuware Corp.(Comverse Technology Inc.(ConAgra Foods Inc.(Concord EFS Inc.(Conectiv, Inc(Conoco Inc(Conseco Inc.(Consolidated Freightways Corp.(Consolidated Edison Inc.(Constellation Brands Inc.(Constellation Emergy Group Inc.(Continental Airlines Inc.(Convergys Corp.(Cooper Cameron Corp.(Cooper Industries Ltd.(Cooper Tire & Rubber Co.(Corn Products International Inc.(Corning Inc.(Costco Wholesale Corp.(Countrywide Credit Industries Inc.(Coventry Health Care Inc.(Cox Communications Inc.(Crane Co.(Crompton Corp.(Crown Cork & Seal Co. Inc.(CSK Auto Corp.(CSX Corp.(Cummins Inc.(CVS Corp.(Cytec Industries Inc.(D&K Healthcare Resources, Inc.(D.R. Horton Inc.(Dana Corporation(Danaher Corporation(Darden Restaurants Inc.(DaVita Inc.(Dean Foods Company(Deere & Company(Del Monte Foods Co(Dell Computer Corporation(Delphi Corp.(Delta Air Lines Inc.(Deluxe Corporation(Devon Energy Corporation(Di Giorgio Corporation(Dial Corporation(Diebold Incorporated(Dillard's Inc.(DIMON Incorporated(Dole Food Company, Inc.(Dollar General Corporation(Dollar Tree Stores, Inc.(Dominion Resources, Inc.(Domino's Pizza LLC(Dover Corporation, Inc.(Dow Chemical Company(Dow Jones & Company, Inc.(DPL Inc.(DQE Inc.(Dreyer's Grand Ice Cream, Inc.(DST Systems, Inc.(DTE Energy Co.(E.I. Du Pont de Nemours and Company(Duke Energy Corp(Dun & Bradstreet Inc.(DURA Automotive Systems Inc.(DynCorp(Dynegy Inc.(E*Trade Group, Inc.(E.W. Scripps Company(Earthlink, Inc.(Eastman Chemical Company(Eastman Kodak Company(Eaton Corporation(Echostar Communications Corporation(Ecolab Inc.(Edison International(EGL Inc.(El Paso Corporation(Electronic Arts Inc.(Electronic Data Systems Corp.(Eli Lilly and Company(EMC Corporation(Emcor Group Inc.(Emerson Electric Co.(Encompass Services Corporation(Energizer Holdings Inc.(Energy East Corporation(Engelhard Corporation(Enron Corp.(Entergy Corporation(Enterprise Products Partners L.P.(EOG Resources, Inc.(Equifax Inc.(Equitable Resources Inc.(Equity Office Properties Trust(Equity Residential Properties Trust(Estee Lauder Companies Inc.(Exelon Corporation(Exide Technologies(Expeditors International of Washington Inc.(Express Scripts Inc.(ExxonMobil Corporation(Fairchild Semiconductor International Inc.(Family Dollar Stores Inc.(Farmland Industries Inc.(Federal Mogul Corp.(Federated Department Stores Inc.(Federal Express Corp.(Felcor Lodging Trust Inc.(Ferro Corp.(Fidelity National Financial Inc.(Fifth Third Bancorp(First American Financial Corp.(First Data Corp.(First National of Nebraska Inc.(First Tennessee National Corp.(FirstEnergy Corp.(Fiserv Inc.(Fisher Scientific International Inc.(FleetBoston Financial Co.(Fleetwood Enterprises Inc.(Fleming Companies Inc.(Flowers Foods Inc.(Flowserv Corp(Fluor Corp(FMC Corp(Foamex International Inc(Foot Locker Inc(Footstar Inc.(Ford Motor Co(Forest Laboratories Inc.(Fortune Brands Inc.(Foster Wheeler Ltd.(FPL Group Inc.(Franklin Resources Inc.(Freeport McMoran Copper & Gold Inc.(Frontier Oil Corp(Furniture Brands International Inc.(Gannett Co., Inc.(Gap Inc.(Gateway Inc.(GATX Corporation(Gemstar-TV Guide International Inc.(GenCorp Inc.(General Cable Corporation(General Dynamics Corporation(General Electric Company(General Mills Inc(General Motors Corporation(Genesis Health Ventures Inc.(Gentek Inc.(Gentiva Health Services Inc.(Genuine Parts Company(Genuity Inc.(Genzyme Corporation(Georgia Gulf Corporation(Georgia-Pacific Corporation(Gillette Company(Gold Kist Inc.(Golden State Bancorp Inc.(Golden West Financial Corporation(Goldman Sachs Group Inc.(Goodrich Corporation(The Goodyear Tire & Rubber Company(Granite Construction Incorporated(Graybar Electric Company Inc.(Great Lakes Chemical Corporation(Great Plains Energy Inc.(GreenPoint Financial Corp.(Greif Bros. Corporation(Grey Global Group Inc.(Group 1 Automotive Inc.(Guidant Corporation(H&R Block Inc.(H.B. Fuller Company(H.J. Heinz Company(Halliburton Co.(Harley-Davidson Inc.(Harman International Industries Inc.(Harrah's Entertainment Inc.(Harris Corp.(Harsco Corp.(Hartford Financial Services Group Inc.(Hasbro Inc.(Hawaiian Electric Industries Inc.(HCA Inc.(Health Management Associates Inc.(Health Net Inc.(Healthsouth Corp(Henry Schein Inc.(Hercules Inc.(Herman Miller Inc.(Hershey Foods Corp.(Hewlett-Packard Company(Hibernia Corp.(Hillenbrand Industries Inc.(Hilton Hotels Corp.(Hollywood Entertainment Corp.(Home Depot Inc.(Hon Industries Inc.(Honeywell International Inc.(Hormel Foods Corp.(Host Marriott Corp.(Household International Corp.(Hovnanian Enterprises Inc.(Hub Group Inc.(Hubbell Inc.(Hughes Supply Inc.(Humana Inc.(Huntington Bancshares Inc.(Idacorp Inc.(IDT Corporation(IKON Office Solutions Inc.(Illinois Tool Works Inc.(IMC Global Inc.(Imperial Sugar Company(IMS Health Inc.(Ingles Market Inc(Ingram Micro Inc.(Insight Enterprises Inc.(Integrated Electrical Services Inc.(Intel Corporation(International Paper Co.(Interpublic Group of Companies Inc.(Interstate Bakeries Corporation(International Business Machines Corp.(International Flavors & Fragrances Inc.(International Multifoods Corporation(Intuit Inc.(IT Group Inc.(ITT Industries Inc.(Ivax Corp.(J.B. Hunt Transport Services Inc.(J.C. Penny Co.(J.P. Morgan Chase & Co.(Jabil Circuit Inc.(Jack In The Box Inc.(Jacobs Engineering Group Inc.(JDS Uniphase Corp.(Jefferson-Pilot Co.(John Hancock Financial Services Inc.(Johnson & Johnson(Johnson Controls Inc.(Jones Apparel Group Inc.(KB Home(Kellogg Company(Kellwood Company(Kelly Services Inc.(Kemet Corp.(Kennametal Inc.(Kerr-McGee Corporation(KeyCorp(KeySpan Corp.(Kimball International Inc.(Kimberly-Clark Corporation(Kindred Healthcare Inc.(KLA-Tencor Corporation(K-Mart Corp.(Knight-Ridder Inc.(Kohl's Corp.(KPMG Consulting Inc.(Kroger Co.(L-3 Communications Holdings Inc.(Laboratory Corporation of America Holdings(Lam Research Corporation(LandAmerica Financial Group Inc.(Lands' End Inc.(Landstar System Inc.(La-Z-Boy Inc.(Lear Corporation(Legg Mason Inc.(Leggett & Platt Inc.(Lehman Brothers Holdings Inc.(Lennar Corporation(Lennox International Inc.(Level 3 Communications Inc.(Levi Strauss & Co.(Lexmark International Inc.(Limited Inc.(Lincoln National Corporation(Linens 'n Things Inc.(Lithia Motors Inc.(Liz Claiborne Inc.(Lockheed Martin Corporation(Loews Corporation(Longs Drug Stores Corporation(Louisiana-Pacific Corporation(Lowe's Companies Inc.(LSI Logic Corporation(The LTV Corporation(The Lubrizol Corporation(Lucent Technologies Inc.(Lyondell Chemical Company(M & T Bank Corporation(Magellan Health Services Inc.(Mail-Well Inc.(Mandalay Resort Group(Manor Care Inc.(Manpower Inc.(Marathon Oil Corporation(Mariner Health Care Inc.(Markel Corporation(Marriott International Inc.(Marsh & McLennan Companies Inc.(Marsh Supermarkets Inc.(Marshall & Ilsley Corporation(Martin Marietta Materials Inc.(Masco Corporation(Massey Energy Company(MasTec Inc.(Mattel Inc.(Maxim Integrated Products Inc.(Maxtor Corporation(Maxxam Inc.(The May Department Stores Company(Maytag Corporation(MBNA Corporation(McCormick & Company Incorporated(McDonald's Corporation(The McGraw-Hill Companies Inc.(McKesson Corporation(McLeodUSA Incorporated(M.D.C. Holdings Inc.(MDU Resources Group Inc.(MeadWestvaco Corporation(Medtronic Inc.(Mellon Financial Corporation(The Men's Wearhouse Inc.(Merck & Co., Inc.(Mercury General Corporation(Merrill Lynch & Co. Inc.(Metaldyne Corporation(Metals USA Inc.(MetLife Inc.(Metris Companies Inc(MGIC Investment Corporation(MGM Mirage(Michaels Stores Inc.(Micron Technology Inc.(Microsoft Corporation(Milacron Inc.(Millennium Chemicals Inc.(Mirant Corporation(Mohawk Industries Inc.(Molex Incorporated(The MONY Group Inc.(Morgan Stanley Dean Witter & Co.(Motorola Inc.(MPS Group Inc.(Murphy Oil Corporation(Nabors Industries Inc(Nacco Industries Inc(Nash Finch Company(National City Corp.(National Commerce Financial Corporation(National Fuel Gas Company(National Oilwell Inc(National Rural Utilities Cooperative Finance Corporation(National Semiconductor Corporation(National Service Industries Inc(Navistar International Corporation(NCR Corporation(The Neiman Marcus Group Inc.(New Jersey Resources Corporation(New York Times Company(Newell Rubbermaid Inc(Newmont Mining Corporation(Nextel Communications Inc(Nicor Inc(Nike Inc(NiSource Inc(Noble Energy Inc(Nordstrom Inc(Norfolk Southern Corporation(Nortek Inc(North Fork Bancorporation Inc(Northeast Utilities System(Northern Trust Corporation(Northrop Grumman Corporation(NorthWestern Corporation(Novellus Systems Inc(NSTAR(NTL Incorporated(Nucor Corp(Nvidia Corp(NVR Inc(Northwest Airlines Corp(Occidental Petroleum Corp(Ocean Energy Inc(Office Depot Inc.(OfficeMax Inc(OGE Energy Corp(Oglethorpe Power Corp.(Ohio Casualty Corp.(Old Republic International Corp.(Olin Corp.(OM Group Inc(Omnicare Inc(Omnicom Group(On Semiconductor Corp(ONEOK Inc(Oracle Corp(Oshkosh Truck Corp(Outback Steakhouse Inc.(Owens & Minor Inc.(Owens Corning(Owens-Illinois Inc(Oxford Health Plans Inc(Paccar Inc(PacifiCare Health Systems Inc(Packaging Corp. of America(Pactiv Corp(Pall Corp(Pantry Inc(Park Place Entertainment Corp(Parker Hannifin Corp.(Pathmark Stores Inc.(Paychex Inc(Payless Shoesource Inc(Penn Traffic Co.(Pennzoil-Quaker State Company(Pentair Inc(Peoples Energy Corp.(PeopleSoft Inc(Pep Boys Manny, Moe & Jack(Potomac Electric Power Co.(Pepsi Bottling Group Inc.(PepsiAmericas Inc.(PepsiCo Inc.(Performance Food Group Co.(Perini Corp(PerkinElmer Inc(Perot Systems Corp(Petco Animal Supplies Inc.(Peter Kiewit Sons', Inc.(PETsMART Inc(Pfizer Inc(Pacific Gas & Electric Corp.(Pharmacia Corp(Phar Mor Inc.(Phelps Dodge Corp.(Philip Morris Companies Inc.(Phillips Petroleum Co(Phillips Van Heusen Corp.(Phoenix Companies Inc(Pier 1 Imports Inc.(Pilgrim's Pride Corporation(Pinnacle West Capital Corp(Pioneer-Standard Electronics Inc.(Pitney Bowes Inc.(Pittston Brinks Group(Plains All American Pipeline LP(PNC Financial Services Group Inc.(PNM Resources Inc(Polaris Industries Inc.(Polo Ralph Lauren Corp(PolyOne Corp(Popular Inc(Potlatch Corp(PPG Industries Inc(PPL Corp(Praxair Inc(Precision Castparts Corp(Premcor Inc.(Pride International Inc(Primedia Inc(Principal Financial Group Inc.(Procter & Gamble Co.(Pro-Fac Cooperative Inc.(Progress Energy Inc(Progressive Corporation(Protective Life Corp(Provident Financial Group(Providian Financial Corp.(Prudential Financial Inc.(PSS World Medical Inc(Public Service Enterprise Group Inc.(Publix Super Markets Inc.(Puget Energy Inc.(Pulte Homes Inc(Qualcomm Inc(Quanta Services Inc.(Quantum Corp(Quest Diagnostics Inc.(Questar Corp(Quintiles Transnational(Qwest Communications Intl Inc(R.J. Reynolds Tobacco Company(R.R. Donnelley & Sons Company(Radio Shack Corporation(Raymond James Financial Inc.(Raytheon Company(Reader's Digest Association Inc.(Reebok International Ltd.(Regions Financial Corp.(Regis Corporation(Reliance Steel & Aluminum Co.(Reliant Energy Inc.(Rent A Center Inc(Republic Services Inc(Revlon Inc(RGS Energy Group Inc(Rite Aid Corp(Riverwood Holding Inc.(RoadwayCorp(Robert Half International Inc.(Rock-Tenn Co(Rockwell Automation Inc(Rockwell Collins Inc(Rohm & Haas Co.(Ross Stores Inc(RPM Inc.(Ruddick Corp(Ryder System Inc(Ryerson Tull Inc(Ryland Group Inc.(Sabre Holdings Corp(Safeco Corp(Safeguard Scientifics Inc.(Safeway Inc(Saks Inc(Sanmina-SCI Inc(Sara Lee Corp(SBC Communications Inc(Scana Corp.(Schering-Plough Corp(Scholastic Corp(SCI Systems Onc.(Science Applications Intl. Inc.(Scientific-Atlanta Inc(Scotts Company(Seaboard Corp(Sealed Air Corp(Sears Roebuck & Co(Sempra Energy(Sequa Corp(Service Corp. International(ServiceMaster Co(Shaw Group Inc(Sherwin-Williams Company(Shopko Stores Inc(Siebel Systems Inc(Sierra Health Services Inc(Sierra Pacific Resources(Silgan Holdings Inc.(Silicon Graphics Inc(Simon Property Group Inc(SLM Corporation(Smith International Inc(Smithfield Foods Inc(Smurfit-Stone Container Corp(Snap-On Inc(Solectron Corp(Solutia Inc(Sonic Automotive Inc.(Sonoco Products Co.(Southern Company(Southern Union Company(SouthTrust Corp.(Southwest Airlines Co(Southwest Gas Corp(Sovereign Bancorp Inc.(Spartan Stores Inc(Spherion Corp(Sports Authority Inc(Sprint Corp.(SPX Corp(St. Jude Medical Inc(St. Paul Cos.(Staff Leasing Inc.(StanCorp Financial Group Inc(Standard Pacific Corp.(Stanley Works(Staples Inc(Starbucks Corp(Starwood Hotels & Resorts Worldwide Inc(State Street Corp.(Stater Bros. Holdings Inc.(Steelcase Inc(Stein Mart Inc(Stewart & Stevenson Services Inc(Stewart Information Services Corp(Stilwell Financial Inc(Storage Technology Corporation(Stryker Corp(Sun Healthcare Group Inc.(Sun Microsystems Inc.(SunGard Data Systems Inc.(Sunoco Inc.(SunTrust Banks Inc(Supervalu Inc(Swift Transportation, Co., Inc(Symbol Technologies Inc(Synovus Financial Corp.(Sysco Corp(Systemax Inc.(Target Corp.(Tech Data Corporation(TECO Energy Inc(Tecumseh Products Company(Tektronix Inc(Teleflex Incorporated(Telephone & Data Systems Inc(Tellabs Inc.(Temple-Inland Inc(Tenet Healthcare Corporation(Tenneco Automotive Inc.(Teradyne Inc(Terex Corp(Tesoro Petroleum Corp.(Texas Industries Inc.(Texas Instruments Incorporated(Textron Inc(Thermo Electron Corporation(Thomas & Betts Corporation(Tiffany & Co(Timken Company(TJX Companies Inc(TMP Worldwide Inc(Toll Brothers Inc(Torchmark Corporation(Toro Company(Tower Automotive Inc.(Toys 'R' Us Inc(Trans World Entertainment Corp.(TransMontaigne Inc(Transocean Inc(TravelCenters of America Inc.(Triad Hospitals Inc(Tribune Company(Trigon Healthcare Inc.(Trinity Industries Inc(Trump Hotels & Casino Resorts Inc.(TruServ Corporation(TRW Inc(TXU Corp(Tyson Foods Inc(U.S. Bancorp(U.S. Industries Inc.(UAL Corporation(UGI Corporation(Unified Western Grocers Inc(Union Pacific Corporation(Union Planters Corp(Unisource Energy Corp(Unisys Corporation(United Auto Group Inc(United Defense Industries Inc.(United Parcel Service Inc(United Rentals Inc(United Stationers Inc(United Technologies Corporation(UnitedHealth Group Incorporated(Unitrin Inc(Universal Corporation(Universal Forest Products Inc(Universal Health Services Inc(Unocal Corporation(Unova Inc(UnumProvident Corporation(URS Corporation(US Airways Group Inc(US Oncology Inc(USA Interactive(USFreighways Corporation(USG Corporation(UST Inc(Valero Energy Corporation(Valspar Corporation(Value City Department Stores Inc(Varco International Inc(Vectren Corporation(Veritas Software Corporation(Verizon Communications Inc(VF Corporation(Viacom Inc(Viad Corp(Viasystems Group Inc(Vishay Intertechnology Inc(Visteon Corporation(Volt Information Sciences Inc(Vulcan Materials Company(W.R. Berkley Corporation(W.R. Grace & Co(W.W. Grainger Inc(Wachovia Corporation(Wakenhut Corporation(Walgreen Co(Wallace Computer Services Inc(Wal-Mart Stores Inc(Walt Disney Co(Walter Industries Inc(Washington Mutual Inc(Washington Post Co.(Waste Management Inc(Watsco Inc(Weatherford International Inc(Weis Markets Inc.(Wellpoint Health Networks Inc(Wells Fargo & Company(Wendy's International Inc(Werner Enterprises Inc(WESCO International Inc(Western Digital Inc(Western Gas Resources Inc(WestPoint Stevens Inc(Weyerhauser Company(WGL Holdings Inc(Whirlpool Corporation(Whole Foods Market Inc(Willamette Industries Inc.(Williams Companies Inc(Williams Sonoma Inc(Winn Dixie Stores Inc(Wisconsin Energy Corporation(Wm Wrigley Jr Company(World Fuel Services Corporation(WorldCom Inc(Worthington Industries Inc(WPS Resources Corporation(Wyeth(Wyndham International Inc(Xcel Energy Inc(Xerox Corp(Xilinx Inc(XO Communications Inc(Yellow Corporation(York International Corp(Yum Brands Inc.(Zale Corporation(Zions Bancorporation".split("("),
 			fileExtension: {
 				raster: [
 					"bmp",
@@ -6900,8 +6770,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 						"Etc/GMT+11",
 						"Pacific/Midway",
 						"Pacific/Niue",
-						"Pac'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ific/Pago_Pago"
+						"Pacific/Pago_Pago"
 					]
 				},
 				{
@@ -6996,8 +6865,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					abbr: "MDT",
 					offset: -6,
 					isdst: !0,
-					text: "(UTC'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('-07:00) Mountain Time (US & Canada)",
+					text: "(UTC-07:00) Mountain Time (US & Canada)",
 					utc: [
 						"America/Boise",
 						"America/Cambridge_Bay",
@@ -7081,8 +6949,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 						"America/Cayman",
 						"America/Coral_Harbour",
 						"America/Eirunepe",
-						"America/Gua'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('yaquil",
+						"America/Guayaquil",
 						"America/Jamaica",
 						"America/Lima",
 						"America/Panama",
@@ -7172,8 +7039,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					abbr: "SWST",
 					offset: -4,
 					isdst: !1,
-					t'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ext: "(UTC-04:00) Georgetown, La Paz, Manaus, San Juan",
+					text: "(UTC-04:00) Georgetown, La Paz, Manaus, San Juan",
 					utc: /* @__PURE__ */ "America/Anguilla.America/Antigua.America/Aruba.America/Barbados.America/Blanc-Sablon.America/Boa_Vista.America/Curacao.America/Dominica.America/Grand_Turk.America/Grenada.America/Guadeloupe.America/Guyana.America/Kralendijk.America/La_Paz.America/Lower_Princes.America/Manaus.America/Marigot.America/Martinique.America/Montserrat.America/Port_of_Spain.America/Porto_Velho.America/Puerto_Rico.America/Santo_Domingo.America/St_Barthelemy.America/St_Kitts.America/St_Lucia.America/St_Thomas.America/St_Vincent.America/Tortola.Etc/GMT+4".split(".")
 				},
 				{
@@ -7232,8 +7098,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 						"America/Belem",
 						"America/Cayenne",
 						"America/Fortaleza",
-						"America/Maceio"'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(',
+						"America/Maceio",
 						"America/Paramaribo",
 						"America/Recife",
 						"America/Santarem",
@@ -7327,8 +7192,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					utc: [
 						"Europe/Isle_of_Man",
 						"Europe/Guernsey",
-						"Europe'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('/Jersey",
+						"Europe/Jersey",
 						"Europe/London"
 					]
 				},
@@ -7420,8 +7284,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 						"Europe/Bratislava",
 						"Europe/Budapest",
 						"Europe/Ljubljana",
-	'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('					"Europe/Podgorica",
+						"Europe/Podgorica",
 						"Europe/Prague",
 						"Europe/Tirane"
 					]
@@ -7518,8 +7381,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					abbr: "SDT",
 					offset: 3,
 					isdst: !0,
-			'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('		text: "(UTC+02:00) Damascus",
+					text: "(UTC+02:00) Damascus",
 					utc: ["Asia/Damascus"]
 				},
 				{
@@ -7613,8 +7475,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					abbr: "JST",
 					offset: 3,
 					isdst: !1,
-					text'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(': "(UTC+03:00) Amman",
+					text: "(UTC+03:00) Amman",
 					utc: ["Asia/Amman"]
 				},
 				{
@@ -7711,8 +7572,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					isdst: !1,
 					text: "(UTC+04:00) Abu Dhabi, Muscat",
 					utc: [
-						"As'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ia/Dubai",
+						"Asia/Dubai",
 						"Asia/Muscat",
 						"Etc/GMT-4"
 					]
@@ -7810,8 +7670,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					abbr: "SLST",
 					offset: 5.5,
 					isdst: !1,
-					text: "(UTC+05:30) Sr'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('i Jayawardenepura",
+					text: "(UTC+05:30) Sri Jayawardenepura",
 					utc: ["Asia/Colombo"]
 				},
 				{
@@ -7906,8 +7765,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					utc: ["Asia/Krasnoyarsk"]
 				},
 				{
-					name: "Singapore Standard Time"'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(',
+					name: "Singapore Standard Time",
 					abbr: "MPST",
 					offset: 8,
 					isdst: !1,
@@ -8000,8 +7858,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					text: "(UTC+10:00) Brisbane",
 					utc: ["Australia/Brisbane", "Australia/Lindeman"]
 				},
-			'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('	{
+				{
 					name: "AUS Eastern Standard Time",
 					abbr: "AEST",
 					offset: 10,
@@ -8092,8 +7949,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 						"Pacific/Kwajalein",
 						"Pacific/Majuro",
 						"Pacific/Nauru",
-						"Pacif'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ic/Tarawa",
+						"Pacific/Tarawa",
 						"Pacific/Wake",
 						"Pacific/Wallis"
 					]
@@ -8132,7 +7988,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					abbr: "TST",
 					offset: 13,
 					isdst: !1,
-					text: "(UTC+13:00) Nuku''alofa",
+					text: "(UTC+13:00) Nuku'alofa",
 					utc: [
 						"Etc/GMT-13",
 						"Pacific/Enderbury",
@@ -8149,23 +8005,15 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					utc: ["Pacific/Apia"]
 				}
 			],
-			profession: /* @__PURE__ */ "Airline Pilot,Academic Team,Accountant,Account Executive,Actor,Actuary,Acquisition Analyst,Administrative Asst.,Administrative Analyst,Administrator,Advertising Director,Aerospace Engineer,Agent,Agricultural Inspector,Agricultural Scientist,Air Traffic Controller,Animal Trainer,Anthropologist,Appraiser,Architect,Art Director,Artist,Astronomer,Athletic Coach,Auditor,Author,Baker,Banker,Bankruptcy Attorney,Benefits Manager,Biologist,Bio-feedback Specialist,Biomedical Engineer,Biotechnical Researcher,Broadcaster,Broker,Building Manager,Building Contractor,Building Inspector,Business Analyst,Business Planner,Business Manager,Buyer,Call Center Manager,Career Counselor,Cash Manager,Ceramic Engineer,Chief Executive Officer,Chief Operation Officer,Chef,Chemical Engineer,Chemist,Child Care Manager,Chief Medical Officer,Chiropractor,Cinematographer,City Housing Manager,City Manager,Civil E'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ngineer,Claims Manager,Clinical Research Assistant,Collections Manager,Compliance Manager,Comptroller,Computer Manager,Commercial Artist,Communications Affairs Director,Communications Director,Communications Engineer,Compensation Analyst,Computer Programmer,Computer Ops. Manager,Computer Engineer,Computer Operator,Computer Graphics Specialist,Construction Engineer,Construction Manager,Consultant,Consumer Relations Manager,Contract Administrator,Copyright Attorney,Copywriter,Corporate Planner,Corrections Officer,Cosmetologist,Credit Analyst,Cruise Director,Chief Information Officer,Chief Technology Officer,Customer Service Manager,Cryptologist,Dancer,Data Security Manager,Database Manager,Day Care Instructor,Dentist,Designer,Design Engineer,Desktop Publisher,Developer,Development Officer,Diamond Merchant,Dietitian,Direct Marketer,Director,Distribution Manager,Diversity Manager,Economist,EEO Compliance Manager,Editor,Education Adminator,Electrical Engineer,Electro Optical Engineer,Electronics Engineer,Embassy Management,Employment Agent,Engineer Technician,Entrepreneur,Environmental Analyst,Environmental Attorney,Environmental Engineer,Environmental Specialist,Escrow Officer,Estimator,Executive Assistant,Executive Director,Executive Recruiter,Facilities Manager,Family Counselor,Fashion Events Manager,Fashion Merchandiser,Fast Food Manager,Film Producer,Film Production Assistant,Financial Analyst,Financial Planner,Financier,Fine Artist,Wildlife Specialist,Fitness Consultant,Flight Attendant,Flight Engineer,Floral Designer,Food & Beverage Director,Food Service Manager,Forestry Technician,Franchise Management,Franchise Sales,Fraud Investigator,Freelance Writer,Fund Raiser,General Manager,Geologist,General Counsel,Geriatric Specialist,Gerontologist,Glamour Photographer,Golf Club Manager,Gourmet Chef,Graphic Designer,Grounds Keeper,Hazardous Waste Manager,Health Care Manager,Health Therapist,Health Service Administrator,Hearing Officer,Home Economist,Horticulturist,Hospita'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('l Administrator,Hotel Manager,Human Resources Manager,Importer,Industrial Designer,Industrial Engineer,Information Director,Inside Sales,Insurance Adjuster,Interior Decorator,Internal Controls Director,International Acct.,International Courier,International Lawyer,Interpreter,Investigator,Investment Banker,Investment Manager,IT Architect,IT Project Manager,IT Systems Analyst,Jeweler,Joint Venture Manager,Journalist,Labor Negotiator,Labor Organizer,Labor Relations Manager,Lab Services Director,Lab Technician,Land Developer,Landscape Architect,Law Enforcement Officer,Lawyer,Lead Software Engineer,Lead Software Test Engineer,Leasing Manager,Legal Secretary,Library Manager,Litigation Attorney,Loan Officer,Lobbyist,Logistics Manager,Maintenance Manager,Management Consultant,Managed Care Director,Managing Partner,Manufacturing Director,Manpower Planner,Marine Biologist,Market Res. Analyst,Marketing Director,Materials Manager,Mathematician,Membership Chairman,Mechanic,Mechanical Engineer,Media Buyer,Medical Investor,Medical Secretary,Medical Technician,Mental Health Counselor,Merchandiser,Metallurgical Engineering,Meteorologist,Microbiologist,MIS Manager,Motion Picture Director,Multimedia Director,Musician,Network Administrator,Network Specialist,Network Operator,New Product Manager,Novelist,Nuclear Engineer,Nuclear Specialist,Nutritionist,Nursing Administrator,Occupational Therapist,Oceanographer,Office Manager,Operations Manager,Operations Research Director,Optical Technician,Optometrist,Organizational Development Manager,Outplacement Specialist,Paralegal,Park Ranger,Patent Attorney,Payroll Specialist,Personnel Specialist,Petroleum Engineer,Pharmacist,Photographer,Physical Therapist,Physician,Physician Assistant,Physicist,Planning Director,Podiatrist,Political Analyst,Political Scientist,Politician,Portfolio Manager,Preschool Management,Preschool Teacher,Principal,Private Banker,Private Investigator,Probation Officer,Process Engineer,Producer,Product Manager,Product Engi'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('neer,Production Engineer,Production Planner,Professional Athlete,Professional Coach,Professor,Project Engineer,Project Manager,Program Manager,Property Manager,Public Administrator,Public Safety Director,PR Specialist,Publisher,Purchasing Agent,Publishing Director,Quality Assurance Specialist,Quality Control Engineer,Quality Control Inspector,Radiology Manager,Railroad Engineer,Real Estate Broker,Recreational Director,Recruiter,Redevelopment Specialist,Regulatory Affairs Manager,Registered Nurse,Rehabilitation Counselor,Relocation Manager,Reporter,Research Specialist,Restaurant Manager,Retail Store Manager,Risk Analyst,Safety Engineer,Sales Engineer,Sales Trainer,Sales Promotion Manager,Sales Representative,Sales Manager,Service Manager,Sanitation Engineer,Scientific Programmer,Scientific Writer,Securities Analyst,Security Consultant,Security Director,Seminar Presenter,Ship''s Officer,Singer,Social Director,Social Program Planner,Social Research,Social Scientist,Social Worker,Sociologist,Software Developer,Software Engineer,Software Test Engineer,Soil Scientist,Special Events Manager,Special Education Teacher,Special Projects Director,Speech Pathologist,Speech Writer,Sports Event Manager,Statistician,Store Manager,Strategic Alliance Director,Strategic Planning Director,Stress Reduction Specialist,Stockbroker,Surveyor,Structural Engineer,Superintendent,Supply Chain Director,System Engineer,Systems Analyst,Systems Programmer,System Administrator,Tax Specialist,Teacher,Technical Support Specialist,Technical Illustrator,Technical Writer,Technology Director,Telecom Analyst,Telemarketer,Theatrical Director,Title Examiner,Tour Escort,Tour Guide Director,Traffic Manager,Trainer Translator,Transportation Manager,Travel Agent,Treasurer,TV Programmer,Underwriter,Union Representative,University Administrator,University Dean,Urban Planner,Veterinarian,Vendor Relations Director,Viticulturist,Warehouse Manager".split(","),
+			profession: /* @__PURE__ */ "Airline Pilot,Academic Team,Accountant,Account Executive,Actor,Actuary,Acquisition Analyst,Administrative Asst.,Administrative Analyst,Administrator,Advertising Director,Aerospace Engineer,Agent,Agricultural Inspector,Agricultural Scientist,Air Traffic Controller,Animal Trainer,Anthropologist,Appraiser,Architect,Art Director,Artist,Astronomer,Athletic Coach,Auditor,Author,Baker,Banker,Bankruptcy Attorney,Benefits Manager,Biologist,Bio-feedback Specialist,Biomedical Engineer,Biotechnical Researcher,Broadcaster,Broker,Building Manager,Building Contractor,Building Inspector,Business Analyst,Business Planner,Business Manager,Buyer,Call Center Manager,Career Counselor,Cash Manager,Ceramic Engineer,Chief Executive Officer,Chief Operation Officer,Chef,Chemical Engineer,Chemist,Child Care Manager,Chief Medical Officer,Chiropractor,Cinematographer,City Housing Manager,City Manager,Civil Engineer,Claims Manager,Clinical Research Assistant,Collections Manager,Compliance Manager,Comptroller,Computer Manager,Commercial Artist,Communications Affairs Director,Communications Director,Communications Engineer,Compensation Analyst,Computer Programmer,Computer Ops. Manager,Computer Engineer,Computer Operator,Computer Graphics Specialist,Construction Engineer,Construction Manager,Consultant,Consumer Relations Manager,Contract Administrator,Copyright Attorney,Copywriter,Corporate Planner,Corrections Officer,Cosmetologist,Credit Analyst,Cruise Director,Chief Information Officer,Chief Technology Officer,Customer Service Manager,Cryptologist,Dancer,Data Security Manager,Database Manager,Day Care Instructor,Dentist,Designer,Design Engineer,Desktop Publisher,Developer,Development Officer,Diamond Merchant,Dietitian,Direct Marketer,Director,Distribution Manager,Diversity Manager,Economist,EEO Compliance Manager,Editor,Education Adminator,Electrical Engineer,Electro Optical Engineer,Electronics Engineer,Embassy Management,Employment Agent,Engineer Technician,Entrepreneur,Environmental Analyst,Environmental Attorney,Environmental Engineer,Environmental Specialist,Escrow Officer,Estimator,Executive Assistant,Executive Director,Executive Recruiter,Facilities Manager,Family Counselor,Fashion Events Manager,Fashion Merchandiser,Fast Food Manager,Film Producer,Film Production Assistant,Financial Analyst,Financial Planner,Financier,Fine Artist,Wildlife Specialist,Fitness Consultant,Flight Attendant,Flight Engineer,Floral Designer,Food & Beverage Director,Food Service Manager,Forestry Technician,Franchise Management,Franchise Sales,Fraud Investigator,Freelance Writer,Fund Raiser,General Manager,Geologist,General Counsel,Geriatric Specialist,Gerontologist,Glamour Photographer,Golf Club Manager,Gourmet Chef,Graphic Designer,Grounds Keeper,Hazardous Waste Manager,Health Care Manager,Health Therapist,Health Service Administrator,Hearing Officer,Home Economist,Horticulturist,Hospital Administrator,Hotel Manager,Human Resources Manager,Importer,Industrial Designer,Industrial Engineer,Information Director,Inside Sales,Insurance Adjuster,Interior Decorator,Internal Controls Director,International Acct.,International Courier,International Lawyer,Interpreter,Investigator,Investment Banker,Investment Manager,IT Architect,IT Project Manager,IT Systems Analyst,Jeweler,Joint Venture Manager,Journalist,Labor Negotiator,Labor Organizer,Labor Relations Manager,Lab Services Director,Lab Technician,Land Developer,Landscape Architect,Law Enforcement Officer,Lawyer,Lead Software Engineer,Lead Software Test Engineer,Leasing Manager,Legal Secretary,Library Manager,Litigation Attorney,Loan Officer,Lobbyist,Logistics Manager,Maintenance Manager,Management Consultant,Managed Care Director,Managing Partner,Manufacturing Director,Manpower Planner,Marine Biologist,Market Res. Analyst,Marketing Director,Materials Manager,Mathematician,Membership Chairman,Mechanic,Mechanical Engineer,Media Buyer,Medical Investor,Medical Secretary,Medical Technician,Mental Health Counselor,Merchandiser,Metallurgical Engineering,Meteorologist,Microbiologist,MIS Manager,Motion Picture Director,Multimedia Director,Musician,Network Administrator,Network Specialist,Network Operator,New Product Manager,Novelist,Nuclear Engineer,Nuclear Specialist,Nutritionist,Nursing Administrator,Occupational Therapist,Oceanographer,Office Manager,Operations Manager,Operations Research Director,Optical Technician,Optometrist,Organizational Development Manager,Outplacement Specialist,Paralegal,Park Ranger,Patent Attorney,Payroll Specialist,Personnel Specialist,Petroleum Engineer,Pharmacist,Photographer,Physical Therapist,Physician,Physician Assistant,Physicist,Planning Director,Podiatrist,Political Analyst,Political Scientist,Politician,Portfolio Manager,Preschool Management,Preschool Teacher,Principal,Private Banker,Private Investigator,Probation Officer,Process Engineer,Producer,Product Manager,Product Engineer,Production Engineer,Production Planner,Professional Athlete,Professional Coach,Professor,Project Engineer,Project Manager,Program Manager,Property Manager,Public Administrator,Public Safety Director,PR Specialist,Publisher,Purchasing Agent,Publishing Director,Quality Assurance Specialist,Quality Control Engineer,Quality Control Inspector,Radiology Manager,Railroad Engineer,Real Estate Broker,Recreational Director,Recruiter,Redevelopment Specialist,Regulatory Affairs Manager,Registered Nurse,Rehabilitation Counselor,Relocation Manager,Reporter,Research Specialist,Restaurant Manager,Retail Store Manager,Risk Analyst,Safety Engineer,Sales Engineer,Sales Trainer,Sales Promotion Manager,Sales Representative,Sales Manager,Service Manager,Sanitation Engineer,Scientific Programmer,Scientific Writer,Securities Analyst,Security Consultant,Security Director,Seminar Presenter,Ship's Officer,Singer,Social Director,Social Program Planner,Social Research,Social Scientist,Social Worker,Sociologist,Software Developer,Software Engineer,Software Test Engineer,Soil Scientist,Special Events Manager,Special Education Teacher,Special Projects Director,Speech Pathologist,Speech Writer,Sports Event Manager,Statistician,Store Manager,Strategic Alliance Director,Strategic Planning Director,Stress Reduction Specialist,Stockbroker,Surveyor,Structural Engineer,Superintendent,Supply Chain Director,System Engineer,Systems Analyst,Systems Programmer,System Administrator,Tax Specialist,Teacher,Technical Support Specialist,Technical Illustrator,Technical Writer,Technology Director,Telecom Analyst,Telemarketer,Theatrical Director,Title Examiner,Tour Escort,Tour Guide Director,Traffic Manager,Trainer Translator,Transportation Manager,Travel Agent,Treasurer,TV Programmer,Underwriter,Union Representative,University Administrator,University Dean,Urban Planner,Veterinarian,Vendor Relations Director,Viticulturist,Warehouse Manager".split(","),
 			animals: {
-				ocean: /* @__PURE__ */ "Acantharea.Anemo'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ne.Angelfish King.Ahi Tuna.Albacore.American Oyster.Anchovy.Armored Snail.Arctic Char.Atlantic Bluefin Tuna.Atlantic Cod.Atlantic Goliath Grouper.Atlantic Trumpetfish.Atlantic Wolffish.Baleen Whale.Banded Butterflyfish.Banded Coral Shrimp.Banded Sea Krait.Barnacle.Barndoor Skate.Barracuda.Basking Shark.Bass.Beluga Whale.Bluebanded Goby.Bluehead Wrasse.Bluefish.Bluestreak Cleaner-Wrasse.Blue Marlin.Blue Shark.Blue Spiny Lobster.Blue Tang.Blue Whale.Broadclub Cuttlefish.Bull Shark.Chambered Nautilus.Chilean Basket Star.Chilean Jack Mackerel.Chinook Salmon.Christmas Tree Worm.Clam.Clown Anemonefish.Clown Triggerfish.Cod.Coelacanth.Cockscomb Cup Coral.Common Fangtooth.Conch.Cookiecutter Shark.Copepod.Coral.Corydoras.Cownose Ray.Crab.Crown-of-Thorns Starfish.Cushion Star.Cuttlefish.California Sea Otters.Dolphin.Dolphinfish.Dory.Devil Fish.Dugong.Dumbo Octopus.Dungeness Crab.Eccentric Sand Dollar.Edible Sea Cucumber.Eel.Elephant Seal.Elkhorn Coral.Emperor Shrimp.Estuarine Crocodile.Fathead Sculpin.Fiddler Crab.Fin Whale.Flameback.Flamingo Tongue Snail.Flashlight Fish.Flatback Turtle.Flatfish.Flying Fish.Flounder.Fluke.French Angelfish.Frilled Shark.Fugu (also called Pufferfish).Gar.Geoduck.Giant Barrel Sponge.Giant Caribbean Sea Anemone.Giant Clam.Giant Isopod.Giant Kingfish.Giant Oarfish.Giant Pacific Octopus.Giant Pyrosome.Giant Sea Star.Giant Squid.Glowing Sucker Octopus.Giant Tube Worm.Goblin Shark.Goosefish.Great White Shark.Greenland Shark.Grey Atlantic Seal.Grouper.Grunion.Guineafowl Puffer.Haddock.Hake.Halibut.Hammerhead Shark.Hapuka.Harbor Porpoise.Harbor Seal.Hatchetfish.Hawaiian Monk Seal.Hawksbill Turtle.Hector''s Dolphin.Hermit Crab.Herring.Hoki.Horn Shark.Horseshoe Crab.Humpback Anglerfish.Humpback Whale.Icefish.Imperator Angelfish.Irukandji Jellyfish.Isopod.Ivory Bush Coral.Japanese Spider Crab.Jellyfish.John Dory.Juan Fernandez Fur Seal.Killer Whale.Kiwa Hirsuta.Krill.Lagoon Triggerfish.Lamprey.Leafy Seadragon.Leopard Seal.Limpet.Ling.Lionfish.Lions Mane J'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ellyfish.Lobe Coral.Lobster.Loggerhead Turtle.Longnose Sawshark.Longsnout Seahorse.Lophelia Coral.Marrus Orthocanna.Manatee.Manta Ray.Marlin.Megamouth Shark.Mexican Lookdown.Mimic Octopus.Moon Jelly.Mollusk.Monkfish.Moray Eel.Mullet.Mussel.Megaladon.Napoleon Wrasse.Nassau Grouper.Narwhal.Nautilus.Needlefish.Northern Seahorse.North Atlantic Right Whale.Northern Red Snapper.Norway Lobster.Nudibranch.Nurse Shark.Oarfish.Ocean Sunfish.Oceanic Whitetip Shark.Octopus.Olive Sea Snake.Orange Roughy.Ostracod.Otter.Oyster.Pacific Angelshark.Pacific Blackdragon.Pacific Halibut.Pacific Sardine.Pacific Sea Nettle Jellyfish.Pacific White Sided Dolphin.Pantropical Spotted Dolphin.Patagonian Toothfish.Peacock Mantis Shrimp.Pelagic Thresher Shark.Penguin.Peruvian Anchoveta.Pilchard.Pink Salmon.Pinniped.Plankton.Porpoise.Polar Bear.Portuguese Man o'' War.Pycnogonid Sea Spider.Quahog.Queen Angelfish.Queen Conch.Queen Parrotfish.Queensland Grouper.Ragfish.Ratfish.Rattail Fish.Ray.Red Drum.Red King Crab.Ringed Seal.Risso''s Dolphin.Ross Seals.Sablefish.Salmon.Sand Dollar.Sandbar Shark.Sawfish.Sarcastic Fringehead.Scalloped Hammerhead Shark.Seahorse.Sea Cucumber.Sea Lion.Sea Urchin.Seal.Shark.Shortfin Mako Shark.Shovelnose Guitarfish.Shrimp.Silverside Fish.Skipjack Tuna.Slender Snipe Eel.Smalltooth Sawfish.Smelts.Sockeye Salmon.Southern Stingray.Sponge.Spotted Porcupinefish.Spotted Dolphin.Spotted Eagle Ray.Spotted Moray.Squid.Squidworm.Starfish.Stickleback.Stonefish.Stoplight Loosejaw.Sturgeon.Swordfish.Tan Bristlemouth.Tasseled Wobbegong.Terrible Claw Lobster.Threespot Damselfish.Tiger Prawn.Tiger Shark.Tilefish.Toadfish.Tropical Two-Wing Flyfish.Tuna.Umbrella Squid.Velvet Crab.Venus Flytrap Sea Anemone.Vigtorniella Worm.Viperfish.Vampire Squid.Vaquita.Wahoo.Walrus.West Indian Manatee.Whale.Whale Shark.Whiptail Gulper.White-Beaked Dolphin.White-Ring Garden Eel.White Shrimp.Wobbegong.Wrasse.Wreckfish.Xiphosura.Yellowtail Damselfish.Yelloweye Rockfish.Yellow Cup Black Coral.Yellow Tube S'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ponge.Yellowfin Tuna.Zebrashark.Zooplankton".split("."),
-				desert: /* @__PURE__ */ "Aardwolf.Addax.African Wild Ass.Ant.Antelope.Armadillo.Baboon.Badger.Bat.Bearded Dragon.Beetle.Bird.Black-footed Cat.Boa.Brown Bear.Bustard.Butterfly.Camel.Caracal.Caracara.Caterpillar.Centipede.Cheetah.Chipmunk.Chuckwalla.Climbing Mouse.Coati.Cobra.Cotton Rat.Cougar.Courser.Crane Fly.Crow.Dassie Rat.Dove.Dunnart.Eagle.Echidna.Elephant.Emu.Falcon.Fly.Fox.Frogmouth.Gecko.Geoffroy''s Cat.Gerbil.Grasshopper.Guanaco.Gundi.Hamster.Hawk.Hedgehog.Hyena.Hyrax.Jackal.Kangaroo.Kangaroo Rat.Kestrel.Kowari.Kultarr.Leopard.Lion.Macaw.Meerkat.Mouse.Oryx.Ostrich.Owl.Pronghorn.Python.Rabbit.Raccoon.Rattlesnake.Rhinoceros.Sand Cat.Spectacled Bear.Spiny Mouse.Starling.Stick Bug.Tarantula.Tit.Toad.Tortoise.Tyrant Flycatcher.Viper.Vulture.Waxwing.Xerus.Zebra".split("."),
-				grassland: /* @__PURE__ */ "Aardvark.Aardwolf.Accentor.African Buffalo.African Wild Dog.Alpaca.Anaconda.Ant.Anteater.Antelope.Armadillo.Baboon.Badger.Bandicoot.Barbet.Bat.Bee.Bee-eater.Beetle.Bird.Bison.Black-footed Cat.Black-footed Ferret.Bluebird.Boa.Bowerbird.Brown Bear.Bush Dog.Bushshrike.Bustard.Butterfly.Buzzard.Caracal.Caracara.Cardinal.Caterpillar.Cheetah.Chipmunk.Civet.Climbing Mouse.Clouded Leopard.Coati.Cobra.Cockatoo.Cockroach.Common Genet.Cotton Rat.Cougar.Courser.Coyote.Crane.Crane Fly.Cricket.Crow.Culpeo.Death Adder.Deer.Deer Mouse.Dingo.Dinosaur.Dove.Drongo.Duck.Duiker.Dunnart.Eagle.Echidna.Elephant.Elk.Emu.Falcon.Finch.Flea.Fly.Flying Frog.Fox.Frog.Frogmouth.Garter Snake.Gazelle.Gecko.Geoffroy''s Cat.Gerbil.Giant Tortoise.Giraffe.Grasshopper.Grison.Groundhog.Grouse.Guanaco.Guinea Pig.Hamster.Harrier.Hartebeest.Hawk.Hedgehog.Helmetshrike.Hippopotamus.Hornbill.Hyena.Hyrax.Impala.Jackal.Jaguar.Jaguarundi.Kangaroo.Kangaroo Rat.Kestrel.Kultarr.Ladybug.Leopard.Lion.Macaw.Meerkat.Mouse.Newt.Oryx.Ostrich.Owl.Pangolin.Pheasant.Prairie Dog.Pronghorn.Przewalski''s Horse.Python.Quoll.Rabbit.Raven.Rhinoceros.Shelduck.Sloth Bea'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('r.Spectacled Bear.Squirrel.Starling.Stick Bug.Tamandua.Tasmanian Devil.Thornbill.Thrush.Toad.Tortoise".split("."),
+				ocean: /* @__PURE__ */ "Acantharea.Anemone.Angelfish King.Ahi Tuna.Albacore.American Oyster.Anchovy.Armored Snail.Arctic Char.Atlantic Bluefin Tuna.Atlantic Cod.Atlantic Goliath Grouper.Atlantic Trumpetfish.Atlantic Wolffish.Baleen Whale.Banded Butterflyfish.Banded Coral Shrimp.Banded Sea Krait.Barnacle.Barndoor Skate.Barracuda.Basking Shark.Bass.Beluga Whale.Bluebanded Goby.Bluehead Wrasse.Bluefish.Bluestreak Cleaner-Wrasse.Blue Marlin.Blue Shark.Blue Spiny Lobster.Blue Tang.Blue Whale.Broadclub Cuttlefish.Bull Shark.Chambered Nautilus.Chilean Basket Star.Chilean Jack Mackerel.Chinook Salmon.Christmas Tree Worm.Clam.Clown Anemonefish.Clown Triggerfish.Cod.Coelacanth.Cockscomb Cup Coral.Common Fangtooth.Conch.Cookiecutter Shark.Copepod.Coral.Corydoras.Cownose Ray.Crab.Crown-of-Thorns Starfish.Cushion Star.Cuttlefish.California Sea Otters.Dolphin.Dolphinfish.Dory.Devil Fish.Dugong.Dumbo Octopus.Dungeness Crab.Eccentric Sand Dollar.Edible Sea Cucumber.Eel.Elephant Seal.Elkhorn Coral.Emperor Shrimp.Estuarine Crocodile.Fathead Sculpin.Fiddler Crab.Fin Whale.Flameback.Flamingo Tongue Snail.Flashlight Fish.Flatback Turtle.Flatfish.Flying Fish.Flounder.Fluke.French Angelfish.Frilled Shark.Fugu (also called Pufferfish).Gar.Geoduck.Giant Barrel Sponge.Giant Caribbean Sea Anemone.Giant Clam.Giant Isopod.Giant Kingfish.Giant Oarfish.Giant Pacific Octopus.Giant Pyrosome.Giant Sea Star.Giant Squid.Glowing Sucker Octopus.Giant Tube Worm.Goblin Shark.Goosefish.Great White Shark.Greenland Shark.Grey Atlantic Seal.Grouper.Grunion.Guineafowl Puffer.Haddock.Hake.Halibut.Hammerhead Shark.Hapuka.Harbor Porpoise.Harbor Seal.Hatchetfish.Hawaiian Monk Seal.Hawksbill Turtle.Hector's Dolphin.Hermit Crab.Herring.Hoki.Horn Shark.Horseshoe Crab.Humpback Anglerfish.Humpback Whale.Icefish.Imperator Angelfish.Irukandji Jellyfish.Isopod.Ivory Bush Coral.Japanese Spider Crab.Jellyfish.John Dory.Juan Fernandez Fur Seal.Killer Whale.Kiwa Hirsuta.Krill.Lagoon Triggerfish.Lamprey.Leafy Seadragon.Leopard Seal.Limpet.Ling.Lionfish.Lions Mane Jellyfish.Lobe Coral.Lobster.Loggerhead Turtle.Longnose Sawshark.Longsnout Seahorse.Lophelia Coral.Marrus Orthocanna.Manatee.Manta Ray.Marlin.Megamouth Shark.Mexican Lookdown.Mimic Octopus.Moon Jelly.Mollusk.Monkfish.Moray Eel.Mullet.Mussel.Megaladon.Napoleon Wrasse.Nassau Grouper.Narwhal.Nautilus.Needlefish.Northern Seahorse.North Atlantic Right Whale.Northern Red Snapper.Norway Lobster.Nudibranch.Nurse Shark.Oarfish.Ocean Sunfish.Oceanic Whitetip Shark.Octopus.Olive Sea Snake.Orange Roughy.Ostracod.Otter.Oyster.Pacific Angelshark.Pacific Blackdragon.Pacific Halibut.Pacific Sardine.Pacific Sea Nettle Jellyfish.Pacific White Sided Dolphin.Pantropical Spotted Dolphin.Patagonian Toothfish.Peacock Mantis Shrimp.Pelagic Thresher Shark.Penguin.Peruvian Anchoveta.Pilchard.Pink Salmon.Pinniped.Plankton.Porpoise.Polar Bear.Portuguese Man o' War.Pycnogonid Sea Spider.Quahog.Queen Angelfish.Queen Conch.Queen Parrotfish.Queensland Grouper.Ragfish.Ratfish.Rattail Fish.Ray.Red Drum.Red King Crab.Ringed Seal.Risso's Dolphin.Ross Seals.Sablefish.Salmon.Sand Dollar.Sandbar Shark.Sawfish.Sarcastic Fringehead.Scalloped Hammerhead Shark.Seahorse.Sea Cucumber.Sea Lion.Sea Urchin.Seal.Shark.Shortfin Mako Shark.Shovelnose Guitarfish.Shrimp.Silverside Fish.Skipjack Tuna.Slender Snipe Eel.Smalltooth Sawfish.Smelts.Sockeye Salmon.Southern Stingray.Sponge.Spotted Porcupinefish.Spotted Dolphin.Spotted Eagle Ray.Spotted Moray.Squid.Squidworm.Starfish.Stickleback.Stonefish.Stoplight Loosejaw.Sturgeon.Swordfish.Tan Bristlemouth.Tasseled Wobbegong.Terrible Claw Lobster.Threespot Damselfish.Tiger Prawn.Tiger Shark.Tilefish.Toadfish.Tropical Two-Wing Flyfish.Tuna.Umbrella Squid.Velvet Crab.Venus Flytrap Sea Anemone.Vigtorniella Worm.Viperfish.Vampire Squid.Vaquita.Wahoo.Walrus.West Indian Manatee.Whale.Whale Shark.Whiptail Gulper.White-Beaked Dolphin.White-Ring Garden Eel.White Shrimp.Wobbegong.Wrasse.Wreckfish.Xiphosura.Yellowtail Damselfish.Yelloweye Rockfish.Yellow Cup Black Coral.Yellow Tube Sponge.Yellowfin Tuna.Zebrashark.Zooplankton".split("."),
+				desert: /* @__PURE__ */ "Aardwolf.Addax.African Wild Ass.Ant.Antelope.Armadillo.Baboon.Badger.Bat.Bearded Dragon.Beetle.Bird.Black-footed Cat.Boa.Brown Bear.Bustard.Butterfly.Camel.Caracal.Caracara.Caterpillar.Centipede.Cheetah.Chipmunk.Chuckwalla.Climbing Mouse.Coati.Cobra.Cotton Rat.Cougar.Courser.Crane Fly.Crow.Dassie Rat.Dove.Dunnart.Eagle.Echidna.Elephant.Emu.Falcon.Fly.Fox.Frogmouth.Gecko.Geoffroy's Cat.Gerbil.Grasshopper.Guanaco.Gundi.Hamster.Hawk.Hedgehog.Hyena.Hyrax.Jackal.Kangaroo.Kangaroo Rat.Kestrel.Kowari.Kultarr.Leopard.Lion.Macaw.Meerkat.Mouse.Oryx.Ostrich.Owl.Pronghorn.Python.Rabbit.Raccoon.Rattlesnake.Rhinoceros.Sand Cat.Spectacled Bear.Spiny Mouse.Starling.Stick Bug.Tarantula.Tit.Toad.Tortoise.Tyrant Flycatcher.Viper.Vulture.Waxwing.Xerus.Zebra".split("."),
+				grassland: /* @__PURE__ */ "Aardvark.Aardwolf.Accentor.African Buffalo.African Wild Dog.Alpaca.Anaconda.Ant.Anteater.Antelope.Armadillo.Baboon.Badger.Bandicoot.Barbet.Bat.Bee.Bee-eater.Beetle.Bird.Bison.Black-footed Cat.Black-footed Ferret.Bluebird.Boa.Bowerbird.Brown Bear.Bush Dog.Bushshrike.Bustard.Butterfly.Buzzard.Caracal.Caracara.Cardinal.Caterpillar.Cheetah.Chipmunk.Civet.Climbing Mouse.Clouded Leopard.Coati.Cobra.Cockatoo.Cockroach.Common Genet.Cotton Rat.Cougar.Courser.Coyote.Crane.Crane Fly.Cricket.Crow.Culpeo.Death Adder.Deer.Deer Mouse.Dingo.Dinosaur.Dove.Drongo.Duck.Duiker.Dunnart.Eagle.Echidna.Elephant.Elk.Emu.Falcon.Finch.Flea.Fly.Flying Frog.Fox.Frog.Frogmouth.Garter Snake.Gazelle.Gecko.Geoffroy's Cat.Gerbil.Giant Tortoise.Giraffe.Grasshopper.Grison.Groundhog.Grouse.Guanaco.Guinea Pig.Hamster.Harrier.Hartebeest.Hawk.Hedgehog.Helmetshrike.Hippopotamus.Hornbill.Hyena.Hyrax.Impala.Jackal.Jaguar.Jaguarundi.Kangaroo.Kangaroo Rat.Kestrel.Kultarr.Ladybug.Leopard.Lion.Macaw.Meerkat.Mouse.Newt.Oryx.Ostrich.Owl.Pangolin.Pheasant.Prairie Dog.Pronghorn.Przewalski's Horse.Python.Quoll.Rabbit.Raven.Rhinoceros.Shelduck.Sloth Bear.Spectacled Bear.Squirrel.Starling.Stick Bug.Tamandua.Tasmanian Devil.Thornbill.Thrush.Toad.Tortoise".split("."),
 				forest: /* @__PURE__ */ "Agouti.Anaconda.Anoa.Ant.Anteater.Antelope.Armadillo.Asian Black Bear.Aye-aye.Babirusa.Baboon.Badger.Bandicoot.Banteng.Barbet.Basilisk.Bat.Bearded Dragon.Bee.Bee-eater.Beetle.Bettong.Binturong.Bird-of-paradise.Bongo.Bowerbird.Bulbul.Bush Dog.Bushbaby.Bushshrike.Butterfly.Buzzard.Caecilian.Cardinal.Cassowary.Caterpillar.Centipede.Chameleon.Chimpanzee.Cicada.Civet.Clouded Leopard.Coati.Cobra.Cockatoo.Cockroach.Colugo.Cotinga.Cotton Rat.Cougar.Crane Fly.Cricket.Crocodile.Crow.Cuckoo.Cuscus.Death Adder.Deer.Dhole.Dingo.Dinosaur.Drongo.Duck.Duiker.Eagle.Echidna.Elephant.Finch.Flat-headed Cat.Flea.Flowerpecker.Fly.Flying Frog.Fossa.Frog.Frogmouth.Gaur.Gecko.Gorilla.Grison.Hawaiian Honeycreeper.Hawk.Hedgehog.Helmetshrike.Hornbill.Hyrax.Iguana.Jackal.Jaguar.Jaguarundi.Kestrel.Ladybug.Lemur.Leopard.Lion.Macaw.Mandrill.Margay.Monkey.Mouse.Mouse Deer.Newt.Okapi.Old World Flycatcher.Orangutan.Owl.Pangolin.Peafowl.Pheasant.Possum.Python.Quokka.Rabbit.Raccoon.Red Panda.Red River Hog.Rhinoceros.Sloth Bear.Spectacled Bear.Squirrel.Starling.Stick Bug.Sun Bear.Tamandua.Tamarin.Tapir.Tarantula.Thrush.Tiger.Tit.Toad.Tortoise.Toucan.Trogon.Trumpeter.Turaco.Turtle.Tyrant Flycatcher.Viper.Vulture.Wallaby.Warbler.Wasp.Waxwing.Weaver.Weaver-finch.Whistler.White-eye.Whydah.Woodswallow.Worm.Wren.Xenops.Yellowjacket.Accentor.African Buffalo.American Black Bear.Anole.Bird.Bison.Boa.Brown Bear.Chipmunk.Common Genet.Copperhead.Coyote.Deer Mouse.Dormouse.Elk.Emu.Fisher.Fox.Garter Snake.Giant Panda.Giant Tortoise.Groundhog.Grouse.Guanaco.Himalayan Tahr.Kangaroo.Koala.Numbat.Quoll.Raccoon dog.Tasmanian Devil.Thornbill.Turkey.Vole.Weasel.Wildcat.Wolf.Wombat.Woodchuck.Woodpecker".split("."),
-				farm: /* @__PURE__ */ "Alpaca.Buffalo.Banteng.Cow.Cat.Chicken.Carp.Camel.Donkey.Dog.Duck.Emu.Goat.Gayal.Guinea.Goose.Horse.Honey.Llama.Pig.Pigeon.Rhea.Rabbit.Sheep.Sil'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('kworm.Turkey.Yak.Zebu".split("."),
+				farm: /* @__PURE__ */ "Alpaca.Buffalo.Banteng.Cow.Cat.Chicken.Carp.Camel.Donkey.Dog.Duck.Emu.Goat.Gayal.Guinea.Goose.Horse.Honey.Llama.Pig.Pigeon.Rhea.Rabbit.Sheep.Silkworm.Turkey.Yak.Zebu".split("."),
 				pet: /* @__PURE__ */ "Bearded Dragon.Birds.Burro.Cats.Chameleons.Chickens.Chinchillas.Chinese Water Dragon.Cows.Dogs.Donkey.Ducks.Ferrets.Fish.Geckos.Geese.Gerbils.Goats.Guinea Fowl.Guinea Pigs.Hamsters.Hedgehogs.Horses.Iguanas.Llamas.Lizards.Mice.Mule.Peafowl.Pigs and Hogs.Pigeons.Ponies.Pot Bellied Pig.Rabbits.Rats.Sheep.Skinks.Snakes.Stick Insects.Sugar Gliders.Tarantula.Turkeys.Turtles".split("."),
-				zoo: /* @__PURE__ */ "Aardvark.African Wild Dog.Aldabra Tortoise.American Alligator.American Bison.Amur Tiger.Anaconda.Andean Condor.Asian Elephant.Baby Doll Sheep.Bald Eagle.Barred Owl.Blue Iguana.Boer Goat.California Sea Lion.Caribbean Flamingo.Chinchilla.Collared Lemur.Coquerel''s Sifaka.Cuban Amazon Parrot.Ebony Langur.Fennec Fox.Fossa.Gelada.Giant Anteater.Giraffe.Gorilla.Grizzly Bear.Henkel''s Leaf-tailed Gecko.Indian Gharial.Indian Rhinoceros.King Cobra.King Vulture.Komodo Dragon.Linne''s Two-toed Sloth.Lion.Little Penguin.Madagascar Tree Boa.Magellanic Penguin.Malayan Tapir.Malayan Tiger.Matschies Tree Kangaroo.Mini Donkey.Monarch Butterfly.Nile crocodile.North American Porcupine.Nubian Ibex.Okapi.Poison Dart Frog.Polar Bear.Pygmy Marmoset.Radiated Tortoise.Red Panda.Red Ruffed Lemur.Ring-tailed Lemur.Ring-tailed Mongoose.Rock Hyrax.Small Clawed Asian Otter.Snow Leopard.Snowy Owl.Southern White-faced Owl.Southern White Rhinocerous.Squirrel Monkey.Tufted Puffin.White Cheeked Gibbon.White-throated Bee Eater.Zebra".split(".")
+				zoo: /* @__PURE__ */ "Aardvark.African Wild Dog.Aldabra Tortoise.American Alligator.American Bison.Amur Tiger.Anaconda.Andean Condor.Asian Elephant.Baby Doll Sheep.Bald Eagle.Barred Owl.Blue Iguana.Boer Goat.California Sea Lion.Caribbean Flamingo.Chinchilla.Collared Lemur.Coquerel's Sifaka.Cuban Amazon Parrot.Ebony Langur.Fennec Fox.Fossa.Gelada.Giant Anteater.Giraffe.Gorilla.Grizzly Bear.Henkel's Leaf-tailed Gecko.Indian Gharial.Indian Rhinoceros.King Cobra.King Vulture.Komodo Dragon.Linne's Two-toed Sloth.Lion.Little Penguin.Madagascar Tree Boa.Magellanic Penguin.Malayan Tapir.Malayan Tiger.Matschies Tree Kangaroo.Mini Donkey.Monarch Butterfly.Nile crocodile.North American Porcupine.Nubian Ibex.Okapi.Poison Dart Frog.Polar Bear.Pygmy Marmoset.Radiated Tortoise.Red Panda.Red Ruffed Lemur.Ring-tailed Lemur.Ring-tailed Mongoose.Rock Hyrax.Small Clawed Asian Otter.Snow Leopard.Snowy Owl.Southern White-faced Owl.Southern White Rhinocerous.Squirrel Monkey.Tufted Puffin.White Cheeked Gibbon.White-throated Bee Eater.Zebra".split(".")
 			},
 			primes: [
 				2,
@@ -8225,8 +8073,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				257,
 				263,
 				269,
-	'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('			271,
+				271,
 				277,
 				281,
 				283,
@@ -8437,8 +8284,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				1699,
 				1709,
 				1721,
-		'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('		1723,
+				1723,
 				1733,
 				1741,
 				1747,
@@ -8638,8 +8484,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				3313,
 				3319,
 				3323,
-		'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('		3329,
+				3329,
 				3331,
 				3343,
 				3347,
@@ -8839,8 +8684,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				4973,
 				4987,
 				4993,
-		'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('		4999,
+				4999,
 				5003,
 				5009,
 				5011,
@@ -9040,8 +8884,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				6709,
 				6719,
 				6733,
-		'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('		6737,
+				6737,
 				6761,
 				6763,
 				6779,
@@ -9241,8 +9084,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				8543,
 				8563,
 				8573,
-		'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('		8581,
+				8581,
 				8597,
 				8599,
 				8609,
@@ -9431,12 +9273,11 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					"Punk",
 					"Disco",
 					"Funk",
-					"Te'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('chno",
+					"Techno",
 					"Indie",
 					"Gospel",
 					"Dance",
-					"Children''s",
+					"Children's",
 					"World"
 				],
 				alternative: [
@@ -9463,19 +9304,17 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					"Steampunk"
 				],
 				blues: /* @__PURE__ */ "Acoustic Blues,African Blues,Blues Rock,Blues Shouter,British Blues,Canadian Blues,Chicago Blues,Classic Blues,Classic Female Blues,Contemporary Blues,Country Blues,Dark Blues,Delta Blues,Detroit Blues,Doom Blues,Electric Blues,Folk Blues,Gospel Blues,Harmonica Blues,Hill Country Blues,Hokum Blues,Jazz Blues,Jump Blues,Kansas City Blues,Louisiana Blues,Memphis Blues,Modern Blues,New Orlean Blues,NY Blues,Piano Blues,Piedmont Blues,Punk Blues,Ragtime Blues,Rhythm Blues,Soul Blues,St.Louis Blues,Soul Blues,Swamp Blues,Texas Blues,Urban Blues,Vandeville,West Coast Blues".split(","),
-				"children''s": [
+				"children's": [
 					"Lullabies",
 					"Sing - Along",
 					"Stories"
 				],
 				classical: /* @__PURE__ */ "Avant-Garde.Ballet.Baroque.Cantata.Chamber Music.String Quartet.Chant.Choral.Classical Crossover.Concerto.Concerto Grosso.Contemporary Classical.Early Music.Expressionist.High Classical.Impressionist.Mass Requiem.Medieval.Minimalism.Modern Composition.Modern Classical.Opera.Oratorio.Orchestral.Organum.Renaissance.Romantic (early period).Romantic (later period).Sonata.Symphonic.Symphony.Twelve-tone.Wedding Music".split("."),
-				country: /* @__PURE__ */ "Alternative Country.Americana.Australian Country.Bakersfield Sound.Bluegrass.Blues Country.Cajun Fiddle Tunes.Christian Country.Classic Country.Close Harmony.Contemporary Bluegrass.Contemporary Country.Country Gospel.Country Pop.Country Rap.Country Rock.Country Soul.Cowboy / We'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('stern.Cowpunk.Dansband.Honky Tonk.Franco-Country.Gulf and Western.Hellbilly Music.Honky Tonk.Instrumental Country.Lubbock Sound.Nashville Sound.Neotraditional Country.Outlaw Country.Progressive.Psychobilly / Punkabilly.Red Dirt.Sertanejo.Texas County.Traditional Bluegrass.Traditional Country.Truck-Driving Country.Urban Cowboy.Western Swing".split("."),
+				country: /* @__PURE__ */ "Alternative Country.Americana.Australian Country.Bakersfield Sound.Bluegrass.Blues Country.Cajun Fiddle Tunes.Christian Country.Classic Country.Close Harmony.Contemporary Bluegrass.Contemporary Country.Country Gospel.Country Pop.Country Rap.Country Rock.Country Soul.Cowboy / Western.Cowpunk.Dansband.Honky Tonk.Franco-Country.Gulf and Western.Hellbilly Music.Honky Tonk.Instrumental Country.Lubbock Sound.Nashville Sound.Neotraditional Country.Outlaw Country.Progressive.Psychobilly / Punkabilly.Red Dirt.Sertanejo.Texas County.Traditional Bluegrass.Traditional Country.Truck-Driving Country.Urban Cowboy.Western Swing".split("."),
 				dance: /* @__PURE__ */ "Club / Club Dance.Breakcore.Breakbeat / Breakstep.Chillstep.Deep House.Dubstep.Dancehall.Electro House.Electroswing.Exercise.Future Garage.Garage.Glitch Hop.Glitch Pop.Grime.Hardcore.Hard Dance.Hi-NRG / Eurodance.Horrorcore.House.Jackin House.Jungle / Drum n bass.Liquid Dub.Regstep.Speedcore.Techno.Trance.Trap".split("."),
 				electronic: /* @__PURE__ */ "2-Step.8bit.Ambient.Asian Underground.Bassline.Chillwave.Chiptune.Crunk.Downtempo.Drum & Bass.Hard Step.Electro.Electro-swing.Electroacoustic.Electronica.Electronic Rock.Eurodance.Hardstyle.Hi-Nrg.IDM/Experimental.Industrial.Trip Hop.Vaporwave.UK Garage.House.Dubstep.Deep House.EDM.Future Bass.Psychedelic trance".split("."),
 				jazz: /* @__PURE__ */ "Acid Jazz.Afro-Cuban Jazz.Avant-Garde Jazz.Bebop.Big Band.Blue Note.British Dance Band (Jazz).Cape Jazz.Chamber Jazz.Contemporary Jazz.Continental Jazz.Cool Jazz.Crossover Jazz.Dark Jazz.Dixieland.Early Jazz.Electro Swing (Jazz).Ethio-jazz.Ethno-Jazz.European Free Jazz.Free Funk (Avant-Garde / Funk Jazz).Free Jazz.Fusion.Gypsy Jazz.Hard Bop.Indo Jazz.Jazz Blues.Jazz-Funk (see Free Funk).Jazz-Fusion.Jazz Rap.Jazz Rock.Kansas City Jazz.Latin Jazz.M-Base Jazz.Mainstream Jazz.Modal Jazz.Neo-Bop.Neo-Swing.Nu Jazz.Orchestral Jazz.Post-Bop.Punk Jazz.Ragtime.Ska Jazz.Skiffle (also Folk).Smooth Jazz.Soul Jazz.Swing Jazz.Straight-Ahead Jazz.Trad Jazz.Third Stream.Jazz-Funk.Free Jazz.West Coast Jazz".split("."),
-				metal: /* @__PURE__ */ "Heavy Metal.Speed Metal.Thrash Metal.Power Metal.Death Metal.Black Metal.Pagan Metal.Viking Metal.Folk Metal.Symphonic Metal.Gothic Metal.Glam Metal.Hair Metal.Doom M'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('etal.Groove Metal.Industrial Metal.Modern Metal.Neoclassical Metal.New Wave Of British Heavy Metal.Post Metal.Progressive Metal.Avantgarde Metal.Sludge.Djent.Drone.Kawaii Metal.Pirate Metal.Nu Metal.Neue Deutsche Härte.Math Metal.Crossover.Grindcore.Hardcore.Metalcore.Deathcore.Post Hardcore.Mathcore".split("."),
+				metal: /* @__PURE__ */ "Heavy Metal.Speed Metal.Thrash Metal.Power Metal.Death Metal.Black Metal.Pagan Metal.Viking Metal.Folk Metal.Symphonic Metal.Gothic Metal.Glam Metal.Hair Metal.Doom Metal.Groove Metal.Industrial Metal.Modern Metal.Neoclassical Metal.New Wave Of British Heavy Metal.Post Metal.Progressive Metal.Avantgarde Metal.Sludge.Djent.Drone.Kawaii Metal.Pirate Metal.Nu Metal.Neue Deutsche Härte.Math Metal.Crossover.Grindcore.Hardcore.Metalcore.Deathcore.Post Hardcore.Mathcore".split("."),
 				folk: [
 					"American Folk Revival",
 					"Anti - Folk",
@@ -9531,8 +9370,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					"Dancehall",
 					"Ska"
 				],
-				rock: /* @__PURE__ */ "'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('Acid Rock.Adult - Oriented Rock.Afro Punk.Adult Alternative.Alternative Rock.American Traditional Rock.Anatolian Rock.Arena Rock.Art Rock.Blues - Rock.British Invasion.Cock Rock.Death Metal / Black Metal.Doom Metal.Glam Rock.Gothic Metal.Grind Core.Hair Metal.Hard Rock.Math Metal.Math Rock.Metal.Metal Core.Noise Rock.Jam Bands.Post Punk.Post Rock.Prog - Rock / Art Rock.Progressive Metal.Psychedelic.Rock & Roll.Rockabilly.Roots Rock.Singer / Songwriter.Southern Rock.Spazzcore.Stoner Metal.Surf.Technical Death Metal.Tex - Mex.Thrash Metal.Time Lord Rock(Trock).Trip - hop.Yacht Rock.School House Rock".split("."),
+				rock: /* @__PURE__ */ "Acid Rock.Adult - Oriented Rock.Afro Punk.Adult Alternative.Alternative Rock.American Traditional Rock.Anatolian Rock.Arena Rock.Art Rock.Blues - Rock.British Invasion.Cock Rock.Death Metal / Black Metal.Doom Metal.Glam Rock.Gothic Metal.Grind Core.Hair Metal.Hard Rock.Math Metal.Math Rock.Metal.Metal Core.Noise Rock.Jam Bands.Post Punk.Post Rock.Prog - Rock / Art Rock.Progressive Metal.Psychedelic.Rock & Roll.Rockabilly.Roots Rock.Singer / Songwriter.Southern Rock.Spazzcore.Stoner Metal.Surf.Technical Death Metal.Tex - Mex.Thrash Metal.Time Lord Rock(Trock).Trip - hop.Yacht Rock.School House Rock".split("."),
 				"hip-hop": /* @__PURE__ */ "Alternative Rap,Avant - Garde,Bounce,Chap Hop,Christian Hip Hop,Conscious Hip Hop,Country - Rap,Grunk,Crunkcore,Cumbia Rap,Dirty South,East Coast,Brick City Club,Hardcore Hip Hop,Mafioso Rap,New Jersey Hip Hop,Freestyle Rap,G - Funk,Gangsta Rap,Golden Age,Grime,Hardcore Rap,Hip - Hop,Hip Pop,Horrorcore,Hyphy,Industrial Hip Hop,Instrumental Hip Hop,Jazz Rap,Latin Rap,Low Bap,Lyrical Hip Hop,Merenrap,Midwest Hip Hop,Chicago Hip Hop,Detroit Hip Hop,Horrorcore,St.Louis Hip Hop,Twin Cities Hip Hop,Motswako,Nerdcore,New Jack Swing,New School Hip Hop,Old School Rap,Rap,Trap,Turntablism,Underground Rap,West Coast Rap,East Coast Rap,Trap,UK Grime,Hyphy,Emo-rap,Cloud rap,G-funk,Boom Bap,Mumble,Drill,UK Drill,Soundcloud Rap,Lo-fi".split(","),
 				punk: [
 					"Afro-punk",
@@ -9567,8 +9405,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					"Space Disco",
 					"Post-disco",
 					"Electro Disco",
-					"D'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('isco House",
+					"Disco House",
 					"Disco Pop",
 					"Soulful House"
 				],
@@ -9640,30 +9477,18 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					"Instrumental Gospel",
 					"Gospel Rap"
 				],
-				world: /* @__PURE__ */ "African.Arabic.Asian.Caribbean.Celtic.European.Latin American.Middle Eastern.Native American.Polynesian.Reggae.Ska.Salsa.Flamenco.Bossa Nova.Tango.Fado.Klezmer'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('.Balkan.Afrobeat.Mongolian Throat Singing.Indian Classical.Gamelan.Sufi Music.Zydeco.Kora Music.Andean Music.Irish Traditional.Gypsy Jazz.Bollywood.Bhangra.Jawaiian.Hawaiian Slack Key Guitar.Calypso.Cuban Son.Taiko Drumming.African Highlife.Merengue.Tuvan Throat Singing".split(".")
+				world: /* @__PURE__ */ "African.Arabic.Asian.Caribbean.Celtic.European.Latin American.Middle Eastern.Native American.Polynesian.Reggae.Ska.Salsa.Flamenco.Bossa Nova.Tango.Fado.Klezmer.Balkan.Afrobeat.Mongolian Throat Singing.Indian Classical.Gamelan.Sufi Music.Zydeco.Kora Music.Andean Music.Irish Traditional.Gypsy Jazz.Bollywood.Bhangra.Jawaiian.Hawaiian Slack Key Guitar.Calypso.Cuban Son.Taiko Drumming.African Highlife.Merengue.Tuvan Throat Singing".split(".")
 			},
 			emojis: {
 				smileys_and_emotion: /* @__PURE__ */ "0x1f600.0x1f603.0x1f604.0x1f601.0x1f606.0x1f605.0x1f923.0x1f602.0x1f642.0x1f643.0x1fae0.0x1f609.0x1f60a.0x1f607.0x1f970.0x1f60d.0x1f929.0x1f618.0x1f617.0x263a.0x1f61a.0x1f619.0x1f972.0x1f60b.0x1f61b.0x1f61c.0x1f92a.0x1f61d.0x1f911.0x1f917.0x1f92d.0x1fae2.0x1fae3.0x1f92b.0x1f914.0x1fae1.0x1f910.0x1f928.0x1f610.0x1f611.0x1f636.0x1fae5.0x1f636.0x200d.0x1f32b.0xfe0f.0x1f60f.0x1f612.0x1f644.0x1f62c.0x1f62e.0x200d.0x1f4a8.0x1f925.0x1fae8.0x1f642.0x200d.0x2194.0xfe0f.0x1f642.0x200d.0x2195.0xfe0f.0x1f60c.0x1f614.0x1f62a.0x1f924.0x1f634.0x1f637.0x1f912.0x1f915.0x1f922.0x1f92e.0x1f927.0x1f975.0x1f976.0x1f974.0x1f635.0x1f635.0x200d.0x1f4ab.0x1f92f.0x1f920.0x1f973.0x1f978.0x1f60e.0x1f913.0x1f9d0.0x1f615.0x1fae4.0x1f61f.0x1f641.0x2639.0x1f62e.0x1f62f.0x1f632.0x1f633.0x1f97a.0x1f979.0x1f626.0x1f627.0x1f628.0x1f630.0x1f625.0x1f622.0x1f62d.0x1f631.0x1f616.0x1f623.0x1f61e.0x1f613.0x1f629.0x1f62b.0x1f971.0x1f624.0x1f621.0x1f620.0x1f92c.0x1f608.0x1f47f.0x1f480.0x2620.0x1f4a9.0x1f921.0x1f479.0x1f47a.0x1f47b.0x1f47d.0x1f47e.0x1f916.0x1f63a.0x1f638.0x1f639.0x1f63b.0x1f63c.0x1f63d.0x1f640.0x1f63f.0x1f63e.0x1f648.0x1f649.0x1f64a.0x1f48c.0x1f498.0x1f49d.0x1f496.0x1f497.0x1f493.0x1f49e.0x1f495.0x1f49f.0x2763.0x1f494.0x2764.0xfe0f.0x200d.0x1f525.0x2764.0xfe0f.0x200d.0x1fa79.0x2764.0x1fa77.0x1f9e1.0x1f49b.0x1f49a.0x1f499.0x1fa75.0x1f49c.0x1f90e.0x1f5a4.0x1fa76.0x1f90d.0x1f48b.0x1f4af.0x1f4a2.0x1f4a5.0x1f4ab.0x1f4a6.0x1f4a8.0x1f573.0x1f4ac.0x1f441.0xfe0f.0x200d.0x1f5e8.0xfe0f.0x1f5e8.0x1f5ef.0x1f4ad.0x1f4a4".split("."),
-				people_and_body: /* @__PURE__ */ "0x1f44b.0x1f91a.0x1f590.0x270b.0x1f596.0x1faf1.0x1faf2.0x1faf3.0x1faf4.0x1faf7.0x1faf8.0x1f44c.0x1f90'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('c.0x1f90f.0x270c.0x1f91e.0x1faf0.0x1f91f.0x1f918.0x1f919.0x1f448.0x1f449.0x1f446.0x1f595.0x1f447.0x261d.0x1faf5.0x1f44d.0x1f44e.0x270a.0x1f44a.0x1f91b.0x1f91c.0x1f44f.0x1f64c.0x1faf6.0x1f450.0x1f932.0x1f91d.0x1f64f.0x270d.0x1f485.0x1f933.0x1f4aa.0x1f9be.0x1f9bf.0x1f9b5.0x1f9b6.0x1f442.0x1f9bb.0x1f443.0x1f9e0.0x1fac0.0x1fac1.0x1f9b7.0x1f9b4.0x1f440.0x1f441.0x1f445.0x1f444.0x1fae6.0x1f476.0x1f9d2.0x1f466.0x1f467.0x1f9d1.0x1f471.0x1f468.0x1f9d4.0x1f9d4.0x200d.0x2642.0xfe0f.0x1f9d4.0x200d.0x2640.0xfe0f.0x1f468.0x200d.0x1f9b0.0x1f468.0x200d.0x1f9b1.0x1f468.0x200d.0x1f9b3.0x1f468.0x200d.0x1f9b2.0x1f469.0x1f469.0x200d.0x1f9b0.0x1f9d1.0x200d.0x1f9b0.0x1f469.0x200d.0x1f9b1.0x1f9d1.0x200d.0x1f9b1.0x1f469.0x200d.0x1f9b3.0x1f9d1.0x200d.0x1f9b3.0x1f469.0x200d.0x1f9b2.0x1f9d1.0x200d.0x1f9b2.0x1f471.0x200d.0x2640.0xfe0f.0x1f471.0x200d.0x2642.0xfe0f.0x1f9d3.0x1f474.0x1f475.0x1f64d.0x1f64d.0x200d.0x2642.0xfe0f.0x1f64d.0x200d.0x2640.0xfe0f.0x1f64e.0x1f64e.0x200d.0x2642.0xfe0f.0x1f64e.0x200d.0x2640.0xfe0f.0x1f645.0x1f645.0x200d.0x2642.0xfe0f.0x1f645.0x200d.0x2640.0xfe0f.0x1f646.0x1f646.0x200d.0x2642.0xfe0f.0x1f646.0x200d.0x2640.0xfe0f.0x1f481.0x1f481.0x200d.0x2642.0xfe0f.0x1f481.0x200d.0x2640.0xfe0f.0x1f64b.0x1f64b.0x200d.0x2642.0xfe0f.0x1f64b.0x200d.0x2640.0xfe0f.0x1f9cf.0x1f9cf.0x200d.0x2642.0xfe0f.0x1f9cf.0x200d.0x2640.0xfe0f.0x1f647.0x1f647.0x200d.0x2642.0xfe0f.0x1f647.0x200d.0x2640.0xfe0f.0x1f926.0x1f926.0x200d.0x2642.0xfe0f.0x1f926.0x200d.0x2640.0xfe0f.0x1f937.0x1f937.0x200d.0x2642.0xfe0f.0x1f937.0x200d.0x2640.0xfe0f.0x1f9d1.0x200d.0x2695.0xfe0f.0x1f468.0x200d.0x2695.0xfe0f.0x1f469.0x200d.0x2695.0xfe0f.0x1f9d1.0x200d.0x1f393.0x1f468.0x200d.0x1f393.0x1f469.0x200d.0x1f393.0x1f9d1.0x200d.0x1f3eb.0x1f468.0x200d.0x1f3eb.0x1f469.0x200d.0x1f3eb.0x1f9d1.0x200d.0x2696.0xfe0f.0x1f468.0x200d.0x2696.0xfe0f.0x1f469.0x200d.0x2696.0xfe0f.0x1f9d1.0x200d.0x1f33e.0x1f468.0x200d.0x1f33e.0x1f469.0x200d.0x1f33e.0x1f9d1.0x200d.0x1f373.0x1f468.0x200d.0x1f373.0x1f469.0x200d.0x1f373.0x1f9d1.0x200d.0x1f5'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('27.0x1f468.0x200d.0x1f527.0x1f469.0x200d.0x1f527.0x1f9d1.0x200d.0x1f3ed.0x1f468.0x200d.0x1f3ed.0x1f469.0x200d.0x1f3ed.0x1f9d1.0x200d.0x1f4bc.0x1f468.0x200d.0x1f4bc.0x1f469.0x200d.0x1f4bc.0x1f9d1.0x200d.0x1f52c.0x1f468.0x200d.0x1f52c.0x1f469.0x200d.0x1f52c.0x1f9d1.0x200d.0x1f4bb.0x1f468.0x200d.0x1f4bb.0x1f469.0x200d.0x1f4bb.0x1f9d1.0x200d.0x1f3a4.0x1f468.0x200d.0x1f3a4.0x1f469.0x200d.0x1f3a4.0x1f9d1.0x200d.0x1f3a8.0x1f468.0x200d.0x1f3a8.0x1f469.0x200d.0x1f3a8.0x1f9d1.0x200d.0x2708.0xfe0f.0x1f468.0x200d.0x2708.0xfe0f.0x1f469.0x200d.0x2708.0xfe0f.0x1f9d1.0x200d.0x1f680.0x1f468.0x200d.0x1f680.0x1f469.0x200d.0x1f680.0x1f9d1.0x200d.0x1f692.0x1f468.0x200d.0x1f692.0x1f469.0x200d.0x1f692.0x1f46e.0x1f46e.0x200d.0x2642.0xfe0f.0x1f46e.0x200d.0x2640.0xfe0f.0x1f575.0x1f575.0xfe0f.0x200d.0x2642.0xfe0f.0x1f575.0xfe0f.0x200d.0x2640.0xfe0f.0x1f482.0x1f482.0x200d.0x2642.0xfe0f.0x1f482.0x200d.0x2640.0xfe0f.0x1f977.0x1f477.0x1f477.0x200d.0x2642.0xfe0f.0x1f477.0x200d.0x2640.0xfe0f.0x1fac5.0x1f934.0x1f478.0x1f473.0x1f473.0x200d.0x2642.0xfe0f.0x1f473.0x200d.0x2640.0xfe0f.0x1f472.0x1f9d5.0x1f935.0x1f935.0x200d.0x2642.0xfe0f.0x1f935.0x200d.0x2640.0xfe0f.0x1f470.0x1f470.0x200d.0x2642.0xfe0f.0x1f470.0x200d.0x2640.0xfe0f.0x1f930.0x1fac3.0x1fac4.0x1f931.0x1f469.0x200d.0x1f37c.0x1f468.0x200d.0x1f37c.0x1f9d1.0x200d.0x1f37c.0x1f47c.0x1f385.0x1f936.0x1f9d1.0x200d.0x1f384.0x1f9b8.0x1f9b8.0x200d.0x2642.0xfe0f.0x1f9b8.0x200d.0x2640.0xfe0f.0x1f9b9.0x1f9b9.0x200d.0x2642.0xfe0f.0x1f9b9.0x200d.0x2640.0xfe0f.0x1f9d9.0x1f9d9.0x200d.0x2642.0xfe0f.0x1f9d9.0x200d.0x2640.0xfe0f.0x1f9da.0x1f9da.0x200d.0x2642.0xfe0f.0x1f9da.0x200d.0x2640.0xfe0f.0x1f9db.0x1f9db.0x200d.0x2642.0xfe0f.0x1f9db.0x200d.0x2640.0xfe0f.0x1f9dc.0x1f9dc.0x200d.0x2642.0xfe0f.0x1f9dc.0x200d.0x2640.0xfe0f.0x1f9dd.0x1f9dd.0x200d.0x2642.0xfe0f.0x1f9dd.0x200d.0x2640.0xfe0f.0x1f9de.0x1f9de.0x200d.0x2642.0xfe0f.0x1f9de.0x200d.0x2640.0xfe0f.0x1f9df.0x1f9df.0x200d.0x2642.0xfe0f.0x1f9df.0x200d.0x2640.0xfe0f.0x1f9cc.0x1f486.0x1f486.0x200d.0x2642.0xfe0f.0'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('x1f486.0x200d.0x2640.0xfe0f.0x1f487.0x1f487.0x200d.0x2642.0xfe0f.0x1f487.0x200d.0x2640.0xfe0f.0x1f6b6.0x1f6b6.0x200d.0x2642.0xfe0f.0x1f6b6.0x200d.0x2640.0xfe0f.0x1f6b6.0x200d.0x27a1.0xfe0f.0x1f6b6.0x200d.0x2640.0xfe0f.0x200d.0x27a1.0xfe0f.0x1f6b6.0x200d.0x2642.0xfe0f.0x200d.0x27a1.0xfe0f.0x1f9cd.0x1f9cd.0x200d.0x2642.0xfe0f.0x1f9cd.0x200d.0x2640.0xfe0f.0x1f9ce.0x1f9ce.0x200d.0x2642.0xfe0f.0x1f9ce.0x200d.0x2640.0xfe0f.0x1f9ce.0x200d.0x27a1.0xfe0f.0x1f9ce.0x200d.0x2640.0xfe0f.0x200d.0x27a1.0xfe0f.0x1f9ce.0x200d.0x2642.0xfe0f.0x200d.0x27a1.0xfe0f.0x1f9d1.0x200d.0x1f9af.0x1f9d1.0x200d.0x1f9af.0x200d.0x27a1.0xfe0f.0x1f468.0x200d.0x1f9af.0x1f468.0x200d.0x1f9af.0x200d.0x27a1.0xfe0f.0x1f469.0x200d.0x1f9af.0x1f469.0x200d.0x1f9af.0x200d.0x27a1.0xfe0f.0x1f9d1.0x200d.0x1f9bc.0x1f9d1.0x200d.0x1f9bc.0x200d.0x27a1.0xfe0f.0x1f468.0x200d.0x1f9bc.0x1f468.0x200d.0x1f9bc.0x200d.0x27a1.0xfe0f.0x1f469.0x200d.0x1f9bc.0x1f469.0x200d.0x1f9bc.0x200d.0x27a1.0xfe0f.0x1f9d1.0x200d.0x1f9bd.0x1f9d1.0x200d.0x1f9bd.0x200d.0x27a1.0xfe0f.0x1f468.0x200d.0x1f9bd.0x1f468.0x200d.0x1f9bd.0x200d.0x27a1.0xfe0f.0x1f469.0x200d.0x1f9bd.0x1f469.0x200d.0x1f9bd.0x200d.0x27a1.0xfe0f.0x1f3c3.0x1f3c3.0x200d.0x2642.0xfe0f.0x1f3c3.0x200d.0x2640.0xfe0f.0x1f3c3.0x200d.0x27a1.0xfe0f.0x1f3c3.0x200d.0x2640.0xfe0f.0x200d.0x27a1.0xfe0f.0x1f3c3.0x200d.0x2642.0xfe0f.0x200d.0x27a1.0xfe0f.0x1f483.0x1f57a.0x1f574.0x1f46f.0x1f46f.0x200d.0x2642.0xfe0f.0x1f46f.0x200d.0x2640.0xfe0f.0x1f9d6.0x1f9d6.0x200d.0x2642.0xfe0f.0x1f9d6.0x200d.0x2640.0xfe0f.0x1f9d7.0x1f9d7.0x200d.0x2642.0xfe0f.0x1f9d7.0x200d.0x2640.0xfe0f.0x1f93a.0x1f3c7.0x26f7.0x1f3c2.0x1f3cc.0x1f3cc.0xfe0f.0x200d.0x2642.0xfe0f.0x1f3cc.0xfe0f.0x200d.0x2640.0xfe0f.0x1f3c4.0x1f3c4.0x200d.0x2642.0xfe0f.0x1f3c4.0x200d.0x2640.0xfe0f.0x1f6a3.0x1f6a3.0x200d.0x2642.0xfe0f.0x1f6a3.0x200d.0x2640.0xfe0f.0x1f3ca.0x1f3ca.0x200d.0x2642.0xfe0f.0x1f3ca.0x200d.0x2640.0xfe0f.0x26f9.0x26f9.0xfe0f.0x200d.0x2642.0xfe0f.0x26f9.0xfe0f.0x200d.0x2640.0xfe0f.0x1f3cb.0x1f3cb.0xfe0f.0x200d.0x2642.0xfe0f.'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('0x1f3cb.0xfe0f.0x200d.0x2640.0xfe0f.0x1f6b4.0x1f6b4.0x200d.0x2642.0xfe0f.0x1f6b4.0x200d.0x2640.0xfe0f.0x1f6b5.0x1f6b5.0x200d.0x2642.0xfe0f.0x1f6b5.0x200d.0x2640.0xfe0f.0x1f938.0x1f938.0x200d.0x2642.0xfe0f.0x1f938.0x200d.0x2640.0xfe0f.0x1f93c.0x1f93c.0x200d.0x2642.0xfe0f.0x1f93c.0x200d.0x2640.0xfe0f.0x1f93d.0x1f93d.0x200d.0x2642.0xfe0f.0x1f93d.0x200d.0x2640.0xfe0f.0x1f93e.0x1f93e.0x200d.0x2642.0xfe0f.0x1f93e.0x200d.0x2640.0xfe0f.0x1f939.0x1f939.0x200d.0x2642.0xfe0f.0x1f939.0x200d.0x2640.0xfe0f.0x1f9d8.0x1f9d8.0x200d.0x2642.0xfe0f.0x1f9d8.0x200d.0x2640.0xfe0f.0x1f6c0.0x1f6cc.0x1f9d1.0x200d.0x1f91d.0x200d.0x1f9d1.0x1f46d.0x1f46b.0x1f46c.0x1f48f.0x1f469.0x200d.0x2764.0xfe0f.0x200d.0x1f48b.0x200d.0x1f468.0x1f468.0x200d.0x2764.0xfe0f.0x200d.0x1f48b.0x200d.0x1f468.0x1f469.0x200d.0x2764.0xfe0f.0x200d.0x1f48b.0x200d.0x1f469.0x1f491.0x1f469.0x200d.0x2764.0xfe0f.0x200d.0x1f468.0x1f468.0x200d.0x2764.0xfe0f.0x200d.0x1f468.0x1f469.0x200d.0x2764.0xfe0f.0x200d.0x1f469.0x1f468.0x200d.0x1f469.0x200d.0x1f466.0x1f468.0x200d.0x1f469.0x200d.0x1f467.0x1f468.0x200d.0x1f469.0x200d.0x1f467.0x200d.0x1f466.0x1f468.0x200d.0x1f469.0x200d.0x1f466.0x200d.0x1f466.0x1f468.0x200d.0x1f469.0x200d.0x1f467.0x200d.0x1f467.0x1f468.0x200d.0x1f468.0x200d.0x1f466.0x1f468.0x200d.0x1f468.0x200d.0x1f467.0x1f468.0x200d.0x1f468.0x200d.0x1f467.0x200d.0x1f466.0x1f468.0x200d.0x1f468.0x200d.0x1f466.0x200d.0x1f466.0x1f468.0x200d.0x1f468.0x200d.0x1f467.0x200d.0x1f467.0x1f469.0x200d.0x1f469.0x200d.0x1f466.0x1f469.0x200d.0x1f469.0x200d.0x1f467.0x1f469.0x200d.0x1f469.0x200d.0x1f467.0x200d.0x1f466.0x1f469.0x200d.0x1f469.0x200d.0x1f466.0x200d.0x1f466.0x1f469.0x200d.0x1f469.0x200d.0x1f467.0x200d.0x1f467.0x1f468.0x200d.0x1f466.0x1f468.0x200d.0x1f466.0x200d.0x1f466.0x1f468.0x200d.0x1f467.0x1f468.0x200d.0x1f467.0x200d.0x1f466.0x1f468.0x200d.0x1f467.0x200d.0x1f467.0x1f469.0x200d.0x1f466.0x1f469.0x200d.0x1f466.0x200d.0x1f466.0x1f469.0x200d.0x1f467.0x1f469.0x200d.0x1f467.0x200d.0x1f466.0x1f469.0x200d.0x1f467.0x200d.0x1f467.0x1f5e3.'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('0x1f464.0x1f465.0x1fac2.0x1f46a.0x1f9d1.0x200d.0x1f9d1.0x200d.0x1f9d2.0x1f9d1.0x200d.0x1f9d1.0x200d.0x1f9d2.0x200d.0x1f9d2.0x1f9d1.0x200d.0x1f9d2.0x1f9d1.0x200d.0x1f9d2.0x200d.0x1f9d2.0x1f463".split("."),
+				people_and_body: /* @__PURE__ */ "0x1f44b.0x1f91a.0x1f590.0x270b.0x1f596.0x1faf1.0x1faf2.0x1faf3.0x1faf4.0x1faf7.0x1faf8.0x1f44c.0x1f90c.0x1f90f.0x270c.0x1f91e.0x1faf0.0x1f91f.0x1f918.0x1f919.0x1f448.0x1f449.0x1f446.0x1f595.0x1f447.0x261d.0x1faf5.0x1f44d.0x1f44e.0x270a.0x1f44a.0x1f91b.0x1f91c.0x1f44f.0x1f64c.0x1faf6.0x1f450.0x1f932.0x1f91d.0x1f64f.0x270d.0x1f485.0x1f933.0x1f4aa.0x1f9be.0x1f9bf.0x1f9b5.0x1f9b6.0x1f442.0x1f9bb.0x1f443.0x1f9e0.0x1fac0.0x1fac1.0x1f9b7.0x1f9b4.0x1f440.0x1f441.0x1f445.0x1f444.0x1fae6.0x1f476.0x1f9d2.0x1f466.0x1f467.0x1f9d1.0x1f471.0x1f468.0x1f9d4.0x1f9d4.0x200d.0x2642.0xfe0f.0x1f9d4.0x200d.0x2640.0xfe0f.0x1f468.0x200d.0x1f9b0.0x1f468.0x200d.0x1f9b1.0x1f468.0x200d.0x1f9b3.0x1f468.0x200d.0x1f9b2.0x1f469.0x1f469.0x200d.0x1f9b0.0x1f9d1.0x200d.0x1f9b0.0x1f469.0x200d.0x1f9b1.0x1f9d1.0x200d.0x1f9b1.0x1f469.0x200d.0x1f9b3.0x1f9d1.0x200d.0x1f9b3.0x1f469.0x200d.0x1f9b2.0x1f9d1.0x200d.0x1f9b2.0x1f471.0x200d.0x2640.0xfe0f.0x1f471.0x200d.0x2642.0xfe0f.0x1f9d3.0x1f474.0x1f475.0x1f64d.0x1f64d.0x200d.0x2642.0xfe0f.0x1f64d.0x200d.0x2640.0xfe0f.0x1f64e.0x1f64e.0x200d.0x2642.0xfe0f.0x1f64e.0x200d.0x2640.0xfe0f.0x1f645.0x1f645.0x200d.0x2642.0xfe0f.0x1f645.0x200d.0x2640.0xfe0f.0x1f646.0x1f646.0x200d.0x2642.0xfe0f.0x1f646.0x200d.0x2640.0xfe0f.0x1f481.0x1f481.0x200d.0x2642.0xfe0f.0x1f481.0x200d.0x2640.0xfe0f.0x1f64b.0x1f64b.0x200d.0x2642.0xfe0f.0x1f64b.0x200d.0x2640.0xfe0f.0x1f9cf.0x1f9cf.0x200d.0x2642.0xfe0f.0x1f9cf.0x200d.0x2640.0xfe0f.0x1f647.0x1f647.0x200d.0x2642.0xfe0f.0x1f647.0x200d.0x2640.0xfe0f.0x1f926.0x1f926.0x200d.0x2642.0xfe0f.0x1f926.0x200d.0x2640.0xfe0f.0x1f937.0x1f937.0x200d.0x2642.0xfe0f.0x1f937.0x200d.0x2640.0xfe0f.0x1f9d1.0x200d.0x2695.0xfe0f.0x1f468.0x200d.0x2695.0xfe0f.0x1f469.0x200d.0x2695.0xfe0f.0x1f9d1.0x200d.0x1f393.0x1f468.0x200d.0x1f393.0x1f469.0x200d.0x1f393.0x1f9d1.0x200d.0x1f3eb.0x1f468.0x200d.0x1f3eb.0x1f469.0x200d.0x1f3eb.0x1f9d1.0x200d.0x2696.0xfe0f.0x1f468.0x200d.0x2696.0xfe0f.0x1f469.0x200d.0x2696.0xfe0f.0x1f9d1.0x200d.0x1f33e.0x1f468.0x200d.0x1f33e.0x1f469.0x200d.0x1f33e.0x1f9d1.0x200d.0x1f373.0x1f468.0x200d.0x1f373.0x1f469.0x200d.0x1f373.0x1f9d1.0x200d.0x1f527.0x1f468.0x200d.0x1f527.0x1f469.0x200d.0x1f527.0x1f9d1.0x200d.0x1f3ed.0x1f468.0x200d.0x1f3ed.0x1f469.0x200d.0x1f3ed.0x1f9d1.0x200d.0x1f4bc.0x1f468.0x200d.0x1f4bc.0x1f469.0x200d.0x1f4bc.0x1f9d1.0x200d.0x1f52c.0x1f468.0x200d.0x1f52c.0x1f469.0x200d.0x1f52c.0x1f9d1.0x200d.0x1f4bb.0x1f468.0x200d.0x1f4bb.0x1f469.0x200d.0x1f4bb.0x1f9d1.0x200d.0x1f3a4.0x1f468.0x200d.0x1f3a4.0x1f469.0x200d.0x1f3a4.0x1f9d1.0x200d.0x1f3a8.0x1f468.0x200d.0x1f3a8.0x1f469.0x200d.0x1f3a8.0x1f9d1.0x200d.0x2708.0xfe0f.0x1f468.0x200d.0x2708.0xfe0f.0x1f469.0x200d.0x2708.0xfe0f.0x1f9d1.0x200d.0x1f680.0x1f468.0x200d.0x1f680.0x1f469.0x200d.0x1f680.0x1f9d1.0x200d.0x1f692.0x1f468.0x200d.0x1f692.0x1f469.0x200d.0x1f692.0x1f46e.0x1f46e.0x200d.0x2642.0xfe0f.0x1f46e.0x200d.0x2640.0xfe0f.0x1f575.0x1f575.0xfe0f.0x200d.0x2642.0xfe0f.0x1f575.0xfe0f.0x200d.0x2640.0xfe0f.0x1f482.0x1f482.0x200d.0x2642.0xfe0f.0x1f482.0x200d.0x2640.0xfe0f.0x1f977.0x1f477.0x1f477.0x200d.0x2642.0xfe0f.0x1f477.0x200d.0x2640.0xfe0f.0x1fac5.0x1f934.0x1f478.0x1f473.0x1f473.0x200d.0x2642.0xfe0f.0x1f473.0x200d.0x2640.0xfe0f.0x1f472.0x1f9d5.0x1f935.0x1f935.0x200d.0x2642.0xfe0f.0x1f935.0x200d.0x2640.0xfe0f.0x1f470.0x1f470.0x200d.0x2642.0xfe0f.0x1f470.0x200d.0x2640.0xfe0f.0x1f930.0x1fac3.0x1fac4.0x1f931.0x1f469.0x200d.0x1f37c.0x1f468.0x200d.0x1f37c.0x1f9d1.0x200d.0x1f37c.0x1f47c.0x1f385.0x1f936.0x1f9d1.0x200d.0x1f384.0x1f9b8.0x1f9b8.0x200d.0x2642.0xfe0f.0x1f9b8.0x200d.0x2640.0xfe0f.0x1f9b9.0x1f9b9.0x200d.0x2642.0xfe0f.0x1f9b9.0x200d.0x2640.0xfe0f.0x1f9d9.0x1f9d9.0x200d.0x2642.0xfe0f.0x1f9d9.0x200d.0x2640.0xfe0f.0x1f9da.0x1f9da.0x200d.0x2642.0xfe0f.0x1f9da.0x200d.0x2640.0xfe0f.0x1f9db.0x1f9db.0x200d.0x2642.0xfe0f.0x1f9db.0x200d.0x2640.0xfe0f.0x1f9dc.0x1f9dc.0x200d.0x2642.0xfe0f.0x1f9dc.0x200d.0x2640.0xfe0f.0x1f9dd.0x1f9dd.0x200d.0x2642.0xfe0f.0x1f9dd.0x200d.0x2640.0xfe0f.0x1f9de.0x1f9de.0x200d.0x2642.0xfe0f.0x1f9de.0x200d.0x2640.0xfe0f.0x1f9df.0x1f9df.0x200d.0x2642.0xfe0f.0x1f9df.0x200d.0x2640.0xfe0f.0x1f9cc.0x1f486.0x1f486.0x200d.0x2642.0xfe0f.0x1f486.0x200d.0x2640.0xfe0f.0x1f487.0x1f487.0x200d.0x2642.0xfe0f.0x1f487.0x200d.0x2640.0xfe0f.0x1f6b6.0x1f6b6.0x200d.0x2642.0xfe0f.0x1f6b6.0x200d.0x2640.0xfe0f.0x1f6b6.0x200d.0x27a1.0xfe0f.0x1f6b6.0x200d.0x2640.0xfe0f.0x200d.0x27a1.0xfe0f.0x1f6b6.0x200d.0x2642.0xfe0f.0x200d.0x27a1.0xfe0f.0x1f9cd.0x1f9cd.0x200d.0x2642.0xfe0f.0x1f9cd.0x200d.0x2640.0xfe0f.0x1f9ce.0x1f9ce.0x200d.0x2642.0xfe0f.0x1f9ce.0x200d.0x2640.0xfe0f.0x1f9ce.0x200d.0x27a1.0xfe0f.0x1f9ce.0x200d.0x2640.0xfe0f.0x200d.0x27a1.0xfe0f.0x1f9ce.0x200d.0x2642.0xfe0f.0x200d.0x27a1.0xfe0f.0x1f9d1.0x200d.0x1f9af.0x1f9d1.0x200d.0x1f9af.0x200d.0x27a1.0xfe0f.0x1f468.0x200d.0x1f9af.0x1f468.0x200d.0x1f9af.0x200d.0x27a1.0xfe0f.0x1f469.0x200d.0x1f9af.0x1f469.0x200d.0x1f9af.0x200d.0x27a1.0xfe0f.0x1f9d1.0x200d.0x1f9bc.0x1f9d1.0x200d.0x1f9bc.0x200d.0x27a1.0xfe0f.0x1f468.0x200d.0x1f9bc.0x1f468.0x200d.0x1f9bc.0x200d.0x27a1.0xfe0f.0x1f469.0x200d.0x1f9bc.0x1f469.0x200d.0x1f9bc.0x200d.0x27a1.0xfe0f.0x1f9d1.0x200d.0x1f9bd.0x1f9d1.0x200d.0x1f9bd.0x200d.0x27a1.0xfe0f.0x1f468.0x200d.0x1f9bd.0x1f468.0x200d.0x1f9bd.0x200d.0x27a1.0xfe0f.0x1f469.0x200d.0x1f9bd.0x1f469.0x200d.0x1f9bd.0x200d.0x27a1.0xfe0f.0x1f3c3.0x1f3c3.0x200d.0x2642.0xfe0f.0x1f3c3.0x200d.0x2640.0xfe0f.0x1f3c3.0x200d.0x27a1.0xfe0f.0x1f3c3.0x200d.0x2640.0xfe0f.0x200d.0x27a1.0xfe0f.0x1f3c3.0x200d.0x2642.0xfe0f.0x200d.0x27a1.0xfe0f.0x1f483.0x1f57a.0x1f574.0x1f46f.0x1f46f.0x200d.0x2642.0xfe0f.0x1f46f.0x200d.0x2640.0xfe0f.0x1f9d6.0x1f9d6.0x200d.0x2642.0xfe0f.0x1f9d6.0x200d.0x2640.0xfe0f.0x1f9d7.0x1f9d7.0x200d.0x2642.0xfe0f.0x1f9d7.0x200d.0x2640.0xfe0f.0x1f93a.0x1f3c7.0x26f7.0x1f3c2.0x1f3cc.0x1f3cc.0xfe0f.0x200d.0x2642.0xfe0f.0x1f3cc.0xfe0f.0x200d.0x2640.0xfe0f.0x1f3c4.0x1f3c4.0x200d.0x2642.0xfe0f.0x1f3c4.0x200d.0x2640.0xfe0f.0x1f6a3.0x1f6a3.0x200d.0x2642.0xfe0f.0x1f6a3.0x200d.0x2640.0xfe0f.0x1f3ca.0x1f3ca.0x200d.0x2642.0xfe0f.0x1f3ca.0x200d.0x2640.0xfe0f.0x26f9.0x26f9.0xfe0f.0x200d.0x2642.0xfe0f.0x26f9.0xfe0f.0x200d.0x2640.0xfe0f.0x1f3cb.0x1f3cb.0xfe0f.0x200d.0x2642.0xfe0f.0x1f3cb.0xfe0f.0x200d.0x2640.0xfe0f.0x1f6b4.0x1f6b4.0x200d.0x2642.0xfe0f.0x1f6b4.0x200d.0x2640.0xfe0f.0x1f6b5.0x1f6b5.0x200d.0x2642.0xfe0f.0x1f6b5.0x200d.0x2640.0xfe0f.0x1f938.0x1f938.0x200d.0x2642.0xfe0f.0x1f938.0x200d.0x2640.0xfe0f.0x1f93c.0x1f93c.0x200d.0x2642.0xfe0f.0x1f93c.0x200d.0x2640.0xfe0f.0x1f93d.0x1f93d.0x200d.0x2642.0xfe0f.0x1f93d.0x200d.0x2640.0xfe0f.0x1f93e.0x1f93e.0x200d.0x2642.0xfe0f.0x1f93e.0x200d.0x2640.0xfe0f.0x1f939.0x1f939.0x200d.0x2642.0xfe0f.0x1f939.0x200d.0x2640.0xfe0f.0x1f9d8.0x1f9d8.0x200d.0x2642.0xfe0f.0x1f9d8.0x200d.0x2640.0xfe0f.0x1f6c0.0x1f6cc.0x1f9d1.0x200d.0x1f91d.0x200d.0x1f9d1.0x1f46d.0x1f46b.0x1f46c.0x1f48f.0x1f469.0x200d.0x2764.0xfe0f.0x200d.0x1f48b.0x200d.0x1f468.0x1f468.0x200d.0x2764.0xfe0f.0x200d.0x1f48b.0x200d.0x1f468.0x1f469.0x200d.0x2764.0xfe0f.0x200d.0x1f48b.0x200d.0x1f469.0x1f491.0x1f469.0x200d.0x2764.0xfe0f.0x200d.0x1f468.0x1f468.0x200d.0x2764.0xfe0f.0x200d.0x1f468.0x1f469.0x200d.0x2764.0xfe0f.0x200d.0x1f469.0x1f468.0x200d.0x1f469.0x200d.0x1f466.0x1f468.0x200d.0x1f469.0x200d.0x1f467.0x1f468.0x200d.0x1f469.0x200d.0x1f467.0x200d.0x1f466.0x1f468.0x200d.0x1f469.0x200d.0x1f466.0x200d.0x1f466.0x1f468.0x200d.0x1f469.0x200d.0x1f467.0x200d.0x1f467.0x1f468.0x200d.0x1f468.0x200d.0x1f466.0x1f468.0x200d.0x1f468.0x200d.0x1f467.0x1f468.0x200d.0x1f468.0x200d.0x1f467.0x200d.0x1f466.0x1f468.0x200d.0x1f468.0x200d.0x1f466.0x200d.0x1f466.0x1f468.0x200d.0x1f468.0x200d.0x1f467.0x200d.0x1f467.0x1f469.0x200d.0x1f469.0x200d.0x1f466.0x1f469.0x200d.0x1f469.0x200d.0x1f467.0x1f469.0x200d.0x1f469.0x200d.0x1f467.0x200d.0x1f466.0x1f469.0x200d.0x1f469.0x200d.0x1f466.0x200d.0x1f466.0x1f469.0x200d.0x1f469.0x200d.0x1f467.0x200d.0x1f467.0x1f468.0x200d.0x1f466.0x1f468.0x200d.0x1f466.0x200d.0x1f466.0x1f468.0x200d.0x1f467.0x1f468.0x200d.0x1f467.0x200d.0x1f466.0x1f468.0x200d.0x1f467.0x200d.0x1f467.0x1f469.0x200d.0x1f466.0x1f469.0x200d.0x1f466.0x200d.0x1f466.0x1f469.0x200d.0x1f467.0x1f469.0x200d.0x1f467.0x200d.0x1f466.0x1f469.0x200d.0x1f467.0x200d.0x1f467.0x1f5e3.0x1f464.0x1f465.0x1fac2.0x1f46a.0x1f9d1.0x200d.0x1f9d1.0x200d.0x1f9d2.0x1f9d1.0x200d.0x1f9d1.0x200d.0x1f9d2.0x200d.0x1f9d2.0x1f9d1.0x200d.0x1f9d2.0x1f9d1.0x200d.0x1f9d2.0x200d.0x1f9d2.0x1f463".split("."),
 				animals_and_nature: /* @__PURE__ */ "0x1f435.0x1f412.0x1f98d.0x1f9a7.0x1f436.0x1f415.0x1f9ae.0x1f415.0x200d.0x1f9ba.0x1f429.0x1f43a.0x1f98a.0x1f99d.0x1f431.0x1f408.0x1f408.0x200d.0x2b1b.0x1f981.0x1f42f.0x1f405.0x1f406.0x1f434.0x1face.0x1facf.0x1f40e.0x1f984.0x1f993.0x1f98c.0x1f9ac.0x1f42e.0x1f402.0x1f403.0x1f404.0x1f437.0x1f416.0x1f417.0x1f43d.0x1f40f.0x1f411.0x1f410.0x1f42a.0x1f42b.0x1f999.0x1f992.0x1f418.0x1f9a3.0x1f98f.0x1f99b.0x1f42d.0x1f401.0x1f400.0x1f439.0x1f430.0x1f407.0x1f43f.0x1f9ab.0x1f994.0x1f987.0x1f43b.0x1f43b.0x200d.0x2744.0xfe0f.0x1f428.0x1f43c.0x1f9a5.0x1f9a6.0x1f9a8.0x1f998.0x1f9a1.0x1f43e.0x1f983.0x1f414.0x1f413.0x1f423.0x1f424.0x1f425.0x1f426.0x1f427.0x1f54a.0x1f985.0x1f986.0x1f9a2.0x1f989.0x1f9a4.0x1fab6.0x1f9a9.0x1f99a.0x1f99c.0x1fabd.0x1f426.0x200d.0x2b1b.0x1fabf.0x1f426.0x200d.0x1f525.0x1f438.0x1f40a.0x1f422.0x1f98e.0x1f40d.0x1f432.0x1f409.0x1f995.0x1f996.0x1f433.0x1f40b.0x1f42c.0x1f9ad.0x1f41f.0x1f420.0x1f421.0x1f988.0x1f419.0x1f41a.0x1fab8.0x1fabc.0x1f40c.0x1f98b.0x1f41b.0x1f41c.0x1f41d.0x1fab2.0x1f41e.0x1f997.0x1fab3.0x1f577.0x1f578.0x1f982.0x1f99f.0x1fab0.0x1fab1.0x1f9a0.0x1f490.0x1f338.0x1f4ae.0x1fab7.0x1f3f5.0x1f339.0x1f940.0x1f33a.0x1f33b.0x1f33c.0x1f337.0x1fabb.0x1f331.0x1fab4.0x1f332.0x1f333.0x1f334.0x1f335.0x1f33e.0x1f33f.0x2618.0x1f340.0x1f341.0x1f342.0x1f343.0x1fab9.0x1faba.0x1f344".split("."),
-				food_and_drink: /* @__PURE__ */ "0x1f347.0x1f348.0x1f349.0x1f34a.0x1f34b.0x1f34b.0x200d.0x1f7e9.0x1f34c.0x1f34d.0x1f96d.0x1f34e.0x1f34f.0x1f350.0x1f351.0x1f352.0x1f353.0x1fad0.0x1f95d.0x1f345.0x1fad2.0x1f965.0x1f951.0x1f346.0x1f954.0x1f955.0x1f33d.0x1f336.0x1fad1.0x1f952.0x1f96c.0x1f966.0x1f9c4.0x1f9c5.0x1f95c.0x1fad8.0x1f330.0x1fada.0x1fadb.0x1f344.0x200d.0x1f7eb.0x1f35e.0x1f950.0x1f956.0x1fad3.0x1f968.0x1f96f.0x1f95e.0x1f9c7.0x1f'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('9c0.0x1f356.0x1f357.0x1f969.0x1f953.0x1f354.0x1f35f.0x1f355.0x1f32d.0x1f96a.0x1f32e.0x1f32f.0x1fad4.0x1f959.0x1f9c6.0x1f95a.0x1f373.0x1f958.0x1f372.0x1fad5.0x1f963.0x1f957.0x1f37f.0x1f9c8.0x1f9c2.0x1f96b.0x1f371.0x1f358.0x1f359.0x1f35a.0x1f35b.0x1f35c.0x1f35d.0x1f360.0x1f362.0x1f363.0x1f364.0x1f365.0x1f96e.0x1f361.0x1f95f.0x1f960.0x1f961.0x1f980.0x1f99e.0x1f990.0x1f991.0x1f9aa.0x1f366.0x1f367.0x1f368.0x1f369.0x1f36a.0x1f382.0x1f370.0x1f9c1.0x1f967.0x1f36b.0x1f36c.0x1f36d.0x1f36e.0x1f36f.0x1f37c.0x1f95b.0x2615.0x1fad6.0x1f375.0x1f376.0x1f37e.0x1f377.0x1f378.0x1f379.0x1f37a.0x1f37b.0x1f942.0x1f943.0x1fad7.0x1f964.0x1f9cb.0x1f9c3.0x1f9c9.0x1f9ca.0x1f962.0x1f37d.0x1f374.0x1f944.0x1f52a.0x1fad9.0x1f3fa".split("."),
-				travel_and_places: /* @__PURE__ */ "0x1f30d.0x1f30e.0x1f30f.0x1f310.0x1f5fa.0x1f5fe.0x1f9ed.0x1f3d4.0x26f0.0x1f30b.0x1f5fb.0x1f3d5.0x1f3d6.0x1f3dc.0x1f3dd.0x1f3de.0x1f3df.0x1f3db.0x1f3d7.0x1f9f1.0x1faa8.0x1fab5.0x1f6d6.0x1f3d8.0x1f3da.0x1f3e0.0x1f3e1.0x1f3e2.0x1f3e3.0x1f3e4.0x1f3e5.0x1f3e6.0x1f3e8.0x1f3e9.0x1f3ea.0x1f3eb.0x1f3ec.0x1f3ed.0x1f3ef.0x1f3f0.0x1f492.0x1f5fc.0x1f5fd.0x26ea.0x1f54c.0x1f6d5.0x1f54d.0x26e9.0x1f54b.0x26f2.0x26fa.0x1f301.0x1f303.0x1f3d9.0x1f304.0x1f305.0x1f306.0x1f307.0x1f309.0x2668.0x1f3a0.0x1f6dd.0x1f3a1.0x1f3a2.0x1f488.0x1f3aa.0x1f682.0x1f683.0x1f684.0x1f685.0x1f686.0x1f687.0x1f688.0x1f689.0x1f68a.0x1f69d.0x1f69e.0x1f68b.0x1f68c.0x1f68d.0x1f68e.0x1f690.0x1f691.0x1f692.0x1f693.0x1f694.0x1f695.0x1f696.0x1f697.0x1f698.0x1f699.0x1f6fb.0x1f69a.0x1f69b.0x1f69c.0x1f3ce.0x1f3cd.0x1f6f5.0x1f9bd.0x1f9bc.0x1f6fa.0x1f6b2.0x1f6f4.0x1f6f9.0x1f6fc.0x1f68f.0x1f6e3.0x1f6e4.0x1f6e2.0x26fd.0x1f6de.0x1f6a8.0x1f6a5.0x1f6a6.0x1f6d1.0x1f6a7.0x2693.0x1f6df.0x26f5.0x1f6f6.0x1f6a4.0x1f6f3.0x26f4.0x1f6e5.0x1f6a2.0x2708.0x1f6e9.0x1f6eb.0x1f6ec.0x1fa82.0x1f4ba.0x1f681.0x1f69f.0x1f6a0.0x1f6a1.0x1f6f0.0x1f680.0x1f6f8.0x1f6ce.0x1f9f3.0x231b.0x23f3.0x231a.0x23f0.0x23f1.0x23f2.0x1f570.0x1f55b.0x1f567.0x1f550.0x1f55c.0x1f551.0x1f55d.0x1f552.0x1f55e.0x1f553.0x1f55f.0'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('x1f554.0x1f560.0x1f555.0x1f561.0x1f556.0x1f562.0x1f557.0x1f563.0x1f558.0x1f564.0x1f559.0x1f565.0x1f55a.0x1f566.0x1f311.0x1f312.0x1f313.0x1f314.0x1f315.0x1f316.0x1f317.0x1f318.0x1f319.0x1f31a.0x1f31b.0x1f31c.0x1f321.0x2600.0x1f31d.0x1f31e.0x1fa90.0x2b50.0x1f31f.0x1f320.0x1f30c.0x2601.0x26c5.0x26c8.0x1f324.0x1f325.0x1f326.0x1f327.0x1f328.0x1f329.0x1f32a.0x1f32b.0x1f32c.0x1f300.0x1f308.0x1f302.0x2602.0x2614.0x26f1.0x26a1.0x2744.0x2603.0x26c4.0x2604.0x1f525.0x1f4a7.0x1f30a".split("."),
+				food_and_drink: /* @__PURE__ */ "0x1f347.0x1f348.0x1f349.0x1f34a.0x1f34b.0x1f34b.0x200d.0x1f7e9.0x1f34c.0x1f34d.0x1f96d.0x1f34e.0x1f34f.0x1f350.0x1f351.0x1f352.0x1f353.0x1fad0.0x1f95d.0x1f345.0x1fad2.0x1f965.0x1f951.0x1f346.0x1f954.0x1f955.0x1f33d.0x1f336.0x1fad1.0x1f952.0x1f96c.0x1f966.0x1f9c4.0x1f9c5.0x1f95c.0x1fad8.0x1f330.0x1fada.0x1fadb.0x1f344.0x200d.0x1f7eb.0x1f35e.0x1f950.0x1f956.0x1fad3.0x1f968.0x1f96f.0x1f95e.0x1f9c7.0x1f9c0.0x1f356.0x1f357.0x1f969.0x1f953.0x1f354.0x1f35f.0x1f355.0x1f32d.0x1f96a.0x1f32e.0x1f32f.0x1fad4.0x1f959.0x1f9c6.0x1f95a.0x1f373.0x1f958.0x1f372.0x1fad5.0x1f963.0x1f957.0x1f37f.0x1f9c8.0x1f9c2.0x1f96b.0x1f371.0x1f358.0x1f359.0x1f35a.0x1f35b.0x1f35c.0x1f35d.0x1f360.0x1f362.0x1f363.0x1f364.0x1f365.0x1f96e.0x1f361.0x1f95f.0x1f960.0x1f961.0x1f980.0x1f99e.0x1f990.0x1f991.0x1f9aa.0x1f366.0x1f367.0x1f368.0x1f369.0x1f36a.0x1f382.0x1f370.0x1f9c1.0x1f967.0x1f36b.0x1f36c.0x1f36d.0x1f36e.0x1f36f.0x1f37c.0x1f95b.0x2615.0x1fad6.0x1f375.0x1f376.0x1f37e.0x1f377.0x1f378.0x1f379.0x1f37a.0x1f37b.0x1f942.0x1f943.0x1fad7.0x1f964.0x1f9cb.0x1f9c3.0x1f9c9.0x1f9ca.0x1f962.0x1f37d.0x1f374.0x1f944.0x1f52a.0x1fad9.0x1f3fa".split("."),
+				travel_and_places: /* @__PURE__ */ "0x1f30d.0x1f30e.0x1f30f.0x1f310.0x1f5fa.0x1f5fe.0x1f9ed.0x1f3d4.0x26f0.0x1f30b.0x1f5fb.0x1f3d5.0x1f3d6.0x1f3dc.0x1f3dd.0x1f3de.0x1f3df.0x1f3db.0x1f3d7.0x1f9f1.0x1faa8.0x1fab5.0x1f6d6.0x1f3d8.0x1f3da.0x1f3e0.0x1f3e1.0x1f3e2.0x1f3e3.0x1f3e4.0x1f3e5.0x1f3e6.0x1f3e8.0x1f3e9.0x1f3ea.0x1f3eb.0x1f3ec.0x1f3ed.0x1f3ef.0x1f3f0.0x1f492.0x1f5fc.0x1f5fd.0x26ea.0x1f54c.0x1f6d5.0x1f54d.0x26e9.0x1f54b.0x26f2.0x26fa.0x1f301.0x1f303.0x1f3d9.0x1f304.0x1f305.0x1f306.0x1f307.0x1f309.0x2668.0x1f3a0.0x1f6dd.0x1f3a1.0x1f3a2.0x1f488.0x1f3aa.0x1f682.0x1f683.0x1f684.0x1f685.0x1f686.0x1f687.0x1f688.0x1f689.0x1f68a.0x1f69d.0x1f69e.0x1f68b.0x1f68c.0x1f68d.0x1f68e.0x1f690.0x1f691.0x1f692.0x1f693.0x1f694.0x1f695.0x1f696.0x1f697.0x1f698.0x1f699.0x1f6fb.0x1f69a.0x1f69b.0x1f69c.0x1f3ce.0x1f3cd.0x1f6f5.0x1f9bd.0x1f9bc.0x1f6fa.0x1f6b2.0x1f6f4.0x1f6f9.0x1f6fc.0x1f68f.0x1f6e3.0x1f6e4.0x1f6e2.0x26fd.0x1f6de.0x1f6a8.0x1f6a5.0x1f6a6.0x1f6d1.0x1f6a7.0x2693.0x1f6df.0x26f5.0x1f6f6.0x1f6a4.0x1f6f3.0x26f4.0x1f6e5.0x1f6a2.0x2708.0x1f6e9.0x1f6eb.0x1f6ec.0x1fa82.0x1f4ba.0x1f681.0x1f69f.0x1f6a0.0x1f6a1.0x1f6f0.0x1f680.0x1f6f8.0x1f6ce.0x1f9f3.0x231b.0x23f3.0x231a.0x23f0.0x23f1.0x23f2.0x1f570.0x1f55b.0x1f567.0x1f550.0x1f55c.0x1f551.0x1f55d.0x1f552.0x1f55e.0x1f553.0x1f55f.0x1f554.0x1f560.0x1f555.0x1f561.0x1f556.0x1f562.0x1f557.0x1f563.0x1f558.0x1f564.0x1f559.0x1f565.0x1f55a.0x1f566.0x1f311.0x1f312.0x1f313.0x1f314.0x1f315.0x1f316.0x1f317.0x1f318.0x1f319.0x1f31a.0x1f31b.0x1f31c.0x1f321.0x2600.0x1f31d.0x1f31e.0x1fa90.0x2b50.0x1f31f.0x1f320.0x1f30c.0x2601.0x26c5.0x26c8.0x1f324.0x1f325.0x1f326.0x1f327.0x1f328.0x1f329.0x1f32a.0x1f32b.0x1f32c.0x1f300.0x1f308.0x1f302.0x2602.0x2614.0x26f1.0x26a1.0x2744.0x2603.0x26c4.0x2604.0x1f525.0x1f4a7.0x1f30a".split("."),
 				activities: /* @__PURE__ */ "0x1f383.0x1f384.0x1f386.0x1f387.0x1f9e8.0x2728.0x1f388.0x1f389.0x1f38a.0x1f38b.0x1f38d.0x1f38e.0x1f38f.0x1f390.0x1f391.0x1f9e7.0x1f380.0x1f381.0x1f397.0x1f39f.0x1f3ab.0x1f396.0x1f3c6.0x1f3c5.0x1f947.0x1f948.0x1f949.0x26bd.0x26be.0x1f94e.0x1f3c0.0x1f3d0.0x1f3c8.0x1f3c9.0x1f3be.0x1f94f.0x1f3b3.0x1f3cf.0x1f3d1.0x1f3d2.0x1f94d.0x1f3d3.0x1f3f8.0x1f94a.0x1f94b.0x1f945.0x26f3.0x26f8.0x1f3a3.0x1f93f.0x1f3bd.0x1f3bf.0x1f6f7.0x1f94c.0x1f3af.0x1fa80.0x1fa81.0x1f52b.0x1f3b1.0x1f52e.0x1fa84.0x1f3ae.0x1f579.0x1f3b0.0x1f3b2.0x1f9e9.0x1f9f8.0x1fa85.0x1faa9.0x1fa86.0x2660.0x2665.0x2666.0x2663.0x265f.0x1f0cf.0x1f004.0x1f3b4.0x1f3ad.0x1f5bc.0x1f3a8.0x1f9f5.0x1faa1.0x1f9f6.0x1faa2".split("."),
-				objects: /* @__PURE__ */ "0x1f453.0x1f576.0x1f97d.0x1f97c.0x1f9ba.0x1f454.0x1f455.0x1f456.0x1f9e3.0x1f9e4.0x1f9e5.0x1f9e6.0x1f457.0x1f458.0x1f97b.0x1fa71.0x1fa72.0x1fa73.0x1f459.0x1f45a.0x1faad.0x1f45b.0x1f45c.0x1f45d.0x1f6cd.0x1f392.0x1fa74.0x1f45e.0x1f45f.0x1f97e.0x1f97f.0x1f460.0x1f461.0x1fa70.0x1f462.0x1faae.0x1f451.0x1f452.0x1f3a9.0x1f393.0x1f9e2.0x1fa96.0x26d1.0x1f4ff.0x1f484.0x1f48d.0x1f48e.0x1f507.0x1f508.0x1f509.0x1f50a.0x1f4e2.0x1f4e3.0x1f4ef.0x1f514.0x1f515.0x1f3bc.0x1f3b5.0x1f3b6.0x1f399.0x1f39a.0x1f39b.0x1f3a4.0x1f3a7.0x1f4fb.0x1f3b7.0x1fa97.0x1f3b8.0x1f3b9.0x1f3ba.0x1f3bb.0x1fa95.0x1f941.0x1fa98.0x1fa87.0x1fa88.0x1f4f1.0x1f4f2.0x260e.0x1f4de.0x1f4df.0x1f4e0.0x1f50b.0x1faab.0x1f50c.0x1f4bb.0x1f5a5.0x1f5a8.0x2328.0x1f5b1.0x1f5b2.0x1f4bd.0x1f4be.0x1f4bf.0x1f4c0.0x1f9ee.0x'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('1f3a5.0x1f39e.0x1f4fd.0x1f3ac.0x1f4fa.0x1f4f7.0x1f4f8.0x1f4f9.0x1f4fc.0x1f50d.0x1f50e.0x1f56f.0x1f4a1.0x1f526.0x1f3ee.0x1fa94.0x1f4d4.0x1f4d5.0x1f4d6.0x1f4d7.0x1f4d8.0x1f4d9.0x1f4da.0x1f4d3.0x1f4d2.0x1f4c3.0x1f4dc.0x1f4c4.0x1f4f0.0x1f5de.0x1f4d1.0x1f516.0x1f3f7.0x1f4b0.0x1fa99.0x1f4b4.0x1f4b5.0x1f4b6.0x1f4b7.0x1f4b8.0x1f4b3.0x1f9fe.0x1f4b9.0x2709.0x1f4e7.0x1f4e8.0x1f4e9.0x1f4e4.0x1f4e5.0x1f4e6.0x1f4eb.0x1f4ea.0x1f4ec.0x1f4ed.0x1f4ee.0x1f5f3.0x270f.0x2712.0x1f58b.0x1f58a.0x1f58c.0x1f58d.0x1f4dd.0x1f4bc.0x1f4c1.0x1f4c2.0x1f5c2.0x1f4c5.0x1f4c6.0x1f5d2.0x1f5d3.0x1f4c7.0x1f4c8.0x1f4c9.0x1f4ca.0x1f4cb.0x1f4cc.0x1f4cd.0x1f4ce.0x1f587.0x1f4cf.0x1f4d0.0x2702.0x1f5c3.0x1f5c4.0x1f5d1.0x1f512.0x1f513.0x1f50f.0x1f510.0x1f511.0x1f5dd.0x1f528.0x1fa93.0x26cf.0x2692.0x1f6e0.0x1f5e1.0x2694.0x1f4a3.0x1fa83.0x1f3f9.0x1f6e1.0x1fa9a.0x1f527.0x1fa9b.0x1f529.0x2699.0x1f5dc.0x2696.0x1f9af.0x1f517.0x26d3.0xfe0f.0x200d.0x1f4a5.0x26d3.0x1fa9d.0x1f9f0.0x1f9f2.0x1fa9c.0x2697.0x1f9ea.0x1f9eb.0x1f9ec.0x1f52c.0x1f52d.0x1f4e1.0x1f489.0x1fa78.0x1f48a.0x1fa79.0x1fa7c.0x1fa7a.0x1fa7b.0x1f6aa.0x1f6d7.0x1fa9e.0x1fa9f.0x1f6cf.0x1f6cb.0x1fa91.0x1f6bd.0x1faa0.0x1f6bf.0x1f6c1.0x1faa4.0x1fa92.0x1f9f4.0x1f9f7.0x1f9f9.0x1f9fa.0x1f9fb.0x1faa3.0x1f9fc.0x1fae7.0x1faa5.0x1f9fd.0x1f9ef.0x1f6d2.0x1f6ac.0x26b0.0x1faa6.0x26b1.0x1f9ff.0x1faac.0x1f5ff.0x1faa7.0x1faaa".split("."),
-				symbols: /* @__PURE__ */ "0x1f3e7.0x1f6ae.0x1f6b0.0x267f.0x1f6b9.0x1f6ba.0x1f6bb.0x1f6bc.0x1f6be.0x1f6c2.0x1f6c3.0x1f6c4.0x1f6c5.0x26a0.0x1f6b8.0x26d4.0x1f6ab.0x1f6b3.0x1f6ad.0x1f6af.0x1f6b1.0x1f6b7.0x1f4f5.0x1f51e.0x2622.0x2623.0x2b06.0x2197.0x27a1.0x2198.0x2b07.0x2199.0x2b05.0x2196.0x2195.0x2194.0x21a9.0x21aa.0x2934.0x2935.0x1f503.0x1f504.0x1f519.0x1f51a.0x1f51b.0x1f51c.0x1f51d.0x1f6d0.0x269b.0x1f549.0x2721.0x2638.0x262f.0x271d.0x2626.0x262a.0x262e.0x1f54e.0x1f52f.0x1faaf.0x2648.0x2649.0x264a.0x264b.0x264c.0x264d.0x264e.0x264f.0x2650.0x2651.0x2652.0x2653.0x26ce.0x1f500.0x1f501.0x1f502.0x25b6.0x23e9.0x23ed.0x23ef.0x25c0.0x23ea.0x23ee.0x1f53'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('c.0x23eb.0x1f53d.0x23ec.0x23f8.0x23f9.0x23fa.0x23cf.0x1f3a6.0x1f505.0x1f506.0x1f4f6.0x1f6dc.0x1f4f3.0x1f4f4.0x2640.0x2642.0x26a7.0x2716.0x2795.0x2796.0x2797.0x1f7f0.0x267e.0x203c.0x2049.0x2753.0x2754.0x2755.0x2757.0x3030.0x1f4b1.0x1f4b2.0x2695.0x267b.0x269c.0x1f531.0x1f4db.0x1f530.0x2b55.0x2705.0x2611.0x2714.0x274c.0x274e.0x27b0.0x27bf.0x303d.0x2733.0x2734.0x2747.0x00a9.0x00ae.0x2122.0x0023.0xfe0f.0x20e3.0x002a.0xfe0f.0x20e3.0x0030.0xfe0f.0x20e3.0x0031.0xfe0f.0x20e3.0x0032.0xfe0f.0x20e3.0x0033.0xfe0f.0x20e3.0x0034.0xfe0f.0x20e3.0x0035.0xfe0f.0x20e3.0x0036.0xfe0f.0x20e3.0x0037.0xfe0f.0x20e3.0x0038.0xfe0f.0x20e3.0x0039.0xfe0f.0x20e3.0x1f51f.0x1f520.0x1f521.0x1f522.0x1f523.0x1f524.0x1f170.0x1f18e.0x1f171.0x1f191.0x1f192.0x1f193.0x2139.0x1f194.0x24c2.0x1f195.0x1f196.0x1f17e.0x1f197.0x1f17f.0x1f198.0x1f199.0x1f19a.0x1f201.0x1f202.0x1f237.0x1f236.0x1f22f.0x1f250.0x1f239.0x1f21a.0x1f232.0x1f251.0x1f238.0x1f234.0x1f233.0x3297.0x3299.0x1f23a.0x1f235.0x1f534.0x1f7e0.0x1f7e1.0x1f7e2.0x1f535.0x1f7e3.0x1f7e4.0x26ab.0x26aa.0x1f7e5.0x1f7e7.0x1f7e8.0x1f7e9.0x1f7e6.0x1f7ea.0x1f7eb.0x2b1b.0x2b1c.0x25fc.0x25fb.0x25fe.0x25fd.0x25aa.0x25ab.0x1f536.0x1f537.0x1f538.0x1f539.0x1f53a.0x1f53b.0x1f4a0.0x1f518.0x1f533.0x1f532".split("."),
-				flags: /* @__PURE__ */ "0x1f3c1.0x1f6a9.0x1f38c.0x1f3f4.0x1f3f3.0x1f3f3.0xfe0f.0x200d.0x1f308.0x1f3f3.0xfe0f.0x200d.0x26a7.0xfe0f.0x1f3f4.0x200d.0x2620.0xfe0f.0x1f1e6.0x1f1e8.0x1f1e6.0x1f1e9.0x1f1e6.0x1f1ea.0x1f1e6.0x1f1eb.0x1f1e6.0x1f1ec.0x1f1e6.0x1f1ee.0x1f1e6.0x1f1f1.0x1f1e6.0x1f1f2.0x1f1e6.0x1f1f4.0x1f1e6.0x1f1f6.0x1f1e6.0x1f1f7.0x1f1e6.0x1f1f8.0x1f1e6.0x1f1f9.0x1f1e6.0x1f1fa.0x1f1e6.0x1f1fc.0x1f1e6.0x1f1fd.0x1f1e6.0x1f1ff.0x1f1e7.0x1f1e6.0x1f1e7.0x1f1e7.0x1f1e7.0x1f1e9.0x1f1e7.0x1f1ea.0x1f1e7.0x1f1eb.0x1f1e7.0x1f1ec.0x1f1e7.0x1f1ed.0x1f1e7.0x1f1ee.0x1f1e7.0x1f1ef.0x1f1e7.0x1f1f1.0x1f1e7.0x1f1f2.0x1f1e7.0x1f1f3.0x1f1e7.0x1f1f4.0x1f1e7.0x1f1f6.0x1f1e7.0x1f1f7.0x1f1e7.0x1f1f8.0x1f1e7.0x1f1f9.0x1f1e7.0x1f1fb.0x1f1e7.0x1f1fc.0x1f1e7.0x1f1fe.0x1f1e7.0x1f1ff'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('.0x1f1e8.0x1f1e6.0x1f1e8.0x1f1e8.0x1f1e8.0x1f1e9.0x1f1e8.0x1f1eb.0x1f1e8.0x1f1ec.0x1f1e8.0x1f1ed.0x1f1e8.0x1f1ee.0x1f1e8.0x1f1f0.0x1f1e8.0x1f1f1.0x1f1e8.0x1f1f2.0x1f1e8.0x1f1f3.0x1f1e8.0x1f1f4.0x1f1e8.0x1f1f5.0x1f1e8.0x1f1f7.0x1f1e8.0x1f1fa.0x1f1e8.0x1f1fb.0x1f1e8.0x1f1fc.0x1f1e8.0x1f1fd.0x1f1e8.0x1f1fe.0x1f1e8.0x1f1ff.0x1f1e9.0x1f1ea.0x1f1e9.0x1f1ec.0x1f1e9.0x1f1ef.0x1f1e9.0x1f1f0.0x1f1e9.0x1f1f2.0x1f1e9.0x1f1f4.0x1f1e9.0x1f1ff.0x1f1ea.0x1f1e6.0x1f1ea.0x1f1e8.0x1f1ea.0x1f1ea.0x1f1ea.0x1f1ec.0x1f1ea.0x1f1ed.0x1f1ea.0x1f1f7.0x1f1ea.0x1f1f8.0x1f1ea.0x1f1f9.0x1f1ea.0x1f1fa.0x1f1eb.0x1f1ee.0x1f1eb.0x1f1ef.0x1f1eb.0x1f1f0.0x1f1eb.0x1f1f2.0x1f1eb.0x1f1f4.0x1f1eb.0x1f1f7.0x1f1ec.0x1f1e6.0x1f1ec.0x1f1e7.0x1f1ec.0x1f1e9.0x1f1ec.0x1f1ea.0x1f1ec.0x1f1eb.0x1f1ec.0x1f1ec.0x1f1ec.0x1f1ed.0x1f1ec.0x1f1ee.0x1f1ec.0x1f1f1.0x1f1ec.0x1f1f2.0x1f1ec.0x1f1f3.0x1f1ec.0x1f1f5.0x1f1ec.0x1f1f6.0x1f1ec.0x1f1f7.0x1f1ec.0x1f1f8.0x1f1ec.0x1f1f9.0x1f1ec.0x1f1fa.0x1f1ec.0x1f1fc.0x1f1ec.0x1f1fe.0x1f1ed.0x1f1f0.0x1f1ed.0x1f1f2.0x1f1ed.0x1f1f3.0x1f1ed.0x1f1f7.0x1f1ed.0x1f1f9.0x1f1ed.0x1f1fa.0x1f1ee.0x1f1e8.0x1f1ee.0x1f1e9.0x1f1ee.0x1f1ea.0x1f1ee.0x1f1f1.0x1f1ee.0x1f1f2.0x1f1ee.0x1f1f3.0x1f1ee.0x1f1f4.0x1f1ee.0x1f1f6.0x1f1ee.0x1f1f7.0x1f1ee.0x1f1f8.0x1f1ee.0x1f1f9.0x1f1ef.0x1f1ea.0x1f1ef.0x1f1f2.0x1f1ef.0x1f1f4.0x1f1ef.0x1f1f5.0x1f1f0.0x1f1ea.0x1f1f0.0x1f1ec.0x1f1f0.0x1f1ed.0x1f1f0.0x1f1ee.0x1f1f0.0x1f1f2.0x1f1f0.0x1f1f3.0x1f1f0.0x1f1f5.0x1f1f0.0x1f1f7.0x1f1f0.0x1f1fc.0x1f1f0.0x1f1fe.0x1f1f0.0x1f1ff.0x1f1f1.0x1f1e6.0x1f1f1.0x1f1e7.0x1f1f1.0x1f1e8.0x1f1f1.0x1f1ee.0x1f1f1.0x1f1f0.0x1f1f1.0x1f1f7.0x1f1f1.0x1f1f8.0x1f1f1.0x1f1f9.0x1f1f1.0x1f1fa.0x1f1f1.0x1f1fb.0x1f1f1.0x1f1fe.0x1f1f2.0x1f1e6.0x1f1f2.0x1f1e8.0x1f1f2.0x1f1e9.0x1f1f2.0x1f1ea.0x1f1f2.0x1f1eb.0x1f1f2.0x1f1ec.0x1f1f2.0x1f1ed.0x1f1f2.0x1f1f0.0x1f1f2.0x1f1f1.0x1f1f2.0x1f1f2.0x1f1f2.0x1f1f3.0x1f1f2.0x1f1f4.0x1f1f2.0x1f1f5.0x1f1f2.0x1f1f6.0x1f1f2.0x1f1f7.0x1f1f2.0x1f1f8.0x1f1f2.0x1f1f9.0x1f1f2.0x1f1fa.0x1f1f2.0x1f1fb.0x1f1f2.0x1f1fc.0x1f1f2.0x1f1fd'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('.0x1f1f2.0x1f1fe.0x1f1f2.0x1f1ff.0x1f1f3.0x1f1e6.0x1f1f3.0x1f1e8.0x1f1f3.0x1f1ea.0x1f1f3.0x1f1eb.0x1f1f3.0x1f1ec.0x1f1f3.0x1f1ee.0x1f1f3.0x1f1f1.0x1f1f3.0x1f1f4.0x1f1f3.0x1f1f5.0x1f1f3.0x1f1f7.0x1f1f3.0x1f1fa.0x1f1f3.0x1f1ff.0x1f1f4.0x1f1f2.0x1f1f5.0x1f1e6.0x1f1f5.0x1f1ea.0x1f1f5.0x1f1eb.0x1f1f5.0x1f1ec.0x1f1f5.0x1f1ed.0x1f1f5.0x1f1f0.0x1f1f5.0x1f1f1.0x1f1f5.0x1f1f2.0x1f1f5.0x1f1f3.0x1f1f5.0x1f1f7.0x1f1f5.0x1f1f8.0x1f1f5.0x1f1f9.0x1f1f5.0x1f1fc.0x1f1f5.0x1f1fe.0x1f1f6.0x1f1e6.0x1f1f7.0x1f1ea.0x1f1f7.0x1f1f4.0x1f1f7.0x1f1f8.0x1f1f7.0x1f1fa.0x1f1f7.0x1f1fc.0x1f1f8.0x1f1e6.0x1f1f8.0x1f1e7.0x1f1f8.0x1f1e8.0x1f1f8.0x1f1e9.0x1f1f8.0x1f1ea.0x1f1f8.0x1f1ec.0x1f1f8.0x1f1ed.0x1f1f8.0x1f1ee.0x1f1f8.0x1f1ef.0x1f1f8.0x1f1f0.0x1f1f8.0x1f1f1.0x1f1f8.0x1f1f2.0x1f1f8.0x1f1f3.0x1f1f8.0x1f1f4.0x1f1f8.0x1f1f7.0x1f1f8.0x1f1f8.0x1f1f8.0x1f1f9.0x1f1f8.0x1f1fb.0x1f1f8.0x1f1fd.0x1f1f8.0x1f1fe.0x1f1f8.0x1f1ff.0x1f1f9.0x1f1e6.0x1f1f9.0x1f1e8.0x1f1f9.0x1f1e9.0x1f1f9.0x1f1eb.0x1f1f9.0x1f1ec.0x1f1f9.0x1f1ed.0x1f1f9.0x1f1ef.0x1f1f9.0x1f1f0.0x1f1f9.0x1f1f1.0x1f1f9.0x1f1f2.0x1f1f9.0x1f1f3.0x1f1f9.0x1f1f4.0x1f1f9.0x1f1f7.0x1f1f9.0x1f1f9.0x1f1f9.0x1f1fb.0x1f1f9.0x1f1fc.0x1f1f9.0x1f1ff.0x1f1fa.0x1f1e6.0x1f1fa.0x1f1ec.0x1f1fa.0x1f1f2.0x1f1fa.0x1f1f3.0x1f1fa.0x1f1f8.0x1f1fa.0x1f1fe.0x1f1fa.0x1f1ff.0x1f1fb.0x1f1e6.0x1f1fb.0x1f1e8.0x1f1fb.0x1f1ea.0x1f1fb.0x1f1ec.0x1f1fb.0x1f1ee.0x1f1fb.0x1f1f3.0x1f1fb.0x1f1fa.0x1f1fc.0x1f1eb.0x1f1fc.0x1f1f8.0x1f1fd.0x1f1f0.0x1f1fe.0x1f1ea.0x1f1fe.0x1f1f9.0x1f1ff.0x1f1e6.0x1f1ff.0x1f1f2.0x1f1ff.0x1f1fc.0x1f3f4.0xe0067.0xe0062.0xe0065.0xe006e.0xe0067.0xe007f.0x1f3f4.0xe0067.0xe0062.0xe0073.0xe0063.0xe0074.0xe007f.0x1f3f4.0xe0067.0xe0062.0xe0077.0xe006c.0xe0073.0xe007f".split(".")
+				objects: /* @__PURE__ */ "0x1f453.0x1f576.0x1f97d.0x1f97c.0x1f9ba.0x1f454.0x1f455.0x1f456.0x1f9e3.0x1f9e4.0x1f9e5.0x1f9e6.0x1f457.0x1f458.0x1f97b.0x1fa71.0x1fa72.0x1fa73.0x1f459.0x1f45a.0x1faad.0x1f45b.0x1f45c.0x1f45d.0x1f6cd.0x1f392.0x1fa74.0x1f45e.0x1f45f.0x1f97e.0x1f97f.0x1f460.0x1f461.0x1fa70.0x1f462.0x1faae.0x1f451.0x1f452.0x1f3a9.0x1f393.0x1f9e2.0x1fa96.0x26d1.0x1f4ff.0x1f484.0x1f48d.0x1f48e.0x1f507.0x1f508.0x1f509.0x1f50a.0x1f4e2.0x1f4e3.0x1f4ef.0x1f514.0x1f515.0x1f3bc.0x1f3b5.0x1f3b6.0x1f399.0x1f39a.0x1f39b.0x1f3a4.0x1f3a7.0x1f4fb.0x1f3b7.0x1fa97.0x1f3b8.0x1f3b9.0x1f3ba.0x1f3bb.0x1fa95.0x1f941.0x1fa98.0x1fa87.0x1fa88.0x1f4f1.0x1f4f2.0x260e.0x1f4de.0x1f4df.0x1f4e0.0x1f50b.0x1faab.0x1f50c.0x1f4bb.0x1f5a5.0x1f5a8.0x2328.0x1f5b1.0x1f5b2.0x1f4bd.0x1f4be.0x1f4bf.0x1f4c0.0x1f9ee.0x1f3a5.0x1f39e.0x1f4fd.0x1f3ac.0x1f4fa.0x1f4f7.0x1f4f8.0x1f4f9.0x1f4fc.0x1f50d.0x1f50e.0x1f56f.0x1f4a1.0x1f526.0x1f3ee.0x1fa94.0x1f4d4.0x1f4d5.0x1f4d6.0x1f4d7.0x1f4d8.0x1f4d9.0x1f4da.0x1f4d3.0x1f4d2.0x1f4c3.0x1f4dc.0x1f4c4.0x1f4f0.0x1f5de.0x1f4d1.0x1f516.0x1f3f7.0x1f4b0.0x1fa99.0x1f4b4.0x1f4b5.0x1f4b6.0x1f4b7.0x1f4b8.0x1f4b3.0x1f9fe.0x1f4b9.0x2709.0x1f4e7.0x1f4e8.0x1f4e9.0x1f4e4.0x1f4e5.0x1f4e6.0x1f4eb.0x1f4ea.0x1f4ec.0x1f4ed.0x1f4ee.0x1f5f3.0x270f.0x2712.0x1f58b.0x1f58a.0x1f58c.0x1f58d.0x1f4dd.0x1f4bc.0x1f4c1.0x1f4c2.0x1f5c2.0x1f4c5.0x1f4c6.0x1f5d2.0x1f5d3.0x1f4c7.0x1f4c8.0x1f4c9.0x1f4ca.0x1f4cb.0x1f4cc.0x1f4cd.0x1f4ce.0x1f587.0x1f4cf.0x1f4d0.0x2702.0x1f5c3.0x1f5c4.0x1f5d1.0x1f512.0x1f513.0x1f50f.0x1f510.0x1f511.0x1f5dd.0x1f528.0x1fa93.0x26cf.0x2692.0x1f6e0.0x1f5e1.0x2694.0x1f4a3.0x1fa83.0x1f3f9.0x1f6e1.0x1fa9a.0x1f527.0x1fa9b.0x1f529.0x2699.0x1f5dc.0x2696.0x1f9af.0x1f517.0x26d3.0xfe0f.0x200d.0x1f4a5.0x26d3.0x1fa9d.0x1f9f0.0x1f9f2.0x1fa9c.0x2697.0x1f9ea.0x1f9eb.0x1f9ec.0x1f52c.0x1f52d.0x1f4e1.0x1f489.0x1fa78.0x1f48a.0x1fa79.0x1fa7c.0x1fa7a.0x1fa7b.0x1f6aa.0x1f6d7.0x1fa9e.0x1fa9f.0x1f6cf.0x1f6cb.0x1fa91.0x1f6bd.0x1faa0.0x1f6bf.0x1f6c1.0x1faa4.0x1fa92.0x1f9f4.0x1f9f7.0x1f9f9.0x1f9fa.0x1f9fb.0x1faa3.0x1f9fc.0x1fae7.0x1faa5.0x1f9fd.0x1f9ef.0x1f6d2.0x1f6ac.0x26b0.0x1faa6.0x26b1.0x1f9ff.0x1faac.0x1f5ff.0x1faa7.0x1faaa".split("."),
+				symbols: /* @__PURE__ */ "0x1f3e7.0x1f6ae.0x1f6b0.0x267f.0x1f6b9.0x1f6ba.0x1f6bb.0x1f6bc.0x1f6be.0x1f6c2.0x1f6c3.0x1f6c4.0x1f6c5.0x26a0.0x1f6b8.0x26d4.0x1f6ab.0x1f6b3.0x1f6ad.0x1f6af.0x1f6b1.0x1f6b7.0x1f4f5.0x1f51e.0x2622.0x2623.0x2b06.0x2197.0x27a1.0x2198.0x2b07.0x2199.0x2b05.0x2196.0x2195.0x2194.0x21a9.0x21aa.0x2934.0x2935.0x1f503.0x1f504.0x1f519.0x1f51a.0x1f51b.0x1f51c.0x1f51d.0x1f6d0.0x269b.0x1f549.0x2721.0x2638.0x262f.0x271d.0x2626.0x262a.0x262e.0x1f54e.0x1f52f.0x1faaf.0x2648.0x2649.0x264a.0x264b.0x264c.0x264d.0x264e.0x264f.0x2650.0x2651.0x2652.0x2653.0x26ce.0x1f500.0x1f501.0x1f502.0x25b6.0x23e9.0x23ed.0x23ef.0x25c0.0x23ea.0x23ee.0x1f53c.0x23eb.0x1f53d.0x23ec.0x23f8.0x23f9.0x23fa.0x23cf.0x1f3a6.0x1f505.0x1f506.0x1f4f6.0x1f6dc.0x1f4f3.0x1f4f4.0x2640.0x2642.0x26a7.0x2716.0x2795.0x2796.0x2797.0x1f7f0.0x267e.0x203c.0x2049.0x2753.0x2754.0x2755.0x2757.0x3030.0x1f4b1.0x1f4b2.0x2695.0x267b.0x269c.0x1f531.0x1f4db.0x1f530.0x2b55.0x2705.0x2611.0x2714.0x274c.0x274e.0x27b0.0x27bf.0x303d.0x2733.0x2734.0x2747.0x00a9.0x00ae.0x2122.0x0023.0xfe0f.0x20e3.0x002a.0xfe0f.0x20e3.0x0030.0xfe0f.0x20e3.0x0031.0xfe0f.0x20e3.0x0032.0xfe0f.0x20e3.0x0033.0xfe0f.0x20e3.0x0034.0xfe0f.0x20e3.0x0035.0xfe0f.0x20e3.0x0036.0xfe0f.0x20e3.0x0037.0xfe0f.0x20e3.0x0038.0xfe0f.0x20e3.0x0039.0xfe0f.0x20e3.0x1f51f.0x1f520.0x1f521.0x1f522.0x1f523.0x1f524.0x1f170.0x1f18e.0x1f171.0x1f191.0x1f192.0x1f193.0x2139.0x1f194.0x24c2.0x1f195.0x1f196.0x1f17e.0x1f197.0x1f17f.0x1f198.0x1f199.0x1f19a.0x1f201.0x1f202.0x1f237.0x1f236.0x1f22f.0x1f250.0x1f239.0x1f21a.0x1f232.0x1f251.0x1f238.0x1f234.0x1f233.0x3297.0x3299.0x1f23a.0x1f235.0x1f534.0x1f7e0.0x1f7e1.0x1f7e2.0x1f535.0x1f7e3.0x1f7e4.0x26ab.0x26aa.0x1f7e5.0x1f7e7.0x1f7e8.0x1f7e9.0x1f7e6.0x1f7ea.0x1f7eb.0x2b1b.0x2b1c.0x25fc.0x25fb.0x25fe.0x25fd.0x25aa.0x25ab.0x1f536.0x1f537.0x1f538.0x1f539.0x1f53a.0x1f53b.0x1f4a0.0x1f518.0x1f533.0x1f532".split("."),
+				flags: /* @__PURE__ */ "0x1f3c1.0x1f6a9.0x1f38c.0x1f3f4.0x1f3f3.0x1f3f3.0xfe0f.0x200d.0x1f308.0x1f3f3.0xfe0f.0x200d.0x26a7.0xfe0f.0x1f3f4.0x200d.0x2620.0xfe0f.0x1f1e6.0x1f1e8.0x1f1e6.0x1f1e9.0x1f1e6.0x1f1ea.0x1f1e6.0x1f1eb.0x1f1e6.0x1f1ec.0x1f1e6.0x1f1ee.0x1f1e6.0x1f1f1.0x1f1e6.0x1f1f2.0x1f1e6.0x1f1f4.0x1f1e6.0x1f1f6.0x1f1e6.0x1f1f7.0x1f1e6.0x1f1f8.0x1f1e6.0x1f1f9.0x1f1e6.0x1f1fa.0x1f1e6.0x1f1fc.0x1f1e6.0x1f1fd.0x1f1e6.0x1f1ff.0x1f1e7.0x1f1e6.0x1f1e7.0x1f1e7.0x1f1e7.0x1f1e9.0x1f1e7.0x1f1ea.0x1f1e7.0x1f1eb.0x1f1e7.0x1f1ec.0x1f1e7.0x1f1ed.0x1f1e7.0x1f1ee.0x1f1e7.0x1f1ef.0x1f1e7.0x1f1f1.0x1f1e7.0x1f1f2.0x1f1e7.0x1f1f3.0x1f1e7.0x1f1f4.0x1f1e7.0x1f1f6.0x1f1e7.0x1f1f7.0x1f1e7.0x1f1f8.0x1f1e7.0x1f1f9.0x1f1e7.0x1f1fb.0x1f1e7.0x1f1fc.0x1f1e7.0x1f1fe.0x1f1e7.0x1f1ff.0x1f1e8.0x1f1e6.0x1f1e8.0x1f1e8.0x1f1e8.0x1f1e9.0x1f1e8.0x1f1eb.0x1f1e8.0x1f1ec.0x1f1e8.0x1f1ed.0x1f1e8.0x1f1ee.0x1f1e8.0x1f1f0.0x1f1e8.0x1f1f1.0x1f1e8.0x1f1f2.0x1f1e8.0x1f1f3.0x1f1e8.0x1f1f4.0x1f1e8.0x1f1f5.0x1f1e8.0x1f1f7.0x1f1e8.0x1f1fa.0x1f1e8.0x1f1fb.0x1f1e8.0x1f1fc.0x1f1e8.0x1f1fd.0x1f1e8.0x1f1fe.0x1f1e8.0x1f1ff.0x1f1e9.0x1f1ea.0x1f1e9.0x1f1ec.0x1f1e9.0x1f1ef.0x1f1e9.0x1f1f0.0x1f1e9.0x1f1f2.0x1f1e9.0x1f1f4.0x1f1e9.0x1f1ff.0x1f1ea.0x1f1e6.0x1f1ea.0x1f1e8.0x1f1ea.0x1f1ea.0x1f1ea.0x1f1ec.0x1f1ea.0x1f1ed.0x1f1ea.0x1f1f7.0x1f1ea.0x1f1f8.0x1f1ea.0x1f1f9.0x1f1ea.0x1f1fa.0x1f1eb.0x1f1ee.0x1f1eb.0x1f1ef.0x1f1eb.0x1f1f0.0x1f1eb.0x1f1f2.0x1f1eb.0x1f1f4.0x1f1eb.0x1f1f7.0x1f1ec.0x1f1e6.0x1f1ec.0x1f1e7.0x1f1ec.0x1f1e9.0x1f1ec.0x1f1ea.0x1f1ec.0x1f1eb.0x1f1ec.0x1f1ec.0x1f1ec.0x1f1ed.0x1f1ec.0x1f1ee.0x1f1ec.0x1f1f1.0x1f1ec.0x1f1f2.0x1f1ec.0x1f1f3.0x1f1ec.0x1f1f5.0x1f1ec.0x1f1f6.0x1f1ec.0x1f1f7.0x1f1ec.0x1f1f8.0x1f1ec.0x1f1f9.0x1f1ec.0x1f1fa.0x1f1ec.0x1f1fc.0x1f1ec.0x1f1fe.0x1f1ed.0x1f1f0.0x1f1ed.0x1f1f2.0x1f1ed.0x1f1f3.0x1f1ed.0x1f1f7.0x1f1ed.0x1f1f9.0x1f1ed.0x1f1fa.0x1f1ee.0x1f1e8.0x1f1ee.0x1f1e9.0x1f1ee.0x1f1ea.0x1f1ee.0x1f1f1.0x1f1ee.0x1f1f2.0x1f1ee.0x1f1f3.0x1f1ee.0x1f1f4.0x1f1ee.0x1f1f6.0x1f1ee.0x1f1f7.0x1f1ee.0x1f1f8.0x1f1ee.0x1f1f9.0x1f1ef.0x1f1ea.0x1f1ef.0x1f1f2.0x1f1ef.0x1f1f4.0x1f1ef.0x1f1f5.0x1f1f0.0x1f1ea.0x1f1f0.0x1f1ec.0x1f1f0.0x1f1ed.0x1f1f0.0x1f1ee.0x1f1f0.0x1f1f2.0x1f1f0.0x1f1f3.0x1f1f0.0x1f1f5.0x1f1f0.0x1f1f7.0x1f1f0.0x1f1fc.0x1f1f0.0x1f1fe.0x1f1f0.0x1f1ff.0x1f1f1.0x1f1e6.0x1f1f1.0x1f1e7.0x1f1f1.0x1f1e8.0x1f1f1.0x1f1ee.0x1f1f1.0x1f1f0.0x1f1f1.0x1f1f7.0x1f1f1.0x1f1f8.0x1f1f1.0x1f1f9.0x1f1f1.0x1f1fa.0x1f1f1.0x1f1fb.0x1f1f1.0x1f1fe.0x1f1f2.0x1f1e6.0x1f1f2.0x1f1e8.0x1f1f2.0x1f1e9.0x1f1f2.0x1f1ea.0x1f1f2.0x1f1eb.0x1f1f2.0x1f1ec.0x1f1f2.0x1f1ed.0x1f1f2.0x1f1f0.0x1f1f2.0x1f1f1.0x1f1f2.0x1f1f2.0x1f1f2.0x1f1f3.0x1f1f2.0x1f1f4.0x1f1f2.0x1f1f5.0x1f1f2.0x1f1f6.0x1f1f2.0x1f1f7.0x1f1f2.0x1f1f8.0x1f1f2.0x1f1f9.0x1f1f2.0x1f1fa.0x1f1f2.0x1f1fb.0x1f1f2.0x1f1fc.0x1f1f2.0x1f1fd.0x1f1f2.0x1f1fe.0x1f1f2.0x1f1ff.0x1f1f3.0x1f1e6.0x1f1f3.0x1f1e8.0x1f1f3.0x1f1ea.0x1f1f3.0x1f1eb.0x1f1f3.0x1f1ec.0x1f1f3.0x1f1ee.0x1f1f3.0x1f1f1.0x1f1f3.0x1f1f4.0x1f1f3.0x1f1f5.0x1f1f3.0x1f1f7.0x1f1f3.0x1f1fa.0x1f1f3.0x1f1ff.0x1f1f4.0x1f1f2.0x1f1f5.0x1f1e6.0x1f1f5.0x1f1ea.0x1f1f5.0x1f1eb.0x1f1f5.0x1f1ec.0x1f1f5.0x1f1ed.0x1f1f5.0x1f1f0.0x1f1f5.0x1f1f1.0x1f1f5.0x1f1f2.0x1f1f5.0x1f1f3.0x1f1f5.0x1f1f7.0x1f1f5.0x1f1f8.0x1f1f5.0x1f1f9.0x1f1f5.0x1f1fc.0x1f1f5.0x1f1fe.0x1f1f6.0x1f1e6.0x1f1f7.0x1f1ea.0x1f1f7.0x1f1f4.0x1f1f7.0x1f1f8.0x1f1f7.0x1f1fa.0x1f1f7.0x1f1fc.0x1f1f8.0x1f1e6.0x1f1f8.0x1f1e7.0x1f1f8.0x1f1e8.0x1f1f8.0x1f1e9.0x1f1f8.0x1f1ea.0x1f1f8.0x1f1ec.0x1f1f8.0x1f1ed.0x1f1f8.0x1f1ee.0x1f1f8.0x1f1ef.0x1f1f8.0x1f1f0.0x1f1f8.0x1f1f1.0x1f1f8.0x1f1f2.0x1f1f8.0x1f1f3.0x1f1f8.0x1f1f4.0x1f1f8.0x1f1f7.0x1f1f8.0x1f1f8.0x1f1f8.0x1f1f9.0x1f1f8.0x1f1fb.0x1f1f8.0x1f1fd.0x1f1f8.0x1f1fe.0x1f1f8.0x1f1ff.0x1f1f9.0x1f1e6.0x1f1f9.0x1f1e8.0x1f1f9.0x1f1e9.0x1f1f9.0x1f1eb.0x1f1f9.0x1f1ec.0x1f1f9.0x1f1ed.0x1f1f9.0x1f1ef.0x1f1f9.0x1f1f0.0x1f1f9.0x1f1f1.0x1f1f9.0x1f1f2.0x1f1f9.0x1f1f3.0x1f1f9.0x1f1f4.0x1f1f9.0x1f1f7.0x1f1f9.0x1f1f9.0x1f1f9.0x1f1fb.0x1f1f9.0x1f1fc.0x1f1f9.0x1f1ff.0x1f1fa.0x1f1e6.0x1f1fa.0x1f1ec.0x1f1fa.0x1f1f2.0x1f1fa.0x1f1f3.0x1f1fa.0x1f1f8.0x1f1fa.0x1f1fe.0x1f1fa.0x1f1ff.0x1f1fb.0x1f1e6.0x1f1fb.0x1f1e8.0x1f1fb.0x1f1ea.0x1f1fb.0x1f1ec.0x1f1fb.0x1f1ee.0x1f1fb.0x1f1f3.0x1f1fb.0x1f1fa.0x1f1fc.0x1f1eb.0x1f1fc.0x1f1f8.0x1f1fd.0x1f1f0.0x1f1fe.0x1f1ea.0x1f1fe.0x1f1f9.0x1f1ff.0x1f1e6.0x1f1ff.0x1f1f2.0x1f1ff.0x1f1fc.0x1f3f4.0xe0067.0xe0062.0xe0065.0xe006e.0xe0067.0xe007f.0x1f3f4.0xe0067.0xe0062.0xe0073.0xe0063.0xe0074.0xe007f.0x1f3f4.0xe0067.0xe0062.0xe0077.0xe006c.0xe0073.0xe007f".split(".")
 			}
 		}, x = Object.prototype.hasOwnProperty, S = Object.keys || function(e) {
 			var t = [];
@@ -9674,8 +9499,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			for (var n = S(e), r, i = 0, a = n.length; i < a; i++) r = n[i], t[r] = e[r] || t[r];
 		}
 		function w(e, t) {
-			f'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('or (var n = 0, r = e.length; n < r; n++) t[n] = e[n];
+			for (var n = 0, r = e.length; n < r; n++) t[n] = e[n];
 		}
 		function T(e, t) {
 			var n = Array.isArray(e), r = t || (n ? Array(e.length) : {});
@@ -9740,8 +9564,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			}) + this.character({
 				alpha: !0,
 				casing: "upper"
-		'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('	});
+			});
 		}, u.prototype.set = function(e, t) {
 			typeof e == "string" ? b[e] = t : b = T(e, b);
 		}, u.prototype.tv = function(e) {
@@ -9766,8 +9589,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 		}, E.prototype.init_by_array = function(e, t) {
 			var n = 1, r = 0, i, a;
 			for (this.init_genrand(19650218), i = this.N > t ? this.N : t; i; i--) a = this.mt[n - 1] ^ this.mt[n - 1] >>> 30, this.mt[n] = (this.mt[n] ^ (((a & 4294901760) >>> 16) * 1664525 << 16) + (a & 65535) * 1664525) + e[r] + r, this.mt[n] >>>= 0, n++, r++, n >= this.N && (this.mt[0] = this.mt[this.N - 1], n = 1), r >= t && (r = 0);
-			for (i = this.N - 1; i; i--) a = this.mt[n - 1] ^ this.mt[n - 1] >>> 30, this.mt[n] = (this.mt[n] ^ (((a & 4294901760) >>> 16) * 1566083941 << 16) + (a & 655'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('35) * 1566083941) - n, this.mt[n] >>>= 0, n++, n >= this.N && (this.mt[0] = this.mt[this.N - 1], n = 1);
+			for (i = this.N - 1; i; i--) a = this.mt[n - 1] ^ this.mt[n - 1] >>> 30, this.mt[n] = (this.mt[n] ^ (((a & 4294901760) >>> 16) * 1566083941 << 16) + (a & 65535) * 1566083941) - n, this.mt[n] >>>= 0, n++, n >= this.N && (this.mt[0] = this.mt[this.N - 1], n = 1);
 			this.mt[0] = 2147483648;
 		}, E.prototype.genrand_int32 = function() {
 			var e, t = [0, this.MATRIX_A];
@@ -9799,8 +9621,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 		}, D.prototype.md5_cmn = function(e, t, n, r, i, a) {
 			return this.safe_add(this.bit_roll(this.safe_add(this.safe_add(t, e), this.safe_add(r, a)), i), n);
 		}, D.prototype.md5_ff = function(e, t, n, r, i, a, o) {
-			return this.md5_cmn(t & n'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' | ~t & r, e, t, i, a, o);
+			return this.md5_cmn(t & n | ~t & r, e, t, i, a, o);
 		}, D.prototype.md5_gg = function(e, t, n, r, i, a, o) {
 			return this.md5_cmn(t & r | n & ~r, e, t, i, a, o);
 		}, D.prototype.md5_hh = function(e, t, n, r, i, a, o) {
@@ -9810,9 +9631,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 		}, D.prototype.binl_md5 = function(e, t) {
 			e[t >> 5] |= 128 << t % 32, e[(t + 64 >>> 9 << 4) + 14] = t;
 			var n, r, i, a, o, s = 1732584193, c = -271733879, l = -1732584194, u = 271733878;
-			for (n = 0; n < e.length; n += 16) r = s, i = c, a = l, o = u, s = this.md5_ff(s, c, l, u, e[n], 7, -680876936), u = this.md5_ff(u, s, c, l, e[n + 1], 12, -389564586), l = this.md5_ff(l, u, s, c, e[n + 2], 17, 606105819), c = this.md5_ff(c, l, u, s, e[n + 3], 22, -1044525330), s = this.md5_ff(s, c, l, u, e[n + 4], 7, -176418897), u = this.md5_ff(u, s, c, l, e[n + 5], 12, 1200080426), l = this.md5_ff(l, u, s, c, e[n + 6], 17, -1473231341), c = this.md5_ff(c, l, u, s, e[n + 7], 22, -45705983), s = this.md5_ff(s, c, l, u, e[n + 8], 7, 1770035416), u = this.md5_ff(u, s, c, l, e[n + 9], 12, -1958414417), l = this.md5_ff(l, u, s, c, e[n + 10], 17, -42063), c = this.md5_ff(c, l, u, s, e[n + 11], 22, -1990404162), s = this.md5_ff(s, c, l, u, e[n + 12], 7, 1804603682), u = this.md5_ff(u, s, c, l, e[n + 13], 12, -40341101), l = this.md5_ff(l, u, s, c, e[n + 14], 17, -1502002290), c = this.md5_ff(c, l, u, s, e[n + 15], 22, 1236535329), s = this.md5_gg(s, c, l, u, e[n + 1], 5, -165796510), u = this.md5_gg(u, s, c, l, e[n + 6], 9, -1069501632), l = this.md5_gg(l, u, s, c, e[n + 11], 14, 643717713), c = this.md5_gg(c, l, u, s, e[n], 20, -373897302), s = this.md5_gg(s, c, l, u, e[n + 5], 5, -701558691), u = this.md5_gg(u, s, c, l, e[n + 10], 9, 38016083), l = this.md5_gg(l, u, s, c, e[n + 15], 14, -660478335), c = this.md5_gg(c, l, u, s, e[n + 4], 20, -405537848), s = this.md5_gg(s, c, l, u, e[n + 9], 5, 568446438), u = this.md5_gg(u,'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' s, c, l, e[n + 14], 9, -1019803690), l = this.md5_gg(l, u, s, c, e[n + 3], 14, -187363961), c = this.md5_gg(c, l, u, s, e[n + 8], 20, 1163531501), s = this.md5_gg(s, c, l, u, e[n + 13], 5, -1444681467), u = this.md5_gg(u, s, c, l, e[n + 2], 9, -51403784), l = this.md5_gg(l, u, s, c, e[n + 7], 14, 1735328473), c = this.md5_gg(c, l, u, s, e[n + 12], 20, -1926607734), s = this.md5_hh(s, c, l, u, e[n + 5], 4, -378558), u = this.md5_hh(u, s, c, l, e[n + 8], 11, -2022574463), l = this.md5_hh(l, u, s, c, e[n + 11], 16, 1839030562), c = this.md5_hh(c, l, u, s, e[n + 14], 23, -35309556), s = this.md5_hh(s, c, l, u, e[n + 1], 4, -1530992060), u = this.md5_hh(u, s, c, l, e[n + 4], 11, 1272893353), l = this.md5_hh(l, u, s, c, e[n + 7], 16, -155497632), c = this.md5_hh(c, l, u, s, e[n + 10], 23, -1094730640), s = this.md5_hh(s, c, l, u, e[n + 13], 4, 681279174), u = this.md5_hh(u, s, c, l, e[n], 11, -358537222), l = this.md5_hh(l, u, s, c, e[n + 3], 16, -722521979), c = this.md5_hh(c, l, u, s, e[n + 6], 23, 76029189), s = this.md5_hh(s, c, l, u, e[n + 9], 4, -640364487), u = this.md5_hh(u, s, c, l, e[n + 12], 11, -421815835), l = this.md5_hh(l, u, s, c, e[n + 15], 16, 530742520), c = this.md5_hh(c, l, u, s, e[n + 2], 23, -995338651), s = this.md5_ii(s, c, l, u, e[n], 6, -198630844), u = this.md5_ii(u, s, c, l, e[n + 7], 10, 1126891415), l = this.md5_ii(l, u, s, c, e[n + 14], 15, -1416354905), c = this.md5_ii(c, l, u, s, e[n + 5], 21, -57434055), s = this.md5_ii(s, c, l, u, e[n + 12], 6, 1700485571), u = this.md5_ii(u, s, c, l, e[n + 3], 10, -1894986606), l = this.md5_ii(l, u, s, c, e[n + 10], 15, -1051523), c = this.md5_ii(c, l, u, s, e[n + 1], 21, -2054922799), s = this.md5_ii(s, c, l, u, e[n + 8], 6, 1873313359), u = this.md5_ii(u, s, c, l, e[n + 15], 10, -30611744), l = this.md5_ii(l, u, s, c, e[n + 6], 15, -1560198380), c = this.md5_ii(c, l, u, s, e[n + 13], 21, 1309151649), s = this.md5_ii(s, c, l, u, e[n + 4], 6, -145523070), u = this.md5_ii(u, s, c, l, e[n + 11], 10, -11'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('20210379), l = this.md5_ii(l, u, s, c, e[n + 2], 15, 718787259), c = this.md5_ii(c, l, u, s, e[n + 9], 21, -343485551), s = this.safe_add(s, r), c = this.safe_add(c, i), l = this.safe_add(l, a), u = this.safe_add(u, o);
+			for (n = 0; n < e.length; n += 16) r = s, i = c, a = l, o = u, s = this.md5_ff(s, c, l, u, e[n], 7, -680876936), u = this.md5_ff(u, s, c, l, e[n + 1], 12, -389564586), l = this.md5_ff(l, u, s, c, e[n + 2], 17, 606105819), c = this.md5_ff(c, l, u, s, e[n + 3], 22, -1044525330), s = this.md5_ff(s, c, l, u, e[n + 4], 7, -176418897), u = this.md5_ff(u, s, c, l, e[n + 5], 12, 1200080426), l = this.md5_ff(l, u, s, c, e[n + 6], 17, -1473231341), c = this.md5_ff(c, l, u, s, e[n + 7], 22, -45705983), s = this.md5_ff(s, c, l, u, e[n + 8], 7, 1770035416), u = this.md5_ff(u, s, c, l, e[n + 9], 12, -1958414417), l = this.md5_ff(l, u, s, c, e[n + 10], 17, -42063), c = this.md5_ff(c, l, u, s, e[n + 11], 22, -1990404162), s = this.md5_ff(s, c, l, u, e[n + 12], 7, 1804603682), u = this.md5_ff(u, s, c, l, e[n + 13], 12, -40341101), l = this.md5_ff(l, u, s, c, e[n + 14], 17, -1502002290), c = this.md5_ff(c, l, u, s, e[n + 15], 22, 1236535329), s = this.md5_gg(s, c, l, u, e[n + 1], 5, -165796510), u = this.md5_gg(u, s, c, l, e[n + 6], 9, -1069501632), l = this.md5_gg(l, u, s, c, e[n + 11], 14, 643717713), c = this.md5_gg(c, l, u, s, e[n], 20, -373897302), s = this.md5_gg(s, c, l, u, e[n + 5], 5, -701558691), u = this.md5_gg(u, s, c, l, e[n + 10], 9, 38016083), l = this.md5_gg(l, u, s, c, e[n + 15], 14, -660478335), c = this.md5_gg(c, l, u, s, e[n + 4], 20, -405537848), s = this.md5_gg(s, c, l, u, e[n + 9], 5, 568446438), u = this.md5_gg(u, s, c, l, e[n + 14], 9, -1019803690), l = this.md5_gg(l, u, s, c, e[n + 3], 14, -187363961), c = this.md5_gg(c, l, u, s, e[n + 8], 20, 1163531501), s = this.md5_gg(s, c, l, u, e[n + 13], 5, -1444681467), u = this.md5_gg(u, s, c, l, e[n + 2], 9, -51403784), l = this.md5_gg(l, u, s, c, e[n + 7], 14, 1735328473), c = this.md5_gg(c, l, u, s, e[n + 12], 20, -1926607734), s = this.md5_hh(s, c, l, u, e[n + 5], 4, -378558), u = this.md5_hh(u, s, c, l, e[n + 8], 11, -2022574463), l = this.md5_hh(l, u, s, c, e[n + 11], 16, 1839030562), c = this.md5_hh(c, l, u, s, e[n + 14], 23, -35309556), s = this.md5_hh(s, c, l, u, e[n + 1], 4, -1530992060), u = this.md5_hh(u, s, c, l, e[n + 4], 11, 1272893353), l = this.md5_hh(l, u, s, c, e[n + 7], 16, -155497632), c = this.md5_hh(c, l, u, s, e[n + 10], 23, -1094730640), s = this.md5_hh(s, c, l, u, e[n + 13], 4, 681279174), u = this.md5_hh(u, s, c, l, e[n], 11, -358537222), l = this.md5_hh(l, u, s, c, e[n + 3], 16, -722521979), c = this.md5_hh(c, l, u, s, e[n + 6], 23, 76029189), s = this.md5_hh(s, c, l, u, e[n + 9], 4, -640364487), u = this.md5_hh(u, s, c, l, e[n + 12], 11, -421815835), l = this.md5_hh(l, u, s, c, e[n + 15], 16, 530742520), c = this.md5_hh(c, l, u, s, e[n + 2], 23, -995338651), s = this.md5_ii(s, c, l, u, e[n], 6, -198630844), u = this.md5_ii(u, s, c, l, e[n + 7], 10, 1126891415), l = this.md5_ii(l, u, s, c, e[n + 14], 15, -1416354905), c = this.md5_ii(c, l, u, s, e[n + 5], 21, -57434055), s = this.md5_ii(s, c, l, u, e[n + 12], 6, 1700485571), u = this.md5_ii(u, s, c, l, e[n + 3], 10, -1894986606), l = this.md5_ii(l, u, s, c, e[n + 10], 15, -1051523), c = this.md5_ii(c, l, u, s, e[n + 1], 21, -2054922799), s = this.md5_ii(s, c, l, u, e[n + 8], 6, 1873313359), u = this.md5_ii(u, s, c, l, e[n + 15], 10, -30611744), l = this.md5_ii(l, u, s, c, e[n + 6], 15, -1560198380), c = this.md5_ii(c, l, u, s, e[n + 13], 21, 1309151649), s = this.md5_ii(s, c, l, u, e[n + 4], 6, -145523070), u = this.md5_ii(u, s, c, l, e[n + 11], 10, -1120210379), l = this.md5_ii(l, u, s, c, e[n + 2], 15, 718787259), c = this.md5_ii(c, l, u, s, e[n + 9], 21, -343485551), s = this.safe_add(s, r), c = this.safe_add(c, i), l = this.safe_add(l, a), u = this.safe_add(u, o);
 			return [
 				s,
 				c,
@@ -9849,18 +9668,17 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 		}, D.prototype.hex_hmac_md5 = function(e, t) {
 			return this.rstr2hex(this.raw_hmac_md5(e, t));
 		}, D.prototype.md5 = function(e, t, n) {
-			return t ? n ? this.raw_hmac_md5(t, e) : this.hex_hmac_md5(t, e) : n ? thi'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('s.raw_md5(e) : this.hex_md5(e);
+			return t ? n ? this.raw_hmac_md5(t, e) : this.hex_hmac_md5(t, e) : n ? this.raw_md5(e) : this.hex_md5(e);
 		}, e !== void 0 && (t !== void 0 && t.exports && (e = t.exports = u), e.Chance = u), typeof define == "function" && define.amd && define([], function() {
 			return u;
 		}), typeof importScripts < "u" && (chance = new u(), self.Chance = u), typeof window == "object" && typeof window.document == "object" && (window.Chance = u, window.chance = new u());
 	})();
 })))(), 1);
 function fe(e, t, n, r) {
-	let i = new de.default(pe++), a = n.toUpperCase(), o = e.toUpperCase(), s = t.toUpperCase();
+	let i = new de.default(N++), a = n.toUpperCase(), o = e.toUpperCase(), s = t.toUpperCase();
 	if (r != null && 0 < r.length) {
-		let e = r.length, t = r[Math.floor(N() * (e - 0)) + 0];
-		return !a.startsWith("INTEGER") && !a.startsWith("NUMBER") && !a.startsWith("DATE") && (!t.toLowerCase || t.toLowerCase() !== "null") && (!t.charAt || t.charAt(0) !== "q" && t.charAt(1) !== "''") && (t.charAt && t.charAt(0) === "''" && (t = t.substring(1, t.length - 1)), t = t.split("''").join("''''"), t = "''" + t + "''"), t;
+		let e = r.length, t = r[Math.floor(P() * (e - 0)) + 0];
+		return !a.startsWith("INTEGER") && !a.startsWith("NUMBER") && !a.startsWith("DATE") && (!t.toLowerCase || t.toLowerCase() !== "null") && (!t.charAt || t.charAt(0) !== "q" && t.charAt(1) !== "'") && (t.charAt && t.charAt(0) === "'" && (t = t.substring(1, t.length - 1)), t = t.split("'").join("''"), t = "'" + t + "'"), t;
 	}
 	if (s === "NAME" && 0 <= o.indexOf("DEPARTMENT")) {
 		let e = [
@@ -9869,14 +9687,14 @@ function fe(e, t, n, r) {
 			"Delivery",
 			"Manufacturing"
 		];
-		return "''" + e[Math.floor(N() * e.length)] + "''";
+		return "'" + e[Math.floor(P() * e.length)] + "'";
 	}
-	if (i[s.toLowerCase()] !== void 0 && s.indexOf("NAME") < 0) return "''" + i[s.toLowerCase()]() + "''";
-	if (s === "FIRST_NAME") return "''" + i.first() + "''";
-	if (s === "LAST_NAME") return "''" + i.last() + "''";
-	if (0 <= s.indexOf("NAME")) return "''" + i.name() + "''";
-	if (0 < s.indexOf("ADDRESS")) return "''" + i.address() + "''";
-	if (s === "LOCATION") return "''" + i.city() + "''";
+	if (i[s.toLowerCase()] !== void 0 && s.indexOf("NAME") < 0) return "'" + i[s.toLowerCase()]() + "'";
+	if (s === "FIRST_NAME") return "'" + i.first() + "'";
+	if (s === "LAST_NAME") return "'" + i.last() + "'";
+	if (0 <= s.indexOf("NAME")) return "'" + i.name() + "'";
+	if (0 < s.indexOf("ADDRESS")) return "'" + i.address() + "'";
+	if (s === "LOCATION") return "'" + i.city() + "'";
 	if (s === "DESCRIPTION") {
 		let e = i.paragraph({ sentences: 2 }), t = x(n, !1, !0, ""), r = 400, a = -1;
 		for (let e = 0; e < t.length; e++) {
@@ -9890,49 +9708,48 @@ function fe(e, t, n, r) {
 				break;
 			}
 		}
-		return r < e.length && (e = e.substring(0, r)), "''" + e + "''";
+		return r < e.length && (e = e.substring(0, r)), "'" + e + "'";
 	}
 	if (s === "JOB") {
 		let e = [
 			"Engineer",
 			"Consultant",
 			"Architect",
-			"Manager",'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('
+			"Manager",
 			"Analyst",
 			"Specialist",
 			"Evangelist",
 			"Salesman"
 		];
-		return "''" + e[Math.floor(N() * e.length)] + "''";
+		return "'" + e[Math.floor(P() * e.length)] + "'";
 	}
-	return a.startsWith("INTEGER") || a.startsWith("NUMBER") ? Math.floor(N() * 100) : a.startsWith("DATE") || a.startsWith("TIMESTAMP") ? "sysdate-" + Math.floor(N() * 100) : a === "BLOB" || a === "LONG" ? "null" : "''N/A''";
+	return a.startsWith("INTEGER") || a.startsWith("NUMBER") ? Math.floor(P() * 100) : a.startsWith("DATE") || a.startsWith("TIMESTAMP") ? "sysdate-" + Math.floor(P() * 100) : a === "BLOB" || a === "LONG" ? "null" : "'N/A'";
 }
-var pe = 1;
-function me() {
-	pe = 1;
+var N = 1;
+function pe() {
+	N = 1;
 }
-function N() {
-	let e = Math.sin(pe++) * 1e4;
+function P() {
+	let e = Math.sin(N++) * 1e4;
 	return e - Math.floor(e);
 }
 //#endregion
 //#region src/compiler/base-generator.ts
-function he(e) {
+function me(e) {
 	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
 }
-function ge(e, t, n, r) {
+function he(e, t, n, r) {
 	let i = [];
 	if (typeof e != "object" || !e) return null;
 	let a = e[n];
 	a != null && t === r && i.push(a);
 	for (let t in e) {
-		let a = e[t], o = ge(a, t, n, r);
+		let a = e[t], o = he(a, t, n, r);
 		o !== null && (i = i.concat(o));
 	}
 	return i;
 }
-var _e = class {
+var ge = class {
 	constructor(e) {
 		this._ddl = e;
 	}
@@ -9976,8 +9793,7 @@ var _e = class {
 				if (t.includes(",")) {
 					let n = this._ddl.find(r);
 					for (let r of m(t, ", ")) {
-						if (r'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' === ",") continue;
+						if (r === ",") continue;
 						let t = n?.findChild(r);
 						e.columns.push({
 							name: r,
@@ -10040,8 +9856,7 @@ var _e = class {
 				name: "row_version",
 				datatype: "integer"
 			}), this._ddl.optionEQvalue("Audit Columns", "yes") || a.includes("/AUDITCOLS")) {
-				let t = this._ddl.getOptionValue("auditdate'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('") || "";
+				let t = this._ddl.getOptionValue("auditdate") || "";
 				t ||= this._ddl.getOptionValue("Date Data Type") ?? "date";
 				let n = {
 					base: t.toLowerCase(),
@@ -10100,8 +9915,7 @@ var _e = class {
 			let n = String(this._ddl.getOptionValue("tenantref") || "tenants"), r = this._ddl.find(n);
 			if (r != null) {
 				let i = r.getExplicitPkName() ?? "id", a = this._ddl.objPrefix("no schema") + n;
-				for (let n of e) n.inferType() === "table" && (n.isOption("notenantid") || n.findChild("tenant_id") =='));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('= null && t.links.push({
+				for (let n of e) n.inferType() === "table" && (n.isOption("notenantid") || n.findChild("tenant_id") === null && t.links.push({
 					source: a,
 					source_id: i,
 					target: this._ddl.objPrefix("no schema") + n.parseName(),
@@ -10131,7 +9945,7 @@ var _e = class {
 		return t;
 	}
 	generateData(e, t) {
-		if (me(), this._ddl.optionEQvalue("inserts", !1)) return "";
+		if (pe(), this._ddl.optionEQvalue("inserts", !1)) return "";
 		let n = this.inserts4tbl(e, t), r = this._orderedTableNodes(e), i = "";
 		for (let e of r) {
 			let t = n[this._ddl.objPrefix() + e.parseName()];
@@ -10162,17 +9976,16 @@ var _e = class {
 	}
 	_buildInsertStatement(e, t, n, r) {
 		let i = "insert into " + r + " (\n", a = e.getGenIdColName(), o = null, s = null;
-		a == null ? (o = e.getExplicitPkName(), o != null '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('&& (i += O + o + ",\n")) : (o = a, i += O + o + ",\n");
+		a == null ? (o = e.getExplicitPkName(), o != null && (i += O + o + ",\n")) : (o = a, i += O + o + ",\n");
 		for (let t in e.fks ?? {}) {
 			let n = e.fks[t], r = "", a = this._ddl.find(n);
 			a ?? (a = this._ddl.find(t), a?.isMany2One?.() && !t.endsWith("_id") && (n = t, t = l(t) ?? t, r = "_id")), i += O + t + r + ",\n";
 		}
 		for (let t of e.regularColumns()) a != null && t.parseName() === "id" || t.isOption("pk") || (i += O + t.parseName() + ",\n");
-		if (i = he(i), i += ") values (\n", a != null) s = t + 1, i += O + s + ",\n";
+		if (i = me(i), i += ") values (\n", a != null) s = t + 1, i += O + s + ",\n";
 		else if (o != null) {
-			let r = o, a = ge(this._ddl.data, null, r, e.parseName()), c = -1;
-			n != null && (c = n[r]), a != null && a[t] != null && (c = a[t]), c !== -1 && typeof c == "string" && (c = "''" + c + "''"), s = c === -1 ? t + 1 : c, i += O + s + ",\n";
+			let r = o, a = he(this._ddl.data, null, r, e.parseName()), c = -1;
+			n != null && (c = n[r]), a != null && a[t] != null && (c = a[t]), c !== -1 && typeof c == "string" && (c = "'" + c + "'"), s = c === -1 ? t + 1 : c, i += O + s + ",\n";
 		}
 		for (let t in e.fks ?? {}) {
 			let a = e.fks[t], { type: o, values: c } = this._resolveFkSampleValues(e, t, a, n, s, r), u = String(this._ddl.getOptionValue("Data Language") ?? "EN");
@@ -10188,7 +10001,7 @@ var _e = class {
 			let c = String(this._ddl.getOptionValue("Data Language") ?? "EN"), l = fe(r, s, this.colType(t._inferTypeFull()), o);
 			i += O + String(ue(c, l)) + ",\n";
 		}
-		return i = he(i), i += ");\n", i;
+		return i = me(i), i += ");\n", i;
 	}
 	_resolveFkSampleValues(e, t, n, r, i, a) {
 		let o = this._ddl.find(n), s = [], c = "INTEGER";
@@ -10204,8 +10017,7 @@ var _e = class {
 						let e = n[t];
 						e != null && (typeof e == "string" && (c = "STRING"), s = [e]);
 						break;
-					'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('}
+					}
 				}
 				else {
 					let t = o?.getPkName() ?? null, n = t == null ? void 0 : e[t];
@@ -10218,25 +10030,25 @@ var _e = class {
 			values: s
 		};
 	}
-}, P = {}, F = {};
-function I(e, t) {
-	P[e.toLowerCase()] = t;
+}, F = {}, I = {};
+function _e(e, t) {
+	F[e.toLowerCase()] = t;
 }
 function ve(e) {
-	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = P[t];
+	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = F[t];
 	if (n == null) {
-		let e = Object.keys(P).join(", ");
+		let e = Object.keys(F).join(", ");
 		throw Error(`Unknown SQL dialect: "${t}". Registered dialects: ${e}`);
 	}
 	return n(e);
 }
 function ye(e, t) {
-	F[e.toLowerCase()] = t;
+	I[e.toLowerCase()] = t;
 }
 function be(e) {
-	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = F[t];
+	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = I[t];
 	if (n == null) {
-		let e = Object.keys(F).join(", ");
+		let e = Object.keys(I).join(", ");
 		throw Error(`Unknown SQL dialect for diff: "${t}". Registered dialects: ${e}`);
 	}
 	return n(e);
@@ -10286,8 +10098,7 @@ function Ce(e) {
 }
 function we(e, t, n) {
 	let r = !1, i = !1;
-	for (let a in e) for (let o = 0; o < a; o++) if (e[a][t] === e[o][t] && e[a][n] !== e[o][n] ? r = !0 : e[a][t] !== e[o][t] && e[a][n] === e[o][n] &&'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' (i = !0), r && i) return !0;
+	for (let a in e) for (let o = 0; o < a; o++) if (e[a][t] === e[o][t] && e[a][n] !== e[o][n] ? r = !0 : e[a][t] !== e[o][t] && e[a][n] === e[o][n] && (i = !0), r && i) return !0;
 	return !1;
 }
 function z(e) {
@@ -10339,8 +10150,7 @@ var Ee = class {
 				let s = this.output(r + z(o), o, n + 1);
 				a += s;
 			}
-			i !== "" && (a += "\n" + L(n) + i)'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(';
+			i !== "" && (a += "\n" + L(n) + i);
 		}
 		return a;
 	}
@@ -10406,8 +10216,7 @@ var Ee = class {
 		return (l(this.tableName(e)) ?? this.tableName(e)) + "_id";
 	}
 };
-f'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('unction De(e, t) {
+function De(e, t) {
 	let n = JSON.parse(e), r = Ce(n);
 	r != null && (t = r), t ??= "root_tbl";
 	let i = new Ee();
@@ -10464,8 +10273,7 @@ function Ae(e) {
 	let i = t.descendants();
 	for (let e = 0; e < i.length; e++) {
 		let r = i[e];
-		if (t.optionEQvalue("genpk", !0) && i[e].'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('parseName() === "id") {
+		if (t.optionEQvalue("genpk", !0) && i[e].parseName() === "id") {
 			let e = r.content.toLowerCase().indexOf("id");
 			n.push(new B(H.duplicateId, new V(r.line, e), new V(r.line, e + 2)));
 			continue;
@@ -10518,8 +10326,7 @@ function Pe(e) {
 	let t = [], n = Fe(e);
 	for (let r = 1; r < e.length; r++) {
 		let i = e[r], a = Ie(i);
-		n !== null && a % n !== 0 && t.push(new B(H.misalignedAttribute + n, new V(i.line'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(', a)));
+		n !== null && a % n !== 0 && t.push(new B(H.misalignedAttribute + n, new V(i.line, a)));
 	}
 	return t;
 }
@@ -10613,8 +10420,7 @@ var W = {
 		]
 	},
 	language: {
-		label: "Data Language'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('",
+		label: "Data Language",
 		value: "EN",
 		check: [
 			"EN",
@@ -10714,7 +10520,7 @@ var W = {
 	},
 	transcontext: {
 		label: "Translation Context",
-		value: "sys_context(''APP_CTX'',''LANG'')"
+		value: "sys_context('APP_CTX','LANG')"
 	},
 	dialect: {
 		label: "SQL Dialect",
@@ -10747,8 +10553,7 @@ var W = {
 		label: "Verbose Output",
 		value: "no",
 		check: ["yes", "no"]
-	}'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('
+	}
 }, G = class {
 	constructor(e, t) {
 		this._ddl = null, this._erd = null, this._errors = null, this.postponedAlters = [], this.postponedAltersSet = /* @__PURE__ */ new Set(), this._labelToKey = {}, this.name2node = null, this.options = JSON.parse(JSON.stringify(W)), this.input = e;
@@ -10801,8 +10606,7 @@ var W = {
 		let r = "", i = x(n, !0, !0, "");
 		for (let e of i) e.type === "identifier" && e.value !== "true" && e.value !== "false" && e.value !== "null" || e.type === "constant.numeric" && !/^\d+(\.\d+)?$/.test(e.value) ? r += "\"" + e.value + "\"" : r += e.value;
 		let a = JSON.parse(r);
-		for (let e in a) this.setO'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ptionValue(e.toLowerCase(), a[e]);
+		for (let e in a) this.setOptionValue(e.toLowerCase(), a[e]);
 	}
 	semantics() {
 		return this.optionEQvalue("semantics", "CHAR") ? " char" : this.optionEQvalue("semantics", "BYTE") ? " byte" : "";
@@ -10849,7 +10653,7 @@ var W = {
 		return this._errors ??= Re.findErrors(this), this._errors;
 	}
 	version() {
-		return K();
+		return q();
 	}
 };
 function Ue(e, t) {
@@ -10858,25 +10662,24 @@ function Ue(e, t) {
 function We(e, t) {
 	return new G(e, t).getERD();
 }
-function Ge(e, t) {
+function K(e, t) {
 	return new G(e, t).getDDL();
 }
-function Ke(e, t) {
+function Ge(e, t) {
 	return new G(e, t).getErrors();
 }
-function qe(e, t, n) {
+function Ke(e, t, n) {
 	let r = new G(t, n), i = new G(e, n);
-	return be('));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('r).compute(i, r);
+	return be(r).compute(i, r);
 }
-function K() {
+function q() {
 	return "2.0.0";
 }
-G.toDDL = Ge, G.toERD = We, G.toErrors = Ke, G.toDiff = qe, G.fromJSON = Ue, G.version = K, G.lexer = x;
+G.toDDL = K, G.toERD = We, G.toErrors = Ge, G.toDiff = Ke, G.fromJSON = Ue, G.version = q, G.lexer = x;
 //#endregion
 //#region src/oracle/types.ts
-var Je = "generated by default on null as identity";
-function q(e, t, n) {
+var qe = "generated by default on null as identity";
+function J(e, t, n) {
 	switch (e.base) {
 		case "varchar": return `varchar2(${e.varcharLen ?? 4e3}${t})`;
 		case "number": return e.numericSpec ? `number${e.numericSpec}` : "number";
@@ -10894,19 +10697,19 @@ function q(e, t, n) {
 		default: return e.base;
 	}
 }
-function J(e) {
+function Y(e) {
 	let t = e.getOptionValue("db");
 	return t != null && t.length > 0 && 23 <= (p(t) ?? 0);
 }
-function Ye(e, t, n) {
-	return t.optionEQvalue("pk", "identityDataType") ? Je : t.optionEQvalue("pk", "seq") ? ("default on null " + e + n.seq + ".NEXTVAL ").toLowerCase() : t.optionEQvalue("pk", "guid") ? "default on null to_number(sys_guid(), ''XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'') " : "not null";
+function Je(e, t, n) {
+	return t.optionEQvalue("pk", "identityDataType") ? qe : t.optionEQvalue("pk", "seq") ? ("default on null " + e + n.seq + ".NEXTVAL ").toLowerCase() : t.optionEQvalue("pk", "guid") ? "default on null to_number(sys_guid(), 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX') " : "not null";
 }
 //#endregion
 //#region src/oracle/view.ts
-function Xe(e) {
+function Ye(e) {
 	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
 }
-var Ze = class {
+var Xe = class {
 	constructor(e, t) {
 		this.ctx = e, this.naming = t;
 	}
@@ -10919,10 +10722,9 @@ var Ze = class {
 			throw t;
 		}
 		let t = this.ctx.objPrefix() + e.parseName(), n = e.src, r = this._buildViewSetup(e, n);
-		if (r === '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('null) return "";
+		if (r === null) return "";
 		let i = "create or replace view " + t;
-		e.annotations !== null && (i += "\nannotations (" + e.annotations + ")"), i += " as\n", i += "select\n", i += this._buildViewColList(e, n, r.aliasMap, r.tblCache, r.colCnts, r.tblTransCols, r.maxLen), i = Xe(i);
+		e.annotations !== null && (i += "\nannotations (" + e.annotations + ")"), i += " as\n", i += "select\n", i += this._buildViewColList(e, n, r.aliasMap, r.tblCache, r.colCnts, r.tblTransCols, r.maxLen), i = Ye(i);
 		let { sortedTables: a, joinConditions: o } = this._sortViewTables(e, n, r.tblCache);
 		return i += "from\n", i += this._buildViewFromClause(e, a, r.aliasMap, o, r.tblTransCols, r.tblCache), i = i.toLowerCase(), i.endsWith("\n") && (i = i.trimEnd()), i.endsWith("\n") || (i += "\n"), i += "/\n", i.toLowerCase();
 	}
@@ -10973,8 +10775,7 @@ var Ze = class {
 			if (c === null) continue;
 			let u = t[e].value, d = n[u], f = a[u] ?? {}, p = " ".repeat(o - (d.length + 1 + 2));
 			s += O + d + ".id" + O + p + (l(u) ?? u) + "_id,\n";
-			for (let e of c.children) if (e.'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('children.length === 0) {
+			for (let e of c.children) if (e.children.length === 0) {
 				let t = e.parseName(), n = "";
 				if (1 < (i[t] ?? 0) && (n = (l(u) ?? u) + "_"), f[t]) {
 					let e = `coalesce(${"t_" + u}.trans_${t}, ${d}.${t})`;
@@ -11041,8 +10842,7 @@ var Ze = class {
 	_buildViewFromClause(e, t, n, r, i, a) {
 		let o = "", s = this.ctx.getOptionValue("transcontext");
 		for (let e = 0; e < t.length; e++) {
-			let c = t[e], u = n[c], d '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('= u;
+			let c = t[e], u = n[c], d = u;
 			if (this.ctx.objPrefix() && (d = this.ctx.objPrefix() + c + " " + u), e === 0) o += O + d + "\n";
 			else if (r[c]) {
 				let e = r[c];
@@ -11089,8 +10889,7 @@ var Ze = class {
 			if (r === null) continue;
 			r.lateInitFks();
 			let o = !1;
-			if (r.fks '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('!== null) {
+			if (r.fks !== null) {
 				for (let e in r.fks) if (r.fks[e] === i.parseName()) {
 					o = !0;
 					break;
@@ -11118,7 +10917,7 @@ var Ze = class {
 		if (e.inferType() !== "table") return "";
 		let t = e.getTransColumns();
 		if (t.length === 0) return "";
-		let n = this.ctx.objPrefix() + e.parseName(), r = n + "_trans", i = this.ctx.semantics(), a = J(this.ctx), o = 13, s = (l(e.parseName()) ?? e.parseName()) + "_id";
+		let n = this.ctx.objPrefix() + e.parseName(), r = n + "_trans", i = this.ctx.semantics(), a = Y(this.ctx), o = 13, s = (l(e.parseName()) ?? e.parseName()) + "_id";
 		s.length > o && (o = s.length);
 		for (let e of t) {
 			let t = "trans_" + e.parseName();
@@ -11126,15 +10925,14 @@ var Ze = class {
 		}
 		2 > o && (o = 2);
 		let c = "create table " + r + " (\n", u = O + " ".repeat(o - 2);
-		c += O + "id" + u + "number " + Ye(r, this.ctx, this.naming) + "\n", c += O + O + " ".repeat(o) + "constraint " + r + "_id" + this.naming.pk + " primary key,\n", u = O + " ".repeat(o - s.length), c += O + s + u + "number not null,\n", u = O + " ".repeat(o - 13), c += O + "language_code" + u + `varchar2(5${i}) not null,\n`;
+		c += O + "id" + u + "number " + Je(r, this.ctx, this.naming) + "\n", c += O + O + " ".repeat(o) + "constraint " + r + "_id" + this.naming.pk + " primary key,\n", u = O + " ".repeat(o - s.length), c += O + s + u + "number not null,\n", u = O + " ".repeat(o - 13), c += O + "language_code" + u + `varchar2(5${i}) not null,\n`;
 		for (let e of t) {
 			let t = "trans_" + e.parseName();
 			u = O + " ".repeat(o - t.length);
-			let n = q(e._inferTypeFull(), i, a);
+			let n = J(e._inferTypeFull(), i, a);
 			c += O + t + u + n + ",\n";
 		}
-		c += O + "constraint " + r + this.naming.uk + " u'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('nique (" + s + ", language_code)\n", c += ");\n\n";
+		c += O + "constraint " + r + this.naming.uk + " unique (" + s + ", language_code)\n", c += ");\n\n";
 		let d = e.parseName();
 		return d.length > 2 && (d = d.substring(0, 2)), c += "alter table " + r + " add constraint " + r + "_" + d + "_id" + this.naming.fk + "\n", c += O + "foreign key (" + s + ") references " + n + ";\n\n", c += "alter table " + r + " add constraint " + r + "_lang" + this.naming.fk + "\n", c += O + "foreign key (language_code) references " + this.ctx.objPrefix() + "language (code);\n\n", c += "create index " + r + this.naming.idx + "1 on " + r + " (" + s + ");\n", c += "create index " + r + this.naming.idx + "2 on " + r + " (language_code);\n\n", c;
 	}
@@ -11162,36 +10960,34 @@ var Ze = class {
 };
 //#endregion
 //#region src/oracle/plsql.ts
-function Qe(e) {
-	return e.isOption("lower") ? "lower" : e'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('.isOption("upper") ? "upper" : "";
+function Ze(e) {
+	return e.isOption("lower") ? "lower" : e.isOption("upper") ? "upper" : "";
 }
-function $e(e) {
+function Qe(e) {
 	let t = e.getExplicitPkName();
 	if (t == null || t.includes(",")) return null;
 	let n = e.findChild(t);
 	return n == null ? e.getPkType() : n.getPlsqlType();
 }
-var Y = class {
+var X = class {
 	constructor(e, t) {
 		this.ctx = e, this.naming = t;
 	}
 	restEnable(e) {
 		if (e.inferType() !== "table" || !e.isOption("rest")) return "";
 		let t = e.parseName(), n = t.indexOf("\"") === 0, r = this.ctx.objPrefix() + t;
-		return r = n ? this.ctx.objPrefix() + t.substring(1, t.length - 1) : (this.ctx.objPrefix() + t).toUpperCase(), "begin\n" + O + "ords.enable_object(p_enabled=>TRUE, p_object=>''" + r + "'');\nend;\n/\n";
+		return r = n ? this.ctx.objPrefix() + t.substring(1, t.length - 1) : (this.ctx.objPrefix() + t).toUpperCase(), "begin\n" + O + "ords.enable_object(p_enabled=>TRUE, p_object=>'" + r + "');\nend;\n/\n";
 	}
 	generateTrigger(e) {
 		return e.inferType() !== "table" || e.isOption("soda") ? "" : this._generateBITrigger(e) + this._generateBUTrigger(e);
 	}
 	_generateBITrigger(e) {
 		let t = this.ctx.optionEQvalue("editionable", "yes") ? " editionable" : "", n = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), r = `create or replace${t} trigger ${n}${this.naming.bi}\n`;
-		r += "    before insert\n", r += "    on " + n + "\n", r += "    for each row\n", e.hasRowKey() && (r += "declare\n    function compress_int (n in integer ) return varchar2\n    as\n        ret       varchar2(30);\n        quotient  integer;\n        remainder integer;\n        digit     char(1);\n    begin\n        ret := null; quotient := n;\n        <<compress_loop>>\n        while quotient > 0\n        loop\n            remainder := mod(quotient, 10 + 26);\n            quotient := floor(quotient  / (10 + 26));\n            if remainder < 26 then\n                digit := chr(ascii(''A'') + remainder);\n            else\n                digit := chr(ascii(''0'') + remainder - 26);\n            end if;\n            ret := digit || ret;\n        end loop compress_loop;\n        if length(ret) < 5 then ret := lpad(ret, 4, ''A''); end if ;\n        return upper(ret);\n    end compress_int;\n"), r += "begin\n";
+		r += "    before insert\n", r += "    on " + n + "\n", r += "    for each row\n", e.hasRowKey() && (r += "declare\n    function compress_int (n in integer ) return varchar2\n    as\n        ret       varchar2(30);\n        quotient  integer;\n        remainder integer;\n        digit     char(1);\n    begin\n        ret := null; quotient := n;\n        <<compress_loop>>\n        while quotient > 0\n        loop\n            remainder := mod(quotient, 10 + 26);\n            quotient := floor(quotient  / (10 + 26));\n            if remainder < 26 then\n                digit := chr(ascii('A') + remainder);\n            else\n                digit := chr(ascii('0') + remainder - 26);\n            end if;\n            ret := digit || ret;\n        end loop compress_loop;\n        if length(ret) < 5 then ret := lpad(ret, 4, 'A'); end if ;\n        return upper(ret);\n    end compress_int;\n"), r += "begin\n";
 		let i = !1, a = e.apexUser();
-		e.hasRowKey'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('() && (r += "    :new.row_key := compress_int(row_key_seq.nextval);\n", i = !0);
+		e.hasRowKey() && (r += "    :new.row_key := compress_int(row_key_seq.nextval);\n", i = !0);
 		for (let t of e.children) {
-			let e = Qe(t);
+			let e = Ze(t);
 			e !== "" && (r += "    :new." + t.parseName().toLowerCase() + " := " + e + "(:new." + t.parseName().toLowerCase() + ");\n", i = !0);
 		}
 		if (e.hasRowVersion() && (r += "    :new.row_version := 1;\n", i = !0), e.hasAuditCols()) {
@@ -11201,7 +10997,7 @@ var Y = class {
 		let o = this.ctx.additionalColumns();
 		for (let e in o) {
 			let t = o[e];
-			r += "    if :new." + e + " is null then\n", t.startsWith("INT") ? r += "        " + e + " := 0;\n" : r += "        " + e + " := ''N/A'';\n", r += "    end if;\n", i = !0;
+			r += "    if :new." + e + " is null then\n", t.startsWith("INT") ? r += "        " + e + " := 0;\n" : r += "        " + e + " := 'N/A';\n", r += "    end if;\n", i = !0;
 		}
 		return i ? (r += "end " + n + this.naming.bi + ";\n/\n\n", r) : "";
 	}
@@ -11218,13 +11014,12 @@ var Y = class {
 		o += "    before update\n    on " + a + "\n    for each row\nbegin\n";
 		let s = e.apexUser();
 		for (let t of e.children) {
-			let e = Qe(t);
+			let e = Ze(t);
 			e !== "" && (o += "    :new." + t.parseName().toLowerCase() + " := " + e + "(:new." + t.parseName().toLowerCase() + ");\n");
 		}
 		if (n && (o += "    :new.row_version := nvl(:old.row_version, 0) + 1;\n"), r) {
 			let t = e.auditSysDateFn();
-			o += "    :new." + this.ctx.getOptionValue("updatedcol") + " := " + t + ";\n", o +='));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' "    :new." + this.ctx.getOptionValue("updatedbycol") + " := " + s + ";\n";
+			o += "    :new." + this.ctx.getOptionValue("updatedcol") + " := " + t + ";\n", o += "    :new." + this.ctx.getOptionValue("updatedbycol") + " := " + s + ";\n";
 		}
 		return o += "end " + a + this.naming.bu + ";\n/\n\n", o;
 	}
@@ -11233,7 +11028,7 @@ var Y = class {
 		let t = this.ctx.getOptionValue("db");
 		if (t && t.length > 0 && 23 <= (p(t) ?? 0)) return "";
 		let n = this.ctx.objPrefix() + e.parseName(), r = "create or replace trigger " + this.naming.immutable_prefix + n.toLowerCase() + this.naming.immutable_suffix + "\n";
-		return r += "    before update or delete\n    on " + n.toLowerCase() + "\ndeclare\n", r += "    co_immutable_err  constant pls_integer      := -20055;\n", r += "    co_immutable_msg  constant varchar2(200 char) := ''" + n.toLowerCase() + " is immutable'';\n", r += "begin\n    raise_application_error(co_immutable_err, co_immutable_msg);\nend;\n/\n\n", r;
+		return r += "    before update or delete\n    on " + n.toLowerCase() + "\ndeclare\n", r += "    co_immutable_err  constant pls_integer      := -20055;\n", r += "    co_immutable_msg  constant varchar2(200 char) := '" + n.toLowerCase() + " is immutable';\n", r += "begin\n    raise_application_error(co_immutable_err, co_immutable_msg);\nend;\n/\n\n", r;
 	}
 	_hasSyntheticTenantId(e) {
 		return this.ctx.optionEQvalue("tenantid", !0) && !e.isOption("notenantid") && e.findChild("tenant_id") === null && !Object.prototype.hasOwnProperty.call(e.fks ?? {}, "tenant_id");
@@ -11243,14 +11038,13 @@ var Y = class {
 		i += O + O + "p_" + a + "        in  " + s + n, this._hasSyntheticTenantId(e) && (i += ",\n" + O + O + "p_tenant_id   " + r + "  integer" + n);
 		for (let t in e.fks ?? {}) {
 			let a = e.fks[t], o = "integer", s = this.ctx.find(a);
-			s !== null && (o = $e(s) ?? o), i += ",\n" + O + O + "P_" + t + "   " + r + "  " + o + n;
+			s !== null && (o = Qe(s) ?? o), i += ",\n" + O + O + "P_" + t + "   " + r + "  " + o + n;
 		}
 		for (let t of e.regularColumns()) i += ",\n" + O + O + "P_" + t.parseName() + "   " + r + "  " + t.getPlsqlType() + n;
 		return i += "\n    )", i;
 	}
 	_getRowBody(e) {
-		let t = e.getPkName(), n = this.ctx.objPrefix() + e.parseName(), r = this._hasSyntheticTenantId(e), i = O + "is \n" + O + "begin \n", '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('a = [], o = [];
+		let t = e.getPkName(), n = this.ctx.objPrefix() + e.parseName(), r = this._hasSyntheticTenantId(e), i = O + "is \n" + O + "begin \n", a = [], o = [];
 		r && (a.push("tenant_id"), o.push("p_tenant_id"));
 		for (let t in e.fks ?? {}) a.push(t), o.push("p_" + t);
 		for (let t of e.regularColumns()) {
@@ -11278,8 +11072,7 @@ var Y = class {
 		i += O + O + "update  " + n + " set \n" + O + O + O + t + " = p_" + t;
 		for (let t in e.fks ?? {}) i += ",\n" + O + O + O + t + " = P_" + t;
 		for (let t of e.regularColumns()) i += ",\n" + O + O + O + t.parseName().toLowerCase() + " = P_" + t.parseName().toLowerCase();
-		return i += "\n" + O + O + "where " + t + " = p_" + t, r && (i += "\n" + O + O + "  and tenant_id = p_tenant_id"), i += ";", i += "\n"'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' + O + "end update_row;\n \n \n", i;
+		return i += "\n" + O + O + "where " + t + " = p_" + t, r && (i += "\n" + O + O + "  and tenant_id = p_tenant_id"), i += ";", i += "\n" + O + "end update_row;\n \n \n", i;
 	}
 	_hasAuditLog(e) {
 		return e.isOption("auditlog");
@@ -11308,7 +11101,7 @@ var Y = class {
 	}
 	_generatePrivateDml(e) {
 		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = (e.getPkName() ?? "id").toLowerCase(), r = this._hasVersionCol(e), i = e.hasAuditCols(), a = this._svcCols(e), o = Object.keys(e.fks ?? {}), s = this._hasSyntheticTenantId(e), c = `\n${O}-- private DML (absorbed from absent _dal)\n\n`;
-		c += `${O}function p_get_by_id (p_id in ${t}.${n}%type) return ${t}%rowtype is\n`, c += `${O}${O}l_row ${t}%rowtype;\n`, c += `${O}begin\n`, c += `${O}${O}select * into l_row from ${t} where ${n} = p_id;\n`, c += `${O}${O}return l_row;\n`, c += `${O}exception\n`, c += `${O}${O}when no_data_found then\n`, c += `${O}${O}${O}raise_application_error(-20002, ''${t}: record not found (id='' || p_id || '')'');\n`, c += `${O}end p_get_by_id;\n\n`;
+		c += `${O}function p_get_by_id (p_id in ${t}.${n}%type) return ${t}%rowtype is\n`, c += `${O}${O}l_row ${t}%rowtype;\n`, c += `${O}begin\n`, c += `${O}${O}select * into l_row from ${t} where ${n} = p_id;\n`, c += `${O}${O}return l_row;\n`, c += `${O}exception\n`, c += `${O}${O}when no_data_found then\n`, c += `${O}${O}${O}raise_application_error(-20002, '${t}: record not found (id=' || p_id || ')');\n`, c += `${O}end p_get_by_id;\n\n`;
 		let l = [
 			...s ? ["tenant_id"] : [],
 			...o.map((e) => e.toLowerCase()),
@@ -11318,15 +11111,13 @@ var Y = class {
 			...o.map((e) => `p_row.${e.toLowerCase()}`),
 			...a.map((e) => `p_row.${e.parseName().toLowerCase()}`)
 		];
-		if (c += `${O}procedure p_insert_row (p_row in out nocopy ${t}%rowtype) is\n`, c += '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('`${O}begin\n`, l.length > 0 ? (c += `${O}${O}insert into ${t} (\n`, c += `${O}${O}${O}` + l.join(`,\n${O}${O}${O}`) + "\n", c += `${O}${O}) values (\n`, c += `${O}${O}${O}` + u.join(`,\n${O}${O}${O}`) + "\n", c += `${O}${O})`) : c += `${O}${O}insert into ${t} values (default)`, r) {
+		if (c += `${O}procedure p_insert_row (p_row in out nocopy ${t}%rowtype) is\n`, c += `${O}begin\n`, l.length > 0 ? (c += `${O}${O}insert into ${t} (\n`, c += `${O}${O}${O}` + l.join(`,\n${O}${O}${O}`) + "\n", c += `${O}${O}) values (\n`, c += `${O}${O}${O}` + u.join(`,\n${O}${O}${O}`) + "\n", c += `${O}${O})`) : c += `${O}${O}insert into ${t} values (default)`, r) {
 			let e = String(this.ctx.getOptionValue("createdcol") ?? "created"), t = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), r = [n, "row_version"], a = [`p_row.${n}`, "p_row.row_version"];
 			i && (r.push(e, t), a.push(`p_row.${e}`, `p_row.${t}`)), c += `\n${O}${O}returning ${r.join(", ")}\n`, c += `${O}${O}     into ${a.join(", ")}`;
 		} else c += `\n${O}${O}returning ${n}\n`, c += `${O}${O}     into p_row.${n}`;
 		c += `;\n${O}end p_insert_row;\n\n`;
 		let d = [...o.map((e) => `${e.toLowerCase()} = p_row.${e.toLowerCase()}`), ...a.map((e) => `${e.parseName().toLowerCase()} = p_row.${e.parseName().toLowerCase()}`)];
-		return c += `${O}procedure p_update_row (p_row in out nocopy ${t}%rowtype) is\n`, c += `${O}${O}l_id ${t}.${n}%type;\n`, c += `${O}begin\n`, c += `${O}${O}l_id := p_row.${n};\n`, d.length > 0 ? (c += `${O}${O}update ${t} set\n`, c += `${O}${O}${O}` + d.join(`,\n${O}${O}${O}`) + "\n", c += `${O}${O}where ${n} = l_id`) : c += `${O}${O}update ${t} set ${n} = l_id where ${n} = l_id`, r && (c += `\n${O}${O}  and row_version = p_row.row_version`), c += ";\n", r && (c += `${O}${O}if sql%rowcount = 0 then\n`, c += `${O}${O}${O}declare l_dummy pls_integer;\n`, c += `${O}${O}${O}begin\n`, c += `${O}${O}${O}${O}select 1 into l_dummy from ${t} where ${n} = l_id;\n`, c += `${O}${O}${O}${O}raise_application_error(-20001, ''row modified by another session. reload and retry.'');\n`, c += `${O}${O}${O}exception\n`, c += `${O}${O}${O}${O}when no_data_found then\n`, c += `${O}${O}${O}${O}${O}raise_application_error(-20002, ''record '' || l_id || '' does not exist.'');\n`, c += `${O}${O}${O}end;\n`, c += `${O}${O}end if;\n`), c += `${O}end p_update_row;\n\n`, c += `${O}procedu'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('re p_delete_row (p_id in ${t}.${n}%type) is\n`, c += `${O}begin\n`, c += `${O}${O}delete from ${t} where ${n} = p_id;\n`, c += `${O}end p_delete_row;\n\n`, c;
+		return c += `${O}procedure p_update_row (p_row in out nocopy ${t}%rowtype) is\n`, c += `${O}${O}l_id ${t}.${n}%type;\n`, c += `${O}begin\n`, c += `${O}${O}l_id := p_row.${n};\n`, d.length > 0 ? (c += `${O}${O}update ${t} set\n`, c += `${O}${O}${O}` + d.join(`,\n${O}${O}${O}`) + "\n", c += `${O}${O}where ${n} = l_id`) : c += `${O}${O}update ${t} set ${n} = l_id where ${n} = l_id`, r && (c += `\n${O}${O}  and row_version = p_row.row_version`), c += ";\n", r && (c += `${O}${O}if sql%rowcount = 0 then\n`, c += `${O}${O}${O}declare l_dummy pls_integer;\n`, c += `${O}${O}${O}begin\n`, c += `${O}${O}${O}${O}select 1 into l_dummy from ${t} where ${n} = l_id;\n`, c += `${O}${O}${O}${O}raise_application_error(-20001, 'row modified by another session. reload and retry.');\n`, c += `${O}${O}${O}exception\n`, c += `${O}${O}${O}${O}when no_data_found then\n`, c += `${O}${O}${O}${O}${O}raise_application_error(-20002, 'record ' || l_id || ' does not exist.');\n`, c += `${O}${O}${O}end;\n`, c += `${O}${O}end if;\n`), c += `${O}end p_update_row;\n\n`, c += `${O}procedure p_delete_row (p_id in ${t}.${n}%type) is\n`, c += `${O}begin\n`, c += `${O}${O}delete from ${t} where ${n} = p_id;\n`, c += `${O}end p_delete_row;\n\n`, c;
 	}
 	_generatePrivateHookStubs(e) {
 		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = (e.getPkName() ?? "id").toLowerCase(), r = `\n${O}-- private hook stubs (no external _hks)\n\n`;
@@ -11339,18 +11130,16 @@ var Y = class {
 			let n = e.parseName().toLowerCase();
 			i += `${O}function get_by_${n} (p_${n} in ${t}.${n}%type) return ${t}%rowtype;\n\n`;
 		}
-		return i += `${O}type t_cursor is ref cursor return ${t}%rowtype;\n`, i += `${O}function get_all return t_cursor;\n\n`, i += `${O}procedure insert_row (p_row in out nocopy ${t}%rowtype);\n\n`, i += `${O}procedure update_row (p_row in out nocopy ${t}%rowtype);\n\n`, i += `${O}procedure delete_row (p_id in t_id);\n\n`, i += `${O}c_err_stale_data constant pls_integer := -20001;\n`, i += `${O}c_err_not_found  constant pls_int'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('eger := -20002;\n`, i += `${O}c_err_locked     constant pls_integer := -20003;\n\n`, i += `end ${n};\n/\n`, i;
+		return i += `${O}type t_cursor is ref cursor return ${t}%rowtype;\n`, i += `${O}function get_all return t_cursor;\n\n`, i += `${O}procedure insert_row (p_row in out nocopy ${t}%rowtype);\n\n`, i += `${O}procedure update_row (p_row in out nocopy ${t}%rowtype);\n\n`, i += `${O}procedure delete_row (p_id in t_id);\n\n`, i += `${O}c_err_stale_data constant pls_integer := -20001;\n`, i += `${O}c_err_not_found  constant pls_integer := -20002;\n`, i += `${O}c_err_locked     constant pls_integer := -20003;\n\n`, i += `end ${n};\n/\n`, i;
 	}
 	_generateDalBody(e) {
 		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_dal", r = (e.getPkName() ?? "id").toLowerCase(), i = this._hasVersionCol(e), a = e.hasAuditCols(), o = this._svcCols(e), s = Object.keys(e.fks ?? {}), c = e.children.filter((e) => e.isOption("unique")), l = `create or replace package body ${n} as\n\n`;
-		l += `${O}resource_busy exception;\n`, l += `${O}pragma exception_init(resource_busy, -54);\n\n`, l += `${O}function get_by_id (p_id in t_id) return ${t}%rowtype is\n`, l += `${O}${O}l_row ${t}%rowtype;\n`, l += `${O}begin\n`, l += `${O}${O}select * into l_row from ${t} where ${r} = p_id;\n`, l += `${O}${O}return l_row;\n`, l += `${O}end get_by_id;\n\n`, l += `${O}function lock_by_id (p_id in t_id) return ${t}%rowtype is\n`, l += `${O}${O}l_row ${t}%rowtype;\n`, l += `${O}begin\n`, l += `${O}${O}select * into l_row\n`, l += `${O}${O}from   ${t}\n`, l += `${O}${O}where  ${r} = p_id\n`, l += `${O}${O}for update nowait;\n`, l += `${O}${O}return l_row;\n`, l += `${O}exception\n`, l += `${O}${O}when no_data_found then\n`, l += `${O}${O}${O}raise_application_error(c_err_not_found, ''${t}: record not found (id='' || p_id || '')'');\n`, l += `${O}${O}when resource_busy then\n`, l += `${O}${O}${O}raise_application_error(c_err_locked, ''${t}: record locked by another session'');\n`, l += `${O}end lock_by_id;\n\n`;
+		l += `${O}resource_busy exception;\n`, l += `${O}pragma exception_init(resource_busy, -54);\n\n`, l += `${O}function get_by_id (p_id in t_id) return ${t}%rowtype is\n`, l += `${O}${O}l_row ${t}%rowtype;\n`, l += `${O}begin\n`, l += `${O}${O}select * into l_row from ${t} where ${r} = p_id;\n`, l += `${O}${O}return l_row;\n`, l += `${O}end get_by_id;\n\n`, l += `${O}function lock_by_id (p_id in t_id) return ${t}%rowtype is\n`, l += `${O}${O}l_row ${t}%rowtype;\n`, l += `${O}begin\n`, l += `${O}${O}select * into l_row\n`, l += `${O}${O}from   ${t}\n`, l += `${O}${O}where  ${r} = p_id\n`, l += `${O}${O}for update nowait;\n`, l += `${O}${O}return l_row;\n`, l += `${O}exception\n`, l += `${O}${O}when no_data_found then\n`, l += `${O}${O}${O}raise_application_error(c_err_not_found, '${t}: record not found (id=' || p_id || ')');\n`, l += `${O}${O}when resource_busy then\n`, l += `${O}${O}${O}raise_application_error(c_err_locked, '${t}: record locked by another session');\n`, l += `${O}end lock_by_id;\n\n`;
 		for (let e of c) {
 			let n = e.parseName().toLowerCase();
 			l += `${O}function get_by_${n} (p_${n} in ${t}.${n}%type) return ${t}%rowtype is\n`, l += `${O}${O}l_row ${t}%rowtype;\n`, l += `${O}begin\n`, l += `${O}${O}select * into l_row from ${t} where ${n} = p_${n};\n`, l += `${O}${O}return l_row;\n`, l += `${O}end get_by_${n};\n\n`;
 		}
-		l += `${O}function get_all return t_cursor is\n`, l += `${O}${O}l_cur t_cursor;\n`, l += `${O}begin\n`, l += `${O}${O}open l_cur for select * from ${t};\n`, l += `${O}'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('${O}return l_cur;\n`, l += `${O}end get_all;\n\n`;
+		l += `${O}function get_all return t_cursor is\n`, l += `${O}${O}l_cur t_cursor;\n`, l += `${O}begin\n`, l += `${O}${O}open l_cur for select * from ${t};\n`, l += `${O}${O}return l_cur;\n`, l += `${O}end get_all;\n\n`;
 		let u = this._hasSyntheticTenantId(e), d = [
 			...u ? ["tenant_id"] : [],
 			...s.map((e) => e.toLowerCase()),
@@ -11366,8 +11155,7 @@ var Y = class {
 		} else l += `\n${O}${O}returning ${r}\n`, l += `${O}${O}     into p_row.${r}`;
 		l += ";\n", l += `${O}end insert_row;\n\n`;
 		let p = [...s.map((e) => `${e.toLowerCase()} = p_row.${e.toLowerCase()}`), ...o.map((e) => `${e.parseName().toLowerCase()} = p_row.${e.parseName().toLowerCase()}`)];
-		return l += `${O}procedure update_row (p_row in out nocopy ${t}%rowtype) is\n`, l += `${O}${O}l_id t_id;\n`, l += `${O}begin\n`, l += `${O}${O}l_id := p_row.${r};\n`, l += `${O}${O}update ${t} set\n`, l += `${O}${O}${O}` + p.join(`,\n${O}${O}${O}`) + "\n", l += `${O}${O}where ${r} = l_id`, i && (l += `\n${O}${O}  and row_version = p_row.row_version`), l += ";\n", i && (l += `${O}${O}if sql%rowcount = 0 then\n`, l += `${O}${O}${O}declare l_dummy pls_integer;\n`, l += `${O}${O}${O}begin\n`, l += `${O}${O}${O}${O}select 1 into l_dummy from ${t} where ${r} = l_id;\n`, l += `${O}${O}${O}${O}raise_application_error(c_err_stale_data, ''row modified by another session. rel'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('oad and retry.'');\n`, l += `${O}${O}${O}exception\n`, l += `${O}${O}${O}${O}when no_data_found then\n`, l += `${O}${O}${O}${O}${O}raise_application_error(c_err_not_found, ''record '' || l_id || '' does not exist.'');\n`, l += `${O}${O}${O}end;\n`, l += `${O}${O}end if;\n`), l += `${O}end update_row;\n\n`, l += `${O}procedure delete_row (p_id in t_id) is\n`, l += `${O}begin\n`, l += `${O}${O}delete from ${t} where ${r} = p_id;\n`, l += `${O}end delete_row;\n\n`, l += `end ${n};\n/\n`, l;
+		return l += `${O}procedure update_row (p_row in out nocopy ${t}%rowtype) is\n`, l += `${O}${O}l_id t_id;\n`, l += `${O}begin\n`, l += `${O}${O}l_id := p_row.${r};\n`, l += `${O}${O}update ${t} set\n`, l += `${O}${O}${O}` + p.join(`,\n${O}${O}${O}`) + "\n", l += `${O}${O}where ${r} = l_id`, i && (l += `\n${O}${O}  and row_version = p_row.row_version`), l += ";\n", i && (l += `${O}${O}if sql%rowcount = 0 then\n`, l += `${O}${O}${O}declare l_dummy pls_integer;\n`, l += `${O}${O}${O}begin\n`, l += `${O}${O}${O}${O}select 1 into l_dummy from ${t} where ${r} = l_id;\n`, l += `${O}${O}${O}${O}raise_application_error(c_err_stale_data, 'row modified by another session. reload and retry.');\n`, l += `${O}${O}${O}exception\n`, l += `${O}${O}${O}${O}when no_data_found then\n`, l += `${O}${O}${O}${O}${O}raise_application_error(c_err_not_found, 'record ' || l_id || ' does not exist.');\n`, l += `${O}${O}${O}end;\n`, l += `${O}${O}end if;\n`), l += `${O}end update_row;\n\n`, l += `${O}procedure delete_row (p_id in t_id) is\n`, l += `${O}begin\n`, l += `${O}${O}delete from ${t} where ${r} = p_id;\n`, l += `${O}end delete_row;\n\n`, l += `end ${n};\n/\n`, l;
 	}
 	_generateHksSpec(e, t) {
 		let n = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), r = n + "_dal", i = n + "_hks", a = t ? `${r}.t_id` : `${n}.id%type`, o = `create or replace package ${i} as\n\n`;
@@ -11375,8 +11163,7 @@ var Y = class {
 	}
 	_generateHksBody(e, t) {
 		let n = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), r = n + "_dal", i = n + "_hks", a = t ? `${r}.t_id` : `${n}.id%type`, o = `create or replace package body ${i} as\n`;
-		return o += "-- warning: this file is generated once and must not be overwritten\n\n", o += `${O}procedure validate (\n`, o += `${O}${O}p_operation in varchar2,\n`, o += `${O}${O}p_row       in out nocopy ${n}%rowtype\n`, o += `${O}) is begin null; end validate;\n\n`, o += `${O}procedure before_insert (p_row in out nocopy ${n}%rowtype) is begin null; end;\n`, o += `${O}procedure before_update (p_row in out nocopy ${n}%rowtype) is begin null; end;\n`, o += `${O}procedure before_delete (p_id in ${a}) is begin n'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ull; end;\n\n`, o += `${O}procedure after_insert  (p_row in ${n}%rowtype) is begin null; end;\n`, o += `${O}procedure after_update  (p_row in ${n}%rowtype) is begin null; end;\n`, o += `${O}procedure after_delete  (p_id in ${a})     is begin null; end;\n\n`, o += `end ${i};\n/\n`, o;
+		return o += "-- warning: this file is generated once and must not be overwritten\n\n", o += `${O}procedure validate (\n`, o += `${O}${O}p_operation in varchar2,\n`, o += `${O}${O}p_row       in out nocopy ${n}%rowtype\n`, o += `${O}) is begin null; end validate;\n\n`, o += `${O}procedure before_insert (p_row in out nocopy ${n}%rowtype) is begin null; end;\n`, o += `${O}procedure before_update (p_row in out nocopy ${n}%rowtype) is begin null; end;\n`, o += `${O}procedure before_delete (p_id in ${a}) is begin null; end;\n\n`, o += `${O}procedure after_insert  (p_row in ${n}%rowtype) is begin null; end;\n`, o += `${O}procedure after_update  (p_row in ${n}%rowtype) is begin null; end;\n`, o += `${O}procedure after_delete  (p_id in ${a})     is begin null; end;\n\n`, o += `end ${i};\n/\n`, o;
 	}
 	_svcParamCols(e) {
 		let t = [];
@@ -11399,14 +11186,12 @@ var Y = class {
 		return o += `${O}type t_rec is record (\n`, o += a.map(({ name: e }) => `${O}${O}${e.padEnd(20)}${t}.${e}%type`).join(",\n") + "\n", o += `${O});\n\n`, o += `${O}function get (p_id in ${t}.${r}%type) return ${t}%rowtype;\n\n`, o += `${O}procedure create_rec (\n`, o += `${O}${O}p_rec in  t_rec,\n`, o += `${O}${O}x_id  out ${t}.${r}%type\n`, o += `${O});\n\n`, o += `${O}procedure update_rec (\n`, o += `${O}${O}p_id  in ${t}.${r}%type,\n`, o += `${O}${O}p_rec in t_rec`, i && (o += `,\n${O}${O}p_row_version in ${t}.row_version%type`), o += `\n${O});\n\n`, o += `${O}procedure delete_rec (p_id in ${t}.${r}%type);\n\n`, o += `end ${n};\n/\n`, o;
 	}
 	_generateSvcBody(e, t, n) {
-		let r = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), i = r + "_dal", a = r + "_hks", o = r + "_svc", s = r + "_aud", c = (e.getPkName() ?? "id").toLowerCase(), l = this._hasVersionCol(e), u = this._hasUniqueCol(e), d = this._hasAuditLog(e), f = this._svcParamCols(e), p = t ? `${i}.get_by_id` : "p_get_by_id", m = t ? `${i}.insert_row` : "p_insert_row", h = t ? `${i}.update_row` : "p_update_row", g = t ? `${i}.delete_r'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ow` : "p_delete_row", _ = (e) => n ? `${a}.${e}` : `p_${e}`, v = `create or replace package body ${o} as\n`;
+		let r = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), i = r + "_dal", a = r + "_hks", o = r + "_svc", s = r + "_aud", c = (e.getPkName() ?? "id").toLowerCase(), l = this._hasVersionCol(e), u = this._hasUniqueCol(e), d = this._hasAuditLog(e), f = this._svcParamCols(e), p = t ? `${i}.get_by_id` : "p_get_by_id", m = t ? `${i}.insert_row` : "p_insert_row", h = t ? `${i}.update_row` : "p_update_row", g = t ? `${i}.delete_row` : "p_delete_row", _ = (e) => n ? `${a}.${e}` : `p_${e}`, v = `create or replace package body ${o} as\n`;
 		t || (v += this._generatePrivateDml(e)), n || (v += this._generatePrivateHookStubs(e)), v += "\n", v += `${O}function get (p_id in ${r}.${c}%type) return ${r}%rowtype is\n`, v += `${O}begin\n`, v += `${O}${O}return ${p}(p_id => p_id);\n`, v += `${O}end get;\n\n`, v += `${O}procedure p_do_create (\n`, v += `${O}${O}p_rec in  t_rec,\n`, v += `${O}${O}l_row in out nocopy ${r}%rowtype\n`, v += `${O}) is\n`, v += `${O}begin\n`;
 		for (let { name: e } of f) v += `${O}${O}l_row.${e} := p_rec.${e};\n`;
-		v += `${O}${O}${_("validate")}(p_operation => ''insert'', p_row => l_row);\n`, v += `${O}${O}${_("before_insert")}(p_row => l_row);\n`, v += `${O}${O}${m}(p_row => l_row);\n`, v += `${O}${O}${_("after_insert")}(p_row => l_row);\n`, d && (v += `${O}${O}${s}.log_insert(p_row => l_row);\n`), v += `${O}end p_do_create;\n\n`, v += `${O}procedure create_rec (\n`, v += `${O}${O}p_rec in  t_rec,\n`, v += `${O}${O}x_id  out ${r}.${c}%type\n`, v += `${O}) is\n`, v += `${O}${O}l_row ${r}%rowtype;\n`, v += `${O}begin\n`, v += `${O}${O}p_do_create(p_rec => p_rec, l_row => l_row);\n`, v += `${O}${O}x_id := l_row.${c};\n`, u && (v += `${O}exception\n`, v += `${O}${O}when dup_val_on_index then\n`, v += `${O}${O}${O}raise_application_error(-20010, ''duplicate value on unique constraint.'');\n`), v += `${O}end create_rec;\n\n`, v += `${O}procedure update_rec (\n`, v += `${O}${O}p_id  in ${r}.${c}%type,\n`, v += `${O}${O}p_rec in t_rec`, l && (v += `,\n${O}${O}p_row_version in ${r}.row_version%type`), v += `\n${O}) is\n`, v += `${O}${O}l_row ${r}%rowtype;\n`, d && (v += `${O}${O}l_old_row ${r}%rowtype;\n`), v += `${O}begin\n`, v += `${O}${O}l_row := ${p}(p_id => p_id);\n`, d && (v += `${O}${O}l_old_row := l_row;\n`);
+		v += `${O}${O}${_("validate")}(p_operation => 'insert', p_row => l_row);\n`, v += `${O}${O}${_("before_insert")}(p_row => l_row);\n`, v += `${O}${O}${m}(p_row => l_row);\n`, v += `${O}${O}${_("after_insert")}(p_row => l_row);\n`, d && (v += `${O}${O}${s}.log_insert(p_row => l_row);\n`), v += `${O}end p_do_create;\n\n`, v += `${O}procedure create_rec (\n`, v += `${O}${O}p_rec in  t_rec,\n`, v += `${O}${O}x_id  out ${r}.${c}%type\n`, v += `${O}) is\n`, v += `${O}${O}l_row ${r}%rowtype;\n`, v += `${O}begin\n`, v += `${O}${O}p_do_create(p_rec => p_rec, l_row => l_row);\n`, v += `${O}${O}x_id := l_row.${c};\n`, u && (v += `${O}exception\n`, v += `${O}${O}when dup_val_on_index then\n`, v += `${O}${O}${O}raise_application_error(-20010, 'duplicate value on unique constraint.');\n`), v += `${O}end create_rec;\n\n`, v += `${O}procedure update_rec (\n`, v += `${O}${O}p_id  in ${r}.${c}%type,\n`, v += `${O}${O}p_rec in t_rec`, l && (v += `,\n${O}${O}p_row_version in ${r}.row_version%type`), v += `\n${O}) is\n`, v += `${O}${O}l_row ${r}%rowtype;\n`, d && (v += `${O}${O}l_old_row ${r}%rowtype;\n`), v += `${O}begin\n`, v += `${O}${O}l_row := ${p}(p_id => p_id);\n`, d && (v += `${O}${O}l_old_row := l_row;\n`);
 		for (let { name: e } of f) v += `${O}${O}l_row.${e} := p_rec.${e};\n`;
-		return l && (v += `${O}${O}l_row.row_version := p_row_version;\n`), v += `${O}${O}${_("validat'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('e")}(p_operation => ''update'', p_row => l_row);\n`, v += `${O}${O}${_("before_update")}(p_row => l_row);\n`, v += `${O}${O}${h}(p_row => l_row);\n`, v += `${O}${O}${_("after_update")}(p_row => l_row);\n`, d && (v += `${O}${O}${s}.log_update(p_old_row => l_old_row, p_new_row => l_row);\n`), v += `${O}end update_rec;\n\n`, v += `${O}procedure delete_rec (p_id in ${r}.${c}%type) is\n`, d && (v += `${O}${O}l_old_row ${r}%rowtype;\n`), v += `${O}begin\n`, d && (v += `${O}${O}l_old_row := ${p}(p_id => p_id);\n`), v += `${O}${O}${_("before_delete")}(p_id => p_id);\n`, v += `${O}${O}${g}(p_id => p_id);\n`, v += `${O}${O}${_("after_delete")}(p_id => p_id);\n`, d && (v += `${O}${O}${s}.log_delete(p_old_row => l_old_row);\n`), v += `${O}end delete_rec;\n\n`, v += `end ${o};\n/\n`, v;
+		return l && (v += `${O}${O}l_row.row_version := p_row_version;\n`), v += `${O}${O}${_("validate")}(p_operation => 'update', p_row => l_row);\n`, v += `${O}${O}${_("before_update")}(p_row => l_row);\n`, v += `${O}${O}${h}(p_row => l_row);\n`, v += `${O}${O}${_("after_update")}(p_row => l_row);\n`, d && (v += `${O}${O}${s}.log_update(p_old_row => l_old_row, p_new_row => l_row);\n`), v += `${O}end update_rec;\n\n`, v += `${O}procedure delete_rec (p_id in ${r}.${c}%type) is\n`, d && (v += `${O}${O}l_old_row ${r}%rowtype;\n`), v += `${O}begin\n`, d && (v += `${O}${O}l_old_row := ${p}(p_id => p_id);\n`), v += `${O}${O}${_("before_delete")}(p_id => p_id);\n`, v += `${O}${O}${g}(p_id => p_id);\n`, v += `${O}${O}${_("after_delete")}(p_id => p_id);\n`, d && (v += `${O}${O}${s}.log_delete(p_old_row => l_old_row);\n`), v += `${O}end delete_rec;\n\n`, v += `end ${o};\n/\n`, v;
 	}
 	_generateApxSpec(e) {
 		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_apx", r = (e.getPkName() ?? "id").toLowerCase(), i = this._hasVersionCol(e), a = e.hasAuditCols(), o = this._svcParamCols(e), s = String(this.ctx.getOptionValue("createdcol") ?? "created"), c = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), l = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), u = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), d = `create or replace package ${n} as\n\n`;
@@ -11415,8 +11200,7 @@ var Y = class {
 		i && (d += `,\n${O}${O}p_row_version  out ${t}.row_version%type`), a && (d += `,\n${O}${O}p_${s.padEnd(13)} out ${t}.${s}%type`, d += `,\n${O}${O}p_${c.padEnd(13)} out ${t}.${c}%type`, d += `,\n${O}${O}p_${l.padEnd(13)} out ${t}.${l}%type`, d += `,\n${O}${O}p_${u.padEnd(13)} out ${t}.${u}%type`), d += `\n${O});\n\n`, d += `${O}procedure ins (\n`;
 		let f = [];
 		for (let { name: e, nullable: n } of o) f.push(`${O}${O}p_${e.padEnd(13)} in  ${t}.${e}%type${n ? " default null" : ""}`);
-		f.push(`${O}${O}p_id'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('           out ${t}.${r}%type`), d += f.join(",\n") + `\n${O});\n\n`, d += `${O}procedure upd (\n`;
+		f.push(`${O}${O}p_id           out ${t}.${r}%type`), d += f.join(",\n") + `\n${O});\n\n`, d += `${O}procedure upd (\n`;
 		let p = [];
 		p.push(`${O}${O}p_id           in  ${t}.${r}%type`);
 		for (let { name: e, nullable: n } of o) p.push(`${O}${O}p_${e.padEnd(13)} in  ${t}.${e}%type${n ? " default null" : ""}`);
@@ -11427,8 +11211,7 @@ var Y = class {
 		t || (v += this._generatePrivateDml(e), r || (v += this._generatePrivateHookStubs(e)), v += "\n"), v += `\n${O}procedure get (\n`, v += `${O}${O}p_id          in  ${i}.${c}%type`;
 		for (let { name: e } of f) v += `,\n${O}${O}p_${e.padEnd(13)} out ${i}.${e}%type`;
 		l && (v += `,\n${O}${O}p_row_version  out ${i}.row_version%type`), u && (v += `,\n${O}${O}p_${p.padEnd(13)} out ${i}.${p}%type`, v += `,\n${O}${O}p_${m.padEnd(13)} out ${i}.${m}%type`, v += `,\n${O}${O}p_${h.padEnd(13)} out ${i}.${h}%type`, v += `,\n${O}${O}p_${g.padEnd(13)} out ${i}.${g}%type`), v += `\n${O}) is\n`, v += `${O}${O}l_row ${i}%rowtype;\n`, v += `${O}begin\n`, v += `${O}${O}if p_id is null then return; end if;  -- INSERT mode: leave OUT params null\n`, v += `${O}${O}l_row := ${t ? `${a}.get(p_id => p_id)` : "p_get_by_id(p_id => p_id)"};\n`;
-		for (let { name: e } of f) v += `$'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('{O}${O}p_${e} := l_row.${e};\n`;
+		for (let { name: e } of f) v += `${O}${O}p_${e} := l_row.${e};\n`;
 		l && (v += `${O}${O}p_row_version := l_row.row_version;\n`), u && (v += `${O}${O}p_${p} := l_row.${p};\n`, v += `${O}${O}p_${m} := l_row.${m};\n`, v += `${O}${O}p_${h} := l_row.${h};\n`, v += `${O}${O}p_${g} := l_row.${g};\n`), v += `${O}end get;\n\n`, v += `${O}procedure ins (\n`;
 		let y = [];
 		for (let { name: e, nullable: t } of f) y.push(`${O}${O}p_${e.padEnd(13)} in  ${i}.${e}%type${t ? " default null" : ""}`);
@@ -11439,7 +11222,7 @@ var Y = class {
 		} else {
 			v += `${O}${O}l_row ${i}%rowtype;\n`, v += `${O}begin\n`;
 			for (let { name: e } of f) v += `${O}${O}l_row.${e} := p_${e};\n`;
-			v += `${O}${O}${_("validate")}(p_operation => ''insert'', p_row => l_row);\n`, v += `${O}${O}${_("before_insert")}(p_row => l_row);\n`, v += `${O}${O}p_insert_row(p_row => l_row);\n`, v += `${O}${O}${_("after_insert")}(p_row => l_row);\n`, v += `${O}${O}p_id := l_row.${c};\n`, d && (v += `${O}exception\n`, v += `${O}${O}when dup_val_on_index then\n`, v += `${O}${O}${O}raise_application_error(-20010, ''duplicate value on unique constraint.'');\n`);
+			v += `${O}${O}${_("validate")}(p_operation => 'insert', p_row => l_row);\n`, v += `${O}${O}${_("before_insert")}(p_row => l_row);\n`, v += `${O}${O}p_insert_row(p_row => l_row);\n`, v += `${O}${O}${_("after_insert")}(p_row => l_row);\n`, v += `${O}${O}p_id := l_row.${c};\n`, d && (v += `${O}exception\n`, v += `${O}${O}when dup_val_on_index then\n`, v += `${O}${O}${O}raise_application_error(-20010, 'duplicate value on unique constraint.');\n`);
 		}
 		v += `${O}end ins;\n\n`, v += `${O}procedure upd (\n`;
 		let b = [];
@@ -11448,12 +11231,11 @@ var Y = class {
 		if (l && b.push(`${O}${O}p_row_version  in  ${i}.row_version%type`), v += b.join(",\n") + `\n${O}) is\n`, t) {
 			v += `${O}${O}l_rec ${a}.t_rec;\n`, v += `${O}begin\n`;
 			for (let { name: e } of f) v += `${O}${O}l_rec.${e} := p_${e};\n`;
-			v += `${O}${O}${a}.update_rec(\n`, v += `${O}${O}${O}p_id  => p_id,\n`, v += `${O}${O}${O}p_rec => l_rec`, l && (v += `,\n${O}${O}${O}p_row_version '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('=> p_row_version`), v += `\n${O}${O});\n`;
+			v += `${O}${O}${a}.update_rec(\n`, v += `${O}${O}${O}p_id  => p_id,\n`, v += `${O}${O}${O}p_rec => l_rec`, l && (v += `,\n${O}${O}${O}p_row_version => p_row_version`), v += `\n${O}${O});\n`;
 		} else {
 			v += `${O}${O}l_row ${i}%rowtype;\n`, v += `${O}begin\n`, v += `${O}${O}l_row := p_get_by_id(p_id => p_id);\n`;
 			for (let { name: e } of f) v += `${O}${O}l_row.${e} := p_${e};\n`;
-			l && (v += `${O}${O}l_row.row_version := p_row_version;\n`), v += `${O}${O}${_("validate")}(p_operation => ''update'', p_row => l_row);\n`, v += `${O}${O}${_("before_update")}(p_row => l_row);\n`, v += `${O}${O}p_update_row(p_row => l_row);\n`, v += `${O}${O}${_("after_update")}(p_row => l_row);\n`, d && (v += `${O}exception\n`, v += `${O}${O}when dup_val_on_index then\n`, v += `${O}${O}${O}raise_application_error(-20010, ''duplicate value on unique constraint.'');\n`);
+			l && (v += `${O}${O}l_row.row_version := p_row_version;\n`), v += `${O}${O}${_("validate")}(p_operation => 'update', p_row => l_row);\n`, v += `${O}${O}${_("before_update")}(p_row => l_row);\n`, v += `${O}${O}p_update_row(p_row => l_row);\n`, v += `${O}${O}${_("after_update")}(p_row => l_row);\n`, d && (v += `${O}exception\n`, v += `${O}${O}when dup_val_on_index then\n`, v += `${O}${O}${O}raise_application_error(-20010, 'duplicate value on unique constraint.');\n`);
 		}
 		return v += `${O}end upd;\n\n`, v += `${O}procedure del (p_id in ${i}.${c}%type) is\n`, v += `${O}begin\n`, t ? v += `${O}${O}${a}.delete_rec(p_id => p_id);\n` : (v += `${O}${O}${_("before_delete")}(p_id => p_id);\n`, v += `${O}${O}p_delete_row(p_id => p_id);\n`, v += `${O}${O}${_("after_delete")}(p_id => p_id);\n`), v += `${O}end del;\n\n`, v += `end ${s};\n/\n`, v;
 	}
@@ -11464,30 +11246,27 @@ var Y = class {
 	_generateRstBody(e, t, n, r) {
 		let i = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), a = i + "_svc", o = i + "_hks", s = i + "_rst", c = (e.getPkName() ?? "id").toLowerCase(), l = this._hasVersionCol(e), u = this._svcParamCols(e), d = (e) => r ? `${o}.${e}` : `p_${e}`, f = [c, ...u.map((e) => e.name)];
 		l && f.push("row_version");
-		let p = `${O}exception\n${O}${O}when others then\n${O}${O}${O}rollback;\n${O}${O}${O}:status := case sqlcode\n${O}${O}${O}${O}when -20001 then 409\n${O}${O}${O}${O}when -20002 then 404\n${O}${O}${O}${O}when -20003 then 409\n${O}${O}${O}${O}else              50'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('0\n${O}${O}${O}end;\n${O}${O}${O}htp.p(json_object(''error_code'' value sqlcode, ''message'' value sqlerrm, ''detail'' value dbms_utility.format_error_backtrace));\n`, m = `create or replace package body ${s} as\n`;
-		if (t || (m += this._generatePrivateDml(e), r || (m += this._generatePrivateHookStubs(e)), m += "\n"), m += `\n${O}procedure get is\n`, m += `${O}${O}l_row ${i}%rowtype;\n`, m += `${O}begin\n`, m += `${O}${O}l_row := ${t ? `${a}.get(p_id => :p_id)` : "p_get_by_id(p_id => :p_id)"};\n`, m += `${O}${O}:status := 200;\n`, m += `${O}${O}htp.p(json_object(\n`, m += f.map((e) => `${O}${O}${O}''${e}'' value l_row.${e}`).join(",\n") + "\n", m += `${O}${O}${O}returning clob\n`, m += `${O}${O}));\n`, m += p + `${O}end get;\n\n`, m += `${O}procedure ins is\n`, m += `${O}${O}l_body clob := :body_text;\n`, t ? m += `${O}${O}l_rec  ${a}.t_rec;\n` : m += `${O}${O}l_row  ${i}%rowtype;\n`, m += `${O}${O}l_id   ${i}.${c}%type;\n`, m += `${O}begin\n`, m += `${O}${O}if l_body is null or not json_exists(l_body, ''$'') then\n`, m += `${O}${O}${O}:status := 400;\n`, m += `${O}${O}${O}htp.p(json_object(''message'' value ''request body must be valid json''));\n`, m += `${O}${O}${O}return;\n`, m += `${O}${O}end if;\n`, t) {
-			for (let { name: e } of u) m += `${O}${O}l_rec.${e} := json_value(l_body, ''$.${e}'');\n`;
+		let p = `${O}exception\n${O}${O}when others then\n${O}${O}${O}rollback;\n${O}${O}${O}:status := case sqlcode\n${O}${O}${O}${O}when -20001 then 409\n${O}${O}${O}${O}when -20002 then 404\n${O}${O}${O}${O}when -20003 then 409\n${O}${O}${O}${O}else              500\n${O}${O}${O}end;\n${O}${O}${O}htp.p(json_object('error_code' value sqlcode, 'message' value sqlerrm, 'detail' value dbms_utility.format_error_backtrace));\n`, m = `create or replace package body ${s} as\n`;
+		if (t || (m += this._generatePrivateDml(e), r || (m += this._generatePrivateHookStubs(e)), m += "\n"), m += `\n${O}procedure get is\n`, m += `${O}${O}l_row ${i}%rowtype;\n`, m += `${O}begin\n`, m += `${O}${O}l_row := ${t ? `${a}.get(p_id => :p_id)` : "p_get_by_id(p_id => :p_id)"};\n`, m += `${O}${O}:status := 200;\n`, m += `${O}${O}htp.p(json_object(\n`, m += f.map((e) => `${O}${O}${O}'${e}' value l_row.${e}`).join(",\n") + "\n", m += `${O}${O}${O}returning clob\n`, m += `${O}${O}));\n`, m += p + `${O}end get;\n\n`, m += `${O}procedure ins is\n`, m += `${O}${O}l_body clob := :body_text;\n`, t ? m += `${O}${O}l_rec  ${a}.t_rec;\n` : m += `${O}${O}l_row  ${i}%rowtype;\n`, m += `${O}${O}l_id   ${i}.${c}%type;\n`, m += `${O}begin\n`, m += `${O}${O}if l_body is null or not json_exists(l_body, '$') then\n`, m += `${O}${O}${O}:status := 400;\n`, m += `${O}${O}${O}htp.p(json_object('message' value 'request body must be valid json'));\n`, m += `${O}${O}${O}return;\n`, m += `${O}${O}end if;\n`, t) {
+			for (let { name: e } of u) m += `${O}${O}l_rec.${e} := json_value(l_body, '$.${e}');\n`;
 			m += `${O}${O}${a}.create_rec(p_rec => l_rec, x_id => l_id);\n`;
 		} else {
-			for (let { name: e } of u) m += `${O}${O}l_row.${e} := json_value(l_body, ''$.${e}'');\n`;
-			m += `${O}${O}${d("validate")}(p_operation => ''insert'', p_row => l_row);\n`, m += `${O}${O}${d("before_insert")}(p_row => l_row);\n`, m += `${O}${O}p_insert_row(p_row => l_row);\n`, m += `${O}${O}${d("after_insert")}(p_row => l_row);\n`, m += `${O}${O}l_id := l_row.${c};\n`;
+			for (let { name: e } of u) m += `${O}${O}l_row.${e} := json_value(l_body, '$.${e}');\n`;
+			m += `${O}${O}${d("validate")}(p_operation => 'insert', p_row => l_row);\n`, m += `${O}${O}${d("before_insert")}(p_row => l_row);\n`, m += `${O}${O}p_insert_row(p_row => l_row);\n`, m += `${O}${O}${d("after_insert")}(p_row => l_row);\n`, m += `${O}${O}l_id := l_row.${c};\n`;
 		}
-		if (m += `${O}${O}:status := 201;\n`, m += `${O}${O}htp.p(json_object(''id'' value l_id));\n`, m += p + `${O}end ins;\n\n`, m += `${O}procedure upd is\n`, m += `${O}${O}l_body clob := :body_text;\n`, t ? m += `${O}$'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('{O}l_rec  ${a}.t_rec;\n` : m += `${O}${O}l_row  ${i}%rowtype;\n`, m += `${O}begin\n`, m += `${O}${O}if l_body is null or not json_exists(l_body, ''$'') then\n`, m += `${O}${O}${O}:status := 400;\n`, m += `${O}${O}${O}htp.p(json_object(''message'' value ''request body must be valid json''));\n`, m += `${O}${O}${O}return;\n`, m += `${O}${O}end if;\n`, t) {
-			for (let { name: e } of u) m += `${O}${O}l_rec.${e} := json_value(l_body, ''$.${e}'');\n`;
-			m += `${O}${O}${a}.update_rec(\n`, m += `${O}${O}${O}p_id  => :p_id,\n`, m += `${O}${O}${O}p_rec => l_rec`, l && (m += `,\n${O}${O}${O}p_row_version => json_value(l_body, ''$.row_version'' returning ${i}.row_version%type)`), m += `\n${O}${O});\n`;
+		if (m += `${O}${O}:status := 201;\n`, m += `${O}${O}htp.p(json_object('id' value l_id));\n`, m += p + `${O}end ins;\n\n`, m += `${O}procedure upd is\n`, m += `${O}${O}l_body clob := :body_text;\n`, t ? m += `${O}${O}l_rec  ${a}.t_rec;\n` : m += `${O}${O}l_row  ${i}%rowtype;\n`, m += `${O}begin\n`, m += `${O}${O}if l_body is null or not json_exists(l_body, '$') then\n`, m += `${O}${O}${O}:status := 400;\n`, m += `${O}${O}${O}htp.p(json_object('message' value 'request body must be valid json'));\n`, m += `${O}${O}${O}return;\n`, m += `${O}${O}end if;\n`, t) {
+			for (let { name: e } of u) m += `${O}${O}l_rec.${e} := json_value(l_body, '$.${e}');\n`;
+			m += `${O}${O}${a}.update_rec(\n`, m += `${O}${O}${O}p_id  => :p_id,\n`, m += `${O}${O}${O}p_rec => l_rec`, l && (m += `,\n${O}${O}${O}p_row_version => json_value(l_body, '$.row_version' returning ${i}.row_version%type)`), m += `\n${O}${O});\n`;
 		} else {
 			m += `${O}${O}l_row := p_get_by_id(p_id => :p_id);\n`;
-			for (let { name: e } of u) m += `${O}${O}l_row.${e} := json_value(l_body, ''$.${e}'');\n`;
-			l && (m += `${O}${O}l_row.row_version := json_value(l_body, ''$.row_version'' returning ${i}.row_version%type);\n`), m += `${O}${O}${d("validate")}(p_operation => ''update'', p_row => l_row);\n`, m += `${O}${O}${d("before_update")}(p_row => l_row);\n`, m += `${O}${O}p_update_row(p_row => l_row);\n`, m += `${O}${O}${d("after_update")}(p_row => l_row);\n`;
+			for (let { name: e } of u) m += `${O}${O}l_row.${e} := json_value(l_body, '$.${e}');\n`;
+			l && (m += `${O}${O}l_row.row_version := json_value(l_body, '$.row_version' returning ${i}.row_version%type);\n`), m += `${O}${O}${d("validate")}(p_operation => 'update', p_row => l_row);\n`, m += `${O}${O}${d("before_update")}(p_row => l_row);\n`, m += `${O}${O}p_update_row(p_row => l_row);\n`, m += `${O}${O}${d("after_update")}(p_row => l_row);\n`;
 		}
-		return m += `${O}${O}:status := 200;\n`, m += `${O}${O}htp.p(json_object(''id'' value :p_id));\n`, m += p + `${O}end upd;\n\n`, m += `${O}procedure del is\n`, m += `${O}begin\n`, t ? m += `${O}${O}${a}.delete_rec(p_id => :p_id);\n` : (m += `${O}${O}${d("before_delete")}(p_id => :p_id);\n`, m += `${O}${O}p_delete_row(p_id => :p_id);\n`, m += `${O}${O}${d("after_delete")}(p_id => :p_id);\n`), m += `${O}${O}:status := 200;\n`, m += `${O}${O}htp.p(json_object(''id'' value :p_id));\n`, m += p + `${O}end del;\n\n`, m += `end ${s};\n/\n`, m;
+		return m += `${O}${O}:status := 200;\n`, m += `${O}${O}htp.p(json_object('id' value :p_id));\n`, m += p + `${O}end upd;\n\n`, m += `${O}procedure del is\n`, m += `${O}begin\n`, t ? m += `${O}${O}${a}.delete_rec(p_id => :p_id);\n` : (m += `${O}${O}${d("before_delete")}(p_id => :p_id);\n`, m += `${O}${O}p_delete_row(p_id => :p_id);\n`, m += `${O}${O}${d("after_delete")}(p_id => :p_id);\n`), m += `${O}${O}:status := 200;\n`, m += `${O}${O}htp.p(json_object('id' value :p_id));\n`, m += p + `${O}end del;\n\n`, m += `end ${s};\n/\n`, m;
 	}
 	_generateAuditSpec(e) {
 		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_aud", r = `create or replace package ${n} as\n\n`;
-		return r += `${O}g_enabled boolean := true;\n\n`, r += `${O}procedure log'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('_insert (p_row     in ${t}%rowtype);\n`, r += `${O}procedure log_update (p_old_row in ${t}%rowtype, p_new_row in ${t}%rowtype);\n`, r += `${O}procedure log_delete (p_old_row in ${t}%rowtype);\n\n`, r += `end ${n};\n/\n`, r;
+		return r += `${O}g_enabled boolean := true;\n\n`, r += `${O}procedure log_insert (p_row     in ${t}%rowtype);\n`, r += `${O}procedure log_update (p_old_row in ${t}%rowtype, p_new_row in ${t}%rowtype);\n`, r += `${O}procedure log_delete (p_old_row in ${t}%rowtype);\n\n`, r += `end ${n};\n/\n`, r;
 	}
 	_generateAuditBody(e, t) {
 		let n = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), r = n + "_dal", i = n + "_aud", a = (e.getPkName() ?? "id").toLowerCase(), o = String(e.getOptionValue("auditlog") || "").trim() || "app_audit_log", s = (this.ctx.objPrefix() + o).toLowerCase(), c = s + "_svc", l = this._hasVersionCol(e), u = Object.keys(e.fks ?? {}).map((e) => e.toLowerCase()), d = this._svcCols(e).map((e) => e.parseName().toLowerCase()), f = (this.ctx.find(o)?.children ?? []).some((e) => e.parseName().toLowerCase() === "old_values"), p = [
@@ -11499,12 +11278,11 @@ var Y = class {
 		l && p.push("row_version");
 		let m = `create or replace package body ${i} as\n\n`;
 		if (f) {
-			let e = p.map((e) => `${O}${O}${O}''${e}'' value p_row.${e}`);
+			let e = p.map((e) => `${O}${O}${O}'${e}' value p_row.${e}`);
 			m += `${O}function f_to_json (p_row in ${n}%rowtype) return clob is\n`, m += `${O}${O}l_result clob;\n`, m += `${O}begin\n`, m += `${O}${O}select json_object(\n`, m += e.join(",\n") + "\n", m += `${O}${O}${O}returning clob\n`, m += `${O}${O}) into l_result from dual;\n`, m += `${O}${O}return l_result;\n`, m += `${O}end f_to_json;\n\n`;
 		}
 		let h = t ? `${r}.t_id` : `${n}.${a}%type`;
-		return m += `${O}procedure p_log (\n`, m += `${O}${O}p_operation  in varchar2,\n`, m += `${O}${O}p_id         in ${h}`, f ? (m += `,\n${O}${O}p_old_values in clob default null,\n`, m += `${O}${O}p_new_values in clob default null\n`) : m += "\n", m += `${O}) is\n`, m += `${O}${O}pragma autonomous_transaction;\n`, m += `${O}${O}l_rec ${c}.t_rec;\n`, m += `${O}${O}l_id ${s}.id%type;\n`, m += `${O}begin\n`, m += `${O}${O}if not g_enabled then return; end if;\n`, m += `${O}${O}l_rec.entity    := ''${n}'';\n`, m += `${O}${O}l_rec.entity_id := p_id;\n`, m += `${O}${O}l_rec.ope'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ration := p_operation;\n`, f && (m += `${O}${O}l_rec.old_values := p_old_values;\n`, m += `${O}${O}l_rec.new_values := p_new_values;\n`), m += `${O}${O}${c}.create_rec(p_rec => l_rec, x_id => l_id);\n`, m += `${O}${O}-- l_id holds the generated audit record id.\n`, m += `${O}${O}-- use it here if needed, e.g. to notify, correlate, or route downstream:\n`, m += `${O}${O}-- your_pkg.on_audit(p_audit_id => l_id, p_entity => ''${n}'', p_operation => p_operation);\n`, m += `${O}${O}commit;\n`, m += `${O}end p_log;\n\n`, m += `${O}procedure log_insert (p_row in ${n}%rowtype) is\n`, m += `${O}begin\n`, f ? m += `${O}${O}p_log(p_operation => ''INSERT'', p_id => p_row.${a}, p_new_values => f_to_json(p_row));\n` : m += `${O}${O}p_log(p_operation => ''INSERT'', p_id => p_row.${a});\n`, m += `${O}end log_insert;\n\n`, m += `${O}procedure log_update (p_old_row in ${n}%rowtype, p_new_row in ${n}%rowtype) is\n`, m += `${O}begin\n`, f ? m += `${O}${O}p_log(p_operation => ''UPDATE'', p_id => p_new_row.${a}, p_old_values => f_to_json(p_old_row), p_new_values => f_to_json(p_new_row));\n` : m += `${O}${O}p_log(p_operation => ''UPDATE'', p_id => p_new_row.${a});\n`, m += `${O}end log_update;\n\n`, m += `${O}procedure log_delete (p_old_row in ${n}%rowtype) is\n`, m += `${O}begin\n`, f ? m += `${O}${O}p_log(p_operation => ''DELETE'', p_id => p_old_row.${a}, p_old_values => f_to_json(p_old_row));\n` : m += `${O}${O}p_log(p_operation => ''DELETE'', p_id => p_old_row.${a});\n`, m += `${O}end log_delete;\n\n`, m += `end ${i};\n/\n`, m;
+		return m += `${O}procedure p_log (\n`, m += `${O}${O}p_operation  in varchar2,\n`, m += `${O}${O}p_id         in ${h}`, f ? (m += `,\n${O}${O}p_old_values in clob default null,\n`, m += `${O}${O}p_new_values in clob default null\n`) : m += "\n", m += `${O}) is\n`, m += `${O}${O}pragma autonomous_transaction;\n`, m += `${O}${O}l_rec ${c}.t_rec;\n`, m += `${O}${O}l_id ${s}.id%type;\n`, m += `${O}begin\n`, m += `${O}${O}if not g_enabled then return; end if;\n`, m += `${O}${O}l_rec.entity    := '${n}';\n`, m += `${O}${O}l_rec.entity_id := p_id;\n`, m += `${O}${O}l_rec.operation := p_operation;\n`, f && (m += `${O}${O}l_rec.old_values := p_old_values;\n`, m += `${O}${O}l_rec.new_values := p_new_values;\n`), m += `${O}${O}${c}.create_rec(p_rec => l_rec, x_id => l_id);\n`, m += `${O}${O}-- l_id holds the generated audit record id.\n`, m += `${O}${O}-- use it here if needed, e.g. to notify, correlate, or route downstream:\n`, m += `${O}${O}-- your_pkg.on_audit(p_audit_id => l_id, p_entity => '${n}', p_operation => p_operation);\n`, m += `${O}${O}commit;\n`, m += `${O}end p_log;\n\n`, m += `${O}procedure log_insert (p_row in ${n}%rowtype) is\n`, m += `${O}begin\n`, f ? m += `${O}${O}p_log(p_operation => 'INSERT', p_id => p_row.${a}, p_new_values => f_to_json(p_row));\n` : m += `${O}${O}p_log(p_operation => 'INSERT', p_id => p_row.${a});\n`, m += `${O}end log_insert;\n\n`, m += `${O}procedure log_update (p_old_row in ${n}%rowtype, p_new_row in ${n}%rowtype) is\n`, m += `${O}begin\n`, f ? m += `${O}${O}p_log(p_operation => 'UPDATE', p_id => p_new_row.${a}, p_old_values => f_to_json(p_old_row), p_new_values => f_to_json(p_new_row));\n` : m += `${O}${O}p_log(p_operation => 'UPDATE', p_id => p_new_row.${a});\n`, m += `${O}end log_update;\n\n`, m += `${O}procedure log_delete (p_old_row in ${n}%rowtype) is\n`, m += `${O}begin\n`, f ? m += `${O}${O}p_log(p_operation => 'DELETE', p_id => p_old_row.${a}, p_old_values => f_to_json(p_old_row));\n` : m += `${O}${O}p_log(p_operation => 'DELETE', p_id => p_old_row.${a});\n`, m += `${O}end log_delete;\n\n`, m += `end ${i};\n/\n`, m;
 	}
 	generateLayeredTAPI(e) {
 		if (e.inferType() !== "table" || e.children.length === 0) return "";
@@ -11514,28 +11292,26 @@ var Y = class {
 			"full",
 			"full+hks"
 		].includes(t), a = this._hasAuditLog(e), o = String(this.ctx.getOptionValue("ifc") ?? "apex").toLowerCase(), s = o === "apex" || o === "both" || o === "", c = o === "rest" || o === "both", l = "";
-		return n &&'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' (l += this._generateDalSpec(e) + "\n" + this._generateDalBody(e) + "\n"), r && (l += this._generateHksSpec(e, n) + "\n" + this._generateHksBody(e, n) + "\n"), i && (l += this._generateSvcSpec(e) + "\n", a && (l += this._generateAuditSpec(e) + "\n"), l += this._generateSvcBody(e, n, r) + "\n", a && (l += this._generateAuditBody(e, n) + "\n")), s && (l += this._generateApxSpec(e) + "\n" + this._generateApxBody(e, i, n, r)), c && (s && (l += "\n"), l += this._generateRstSpec(e) + "\n" + this._generateRstBody(e, i, n, r)), l;
+		return n && (l += this._generateDalSpec(e) + "\n" + this._generateDalBody(e) + "\n"), r && (l += this._generateHksSpec(e, n) + "\n" + this._generateHksBody(e, n) + "\n"), i && (l += this._generateSvcSpec(e) + "\n", a && (l += this._generateAuditSpec(e) + "\n"), l += this._generateSvcBody(e, n, r) + "\n", a && (l += this._generateAuditBody(e, n) + "\n")), s && (l += this._generateApxSpec(e) + "\n" + this._generateApxBody(e, i, n, r)), c && (s && (l += "\n"), l += this._generateRstSpec(e) + "\n" + this._generateRstBody(e, i, n, r)), l;
 	}
 	generateTAPI(e) {
 		if (e.children.length === 0) return "";
 		let t = this.ctx.objPrefix() + e.parseName(), n = e.getPkName(), r = this._hasSyntheticTenantId(e), i = r ? ",\n        p_tenant_id           in integer" : "", a = n + " = p_" + n + (r ? " and tenant_id = p_tenant_id" : ""), o = ("create or replace package " + t.toLowerCase() + "_API\nis\n\n").toLowerCase();
 		return o += this.procDecl(e, "get") + ";\n\n", o += this.procDecl(e, "insert") + ";\n\n", o += this.procDecl(e, "update") + ";\n\n", o += "    procedure delete_row (\n        p_" + n + "              in integer" + i + "\n    );\nend " + t.toLowerCase() + "_api;\n/\n\n", o += ("create or replace package body " + t.toLowerCase() + "_API\nis\n\n").toLowerCase(), o += this.procDecl(e, "get") + "\n" + this._getRowBody(e), o += this.procDecl(e, "insert") + "\n" + this._insertRowBody(e), o += this.procDecl(e, "update") + "\n" + this._updateRowBody(e), o += "    procedure delete_row (\n        p_" + n + "              in integer" + i + "\n    )\n    is\n    begin\n        delete from " + t.toLowerCase() + " where " + a + ";\n    end delete_row;\nend " + t.toLowerCase() + "_api;\n/\n", o.toLowerCase();
 	}
-}, et = " not null";
-function tt(e) {
+}, $e = " not null";
+function et(e) {
 	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
 }
-var nt = class extends _e {
+var Z = class extends ge {
 	constructor(e, t) {
-		super(e), this._naming = t ?? D, this._view = new Ze(e, this._naming), this._plsql = new Y(e, this.'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('_naming);
+		super(e), this._naming = t ?? D, this._view = new Xe(e, this._naming), this._plsql = new X(e, this._naming);
 	}
 	colType(e) {
 		return this._toOracleType(e);
 	}
 	_pkTypeModifier(e, t) {
-		return Ye(e, this._ddl, t ?? this._naming);
+		return Je(e, this._ddl, t ?? this._naming);
 	}
 	_globalOnDelete() {
 		let e = this._ddl.getOptionValue("ondelete") ?? "";
@@ -11551,14 +11327,14 @@ var nt = class extends _e {
 		return n === null ? e.getPkType() : this._toOracleType(n._inferTypeFull());
 	}
 	_toOracleType(e) {
-		return q(e, this._ddl.semantics(), J(this._ddl));
+		return J(e, this._ddl.semantics(), Y(this._ddl));
 	}
 	_buildColumnConstraints(e, t, n) {
 		if (e.isOption("unique") || e.isOption("uk")) {
 			let r = e.parent !== null && e.parent.isOption("notenantid");
 			(!this._ddl.optionEQvalue("tenantid", !0) || r) && (t += "\n", t += this._cpad(e) + "constraint " + f(this._ddl.objPrefix(), n.parent_child, this._naming.unq) + " unique");
 		}
-		let r = "''";
+		let r = "'";
 		if ((t.startsWith("integer") || t.startsWith("number") || t.startsWith("date")) && (r = ""), e.isOption("default")) {
 			let i = e.getDefaultValue() ?? "", a = [
 				"sysdate",
@@ -11572,8 +11348,7 @@ var nt = class extends _e {
 				t += " default on null " + e;
 			} else a.includes(i.toLowerCase()) ? t += " default on null " + i : t += " default on null " + r + i + r;
 		}
-		if ((e.isOption("nn") || e.indexOf("not") + 1 === e.indexOf("null")) && e.indexOf("pk") < 0 && (t += " not null"), (e.isOption("hidden") || e.isOption("invincible")) && (t += " invisible"), n.isNativeBoolean || (t += e.genConstraint(r)), n.needsBoolCheck && (t += "\n" + this._cpad(e) + "constraint " + f(this._ddl.objPrefix(), n.parent_child) + ` check (${e.parseName()} in (''Y'',''N''))`), e.isOption("betwee'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('n")) {
+		if ((e.isOption("nn") || e.indexOf("not") + 1 === e.indexOf("null")) && e.indexOf("pk") < 0 && (t += " not null"), (e.isOption("hidden") || e.isOption("invincible")) && (t += " invisible"), n.isNativeBoolean || (t += e.genConstraint(r)), n.needsBoolCheck && (t += "\n" + this._cpad(e) + "constraint " + f(this._ddl.objPrefix(), n.parent_child) + ` check (${e.parseName()} in ('Y','N'))`), e.isOption("between")) {
 			let r = e.getBetweenClause() ?? "";
 			t += " constraint " + f(n.parent_child, this._naming.bet) + "\n", t += "           check (" + e.parseName() + " between " + r + ")";
 		}
@@ -11616,8 +11391,7 @@ var nt = class extends _e {
 				continue;
 			}
 			let a = "number", o = e.findChild(r);
-			o !== null && (a ='));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' o.inferType());
+			o !== null && (a = o.inferType());
 			let s = this._ddl.find(i), c = "";
 			s === null ? (s = this._ddl.find(r), s?.isMany2One?.() && !r.endsWith("_id") && (i = r, r = l(r) ?? r, c = "_id")) : a = this._fkColType(s) ?? a;
 			let u = O + " ".repeat(e.maxChildNameLen() - r.length);
@@ -11645,10 +11419,9 @@ var nt = class extends _e {
 				e.isOption("cascade") ? a = " on delete cascade" : e.isOption("setnull") && (a = " on delete set null");
 				let o = "";
 				for (let t in e.children) {
-					let n = '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('e.children[t];
+					let n = e.children[t];
 					if (r === n.parseName()) {
-						(n.isOption("nn") || n.isOption("notnull")) && (o = et), n.isOption("cascade") ? a = " on delete cascade" : n.isOption("setnull") && (a = " on delete set null");
+						(n.isOption("nn") || n.isOption("notnull")) && (o = $e), n.isOption("cascade") ? a = " on delete cascade" : n.isOption("setnull") && (a = " on delete set null");
 						break;
 					}
 				}
@@ -11685,8 +11458,7 @@ var nt = class extends _e {
 	}
 	_genRowKeyColumn(e, t) {
 		if (!e.hasRowKey()) return "";
-		let n = O + " ".repeat(e.maxChildNameLen() - 7)'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(', r = O + "row_key" + n + `varchar2(30${this._ddl.semantics()})\n`;
+		let n = O + " ".repeat(e.maxChildNameLen() - 7), r = O + "row_key" + n + `varchar2(30${this._ddl.semantics()})\n`;
 		return r += O + O + " ".repeat(e.maxChildNameLen()) + "constraint " + t + "_row_key" + this._naming.unq + " unique not null,\n", r;
 	}
 	_genRegularColumns(e, t, n) {
@@ -11727,8 +11499,7 @@ var nt = class extends _e {
 	_genAdditionalColumns(e) {
 		let t = "", n = this._ddl.additionalColumns();
 		for (let r in n) {
-			let i = n[r], a ='));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' O + " ".repeat(e.maxChildNameLen() - r.length);
+			let i = n[r], a = O + " ".repeat(e.maxChildNameLen() - r.length);
 			t += O + r.toUpperCase() + a + i + " not null,\n";
 		}
 		return t;
@@ -11765,8 +11536,7 @@ var nt = class extends _e {
 		s && (r += "alter table " + t + " add constraint " + t + this._naming.pk + " primary key (" + s + ");\n\n");
 		let c = e.getOptionValue("unique") ?? e.getOptionValue("uk");
 		if (c !== null) {
-			let e = a && !o ? `tenant_id, '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('${c}` : c;
+			let e = a && !o ? `tenant_id, ${c}` : c;
 			r += "alter table " + t + " add constraint " + t + this._naming.uk + " unique (" + e + ");\n\n";
 		}
 		if (a && !o) for (let n = 0; n < e.children.length; n++) {
@@ -11796,10 +11566,10 @@ var nt = class extends _e {
 	}
 	_genComments(e, t) {
 		let n = "", r = e.getAnnotationValue("DESCRIPTION") || e.comment;
-		r !== null && (n += "comment on table " + t + " is ''" + r + "'';\n");
+		r !== null && (n += "comment on table " + t + " is '" + r + "';\n");
 		for (let r = 0; r < e.children.length; r++) {
 			let i = e.children[r], a = i.getAnnotationValue("DESCRIPTION") || i.comment;
-			a !== null && i.children.length === 0 && (n += "comment on column " + t + "." + i.parseName() + " is ''" + a + "'';\n");
+			a !== null && i.children.length === 0 && (n += "comment on column " + t + "." + i.parseName() + " is '" + a + "';\n");
 		}
 		return n;
 	}
@@ -11809,8 +11579,7 @@ var nt = class extends _e {
 		if (t === "view" || t === "dv") return t;
 		if (e.parent === null) return "table";
 		let n = e._inferTypeFull();
-'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('		return this._buildColumnConstraints(e, this._toOracleType(n), n);
+		return this._buildColumnConstraints(e, this._toOracleType(n), n);
 	}
 	generateTable(e) {
 		if (e.children.length === 0 && 0 < e.apparentDepth()) {
@@ -11826,7 +11595,7 @@ var nt = class extends _e {
 		let n = this._ddl.getOptionValue("db"), r = n !== null && n.length > 0 && 23 <= (p(n) ?? 0), i = "";
 		e.isOption("immutable") && r && (i = "immutable ");
 		let a = e.getGenIdColName(), o = this._genSequence(e, t);
-		return o += this._genTableHeader(e, t, i, a), o += this._genTenantIdColumn(e), o += this._genFkColumns(e, t), o += this._genRowKeyColumn(e, t), o += this._genRegularColumns(e, t, a), o += this._genRowVersionColumn(e), o += this._genAuditColumns(e), o += this._genAdditionalColumns(e), o += e.genConstraint(), o = tt(o), o += this._genTableFooter(e, t, i, r), o += this._genMultiColFkAlters(e, t), o += this._genIndexes(e, t, r), this._genTenantIdFk(e, t), o += this._genComments(e, t), o += "\n", o;
+		return o += this._genTableHeader(e, t, i, a), o += this._genTenantIdColumn(e), o += this._genFkColumns(e, t), o += this._genRowKeyColumn(e, t), o += this._genRegularColumns(e, t, a), o += this._genRowVersionColumn(e), o += this._genAuditColumns(e), o += this._genAdditionalColumns(e), o += e.genConstraint(), o = et(o), o += this._genTableFooter(e, t, i, r), o += this._genMultiColFkAlters(e, t), o += this._genIndexes(e, t, r), this._genTenantIdFk(e, t), o += this._genComments(e, t), o += "\n", o;
 	}
 	generateDDL(e) {
 		if (e.inferType() === "view" || e.inferType() === "dv") return "";
@@ -11835,8 +11604,7 @@ var nt = class extends _e {
 		return n;
 	}
 	generateDrop(e) {
-		let t = this._ddl.objPrefix() + e.parseName(), n = this._ddl.getOptionValue("db"), r = n && n.le'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ngth > 0 && 23 <= (p(n) ?? 0) ? "if exists " : "", i = "";
+		let t = this._ddl.objPrefix() + e.parseName(), n = this._ddl.getOptionValue("db"), r = n && n.length > 0 && 23 <= (p(n) ?? 0) ? "if exists " : "", i = "";
 		if (e.inferType() === "view" && (i = "drop view " + r + t + ";\n"), e.inferType() === "table") {
 			i = "drop table " + r + t + " cascade constraints;\n";
 			let n = e.trimmedContent().toLowerCase().includes("/api"), a = (e.getOptionValue("api") ?? "").trim().toLowerCase();
@@ -11879,8 +11647,7 @@ var nt = class extends _e {
 	generateTransTable(e) {
 		return this._view.generateTransTable(e);
 	}
-	ge'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('nerateResolvedView(e) {
+	generateResolvedView(e) {
 		return this._view.generateResolvedView(e);
 	}
 	restEnable(e) {
@@ -11929,8 +11696,7 @@ var nt = class extends _e {
 			let t = this.generateImmutableTrigger(e);
 			t && (r++ === 0 && (n += "-- immutable triggers\n"), n += t);
 		}
-		for (let e of'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' t) {
+		for (let e of t) {
 			let t = this.restEnable(e);
 			t && (n += t + "\n");
 		}
@@ -11980,8 +11746,8 @@ var nt = class extends _e {
 		if (s.length > 0) {
 			n += "-- table groups\n";
 			for (let e of s) {
-				n += `insert into user_annotations_groups$ (group_name) values (''${e}'');\n`;
-				for (let t of o[e]) n += `insert into user_annotations_group_members$ (group_name, object_name) values (''${e}'', ''${t.toUpperCase()}'');\n`;
+				n += `insert into user_annotations_groups$ (group_name) values ('${e}');\n`;
+				for (let t of o[e]) n += `insert into user_annotations_group_members$ (group_name, object_name) values ('${e}', '${t.toUpperCase()}');\n`;
 			}
 			n += "\n";
 		}
@@ -11993,22 +11759,21 @@ var nt = class extends _e {
 				if (e === "table") {
 					for (let e of a) {
 						if (e.label.toUpperCase() === "TGROUP") {
-							e.value != null &'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('& (r[e.value] || (r[e.value] = []), r[e.value].push(o));
+							e.value != null && (r[e.value] || (r[e.value] = []), r[e.value].push(o));
 							continue;
 						}
-						e.value != null && t.push(`    metadata_annotations.set(''${e.label}'', ''${e.value}'', ''${o}'');`);
+						e.value != null && t.push(`    metadata_annotations.set('${e.label}', '${e.value}', '${o}');`);
 					}
 					for (let e of n.children) {
 						if (e.children.length > 0) continue;
 						let n = e.getAnnotationPairs(), r = o + "." + e.parseName().toUpperCase();
-						for (let e of n) e.value != null && t.push(`    metadata_annotations.set(''${e.label}'', ''${e.value}'', ''${r}'', ''TABLE COLUMN'');`);
+						for (let e of n) e.value != null && t.push(`    metadata_annotations.set('${e.label}', '${e.value}', '${r}', 'TABLE COLUMN');`);
 					}
-				} else if (e === "view") for (let e of a) e.value != null && t.push(`    metadata_annotations.set(''${e.label}'', ''${e.value}'', ''${o}'', ''VIEW'');`);
+				} else if (e === "view") for (let e of a) e.value != null && t.push(`    metadata_annotations.set('${e.label}', '${e.value}', '${o}', 'VIEW');`);
 			}
 			for (let e of Object.keys(r)) {
-				t.push(`    metadata_annotations.create_group(''${e}'');`);
-				for (let n of r[e]) t.push(`    metadata_annotations.add_to_group(''${e}'', ''${n}'', ''TABLE'');`);
+				t.push(`    metadata_annotations.create_group('${e}');`);
+				for (let n of r[e]) t.push(`    metadata_annotations.add_to_group('${e}', '${n}', 'TABLE');`);
 			}
 			t.length > 0 && (n += "-- AI enrichment\nbegin\n" + t.join("\n") + "\nend;\n/\n\n");
 		}
@@ -12019,7 +11784,7 @@ var nt = class extends _e {
 		}
 		return n;
 	}
-}, rt = {
+}, tt = {
 	drop_package: 1,
 	drop_view: 2,
 	drop_fk: 3,
@@ -12042,7 +11807,7 @@ var nt = class extends _e {
 	create_package: 15,
 	create_view: 16
 };
-function X(e, t, n, r, i = !1) {
+function Q(e, t, n, r, i = !1) {
 	let a = {
 		kind: e,
 		table: t,
@@ -12051,7 +11816,7 @@ function X(e, t, n, r, i = !1) {
 	};
 	return r !== void 0 && (a.column = r), a;
 }
-function Z(e, t, n, r, i = !1) {
+function $(e, t, n, r, i = !1) {
 	let a = {
 		level: e,
 		table: t,
@@ -12060,12 +11825,11 @@ function Z(e, t, n, r, i = !1) {
 	};
 	return r !== void 0 && (a.column = r), a;
 }
-var it = class {
+var nt = class {
 	compute(e, t) {
 		let n = [], r = [], i = this._tableMap(e), a = this._tableMap(t), o = this._viewMap(e), s = this._viewMap(t), c = [];
-'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('		for (let [e, t] of i) a.has(e) || c.push(t);
-		for (let t of this._reverseTopoSort(c, e)) n.push(...this._dropTable(t, e)), r.push(Z("DESTRUCTIVE", t.parseName(), `table dropped: ${t.parseName()}`));
+		for (let [e, t] of i) a.has(e) || c.push(t);
+		for (let t of this._reverseTopoSort(c, e)) n.push(...this._dropTable(t, e)), r.push($("DESTRUCTIVE", t.parseName(), `table dropped: ${t.parseName()}`));
 		let l = [];
 		for (let [e, t] of a) i.has(e) || l.push(t);
 		for (let e of this._topoSort(l, t)) n.push(...this._createTable(e, t));
@@ -12115,20 +11879,19 @@ var it = class {
 		return [...this._topoSort(e, t)].reverse();
 	}
 	_dropTable(e, t) {
-		let n = [], r = e.parseName(), i = t.objPrefix() + r, a = J(t) ? "if exists " : "", o = this._apiKind(e, t);
-		if (o === "layered") for (let i of this._layeredPkgNames(e, t)) n.push(X("drop_package", r, `drop package ${a}${i};\n`));
-		else o === "simple" && n.push(X("drop_package", r, `drop package ${a}${i}_api;\n`));
-		return t.optionEQvalue("pk", "SEQ") && n.push(X("drop_sequence", r, `drop sequence ${a}${i}${D.se'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('q};\n`)), n.push(X("drop_table", r, `drop table ${a}${i} cascade constraints;\n`)), n;
+		let n = [], r = e.parseName(), i = t.objPrefix() + r, a = Y(t) ? "if exists " : "", o = this._apiKind(e, t);
+		if (o === "layered") for (let i of this._layeredPkgNames(e, t)) n.push(Q("drop_package", r, `drop package ${a}${i};\n`));
+		else o === "simple" && n.push(Q("drop_package", r, `drop package ${a}${i}_api;\n`));
+		return t.optionEQvalue("pk", "SEQ") && n.push(Q("drop_sequence", r, `drop sequence ${a}${i}${D.seq};\n`)), n.push(Q("drop_table", r, `drop table ${a}${i} cascade constraints;\n`)), n;
 	}
 	_createTable(e, t) {
-		let n = [], r = e.parseName(), i = t.objPrefix() + r, a = new nt(t);
-		t.optionEQvalue("pk", "SEQ") && n.push(X("add_sequence", r, `create sequence  ${i}${D.seq};\n`)), e.lateInitFks();
+		let n = [], r = e.parseName(), i = t.objPrefix() + r, a = new Z(t);
+		t.optionEQvalue("pk", "SEQ") && n.push(Q("add_sequence", r, `create sequence  ${i}${D.seq};\n`)), e.lateInitFks();
 		let o = t.postponedAlters.length, s = a.generateTable(e), c = t.postponedAlters.slice(o);
 		for (let e of c) s += e + "\n";
-		n.push(X("create_table", r, s));
-		let l = new Y(t, D), u = l.generateTrigger(e);
-		u && n.push(X("create_trigger", r, u));
+		n.push(Q("create_table", r, s));
+		let l = new X(t, D), u = l.generateTrigger(e);
+		u && n.push(Q("create_trigger", r, u));
 		let d = this._apiKind(e, t);
 		return d === "layered" ? n.push(...this._splitPkgBlocks(l.generateLayeredTAPI(e), r)) : d === "simple" && n.push(...this._splitPkgBlocks(l.generateTAPI(e), r)), n;
 	}
@@ -12140,8 +11903,8 @@ var it = class {
 		let d = [];
 		for (let [e, t] of l) c.has(e) || d.push(t);
 		let f = this._detectRenames(u, d), p = new Set([...f.keys()].map((e) => e.parseName())), m = new Set([...f.values()].map((e) => e.parseName()));
-		for (let [e, t] of f) i.push(X("rename_hint", o, `-- alter table ${s} rename column ${e.parseName()} to ${t.parseName()};\n`, e.parseName())), a.push(Z("INFO", o, `suspected rename: ${e.parseName()} → ${t.parseName()} (verify before applying)`, e.parseName()));
-		for (let e of u) p.has(e.parseName()) || (i.push(...this._dropColumn(s, o, e)), a.push(Z("DESTRUCTIVE", o, `column dropped: ${e.parseName()}`, e.parseName())));
+		for (let [e, t] of f) i.push(Q("rename_hint", o, `-- alter table ${s} rename column ${e.parseName()} to ${t.parseName()};\n`, e.parseName())), a.push($("INFO", o, `suspected rename: ${e.parseName()} → ${t.parseName()} (verify before applying)`, e.parseName()));
+		for (let e of u) p.has(e.parseName()) || (i.push(...this._dropColumn(s, o, e)), a.push($("DESTRUCTIVE", o, `column dropped: ${e.parseName()}`, e.parseName())));
 		for (let e of d) {
 			if (m.has(e.parseName())) continue;
 			let { stmts: t, warns: n } = this._addColumn(s, o, e, r);
@@ -12153,11 +11916,10 @@ var it = class {
 			let { stmts: u, warns: d } = this._modifyColumn(s, o, l, t, n, r);
 			i.push(...u), a.push(...d);
 		}
-		let h = e.hasRowVersion(), g = t.hasRowVersion'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('();
-		!h && g && (i.push(X("add_column", o, `-- ⚠ MANUAL INTERVENTION REQUIRED
+		let h = e.hasRowVersion(), g = t.hasRowVersion();
+		!h && g && (i.push(Q("add_column", o, `-- ⚠ MANUAL INTERVENTION REQUIRED
 -- Initialize row_version for existing rows, then add NOT NULL:
--- alter table ${s} add (row_version integer);\n-- update ${s} set row_version = 0;\n-- commit;\n-- alter table ${s} modify (row_version not null);\n`, "row_version", !0)), a.push(Z("INFO", o, "rowversion added — requires manual column initialization", "row_version", !0))), h && !g && (i.push(X("set_unused", o, `alter table ${s} set unused column row_version;\n`, "row_version")), i.push(X("drop_unused_columns", o, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${s} drop unused columns;\n`, "row_version")), a.push(Z("DESTRUCTIVE", o, "row_version column dropped", "row_version")));
+-- alter table ${s} add (row_version integer);\n-- update ${s} set row_version = 0;\n-- commit;\n-- alter table ${s} modify (row_version not null);\n`, "row_version", !0)), a.push($("INFO", o, "rowversion added — requires manual column initialization", "row_version", !0))), h && !g && (i.push(Q("set_unused", o, `alter table ${s} set unused column row_version;\n`, "row_version")), i.push(Q("drop_unused_columns", o, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${s} drop unused columns;\n`, "row_version")), a.push($("DESTRUCTIVE", o, "row_version column dropped", "row_version")));
 		let { stmts: _, warns: v } = this._diffPk(e, t, n, r, c, l);
 		i.push(..._), a.push(...v), i.push(...this._diffFKs(e, t, n, r)), i.push(...this._diffIndexes(e, t, n, r)), i.push(...this._diffTriggers(e, t, n, r));
 		let y = u.some((e) => !p.has(e.parseName())) || d.some((e) => !m.has(e.parseName())) || i.some((e) => e.kind === "modify_column"), { stmts: b, warns: x } = this._diffPackages(e, t, n, r, y);
@@ -12191,24 +11953,23 @@ var it = class {
 		let o = [], s = [], c = t.parseName(), l = n.objPrefix() + c, u = r.objPrefix() + c, d = this._pkDesc(e, n), f = this._pkDesc(t, r);
 		if (d.type === f.type && d.columns.join(",") === f.columns.join(",")) return {
 			stmts: o,
-			warns'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(': s
+			warns: s
 		};
 		let p = d.type === "none" ? "none" : `${d.type}(${d.columns.join(", ")})`, m = f.type === "none" ? "none" : `${f.type}(${f.columns.join(", ")})`;
-		s.push(Z("DESTRUCTIVE", c, `Primary key change on "${c}": ${p} → ${m}. All FKs referencing this table must be dropped and re-created. Data migration required.`, void 0, !0));
+		s.push($("DESTRUCTIVE", c, `Primary key change on "${c}": ${p} → ${m}. All FKs referencing this table must be dropped and re-created. Data migration required.`, void 0, !0));
 		for (let e of f.columns) {
 			let t = i.get(e), n = a.get(e);
-			n != null && (this._isNotNull(n) || (t == null ? o.push(X("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED\n-- Populate ${e} for existing rows, then add NOT NULL:\n-- update ${u} set ${e} = ??? where ${e} is null;\n-- commit;\n-- alter table ${u} modify (${e} not null);\n`, e, !0)) : this._isNotNull(t) || o.push(X("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED\n-- Ensure all rows have a non-null ${e} value, then:\n-- alter table ${u} modify (${e} not null);\n`, e, !0))));
+			n != null && (this._isNotNull(n) || (t == null ? o.push(Q("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED\n-- Populate ${e} for existing rows, then add NOT NULL:\n-- update ${u} set ${e} = ??? where ${e} is null;\n-- commit;\n-- alter table ${u} modify (${e} not null);\n`, e, !0)) : this._isNotNull(t) || o.push(Q("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED\n-- Ensure all rows have a non-null ${e} value, then:\n-- alter table ${u} modify (${e} not null);\n`, e, !0))));
 		}
-		if (d.constraintName && o.push(X("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED
+		if (d.constraintName && o.push(Q("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED
 -- Drop the old primary key constraint before continuing:
 -- alter table ${l} drop constraint ${d.constraintName};\n`, void 0, !0)), d.type === "surrogate") {
 			let e = d.columns[0];
-			a.has(e) || (o.push(X("set_unused", c, `alter table ${l} set unused column ${e};\n`, e)), o.push(X("drop_unused_columns", c, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${l} drop unused columns;\n`, e))), n.optionEQvalue("pk", "SEQ") && o.push(X("drop_sequence", c, `drop sequence ${l}${D.seq};\n`));
+			a.has(e) || (o.push(Q("set_unused", c, `alter table ${l} set unused column ${e};\n`, e)), o.push(Q("drop_unused_columns", c, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${l} drop unused columns;\n`, e))), n.optionEQvalue("pk", "SEQ") && o.push(Q("drop_sequence", c, `drop sequence ${l}${D.seq};\n`));
 		}
 		if (f.columns.length > 0) {
 			let e = f.columns.join(", ");
-			o.push(X("add_fk", c, `-- ⚠ MANUAL INTERVENTION REQUIRED
+			o.push(Q("add_fk", c, `-- ⚠ MANUAL INTERVENTION REQUIRED
 -- After all PK columns are NOT NULL, add the primary key:
 -- alter table ${u} add constraint ${f.constraintName} primary key (${e});\n`, void 0, !0));
 		}
@@ -12219,8 +11980,7 @@ var it = class {
 	}
 	_diffTriggers(e, t, n, r) {
 		let i = [], a = t.parseName(), o = (n.objPrefix() + a).toLowerCase(), s = (e) => JSON.stringify({
-			lower: e.children.filter((e) => e.isOption'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('("lower")).map((e) => e.parseName()),
+			lower: e.children.filter((e) => e.isOption("lower")).map((e) => e.parseName()),
 			upper: e.children.filter((e) => e.isOption("upper") && !e.isOption("lower")).map((e) => e.parseName()),
 			rv: e.hasRowVersion(),
 			audit: e.hasAuditCols(),
@@ -12228,9 +11988,9 @@ var it = class {
 		});
 		if (s(e) === s(t)) return i;
 		let c = (e) => e.children.some((e) => e.isOption("lower") || e.isOption("upper")), l = c(e) || e.hasRowVersion() || e.hasAuditCols() || e.hasRowKey(), u = c(e) || e.hasRowVersion() || e.hasAuditCols(), d = c(t) || t.hasRowVersion() || t.hasAuditCols() || t.hasRowKey(), f = c(t) || t.hasRowVersion() || t.hasAuditCols();
-		if (l && i.push(X("drop_trigger", a, `drop trigger ${o}${D.bi};\n`)), u && i.push(X("drop_trigger", a, `drop trigger ${o}${D.bu};\n`)), d || f) {
-			let e = new Y(r, D).generateTrigger(t);
-			e && i.push(X("create_trigger", a, e));
+		if (l && i.push(Q("drop_trigger", a, `drop trigger ${o}${D.bi};\n`)), u && i.push(Q("drop_trigger", a, `drop trigger ${o}${D.bu};\n`)), d || f) {
+			let e = new X(r, D).generateTrigger(t);
+			e && i.push(Q("create_trigger", a, e));
 		}
 		return i;
 	}
@@ -12262,7 +12022,7 @@ var it = class {
 		return n;
 	}
 	_addColumn(e, t, n, r) {
-		let i = [], a = [], o = J(r), s = q(n._inferTypeFull(), r.semantics(), o), c = n.parseName(), l = this._isNotNull(n), u = "";
+		let i = [], a = [], o = Y(r), s = J(n._inferTypeFull(), r.semantics(), o), c = n.parseName(), l = this._isNotNull(n), u = "";
 		if (n.isOption("default")) {
 			let e = n.getDefaultValue() ?? "", t = [
 				"sysdate",
@@ -12270,8 +12030,7 @@ var it = class {
 				"current_timestamp",
 				"systimestamp",
 				"localtimestamp"
-			], r = s'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('.startsWith("integer") || s.startsWith("number") || s.startsWith("date") || s.startsWith("timestamp") || t.includes(e.toLowerCase()) ? "" : "''";
+			], r = s.startsWith("integer") || s.startsWith("number") || s.startsWith("date") || s.startsWith("timestamp") || t.includes(e.toLowerCase()) ? "" : "'";
 			u += t.includes(e.toLowerCase()) ? ` default on null ${e}` : ` default on null ${r}${e}${r}`;
 		}
 		(n.isOption("hidden") || n.isOption("invincible")) && (u += " invisible");
@@ -12283,23 +12042,22 @@ var it = class {
 				"current_timestamp",
 				"systimestamp",
 				"localtimestamp"
-			], l = s.startsWith("integer") || s.startsWith("number") || s.startsWith("date") || s.startsWith("timestamp") || o.includes(r.toLowerCase()), u = !n.isOption("default") || l ? "" : "''", f = o.includes(r.toLowerCase()) ? r : `${u}${r}${u}`, p = n.isOption("default");
-			i.push(X("add_column", t, `alter table ${e} add (${d});\n`, c)), i.push(X("add_column", t, "-- ⚠ MANUAL INTERVENTION REQUIRED\n" + (p ? "-- Populate existing rows with the default value before step 3.\n" : "-- Populate existing rows before step 3. Replace ??? with the correct expression.\n") + `-- update ${e} set ${c} = ${f} where ${c} is null;\n-- commit;\n`, c, !0)), i.push(X("modify_column", t, `alter table ${e} modify (${c} not null);\n`, c)), a.push(Z("DESTRUCTIVE", t, `added NOT NULL column ${c} — requires manual data population`, c, !0));
-		} else i.push(X("add_column", t, `alter table ${e} add (${d});\n`, c));
+			], l = s.startsWith("integer") || s.startsWith("number") || s.startsWith("date") || s.startsWith("timestamp") || o.includes(r.toLowerCase()), u = !n.isOption("default") || l ? "" : "'", f = o.includes(r.toLowerCase()) ? r : `${u}${r}${u}`, p = n.isOption("default");
+			i.push(Q("add_column", t, `alter table ${e} add (${d});\n`, c)), i.push(Q("add_column", t, "-- ⚠ MANUAL INTERVENTION REQUIRED\n" + (p ? "-- Populate existing rows with the default value before step 3.\n" : "-- Populate existing rows before step 3. Replace ??? with the correct expression.\n") + `-- update ${e} set ${c} = ${f} where ${c} is null;\n-- commit;\n`, c, !0)), i.push(Q("modify_column", t, `alter table ${e} modify (${c} not null);\n`, c)), a.push($("DESTRUCTIVE", t, `added NOT NULL column ${c} — requires manual data population`, c, !0));
+		} else i.push(Q("add_column", t, `alter table ${e} add (${d});\n`, c));
 		if (n.isOption("check") || n.isOption("values")) {
 			let a = n.isOption("check") ? n.getValues("check") : n.getValues("values"), o = f(r.objPrefix(), `${t}_${c}`, D.ck);
-			i.push(X("add_column", t, `alter table ${e} add constraint ${o} check (${c} in (${a}));\n`, c));
+			i.push(Q("add_column", t, `alter table ${e} add constraint ${o} check (${c} in (${a}));\n`, c));
 		} else if (n.isOption("between")) {
 			let r = n.getBetweenClause() ?? "", a = f(`${t}_${c}`, D.bet);
-			i.push(X("add_column", t, `alter table ${e} add constraint ${a} check (${c} between ${r});\n`, c));
+			i.push(Q("add_column", t, `alter table ${e} add constraint ${a} check (${c} between ${r});\n`, c));
 		}
 		if (n.isOption("unique") || n.isOption("uk")) {
-			let n = `${e}_${c}${D'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('.unq}`, r = `create unique index ${n} on ${e} (${c});\n`;
-			i.push(X("add_index", t, o ? `create unique index if not exists ${n} on ${e} (${c});\n` : this._wrapIndex(r)));
+			let n = `${e}_${c}${D.unq}`, r = `create unique index ${n} on ${e} (${c});\n`;
+			i.push(Q("add_index", t, o ? `create unique index if not exists ${n} on ${e} (${c});\n` : this._wrapIndex(r)));
 		} else if (n.isOption("idx") || n.isOption("index")) {
 			let n = `${e}_${c}${D.idx}`, r = `create index ${n} on ${e} (${c});\n`;
-			i.push(X("add_index", t, o ? `create index if not exists ${n} on ${e} (${c});\n` : this._wrapIndex(r)));
+			i.push(Q("add_index", t, o ? `create index if not exists ${n} on ${e} (${c});\n` : this._wrapIndex(r)));
 		}
 		return {
 			stmts: i,
@@ -12308,51 +12066,50 @@ var it = class {
 	}
 	_dropColumn(e, t, n) {
 		let r = n.parseName();
-		return [X("set_unused", t, `alter table ${e} set unused column ${r};\n`, r), X("drop_unused_columns", t, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${e} drop unused columns;\n`, r)];
+		return [Q("set_unused", t, `alter table ${e} set unused column ${r};\n`, r), Q("drop_unused_columns", t, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${e} drop unused columns;\n`, r)];
 	}
 	_modifyColumn(e, t, n, r, i, a) {
-		let o = [], s = [], c = n._inferTypeFull(), l = r._inferTypeFull(), u = J(a), d = q(c, i.semantics(), J(i)), p = q(l, a.semantics(), u), m = this._isNotNull(n), h = this._isNotNull(r), g = r.parseName(), _ = d !== p, v = m !== h;
+		let o = [], s = [], c = n._inferTypeFull(), l = r._inferTypeFull(), u = Y(a), d = J(c, i.semantics(), Y(i)), p = J(l, a.semantics(), u), m = this._isNotNull(n), h = this._isNotNull(r), g = r.parseName(), _ = d !== p, v = m !== h;
 		if (_ || v) if (c.base !== l.base) {
 			let n = h ? " not null" : m ? " null" : "";
-			o.push(X("modify_column", t, `alter table ${e} modify (${g} ${p}${n});\n`, g)), s.push(Z("LOSSY", t, `base type changed on ${g}: ${c.base} → ${l.base}`, g));
+			o.push(Q("modify_column", t, `alter table ${e} modify (${g} ${p}${n});\n`, g)), s.push($("LOSSY", t, `base type changed on ${g}: ${c.base} → ${l.base}`, g));
 		} else {
 			let n = [];
 			_ && n.push(p), v && n.push(h ? "not null" : "null");
 			let r = n.join(" ");
-			if (!m && h) o.push(X("modify_column", t, `-- ⚠ MANUAL INTERVENTION REQUIRED
+			if (!m && h) o.push(Q("modify_column", t, `-- ⚠ MANUAL INTERVENTION REQUIRED
 -- Ensure all rows have a non-null value before executing.
--- alter table ${e} modify (${g} ${r});\n`, g, !0)), s.push(Z("DESTRUCTIVE", t, `adding NOT NULL on ${g} — requires manual verification`, g, !0));
-			else if (o.push(X("modify_column", t, `alter table ${e} modify (${g} ${r});\n`, g)), _ && c.base === "varchar") {
+-- alter table ${e} modify (${g} ${r});\n`, g, !0)), s.push($("DESTRUCTIVE", t, `adding NOT NULL on ${g} — requires manual verification`, g, !0));
+			else if (o.push(Q("modify_column", t, `alter table ${e} modify (${g} ${r});\n`, g)), _ && c.base === "varchar") {
 				let e = c.varcharLen ?? 4e3, n = l.varcharLen ?? 4e3;
-				n < e && s.push(Z("LOSSY", t, `varchar size reduced on ${g}: ${e} → ${n}`, g));
+				n < e && s.push($("LOSSY", t, `varchar size reduced on ${g}: ${e} → ${n}`, g));
 			}
 		}
 		let y = n.getDefaultValue(), b = r.getDefaultValue();
 		if (y !== b) if (r.isOption("default")) {
-	'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('		let n = b ?? "", r = [
+			let n = b ?? "", r = [
 				"sysdate",
 				"current_date",
 				"current_timestamp",
 				"systimestamp",
 				"localtimestamp"
-			], i = p.startsWith("integer") || p.startsWith("number") || p.startsWith("date") || p.startsWith("timestamp") || r.includes(n.toLowerCase()) ? "" : "''", a = r.includes(n.toLowerCase()) ? `default on null ${n}` : `default on null ${i}${n}${i}`;
-			o.push(X("modify_column", t, `alter table ${e} modify (${g} ${a});\n`, g));
-		} else o.push(X("modify_column", t, `alter table ${e} modify (${g} default null);\n`, g));
+			], i = p.startsWith("integer") || p.startsWith("number") || p.startsWith("date") || p.startsWith("timestamp") || r.includes(n.toLowerCase()) ? "" : "'", a = r.includes(n.toLowerCase()) ? `default on null ${n}` : `default on null ${i}${n}${i}`;
+			o.push(Q("modify_column", t, `alter table ${e} modify (${g} ${a});\n`, g));
+		} else o.push(Q("modify_column", t, `alter table ${e} modify (${g} default null);\n`, g));
 		let x = n.isOption("hidden") || n.isOption("invincible"), S = r.isOption("hidden") || r.isOption("invincible");
-		x !== S && o.push(X("modify_column", t, `alter table ${e} modify (${g} ${S ? "invisible" : "visible"});\n`, g));
+		x !== S && o.push(Q("modify_column", t, `alter table ${e} modify (${g} ${S ? "invisible" : "visible"});\n`, g));
 		let C = n.isOption("check") || n.isOption("values"), w = r.isOption("check") || r.isOption("values"), T = n.isOption("between"), E = r.isOption("between"), O = C ? JSON.stringify(n.parseValues()) : T ? n.getBetweenClause() : null;
 		if (O !== (w ? JSON.stringify(r.parseValues()) : E ? r.getBetweenClause() : null)) {
 			if (O !== null) {
 				let n = T ? f(`${t}_${g}`, D.bet) : f(i.objPrefix(), `${t}_${g}`, D.ck);
-				o.push(X("modify_column", t, `alter table ${e} drop constraint ${n};\n`, g));
+				o.push(Q("modify_column", t, `alter table ${e} drop constraint ${n};\n`, g));
 			}
 			if (w) {
 				let n = w && r.isOption("check") ? r.getValues("check") : r.getValues("values"), i = f(a.objPrefix(), `${t}_${g}`, D.ck);
-				o.push(X("modify_column", t, `alter table ${e} add constraint ${i} check (${g} in (${n}));\n`, g));
+				o.push(Q("modify_column", t, `alter table ${e} add constraint ${i} check (${g} in (${n}));\n`, g));
 			} else if (E) {
 				let n = r.getBetweenClause() ?? "", i = f(`${t}_${g}`, D.bet);
-				o.push(X("modify_column", t, `alter table ${e} add constraint ${i} check (${g} between ${n});\n`, g));
+				o.push(Q("modify_column", t, `alter table ${e} add constraint ${i} check (${g} between ${n});\n`, g));
 			}
 		}
 		return {
@@ -12361,13 +12118,12 @@ var it = class {
 		};
 	}
 	_diffFKs(e, t, n, r) {
-		let i = [], a = t.parseName(), o = n.objPrefix() + a, s = r.objPrefix() + a, c = J(r), l = e.fks ?? {}, u = t.fks ?? {};
-		for (let e in l) e in u || (i.push(X("drop_fk", a, `alter table ${o} drop constrain'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('t ${o}_${e}_fk;\n`)), i.push(X("set_unused", a, `alter table ${o} set unused column ${e};\n`, e)), i.push(X("drop_unused_columns", a, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${o} drop unused columns;\n`, e)));
+		let i = [], a = t.parseName(), o = n.objPrefix() + a, s = r.objPrefix() + a, c = Y(r), l = e.fks ?? {}, u = t.fks ?? {};
+		for (let e in l) e in u || (i.push(Q("drop_fk", a, `alter table ${o} drop constraint ${o}_${e}_fk;\n`)), i.push(Q("set_unused", a, `alter table ${o} set unused column ${e};\n`, e)), i.push(Q("drop_unused_columns", a, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${o} drop unused columns;\n`, e)));
 		for (let e in u) {
 			if (e in l) continue;
 			let t = u[e], n = r.find(t) == null ? "" : r.objPrefix(), o = `${s}_${e}_fk`, d = this._fkColType(t, r) ?? "number", f = `alter table ${s} add constraint ${o}\n    foreign key (${e})\n    references ${n}${t};\n`;
-			i.push(X("add_column", a, `alter table ${s} add (${e} ${d});\n`, e)), i.push(X("add_fk", a, c ? f : this._wrapConstraint(f)));
+			i.push(Q("add_column", a, `alter table ${s} add (${e} ${d});\n`, e)), i.push(Q("add_fk", a, c ? f : this._wrapConstraint(f)));
 		}
 		return i;
 	}
@@ -12377,47 +12133,46 @@ var it = class {
 		let r = n.getExplicitPkName();
 		if (r == null || r.includes(",")) return null;
 		let i = n.findChild(r);
-		return i == null ? n.getPkType() || null : q(i._inferTypeFull(), t.semantics(), J(t));
+		return i == null ? n.getPkType() || null : J(i._inferTypeFull(), t.semantics(), Y(t));
 	}
 	_diffIndexes(e, t, n, r) {
-		let i = [], a = t.parseName(), o = r.objPrefix() + a, s = n.objPrefix() + a, c = J(r), l = this._colMap(e), u = this._colMap(t);
+		let i = [], a = t.parseName(), o = r.objPrefix() + a, s = n.objPrefix() + a, c = Y(r), l = this._colMap(e), u = this._colMap(t);
 		for (let [e, t] of u) {
 			let n = l.get(e);
 			if (n == null) continue;
 			let r = n.isOption("idx") || n.isOption("index"), u = t.isOption("idx") || t.isOption("index"), d = n.isOption("unique") || n.isOption("uk"), f = t.isOption("unique") || t.isOption("uk");
 			if (!r && u) {
 				let t = `${o}_${e}_i`, n = `create index ${t} on ${o} (${e});\n`;
-				i.push(X("add_index", a, c ? `create index if not exists ${t} on ${o} (${e});\n` : this._wrapIndex(n)));
+				i.push(Q("add_index", a, c ? `create index if not exists ${t} on ${o} (${e});\n` : this._wrapIndex(n)));
 			}
 			if (r && !u) {
 				let t = `${s}_${e}_i`;
-				i.push(X("drop_index", a, `drop index ${t};\n`));
+				i.push(Q("drop_index", a, `drop index ${t};\n`));
 			}
 			if (!d && f) {
 				let t = `${o}_${e}_unq`, n = `create unique index ${t} on ${o} (${e});\n`;
-				i.push(X("add_index", a, c ? `create unique index if not exists ${t} on ${o} (${e});\n` : this._wrapIndex(n)));
+				i.push(Q("add_index", a, c ? `create unique index if not exists ${t} on ${o} (${e});\n` : this._wrapIndex(n)));
 			}
 			if (d && !f) {
 				let t = `${s}_${e}_unq`;
-				i.push(X("drop_index", a, `drop index ${t};\n`));
+				i.push(Q("drop_index", a, `drop index ${t};\n`));
 			}
 		}
 		let d = (e) => {
-	'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('		let t = e.isOption("unique") ? e.getOptionValue("unique") : e.isOption("uk") ? e.getOptionValue("uk") : null;
+			let t = e.isOption("unique") ? e.getOptionValue("unique") : e.isOption("uk") ? e.getOptionValue("uk") : null;
 			return !t || typeof t != "string" ? null : t.split(",").map((e) => e.trim()).join(",");
 		}, f = d(e), p = d(t);
-		if (f !== p && (f != null && i.push(X("drop_index", a, `alter table ${s} drop constraint ${s}${D.uk};\n`)), p != null)) {
+		if (f !== p && (f != null && i.push(Q("drop_index", a, `alter table ${s} drop constraint ${s}${D.uk};\n`)), p != null)) {
 			let e = p.split(",").join(", "), t = `alter table ${o} add constraint ${`${o}${D.uk}`} unique (${e});\n`;
-			i.push(X("add_index", a, c ? t : this._wrapConstraint(t)));
+			i.push(Q("add_index", a, c ? t : this._wrapConstraint(t)));
 		}
 		return i;
 	}
 	_diffViews(e, t, n) {
-		let r = [], i = J(n) ? "if exists " : "";
+		let r = [], i = Y(n) ? "if exists " : "";
 		for (let [a] of e) if (!t.has(a)) {
 			let e = n.objPrefix() + a;
-			r.push(X("drop_view", a, `drop view ${i}${e};\n`));
+			r.push(Q("drop_view", a, `drop view ${i}${e};\n`));
 		}
 		let a = [];
 		for (let [n, r] of t) {
@@ -12425,8 +12180,8 @@ var it = class {
 			(t == null || t.trimmedContent() !== r.trimmedContent()) && a.push(r);
 		}
 		for (let e of this._topoSortViews(a, t)) {
-			let t = new nt(n).generateView(e);
-			t && r.push(X("create_view", e.parseName(), t));
+			let t = new Z(n).generateView(e);
+			t && r.push(Q("create_view", e.parseName(), t));
 		}
 		return r;
 	}
@@ -12446,15 +12201,14 @@ var it = class {
 		return i;
 	}
 	_diffPackages(e, t, n, r, i) {
-		let a = [], o = [], s = t.parseName(), c = J(r) ? "if exists " : "", l = this._apiKind(e, n), u = this._apiKind(t, r);
-		for (let i of this._droppedPkgs(e, t, n, r, l, u)) a.push(X("drop_package", s, `drop package ${c}${i};\n`));
+		let a = [], o = [], s = t.parseName(), c = Y(r) ? "if exists " : "", l = this._apiKind(e, n), u = this._apiKind(t, r);
+		for (let i of this._droppedPkgs(e, t, n, r, l, u)) a.push(Q("drop_package", s, `drop package ${c}${i};\n`));
 		let d = e.isOption("auditlog") !== t.isOption("auditlog"), f = (e.isOption("apex") || e.isOption("apx")) !== (t.isOption("apex") || t.isOption("apx")), p = i || l !== u || d || f;
 		if (u === "layered" && p) {
-			let e = new Y(r, D);
+			let e = new X(r, D);
 			a.push(...this._splitPkgBlocks(e.generateLayeredTAPI(t), s));
-'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('		} else if (u === "simple" && p) {
-			let e = new Y(r, D);
+		} else if (u === "simple" && p) {
+			let e = new X(r, D);
 			a.push(...this._splitPkgBlocks(e.generateTAPI(t), s));
 		}
 		return {
@@ -12496,21 +12250,20 @@ var it = class {
 	}
 	_splitPkgBlocks(e, t) {
 		let n = [], r = e.split(/\n\/\s*(?:\n|$)/);
-		for (let e of r) e = e.trim(), e && n.push(X("create_package", t, e + "\n'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('/\n"));
+		for (let e of r) e = e.trim(), e && n.push(Q("create_package", t, e + "\n/\n"));
 		return n;
 	}
 	_wrapIndex(e) {
-		return `begin\n    execute immediate ''${e.trim().replace(/;\s*$/, "").replace(/\n/g, " ").replace(/\s+/g, " ").replace(/''/g, "''''")}'';\nexception\n    when others then\n        if sqlcode = -955 then null;\n        else raise;\n        end if;\nend;\n/\n`;
+		return `begin\n    execute immediate '${e.trim().replace(/;\s*$/, "").replace(/\n/g, " ").replace(/\s+/g, " ").replace(/'/g, "''")}';\nexception\n    when others then\n        if sqlcode = -955 then null;\n        else raise;\n        end if;\nend;\n/\n`;
 	}
 	_wrapConstraint(e) {
-		return `begin\n    execute immediate ''${e.trim().replace(/;\s*$/, "").replace(/\n/g, " ").replace(/\s+/g, " ").replace(/''/g, "''''")}'';\nexception\n    when others then\n        if sqlcode = -2261 then null;\n        else raise;\n        end if;\nend;\n/\n`;
+		return `begin\n    execute immediate '${e.trim().replace(/;\s*$/, "").replace(/\n/g, " ").replace(/\s+/g, " ").replace(/'/g, "''")}';\nexception\n    when others then\n        if sqlcode = -2261 then null;\n        else raise;\n        end if;\nend;\n/\n`;
 	}
 	_order(e) {
 		return [...e].sort((e, t) => this._step(e) - this._step(t));
 	}
 	_step(e) {
-		return e.kind === "create_package" ? e.sql.toLowerCase().includes("package body ") ? 17 : 15 : rt[e.kind] ?? 99;
+		return e.kind === "create_package" ? e.sql.toLowerCase().includes("package body ") ? 17 : 15 : tt[e.kind] ?? 99;
 	}
 	_summary(e, t, n, r) {
 		let i = 0, a = 0, o = 0;
@@ -12529,8 +12282,7 @@ var it = class {
 	}
 	_buildPreamble(e, t) {
 		let n = e.filter((e) => e.requiresManualIntervention), r = t.filter((e) => e.level === "INFO"), i = e.filter((e) => e.kind === "drop_table").map((e) => e.table), a = t.filter((e) => e.message.startsWith("column dropped")), o = "";
-		if (o += "-- ============================================================\n", o += "-- QuickSQL Migration Script\n", o += `-- Generated : ${(/* @__PURE__ */ new Date()).toISOString()}\n`, o += "-- ===================================='));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('========================\n", n.length > 0) {
+		if (o += "-- ============================================================\n", o += "-- QuickSQL Migration Script\n", o += `-- Generated : ${(/* @__PURE__ */ new Date()).toISOString()}\n`, o += "-- ============================================================\n", n.length > 0) {
 			o += "--\n", o += `-- ⚠ MANUAL STEPS REQUIRED (statementsRequiringIntervention = ${n.length})\n`, o += "--\n";
 			for (let e of n) {
 				o += `--   [${e.table}${e.column ? "." + e.column : ""}]\n`;
@@ -12547,532 +12299,6 @@ var it = class {
 		return (i.length > 0 || a.length > 0) && (o += "--\n", o += "-- ⚠ DESTRUCTIVE OPERATIONS\n", i.length > 0 && (o += `--   Tables dropped  : ${i.length}\n`), a.length > 0 && (o += `--   Columns dropped : ${a.length}\n`), o += "--   Apply during a maintenance window.\n", o += "--\n"), o += "-- ============================================================\n", o += "\n", o;
 	}
 };
+_e("oracle", (e) => new Z(e)), ye("oracle", (e) => new nt());
 //#endregion
-//#region src/db2/types.ts
-function Q(e) {
-	if (e.needsBoolCheck && (e.varcharLen === 1 || e.varcharLen == null)) return "boolean";
-	switch (e.base) {
-		case "varchar": return `varchar(${e.varcharLen ?? 4e3})`;
-		case "number": return e.numericSpec ? `decimal${e.numericSpec}` : "decimal(15,4)";
-		case "integer": return "integer";
-		case "float": return "double";
-		case "date": return "date";
-		case "timestamp": return "timestamp";
-		case "tswtz": return "timestamp with time zone";
-		case "tswltz": return "timestamp";
-		case "clob": return "clob";
-		case "blob": return "blob";
-		case "boolean": return "boolean";
-		case "geometry": return "db2gse.st_geometry";
-		case "json": return "json";
-		case "xml": return "xml";
-		case "vector": return "clob";
-		default: return e.base === "" ? "varchar(255)" : e.base;
-	}
-}
-//#endregion
-//#region src/db2/plsql.ts
-function $(e, t) {
-	let n = e.find(t);
-	if (n == null) return "integer";
-	let r = n.getExplicitPkName();
-	if (r == null || r.includes(",")) return "integer";'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('
-	let i = n.findChild(r);
-	return i == null ? "integer" : Q(i._inferTypeFull());
-}
-var at = class {
-	constructor(e, t) {
-		this.ctx = e, this.naming = t;
-	}
-	generateTrigger(e) {
-		return e.inferType() === "table" ? this._generateBITrigger(e) + this._generateBUTrigger(e) : "";
-	}
-	_generateBITrigger(e) {
-		let t = e.hasRowVersion(), n = e.hasAuditCols(), r = e.children.some((e) => e.isOption("lower") || e.isOption("upper"));
-		if (!t && !n && !r) return "";
-		let i = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), a = "--#SET TERMINATOR @\n";
-		a += `create or replace trigger ${i}${this.naming.bi}\n`, a += `before insert on ${i}\n`, a += "referencing new as n\n", a += "for each row\n", a += "begin\n";
-		for (let t of e.children) t.isOption("lower") ? a += `    set n.${t.parseName()} = lower(n.${t.parseName()});\n` : t.isOption("upper") && (a += `    set n.${t.parseName()} = upper(n.${t.parseName()});\n`);
-		return t && (a += "    set n.row_version = 1;\n"), n && (a += `    set n.${this.ctx.getOptionValue("createdcol")}   = current timestamp;\n`, a += `    set n.${this.ctx.getOptionValue("createdbycol")} = current user;\n`, a += `    set n.${this.ctx.getOptionValue("updatedcol")}   = current timestamp;\n`, a += `    set n.${this.ctx.getOptionValue("updatedbycol")} = current user;\n`), a += "end @\n--#SET TERMINATOR ;\n", a;
-	}
-	_generateBUTrigger(e) {
-		let t = e.hasRowVersion(), n = e.hasAuditCols(), r = e.children.some((e) => e.isOption("lower") || e.isOption("upper"));
-		if (!t && !n && !r) return "";
-		let i = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), a = "--#SET TERMINATOR @\n";
-		a += `create or replace trigger ${i}${this.naming.bu}\n`, a += `before update on ${i}\n`, a += "referencing new as n old as o\n", a += "for each row\n", a += "begin\n";
-		for (let t of e.children) t.isOption("lower") ? a += `    set n.${t.parseName()} = lower(n.${t.parseName()});\n` : t.isOption("upper") && (a += `    set n.${t.parseName()} = upper(n.${t.parseName()})'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(';\n`);
-		return t && (a += "    set n.row_version = coalesce(o.row_version, 0) + 1;\n"), n && (a += `    set n.${this.ctx.getOptionValue("updatedcol")}   = current timestamp;\n`, a += `    set n.${this.ctx.getOptionValue("updatedbycol")} = current user;\n`), a += "end @\n--#SET TERMINATOR ;\n", a;
-	}
-	_getTier(e) {
-		let t = e.getOptionValue("api"), n = t == null || String(t).trim() === "" ? "full+hks" : String(t).trim().toLowerCase();
-		switch (n) {
-			case "layered":
-			case "3h": return "full+hks";
-			case "3": return "full";
-			case "2h": return "service+hks";
-			case "2": return "service";
-			case "1h": return "lookup+hks";
-			case "1": return "lookup";
-			default: return n;
-		}
-	}
-	_svcCols(e) {
-		return e.children.filter((e) => e.children.length === 0 && e.refId() === null && e.parseName().toLowerCase() !== "row_version");
-	}
-	generateLayeredTAPI(e) {
-		if (e.inferType() !== "table") return "";
-		e.lateInitFks();
-		let t = this._getTier(e), n = ["full", "full+hks"].includes(t), r = t.endsWith("+hks"), i = [
-			"service",
-			"service+hks",
-			"full",
-			"full+hks"
-		].includes(t), a = String(this.ctx.getOptionValue("ifc") ?? "rest").toLowerCase(), o = a === "rest" || a === "both" || a === "" || a === "apex", s = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), c = (e.getPkName() ?? "id").toLowerCase(), l = "integer", u = "--#SET TERMINATOR @\n";
-		return u += `-- TAPI: ${s}  tier=${t}\n\n`, n && (u += `create schema ${s}_dal @\n\n`, u += this._generateDal(e, s, c, l)), r && (u += `create schema ${s}_hks @\n\n`, u += this._generateHks(e, s, c, l, n)), i && (u += `create schema ${s}_svc @\n\n`, u += this._generateSvc(e, s, c, l, n, r)), o && (u += `create schema ${s}_rst @\n\n`, u += this._generateRst(e, s, c, l, i, n, r)), u += "--#SET TERMINATOR ;\n", u;
-	}
-	_generateDal(e, t, n, r) {
-		let i = Object.keys(e.fks ?? {}), a = this._svcCols(e), o = "";
-		o += `create or replace procedure ${t}_dal.p_get_by_id (\n`, o += `    in p_${n} ${r}\n`, o += ")\nlangua'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ge sql\ndynamic result sets 1\nbegin\n", o += "    declare c cursor with return for\n", o += `        select * from ${t} where ${n} = p_${n};\n`, o += "    open c;\n", o += "end @\n\n", o += `create or replace procedure ${t}_dal.p_insert_row (\n`;
-		for (let t of i) o += `    in  p_${t} ${$(this.ctx, e.fks[t])},\n`;
-		for (let e of a) o += `    in  p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
-		o += `    out p_${n} ${r}\n`, o += ")\nlanguage sql\nbegin\n", o += `    insert into ${t} (\n`;
-		for (let e of i) o += `        ${e},\n`;
-		for (let e of a) o += `        ${e.parseName()},\n`;
-		o = o.replace(/,\n$/, "\n"), o += "    ) values (\n";
-		for (let e of i) o += `        p_${e},\n`;
-		for (let e of a) o += `        p_${e.parseName()},\n`;
-		o = o.replace(/,\n$/, "\n"), o += "    );\n", o += `    set p_${n} = identity_val_local();\n`, o += "end @\n\n", o += `create or replace procedure ${t}_dal.p_update_row (\n`, o += `    in p_${n} ${r},\n`;
-		for (let t of i) o += `    in p_${t} ${$(this.ctx, e.fks[t])},\n`;
-		for (let e of a) o += `    in p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
-		o = o.replace(/,\n$/, "\n"), o += ")\nlanguage sql\nbegin\n", o += `    update ${t} set\n`;
-		for (let e of i) o += `        ${e} = p_${e},\n`;
-		for (let e of a) o += `        ${e.parseName()} = p_${e.parseName()},\n`;
-		return o = o.replace(/,\n$/, "\n"), o += `    where ${n} = p_${n};\n`, o += "end @\n\n", o += `create or replace procedure ${t}_dal.p_delete_row (\n`, o += `    in p_${n} ${r}\n`, o += ")\nlanguage sql\nbegin\n", o += `    delete from ${t} where ${n} = p_${n};\n`, o += "end @\n\n", o;
-	}
-	_generateHks(e, t, n, r, i) {
-		let a = i ? `${t}_dal.t_id` : r, o = "";
-		o += `create or replace procedure ${t}_hks.p_validate (\n`, o += "    in p_action varchar(10),\n", o += "    in p_row    varchar(32000)\n", o += ")\nlanguage sql\nbegin\n    -- stub: add validation logic\n    return;\nend @\n\n";
-		for (let e of [
-			"p_before_insert",
-			"p_after_insert",
-			"p_bef'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ore_update",
-			"p_after_update"
-		]) o += `create or replace procedure ${t}_hks.${e} (\n`, o += "    in p_row varchar(32000)\n", o += ")\nlanguage sql\nbegin\n    -- stub\n    return;\nend @\n\n";
-		return o += `create or replace procedure ${t}_hks.p_before_delete (\n`, o += `    in p_${n} ${a}\n`, o += ")\nlanguage sql\nbegin\n    -- stub\n    return;\nend @\n\n", o += `create or replace procedure ${t}_hks.p_after_delete (\n`, o += `    in p_${n} ${a}\n`, o += ")\nlanguage sql\nbegin\n    -- stub\n    return;\nend @\n\n", o;
-	}
-	_generateSvc(e, t, n, r, i, a) {
-		let o = Object.keys(e.fks ?? {}), s = this._svcCols(e), c = "";
-		c += `create or replace procedure ${t}_svc.get (\n`, c += `    in  p_${n} ${r},\n`, c += "    out p_result  varchar(32000)\n", c += ")\nlanguage sql\ndynamic result sets 1\nbegin\n", i ? c += `    call ${t}_dal.p_get_by_id(p_${n});\n` : (c += "    -- private get (absorbed from absent _dal)\n", c += "    declare c cursor with return for\n", c += `        select * from ${t} where ${n} = p_${n};\n`, c += "    open c;\n"), c += "end @\n\n", c += `create or replace procedure ${t}_svc.ins (\n`;
-		for (let t of o) c += `    in  p_${t} ${$(this.ctx, e.fks[t])},\n`;
-		for (let e of s) c += `    in  p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
-		if (c += `    out p_${n} ${r},\n`, c += "    out p_status  varchar(20)\n", c += ")\nlanguage sql\nbegin\n", c += "    declare exit handler for sqlexception\n", c += "    begin\n", c += "        set p_status = ''ERROR'';\n", c += "    end;\n", a && (c += `    call ${t}_hks.p_validate(''INSERT'', '''');\n`), a && (c += `    call ${t}_hks.p_before_insert('''');\n`), i) {
-			c += `    call ${t}_dal.p_insert_row(`;
-			let e = [
-				...o.map((e) => `p_${e}`),
-				...s.map((e) => `p_${e.parseName()}`),
-				`p_${n}`
-			];
-			c += e.join(", ") + ");\n";
-		} else {
-			c += "    -- private insert (absorbed from absent _dal)\n", c += `    insert into ${t} (`;
-			let e = [...o, ...s.map((e) => e.parseName())];
-			c +='));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' e.join(", ") + ") values (", c += e.map((e) => `p_${e}`).join(", ") + ");\n", c += `    set p_${n} = identity_val_local();\n`;
-		}
-		a && (c += `    call ${t}_hks.p_after_insert('''');\n`), c += "    set p_status = ''SUCCESS'';\n", c += "end @\n\n", c += `create or replace procedure ${t}_svc.upd (\n`, c += `    in  p_${n} ${r},\n`;
-		for (let t of o) c += `    in  p_${t} ${$(this.ctx, e.fks[t])},\n`;
-		for (let e of s) c += `    in  p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
-		if (c += "    out p_status  varchar(20)\n", c += ")\nlanguage sql\nbegin\n", c += "    declare exit handler for sqlexception\n", c += "    begin\n", c += "        set p_status = ''ERROR'';\n", c += "    end;\n", a && (c += `    call ${t}_hks.p_validate(''UPDATE'', '''');\n`), a && (c += `    call ${t}_hks.p_before_update('''');\n`), i) {
-			c += `    call ${t}_dal.p_update_row(p_${n}`;
-			for (let e of o) c += `, p_${e}`;
-			for (let e of s) c += `, p_${e.parseName()}`;
-			c += ");\n";
-		} else {
-			c += "    -- private update (absorbed from absent _dal)\n", c += `    update ${t} set\n`;
-			let e = [...o.map((e) => `        ${e} = p_${e}`), ...s.map((e) => `        ${e.parseName()} = p_${e.parseName()}`)];
-			c += e.join(",\n") + `\n    where ${n} = p_${n};\n`;
-		}
-		return a && (c += `    call ${t}_hks.p_after_update('''');\n`), c += "    set p_status = ''SUCCESS'';\n", c += "end @\n\n", c += `create or replace procedure ${t}_svc.del (\n`, c += `    in  p_${n} ${r},\n`, c += "    out p_status  varchar(20)\n", c += ")\nlanguage sql\nbegin\n", c += "    declare exit handler for sqlexception\n", c += "    begin\n", c += "        set p_status = ''ERROR'';\n", c += "    end;\n", a && (c += `    call ${t}_hks.p_before_delete(p_${n});\n`), i ? c += `    call ${t}_dal.p_delete_row(p_${n});\n` : (c += "    -- private delete (absorbed from absent _dal)\n", c += `    delete from ${t} where ${n} = p_${n};\n`), a && (c += `    call ${t}_hks.p_after_delete(p_${n});\n`), c += "    set p_status = ''SU'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('CCESS'';\n", c += "end @\n\n", c;
-	}
-	_generateRst(e, t, n, r, i, a, o) {
-		let s = Object.keys(e.fks ?? {}), c = this._svcCols(e), l = "";
-		if (l += `create or replace procedure ${t}_rst.get (\n`, l += `    in  p_${n} ${r},\n`, l += "    out p_result  varchar(32000),\n", l += "    out p_status  integer\n", l += ")\nlanguage sql\nbegin\n", l += "    declare continue handler for sqlexception\n", l += "    begin\n", l += "        get diagnostics exception 1 p_result = message_text;\n", l += "        set p_result = json_object(''error'': p_result);\n", l += "        set p_status = 500;\n", l += "    end;\n", l += "    set p_status = 200;\n", i) l += `    call ${t}_svc.get(p_${n}, p_result);\n`;
-		else if (a) l += `    call ${t}_dal.p_get_by_id(p_${n});\n`;
-		else {
-			l += "    -- private get (absorbed from absent _svc/_dal)\n", l += "    select json_object(";
-			let e = c.map((e) => `''${e.parseName()}'': ${e.parseName()}`);
-			e.length > 0 && (l += e.join(", ")), l += `)\n    into p_result from ${t} where ${n} = p_${n};\n`;
-		}
-		l += "end @\n\n", l += `create or replace procedure ${t}_rst.ins (\n`;
-		for (let t of s) l += `    in  p_${t} ${$(this.ctx, e.fks[t])},\n`;
-		for (let e of c) l += `    in  p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
-		if (l += `    out p_${n}  ${r},\n`, l += "    out p_result   varchar(32000),\n", l += "    out p_status   integer\n", l += ")\nlanguage sql\nbegin\n", l += "    declare p_svc_status varchar(20);\n", l += "    declare continue handler for sqlexception\n", l += "    begin\n", l += "        get diagnostics exception 1 p_result = message_text;\n", l += "        set p_result = json_object(''error'': p_result);\n", l += "        set p_status = 500;\n", l += "    end;\n", l += "    set p_status = 201;\n", i) {
-			l += `    call ${t}_svc.ins(`;
-			let e = [
-				...s.map((e) => `p_${e}`),
-				...c.map((e) => `p_${e.parseName()}`),
-				`p_${n}`,
-				"p_svc_status"
-			];
-			l += e.join(", ") + ");\n";
-		} else {
-			l += "    -- pr'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ivate insert (absorbed from absent _svc/_dal)\n", o && (l += `    call ${t}_hks.p_validate(''INSERT'', '''');\n`), l += `    insert into ${t} (`;
-			let e = [...s, ...c.map((e) => e.parseName())];
-			l += e.join(", ") + ") values (", l += e.map((e) => `p_${e}`).join(", ") + ");\n", l += `    set p_${n} = identity_val_local();\n`;
-		}
-		l += `    set p_result = json_object(''${n}'': p_${n});\n`, l += "end @\n\n", l += `create or replace procedure ${t}_rst.upd (\n`, l += `    in  p_${n} ${r},\n`;
-		for (let t of s) l += `    in  p_${t} ${$(this.ctx, e.fks[t])},\n`;
-		for (let e of c) l += `    in  p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
-		if (l += "    out p_result  varchar(32000),\n", l += "    out p_status  integer\n", l += ")\nlanguage sql\nbegin\n", l += "    declare p_svc_status varchar(20);\n", l += "    declare continue handler for sqlexception\n", l += "    begin\n", l += "        get diagnostics exception 1 p_result = message_text;\n", l += "        set p_result = json_object(''error'': p_result);\n", l += "        set p_status = 500;\n", l += "    end;\n", l += "    set p_status = 200;\n", i) {
-			l += `    call ${t}_svc.upd(p_${n}`;
-			for (let e of s) l += `, p_${e}`;
-			for (let e of c) l += `, p_${e.parseName()}`;
-			l += ", p_svc_status);\n";
-		} else {
-			l += "    -- private update (absorbed from absent _svc/_dal)\n", l += `    update ${t} set\n`;
-			let e = [...s.map((e) => `        ${e} = p_${e}`), ...c.map((e) => `        ${e.parseName()} = p_${e.parseName()}`)];
-			e.length > 0 && (l += e.join(",\n") + `\n    where ${n} = p_${n};\n`);
-		}
-		return l += `    set p_result = json_object(''${n}'': p_${n});\n`, l += "end @\n\n", l += `create or replace procedure ${t}_rst.del (\n`, l += `    in  p_${n} ${r},\n`, l += "    out p_result  varchar(32000),\n", l += "    out p_status  integer\n", l += ")\nlanguage sql\nbegin\n", l += "    declare p_svc_status varchar(20);\n", l += "    declare continue handler for sqlexception\n", l += "    begin\n",'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' l += "        get diagnostics exception 1 p_result = message_text;\n", l += "        set p_result = json_object(''error'': p_result);\n", l += "        set p_status = 500;\n", l += "    end;\n", l += "    set p_status = 200;\n", i ? l += `    call ${t}_svc.del(p_${n}, p_svc_status);\n` : (l += "    -- private delete (absorbed from absent _svc/_dal)\n", o && (l += `    call ${t}_hks.p_before_delete(p_${n});\n`), l += `    delete from ${t} where ${n} = p_${n};\n`), l += `    set p_result = json_object(''${n}'': p_${n}, ''deleted'': 1);\n`, l += "end @\n\n", l;
-	}
-}, ot = " not null";
-function st(e) {
-	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
-}
-var ct = class extends _e {
-	constructor(e, t) {
-		super(e), this._naming = t ?? D, this._plsql = new at(e, this._naming);
-	}
-	colType(e) {
-		return Q(e);
-	}
-	_pkColType(e) {
-		return this._ddl.optionEQvalue("pk", "seq") ? `integer not null default next value for ${e}${this._naming.seq}` : "integer not null generated always as identity (start with 1 increment by 1)";
-	}
-	_genSequence(e) {
-		return this._ddl.optionEQvalue("pk", "seq") && this._ddl.optionEQvalue("genpk", !0) ? `create sequence  ${e}${this._naming.seq} start with 1 increment by 1;\n\n` : "";
-	}
-	identityRestartSql(e, t, n) {
-		return `alter table ${e}\n    alter column ${t} restart with ${n};\n\n`;
-	}
-	_cpad(e) {
-		return O + O + " ".repeat(e.parent.maxChildNameLen());
-	}
-	_buildColumnConstraints(e, t, n) {
-		(e.isOption("unique") || e.isOption("uk")) && (t += "\n", t += this._cpad(e) + "constraint " + f(this._ddl.objPrefix(), n.parent_child, this._naming.unq) + " unique");
-		let r = "''";
-		if ((t.startsWith("integer") || t.startsWith("decimal") || t.startsWith("double") || t.startsWith("date")) && (r = ""), e.isOption("default")) {
-			let i = e.getDefaultValue() ?? "", a = [
-				"current date",
-				"current_date",
-				"current timestamp",
-				"current_timestamp"
-			];
-			if (n.isNativeBoolean) {
-				let e = i.'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('toUpperCase() === "Y" || i.toLowerCase() === "true" ? "true" : "false";
-				t += " default " + e;
-			} else a.includes(i.toLowerCase()) ? t += " default " + i : t += " default " + r + i + r;
-		}
-		if ((e.isOption("nn") || e.indexOf("not") + 1 === e.indexOf("null")) && e.indexOf("pk") < 0 && (t += " not null"), n.isNativeBoolean || (t += e.genConstraint(r)), n.needsBoolCheck && Q(n) !== "boolean" && (t += "\n" + this._cpad(e) + "constraint " + f(this._ddl.objPrefix(), n.parent_child) + ` check (${e.parseName()} in (''Y'',''N''))`), e.isOption("between")) {
-			let r = e.getBetweenClause() ?? "";
-			t += " constraint " + f(n.parent_child, this._naming.bet) + "\n", t += "           check (" + e.parseName() + " between " + r + ")";
-		}
-		return e.isOption("pk") && (t += " not null\n", t += this._cpad(e) + "constraint " + f(this._ddl.objPrefix(), n.parent_child, this._naming.pk) + " primary key"), t;
-	}
-	parseType(e) {
-		if (e.children !== null && 0 < e.children.length) return "table";
-		let t = e.inferType();
-		if (t === "view") return t;
-		if (e.parent === null) return "table";
-		let n = e._inferTypeFull();
-		return this._buildColumnConstraints(e, Q(n), n);
-	}
-	_genTableHeader(e, t, n) {
-		let r = "create table " + t + " (\n", i = O + " ".repeat(e.maxChildNameLen() - 2);
-		if (n !== null && !e.isOption("pk")) {
-			r += O + n + i + this._pkColType(t) + "\n";
-			let a = f(this._ddl.objPrefix("no schema") + e.parseName(), "_", n);
-			r += O + O + " ".repeat(e.maxChildNameLen()) + "constraint " + f(a, this._naming.pk) + " primary key,\n";
-		} else {
-			let t = e.getExplicitPkName();
-			if (t !== null && t.indexOf(",") < 0) {
-				let n = O + " ".repeat(e.maxChildNameLen() - t.length), i = "integer", a = e.findChild(t);
-				a !== null && (i = this.parseType(a)), r += O + t + n + i + ",\n";
-			}
-		}
-		return r;
-	}
-	_fkColType(e) {
-		let t = e.getExplicitPkName();
-		if (t === null || t.includes(",")) return null;
-		let n = e.findChild(t);
-		return n === null ? e.getPkType() : Q'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('(n._inferTypeFull());
-	}
-	_genFkColumns(e, t) {
-		let n = "";
-		for (let r in e.fks) {
-			let i = e.fks[r];
-			if (0 < r.indexOf(",")) {
-				let t = this._ddl.find(i), a = m(r, ", ");
-				for (let r = 0; r < a.length; r++) {
-					let i = a[r];
-					if (i === ",") continue;
-					let o = t?.findChild(i), s = O + " ".repeat(e.maxChildNameLen() - i.length);
-					n += O + i + s + (o ? Q(o._inferTypeFull()) : "integer") + ",\n";
-				}
-				continue;
-			}
-			let a = "integer", o = e.findChild(r);
-			o !== null && (a = o.inferType());
-			let s = this._ddl.find(i), c = "";
-			s === null ? (s = this._ddl.find(r), s?.isMany2One?.() && !r.endsWith("_id") && (i = r, r = l(r) ?? r, c = "_id")) : a = this._fkColType(s) ?? a;
-			let u = O + " ".repeat(e.maxChildNameLen() - r.length), d = r + c;
-			n += O + d + u + a;
-			let f = this._ddl.find(i) === null ? "" : this._ddl.objPrefix();
-			if (s !== null && (s.line < e.line || s.isMany2One())) {
-				n += O + O + " ".repeat(e.maxChildNameLen()) + "constraint " + t + "_" + d + this._naming.fk + "\n";
-				let a = "";
-				e.isOption("cascade") ? a = " on delete cascade" : e.isOption("setnull") && (a = " on delete set null");
-				let o = "";
-				for (let t in e.children) {
-					let n = e.children[t];
-					if (r === n.parseName()) {
-						(n.isOption("nn") || n.isOption("notnull")) && (o = ot), n.isOption("cascade") ? a = " on delete cascade" : n.isOption("setnull") && (a = " on delete set null");
-						break;
-					}
-				}
-				n += O + O + " ".repeat(e.maxChildNameLen()) + "references " + f + i + a + o + ",\n";
-			} else {
-				n += ",\n";
-				let a = "";
-				e.isOption("cascade") ? a = " on delete cascade" : e.isOption("setnull") && (a = " on delete set null");
-				for (let t in e.children) {
-					let n = e.children[t];
-					if (r === n.parseName()) {
-						n.isOption("cascade") ? a = " on delete cascade" : n.isOption("setnull") && (a = " on delete set null");
-						break;
-					}
-				}
-				let o = `alter table ${t} add constraint ${t}_${d}${'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('this._naming.fk} foreign key (${d}) references ${f}${i}${a};\n`;
-				this._ddl.postponedAltersSet.has(o) || (this._ddl.postponedAlters.push(o), this._ddl.postponedAltersSet.add(o));
-			}
-		}
-		return n;
-	}
-	_genRegularColumns(e, t) {
-		let n = "";
-		for (let r = 0; r < e.children.length; r++) {
-			let i = e.children[r];
-			if (!(t !== null && i.parseName() === "id") && !(0 < i.children.length) && i.refId() === null) {
-				if (i.parseName() === e.getExplicitPkName()) continue;
-				if (n += O + this.generateTable(i) + ",\n", 0 < i.indexOf("file")) {
-					let t = i.parseName();
-					for (let r of [
-						{
-							suffix: "_filename",
-							type: "varchar(255)"
-						},
-						{
-							suffix: "_mimetype",
-							type: "varchar(255)"
-						},
-						{
-							suffix: "_charset",
-							type: "varchar(255)"
-						},
-						{
-							suffix: "_lastupd",
-							type: "timestamp"
-						}
-					]) {
-						let i = t + r.suffix, a = O + " ".repeat(e.maxChildNameLen() - i.length);
-						n += O + i + a + r.type + ",\n";
-					}
-				}
-			}
-		}
-		return n;
-	}
-	_genRowVersionColumn(e) {
-		if (!e.hasRowVersion()) return "";
-		let t = O + " ".repeat(e.maxChildNameLen() - 11);
-		return O + "row_version" + t + "integer not null,\n";
-	}
-	_genAuditColumns(e) {
-		if (!e.hasAuditCols()) return "";
-		let t = "timestamp", n = "", r = String(this._ddl.getOptionValue("createdcol") ?? "created"), i = String(this._ddl.getOptionValue("createdbycol") ?? "created_by"), a = String(this._ddl.getOptionValue("updatedcol") ?? "updated"), o = String(this._ddl.getOptionValue("updatedbycol") ?? "updated_by");
-		return n += O + r + O + " ".repeat(e.maxChildNameLen() - r.length) + t + " not null,\n", n += O + i + O + " ".repeat(e.maxChildNameLen() - i.length) + "varchar(255) not null,\n", n += O + a + O + " ".repeat(e.maxChildNameLen() - a.length) + t + " not null,\n", n += O + o + O + " ".repeat(e.maxChildNameLen() - o.length) + "varchar(255) not null,\n", n;
-	}
-	_genAdditionalColumns(e) {
-		let t = "", n = this.'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('_ddl.additionalColumns();
-		for (let r in n) {
-			let i = n[r], a = O + " ".repeat(e.maxChildNameLen() - r.length);
-			t += O + r.toUpperCase() + a + i + " not null,\n";
-		}
-		return t;
-	}
-	_genTableFooter(e, t) {
-		let n = ");\n\n";
-		return e.isOption("audit") && !e.isOption("auditcols") && (n += `-- note: configure IBM Db2 Audit Policy for ${t}\n\n`), n;
-	}
-	_genMultiColFkAlters(e, t) {
-		let n = "";
-		for (let r in e.fks) if (0 < r.indexOf(",")) {
-			let i = e.fks[r];
-			n += `alter table ${t} add constraint ${i}_${t}${this._naming.fk} foreign key (${r}) references ${i};\n\n`;
-		}
-		return n;
-	}
-	_genIndexes(e, t) {
-		let n = "", r = 1;
-		for (let i in e.fks) if (!e.isMany2One()) {
-			let a = i ?? l(e.fks[i]) + "_id";
-			r === 1 && (n += "-- table index\n"), n += `create index ${t}${this._naming.idx}${r++} on ${t} (${a});\n\n`;
-		}
-		let i = e.getOptionValue("pk");
-		i && (n += `alter table ${t} add constraint ${t}${this._naming.pk} primary key (${i});\n\n`);
-		let a = e.getOptionValue("unique") ?? e.getOptionValue("uk");
-		a !== null && (n += `alter table ${t} add constraint ${t}${this._naming.uk} unique (${a});\n\n`);
-		for (let i = 0; i < e.children.length; i++) {
-			let a = e.children[i];
-			(a.isOption("idx") || a.isOption("index")) && (r === 1 && (n += "-- table index\n"), n += `create index ${t}${this._naming.idx}${r++} on ${t} (${a.parseName()});\n`);
-		}
-		return n;
-	}
-	_genComments(e, t) {
-		let n = "", r = e.getAnnotationValue("DESCRIPTION") || e.comment;
-		r !== null && (n += `comment on table ${t} is ''${r}'';\n`);
-		for (let r = 0; r < e.children.length; r++) {
-			let i = e.children[r], a = i.getAnnotationValue("DESCRIPTION") || i.comment;
-			a !== null && i.children.length === 0 && (n += `comment on column ${t}.${i.parseName()} is ''${a}'';\n`);
-		}
-		return n;
-	}
-	generateTable(e) {
-		if (e.children.length === 0 && 0 < e.apparentDepth()) {
-			let t = O;
-			return e.parent !== void 0 && e.parent !== null && (t += " ".repeat(e.parent.maxChildNameLe'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('n() - e.parseName().length)), e.parseName() + t + this.parseType(e);
-		}
-		e.lateInitFks();
-		let t = this._ddl.objPrefix() + e.parseName(), n = e.getGenIdColName(), r = this._genSequence(t);
-		return r += this._genTableHeader(e, t, n), r += this._genFkColumns(e, t), r += this._genRegularColumns(e, n), r += this._genRowVersionColumn(e), r += this._genAuditColumns(e), r += this._genAdditionalColumns(e), r += e.genConstraint(), r = st(r), r += this._genTableFooter(e, t), r += this._genMultiColFkAlters(e, t), r += this._genIndexes(e, t), r += this._genComments(e, t), r += "\n", r;
-	}
-	generateDDL(e) {
-		if (e.inferType() === "view") return "";
-		let t = this._orderedTableNodes(e), n = "";
-		for (let e = 0; e < t.length; e++) n += this.generateTable(t[e]);
-		return n;
-	}
-	generateDrop(e) {
-		let t = this._ddl.objPrefix() + e.parseName(), n = "";
-		if (e.inferType() === "view" && (n = `drop view if exists ${t};\n`), e.inferType() === "table") {
-			n = `drop table if exists ${t};\n`, this._ddl.optionEQvalue("pk", "seq") && (n += `drop sequence if exists ${t}${this._naming.seq};\n`);
-			let r = e.trimmedContent().toLowerCase().includes("/api"), i = (e.getOptionValue("api") ?? "").trim().toLowerCase();
-			if (r && ([
-				"full+hks",
-				"full",
-				"service+hks",
-				"service",
-				"lookup+hks",
-				"lookup"
-			].includes(i) || i === "" || i === "layered")) {
-				let e = !i || i === "layered" ? "full+hks" : i, r = e === "3h" ? "full+hks" : e === "3" ? "full" : e === "2h" ? "service+hks" : e === "2" ? "service" : e === "1h" ? "lookup+hks" : e === "1" ? "lookup" : e, a = ["full", "full+hks"].includes(r), o = r.endsWith("+hks"), s = [
-					"service",
-					"service+hks",
-					"full",
-					"full+hks"
-				].includes(r), c = String(this._ddl.getOptionValue("ifc") ?? "rest").toLowerCase(), l = c === "rest" || c === "both" || c === "";
-				a && (n += `drop schema ${t}_dal restrict;\n`), o && (n += `drop schema ${t}_hks restrict;\n`), s && (n += `drop schema ${t}_svc restrict;\n`), l'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' && (n += `drop schema ${t}_rst restrict;\n`);
-			}
-		}
-		return n.toLowerCase();
-	}
-	generateFullDDL() {
-		let e = this._ddl.forest, t = this._ddl.descendants(), n = "";
-		if (this._ddl.optionEQvalue("Include Drops", "yes")) for (let e of t) {
-			let t = this.generateDrop(e);
-			t && (n += t);
-		}
-		n += "-- create tables\n\n";
-		for (let t of e) n += this.generateDDL(t) + "\n";
-		for (let e of this._ddl.postponedAlters) n += e + "\n";
-		let r = 0;
-		for (let e of t) {
-			let t = this._plsql.generateTrigger(e);
-			t && (r++ === 0 && (n += "-- triggers\n"), n += t + "\n");
-		}
-		r = 0;
-		let i = [
-			"full+hks",
-			"full",
-			"service+hks",
-			"service",
-			"lookup+hks",
-			"lookup",
-			"layered",
-			"3h",
-			"3",
-			"2h",
-			"2",
-			"1h",
-			"1"
-		];
-		for (let e of t) {
-			let t = e.trimmedContent().toLowerCase().includes("/api"), a = (e.getOptionValue("api") ?? "").trim().toLowerCase();
-			if (!(t && (i.includes(a) || a === ""))) continue;
-			let o = this._plsql.generateLayeredTAPI(e);
-			o && (r++ === 0 && (n += "-- APIs\n"), n += o + "\n");
-		}
-		r = 0;
-		for (let t of e) {
-			let e = this.generateData(t, this._ddl.data);
-			e && (r++ === 0 && (n += "-- load data\n\n"), n += e + "\n");
-		}
-		return n;
-	}
-};
-I("oracle", (e) => new nt(e)), I("db2", (e) => new ct(e)), ye("oracle", (e) => new it());
-//#endregion
-export { _e as BaseGenerator, be as createDiffGenerator, G as default, G as quicksql, Ue as fromJSON, K as qsql_version, ye as registerDiffGenerator, I as registerGenerator, Ge as toDDL, qe as toDiff, We as toERD, Ke as toErrors };
-'));
-  EXECUTE IMMEDIATE
-    'CREATE OR REPLACE MLE MODULE quicksql_module LANGUAGE JAVASCRIPT AS $QSQL$' ||
-    l_src ||
-    '$QSQL$';
-  DBMS_LOB.FREETEMPORARY(l_src);
-  DBMS_OUTPUT.PUT_LINE('OK  quicksql_module caricato.');
-EXCEPTION
-  WHEN OTHERS THEN
-    DBMS_LOB.FREETEMPORARY(l_src);
-    RAISE;
-END;
-/
-
-SET DEFINE ON
-
-SELECT module_name,
-       language,
-       status,
-       ROUND(LENGTH(module_source) / 1024, 1) AS size_kb
-FROM   user_mle_modules
-WHERE  module_name = 'QUICKSQL_MODULE';
-
-SELECT name, line, text
-FROM   user_errors
-WHERE  name = 'QUICKSQL_MODULE'
-ORDER  BY line;
-
-PROMPT >>> mle/01_install_module.sql completato.
+export { ge as BaseGenerator, be as createDiffGenerator, G as default, G as quicksql, Ue as fromJSON, q as qsql_version, ye as registerDiffGenerator, _e as registerGenerator, K as toDDL, Ke as toDiff, We as toERD, Ge as toErrors };
