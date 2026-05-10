@@ -171,7 +171,7 @@ export function initSettingsPanel() {
 
     function switchTab(name) {
         _activeTab = name;
-        panel.querySelectorAll('.sett-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+        panel.querySelectorAll('.sett-tab').forEach(t => t.classList.toggle('qs-active', t.dataset.tab === name));
         body.querySelectorAll('.sett-pane').forEach(p => {
             p.style.display = p.dataset.pane === name ? '' : 'none';
         });

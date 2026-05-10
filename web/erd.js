@@ -59,7 +59,8 @@ const GRAPH_BG  = { dark: '#1a1a1a', light: '#F0EDEA' };
 const BODY_FILL = { dark: '#1a1a1a', light: '#FFFFFF' };
 
 function currentTheme() {
-    return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    const r = document.querySelector('.espresql-plugin-root') || document.documentElement;
+    return r.dataset.theme === 'light' ? 'light' : 'dark';
 }
 
 // ── Node geometry ─────────────────────────────────────────────────

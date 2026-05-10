@@ -32,10 +32,10 @@
     <span class="title">EspreSQL</span>
     <span class="subtitle">— write shorthand, get Oracle DDL in real time</span>
     <span class="spacer"></span>
-    <button id="btn-examples" class="tool-btn">Examples ▾</button>
-    <button id="btn-settings" class="tool-btn">⚙ Settings</button>
-    <button id="btn-help"     class="tool-btn" aria-label="Help">ⓘ Help</button>
-    <button id="btn-theme"    class="tool-btn" aria-pressed="true">☀</button>
+    <button type="button" id="btn-examples" class="tool-btn">Examples ▾</button>
+    <button type="button" id="btn-settings" class="tool-btn">⚙ Settings</button>
+    <button type="button" id="btn-help"     class="tool-btn" aria-label="Help">ⓘ Help</button>
+    <button type="button" id="btn-theme"    class="tool-btn" aria-pressed="true">☀</button>
 </header>
 
 <!-- Examples dropdown -->
@@ -43,18 +43,18 @@
 
 <!-- Settings dropdown -->
 <div id="settings-panel">
-    <div class="sett-hdr">Settings<button class="sett-close" id="btn-sett-close" aria-label="Close settings">&times;</button></div>
+    <div class="sett-hdr">Settings<button type="button" class="sett-close" id="btn-sett-close" aria-label="Close settings">&times;</button></div>
     <div class="sett-search-wrap">
         <span class="sett-search-icon">&#x1F50D;</span>
         <input id="sett-search" type="text" placeholder="Filter settings…" autocomplete="off">
-        <button id="sett-search-clear" class="sett-search-clear" title="Clear">&#x00D7;</button>
+        <button type="button" id="sett-search-clear" class="sett-search-clear" title="Clear">&#x00D7;</button>
     </div>
     <div class="sett-tab-bar">
-        <button class="sett-tab" data-tab="schema">Schema</button>
-        <button class="sett-tab" data-tab="types">Types</button>
-        <button class="sett-tab" data-tab="columns">Columns</button>
-        <button class="sett-tab" data-tab="output">Output</button>
-        <button class="sett-tab" data-tab="advanced">Advanced</button>
+        <button type="button" class="sett-tab" data-tab="schema">Schema</button>
+        <button type="button" class="sett-tab" data-tab="types">Types</button>
+        <button type="button" class="sett-tab" data-tab="columns">Columns</button>
+        <button type="button" class="sett-tab" data-tab="output">Output</button>
+        <button type="button" class="sett-tab" data-tab="advanced">Advanced</button>
     </div>
     <div class="sett-body">
 
@@ -263,7 +263,7 @@
 
     </div>
     <div class="sett-footer">
-        <button class="sett-apply" id="btn-sett-apply">Apply settings</button>
+        <button type="button" class="sett-apply" id="btn-sett-apply">Apply settings</button>
     </div>
 </div>
 <div id="error"></div>
@@ -273,7 +273,7 @@
     <div class="panel">
         <div class="schema-tabs-wrap">
             <div class="schema-tabs" id="schema-tabs"></div>
-            <button id="btn-compare" class="tool-btn" title="Insert # --- delimiter to compare two schema versions">⇄ Compare</button>
+            <button type="button" id="btn-compare" class="tool-btn" title="Insert # --- delimiter to compare two schema versions">⇄ Compare</button>
         </div>
         <div class="editor-wrap">
             <div class="cur-line" id="cur-line"></div>
@@ -301,25 +301,25 @@ emp_v = departments employees
 
     <div class="panel">
         <div class="panel-tabs">
-            <button class="tab-btn active" data-tab="ddl">DDL</button>
-            <button class="tab-btn"        data-tab="erd">ER Diagram</button>
+            <button type="button" class="tab-btn qs-active" data-tab="ddl">DDL</button>
+            <button type="button" class="tab-btn"        data-tab="erd">ER Diagram</button>
         </div>
-        <div class="tab-pane active" data-tab="ddl">
+        <div class="tab-pane qs-active" data-tab="ddl">
             <div class="ddl-toolbar">
-                <button id="btn-copy"     class="tool-btn">⧉ Copy</button>
-                <button id="btn-download" class="tool-btn">↓ Download</button>
-                <button id="btn-share"    class="tool-btn">↗ Share</button>
+                <button type="button" id="btn-copy"     class="tool-btn">⧉ Copy</button>
+                <button type="button" id="btn-download" class="tool-btn">↓ Download</button>
+                <button type="button" id="btn-share"    class="tool-btn">↗ Share</button>
             </div>
             <div id="mig-warnings"></div>
             <pre id="output"></pre>
         </div>
         <div class="tab-pane" data-tab="erd">
             <div class="erd-toolbar">
-                <button id="btn-erd-fit"   class="tool-btn">⤢ Fit</button>
-                <button id="btn-erd-zin"   class="tool-btn">+ Zoom</button>
-                <button id="btn-erd-zout"  class="tool-btn">− Zoom</button>
+                <button type="button" id="btn-erd-fit"   class="tool-btn">⤢ Fit</button>
+                <button type="button" id="btn-erd-zin"   class="tool-btn">+ Zoom</button>
+                <button type="button" id="btn-erd-zout"  class="tool-btn">− Zoom</button>
                 <span class="sep"></span>
-                <button id="btn-erd-reset" class="tool-btn">↺ Reset</button>
+                <button type="button" id="btn-erd-reset" class="tool-btn">↺ Reset</button>
             </div>
             <div id="erd-container"></div>
         </div>
@@ -338,18 +338,18 @@ emp_v = departments employees
 <aside id="help-drawer">
     <div class="hdw-hdr">
         <strong>EspreSQL Reference</strong>
-        <button class="hdw-close" id="help-close">&times;</button>
+        <button type="button" class="hdw-close" id="help-close">&times;</button>
     </div>
     <div class="hdw-tab-bar">
-        <button class="hdw-tab active" data-tab="start">Start</button>
-        <button class="hdw-tab" data-tab="tables">Tables</button>
-        <button class="hdw-tab" data-tab="types">Types</button>
-        <button class="hdw-tab" data-tab="views">Views</button>
-        <button class="hdw-tab" data-tab="api">API</button>
+        <button type="button" class="hdw-tab qs-active" data-tab="start">Start</button>
+        <button type="button" class="hdw-tab" data-tab="tables">Tables</button>
+        <button type="button" class="hdw-tab" data-tab="types">Types</button>
+        <button type="button" class="hdw-tab" data-tab="views">Views</button>
+        <button type="button" class="hdw-tab" data-tab="api">API</button>
     </div>
     <div class="hdw-body">
 
-        <div class="hdw-pane active" data-pane="start">
+        <div class="hdw-pane qs-active" data-pane="start">
             <details class="hdw-sec" open>
                 <summary>Quick Start</summary>
                 <div class="hdw-content">

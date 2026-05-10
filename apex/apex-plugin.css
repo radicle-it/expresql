@@ -1,0 +1,77 @@
+/* ── EspreSQL APEX Plugin CSS adapter ───────────────────────────────────── */
+/* Loaded after app.css on the APEX host page.                               */
+/* Responsibilities:                                                          */
+/*   1. Reset body flex layout (APEX owns the page body)                     */
+/*   2. Make .espresql-plugin-root the flex container app.css expects        */
+/*   3. Fix show-share scoping (app.css uses html.show-share, we use root)   */
+/*   4. Add espresql-toolbar div styling (app.css uses <header> element)     */
+/*   5. Add espresql-status div styling (app.css uses <footer> element)      */
+
+/* 1 ── Reset body ─────────────────────────────────────────────────────────── */
+body {
+    display:     block   !important;
+    height:      auto    !important;
+    overflow:    auto    !important;
+    background:  initial !important;
+    color:       initial !important;
+    font-family: initial !important;
+    font-size:   initial !important;
+}
+
+/* 2 ── Plugin root becomes the flex column container ─────────────────────── */
+.espresql-plugin-root {
+    display:        flex;
+    flex-direction: column;
+    overflow:       hidden;
+    position:       relative;
+    background:     var(--bg);
+    color:          var(--text);
+    font-family:    Consolas, 'Cascadia Code', 'Courier New', monospace;
+    font-size:      13px;
+    box-sizing:     border-box;
+}
+
+/* 3 ── Share button: scoped to plugin root instead of html.show-share ─────── */
+.espresql-plugin-root #btn-share { display: none; }
+.espresql-plugin-root.show-share #btn-share { display: inline-flex; }
+
+/* 4 ── Toolbar div mirrors the <header> rules from app.css ─────────────────  */
+.espresql-plugin-root .espresql-toolbar {
+    padding:       0 16px;
+    height:        48px;
+    background:    var(--bg-ui);
+    border-bottom: 1px solid var(--border);
+    display:       flex;
+    align-items:   center;
+    gap:           12px;
+    flex-shrink:   0;
+}
+.espresql-plugin-root .espresql-toolbar .title {
+    color:         var(--rw-red);
+    font-weight:   700;
+    font-size:     16px;
+    letter-spacing: -0.2px;
+    flex-shrink:   0;
+}
+.espresql-plugin-root .espresql-toolbar .spacer { flex: 1; }
+
+/* 5 ── Status div mirrors the <footer> rules from app.css ──────────────────  */
+.espresql-plugin-root #status {
+    padding:       3px 14px;
+    background:    var(--bg-ui);
+    color:         var(--text-muted);
+    border-top:    1px solid var(--border);
+    font-size:     10px;
+    flex-shrink:   0;
+    letter-spacing: 0.2px;
+}
+.espresql-plugin-root #status.status-active {
+    background:    var(--accent);
+    color:         #fff;
+    border-top-color: var(--accent);
+}
+.espresql-plugin-root #status.status-error {
+    background:    var(--error-bg);
+    color:         var(--error-text);
+    border-top-color: var(--error-border);
+}

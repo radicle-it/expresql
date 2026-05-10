@@ -135,7 +135,7 @@ function update() {
 
 (function initTheme() {
     const btn  = document.getElementById('btn-theme');
-    const html = document.documentElement;
+    const html = document.querySelector('.espresql-plugin-root') || document.documentElement;
 
     // Fixed themes (e.g. apex) are set externally via ?theme= and not user-toggled
     if (html.dataset.theme === 'apex') {
@@ -180,8 +180,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         if (state.activeTab === 'erd') capturePositions();
         saveActiveTab();
         state.activeTab = tab;
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-        document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.dataset.tab === tab));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('qs-active', b.dataset.tab === tab));
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('qs-active', p.dataset.tab === tab));
         if (tab === 'erd') requestAnimationFrame(() => updateDiagram(true));
         if (tab === 'ddl' && ddlStale && state.lastDdlText) renderDdl(state.lastDdlText);
     });
@@ -301,10 +301,10 @@ document.getElementById('help-close').addEventListener('click', closeHelp);
 (function initHelpTabs() {
     helpDrawer.querySelectorAll('.hdw-tab').forEach(btn => {
         btn.addEventListener('click', () => {
-            helpDrawer.querySelectorAll('.hdw-tab').forEach(t => t.classList.remove('active'));
-            helpDrawer.querySelectorAll('.hdw-pane').forEach(p => p.classList.remove('active'));
-            btn.classList.add('active');
-            helpDrawer.querySelector(`.hdw-pane[data-pane="${btn.dataset.tab}"]`).classList.add('active');
+            helpDrawer.querySelectorAll('.hdw-tab').forEach(t => t.classList.remove('qs-active'));
+            helpDrawer.querySelectorAll('.hdw-pane').forEach(p => p.classList.remove('qs-active'));
+            btn.classList.add('qs-active');
+            helpDrawer.querySelector(`.hdw-pane[data-pane="${btn.dataset.tab}"]`).classList.add('qs-active');
         });
     });
 })();
@@ -647,11 +647,12 @@ const btnExamples   = document.getElementById('btn-examples');
     tagBar.className = 'ex-tag-bar';
     cats.forEach(c => {
         const btn = document.createElement('button');
+        btn.type      = 'button';
         btn.className = 'ex-tag' + (c === 'All' ? ' active' : '');
         btn.textContent = c;
         btn.addEventListener('click', () => {
             activeCat = c;
-            tagBar.querySelectorAll('.ex-tag').forEach(t => t.classList.toggle('active', t.textContent === c));
+            tagBar.querySelectorAll('.ex-tag').forEach(t => t.classList.toggle('qs-active', t.textContent === c));
             renderCards();
         });
         tagBar.appendChild(btn);
@@ -666,6 +667,7 @@ const btnExamples   = document.getElementById('btn-examples');
         grid.innerHTML = '';
         EXAMPLES.filter(e => activeCat === 'All' || e.cat === activeCat).forEach(ex => {
             const card = document.createElement('button');
+            card.type      = 'button';
             card.className = 'ex-card';
             card.innerHTML = `<strong>${ex.label}</strong><span>${ex.desc}</span>`;
             card.addEventListener('click', () => {

@@ -111,7 +111,8 @@ export function renderSchemaTabs() {
     el.innerHTML = '';
     for (const t of state.tabs) {
         const btn     = document.createElement('button');
-        btn.className = 'schema-tab' + (t.id === state.activeSchemaTabId ? ' active' : '');
+        btn.type      = 'button';
+        btn.className = 'schema-tab' + (t.id === state.activeSchemaTabId ? ' qs-active' : '');
         btn.dataset.id = t.id;
         btn.title     = t.name;
 
@@ -134,6 +135,7 @@ export function renderSchemaTabs() {
     }
 
     const addBtn       = document.createElement('button');
+    addBtn.type        = 'button';
     addBtn.className   = 'schema-tab-add';
     addBtn.title       = 'New tab';
     addBtn.textContent = '+';
