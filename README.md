@@ -25,4 +25,4 @@ Released under the [Universal Permissive License v1.0](./LICENSE.txt). See the l
 ## Contributors
 
 - **Oracle Corporation** — original Quick SQL engine and QSQL shorthand specification
-- **Radicle IT** — TypeScript rewrite (v2.0.0): multi-dialect architecture, decoupled pipeline, PL/SQL builder modules
+- **Radicle** — TypeScript rewrite (v2.0.0): multi-dialect architecture, decoupled pipeline, PL/SQL builder modules
