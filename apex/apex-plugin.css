@@ -4,15 +4,6 @@
    Redwood (incluse quelle con !important nel suo layer normalize).
    ─────────────────────────────────────────────────────────────────────────── */
 
-/* 0 ── Root wrapper (contiene plugin-root + help-drawer) ───────────────────
-   Fornisce il contesto position:relative per #help-drawer (position:absolute)
-   ed eredita data-theme="apex" verso entrambi i figli. */
-.espresql-root-wrap {
-    position: relative !important;
-    overflow: visible  !important;
-    display:  block    !important;
-}
-
 /* 1 ── Body reset ────────────────────────────────────────────────────────── */
 body {
     display:     block   !important;
@@ -238,45 +229,10 @@ body {
 .espresql-plugin-root #status.status-error  { background: var(--error-bg) !important; color: var(--error-text) !important; border-top-color: var(--error-border) !important; }
 
 /* 12 ── Floating panels: position fixed → absolute ─────────────────────────
-   Tutti e tre i pannelli sono position:fixed in app.css ma in APEX il dialog
-   usa CSS transform → fixed diventa relativo al container trasformato.
-   Override a absolute: si posizionano relativamente all'antenato position:relative
-   più vicino (plugin-root per examples/settings, espresql-root-wrap per help). */
+   I pannelli sono position:fixed in app.css ma in APEX il dialog usa CSS
+   transform → fixed diventa relativo al container trasformato. Override a
+   absolute: si posizionano relativamente a .espresql-plugin-root (position:relative). */
 .espresql-plugin-root #examples-panel { position: absolute !important; }
 .espresql-plugin-root #settings-panel { position: absolute !important; }
+.espresql-plugin-root #help-drawer    { position: absolute !important; }
 
-/* 13 ── Help drawer ─────────────────────────────────────────────────────────
-   #help-drawer è dentro .espresql-root-wrap (position:relative, overflow:visible)
-   ma FUORI da .espresql-plugin-root (overflow:hidden).
-   position:absolute → relativo al wrap → niente transform-context APEX,
-   niente clipping → i click funzionano. */
-#help-drawer {
-    position:    absolute                                          !important;
-    font-family: 'Oracle Sans', 'Segoe UI', system-ui, sans-serif !important;
-    font-size:   13px                                             !important;
-}
-#help-drawer button {
-    background:  none       !important;
-    border:      none       !important;
-    color:       inherit    !important;
-    font:        inherit    !important;
-    line-height: inherit    !important;
-    padding:     0          !important;
-    margin:      0          !important;
-    cursor:      pointer    !important;
-    box-sizing:  border-box !important;
-}
-#help-drawer .hdw-tab {
-    flex:          1;
-    padding:       7px 4px               !important;
-    border:        none                  !important;
-    background:    none                  !important;
-    color:         var(--text-muted)     !important;
-    font:          inherit               !important;
-    font-size:     11px;
-    cursor:        pointer               !important;
-    border-bottom: 2px solid transparent !important;
-    transition:    color .12s, border-color .12s;
-}
-#help-drawer .hdw-tab:hover     { color: var(--text) !important; }
-#help-drawer .hdw-tab.qs-active { color: var(--text) !important; border-bottom-color: var(--accent) !important; }

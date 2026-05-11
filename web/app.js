@@ -291,7 +291,18 @@ const btnHelp    = document.getElementById('btn-help');
 function openHelp() {
     examplesPanel.classList.remove('open');
     settingsPanel.classList.remove('open');
-    helpDrawer.classList.add('open');
+    const isOpen = helpDrawer.classList.toggle('open');
+    if (isOpen) {
+        const r = btnHelp.getBoundingClientRect();
+        helpDrawer.style.top = r.bottom + 4 + 'px';
+        if (r.left < window.innerWidth / 2) {
+            helpDrawer.style.left  = r.left + 'px';
+            helpDrawer.style.right = '';
+        } else {
+            helpDrawer.style.left  = '';
+            helpDrawer.style.right = (window.innerWidth - r.right) + 'px';
+        }
+    }
 }
 function closeHelp() { helpDrawer.classList.remove('open'); }
 

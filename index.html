@@ -363,7 +363,7 @@ emp_v = departments employees
       salary num(10,2)</code>
                     <p class="hdw-note" style="margin-top:8px">Add settings at the end of the script:</p>
                     <code class="hdw-eg"># settings = { db: "23c", auditcols: yes, prefix: "app_" }</code>
-                    <p class="hdw-note" style="margin-top:8px">The DDL panel updates in real time. Use <strong>Copy SQL</strong> to grab the output. Load a starter schema from the <strong>Examples ▾</strong> button in the toolbar, or browse the <a href="doc/user/examples.md" target="_blank">full examples guide</a>.</p>
+                    <p class="hdw-note" style="margin-top:8px">The DDL panel updates in real time. Use <strong>Copy SQL</strong> to grab the output. Load a starter schema from the <strong>Examples ▾</strong> button in the toolbar.</p>
                 </div>
             </details>
             <details class="hdw-sec">
@@ -401,7 +401,6 @@ emp_v = departments employees
                         <tr><td>name /soda</td><td>SODA JSON document collection with fixed schema (21c+)</td></tr>
                     </table>
                     <p class="hdw-note" style="margin-top:8px">Tables indented under another table automatically become children with a FK to the parent.</p>
-                    <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#table-directives" target="_blank">→ Full reference</a></p>
                 </div>
             </details>
             <details class="hdw-sec">
@@ -425,7 +424,6 @@ emp_v = departments employees
                         <tr><td>/values <em>v1,v2</em></td><td>Custom values pool for sample INSERT data</td></tr>
                         <tr><td>/constant <em>val</em></td><td>Fix this column to a constant in all sample INSERTs</td></tr>
                     </table>
-                    <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#column-directives" target="_blank">→ Full reference</a></p>
                 </div>
             </details>
         </div>
@@ -451,7 +449,6 @@ emp_v = departments employees
                         <tr><td>vect<em>N</em></td><td>vector(N,*,*) — fixed dimension (23c+)</td></tr>
                         <tr><td>file</td><td>APEX file upload columns</td></tr>
                     </table>
-                    <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#datatypes" target="_blank">→ Full reference</a></p>
                 </div>
             </details>
             <details class="hdw-sec">
@@ -466,7 +463,6 @@ emp_v = departments employees
                     </table>
                     <code class="hdw-eg">departments {DESCRIPTION 'HR departments', Classification 'HR'}
    name /nn {DESCRIPTION 'Department name'}</code>
-                    <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#annotations" target="_blank">→ Full reference</a></p>
                 </div>
             </details>
             <details class="hdw-sec">
@@ -481,7 +477,6 @@ emp_v = departments employees
                     <code class="hdw-eg">-- My schema
 employees   [main workforce table]
    name vc100 /* full legal name */</code>
-                    <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#comments" target="_blank">→ Full reference</a></p>
                 </div>
             </details>
         </div>
@@ -496,7 +491,6 @@ employees   [main workforce table]
                         <tr><td>&gt; t1</td><td>Star schema: dimension table</td></tr>
                         <tr><td>&lt; t1</td><td>Snowflake: sub-hierarchy</td></tr>
                     </table>
-                    <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#views" target="_blank">→ Full reference</a></p>
                 </div>
             </details>
             <details class="hdw-sec">
@@ -521,7 +515,6 @@ employees
                         <tr><td>⚠ LOSSY</td><td>Column size reduced or type changed — data may be truncated</td></tr>
                         <tr><td>INFO</td><td>Suspected column rename — verify before applying</td></tr>
                     </table>
-                    <p class="hdw-note" style="margin-top:6px"><a href="doc/user/espresql-grammar.md#schema-migration" target="_blank">→ Full reference: Schema Migration</a></p>
                 </div>
             </details>
             <details class="hdw-sec">
@@ -529,7 +522,6 @@ employees
                 <div class="hdw-content">
                     <p class="hdw-note">Use the <strong>⚙ Settings</strong> panel in the header to configure options visually, or add a <code># settings = { … }</code> line to your script.</p>
                     <code class="hdw-eg"># settings = { pk: seq, semantics: CHAR, db: 23c }</code>
-                    <p class="hdw-note" style="margin-top:6px"><a href="doc/user/espresql-grammar.md#settings" target="_blank">→ Full settings reference (all keys and values)</a></p>
                 </div>
             </details>
         </div>
@@ -568,7 +560,6 @@ departments
                     <code class="hdw-eg">employees /api full+hks
    name vc100 /nn
    row_version num /nn</code>
-                    <p class="hdw-note" style="margin-top:10px"><a href="doc/user/examples.md" target="_blank">→ Full examples guide</a></p>
                 </div>
             </details>
             <details class="hdw-sec">
@@ -582,13 +573,6 @@ departments
                         <tr><td><code>toDiff(oldQsql, newQsql, optionsJson?)</code></td><td>Compute incremental migration; returns <code>{sql, statements, warnings, summary}</code></td></tr>
                         <tr><td><code>fromJSON(json)</code></td><td>Convert JSON document to QSQL string</td></tr>
                         <tr><td><code>espresql_version()</code></td><td>Return library version string</td></tr>
-                    </table>
-                    <p class="hdw-note" style="margin-top:8px">Full reference documentation:</p>
-                    <table class="ref">
-                        <tr><td><a href="doc/user/espresql-grammar.md" target="_blank">Grammar Reference</a></td><td>All directives, types, settings, API</td></tr>
-                        <tr><td><a href="doc/user/examples.md" target="_blank">Examples</a></td><td>21 end-to-end practical scenarios</td></tr>
-                        <tr><td><a href="doc/user/multitenant-design.md" target="_blank">Multi-Tenant Design</a></td><td>Enterprise multi-tenancy patterns</td></tr>
-                        <tr><td><a href="doc/user/apex-embedding.md" target="_blank">APEX Embedding</a></td><td>iframe integration, themes, URL parameters</td></tr>
                     </table>
                 </div>
             </details>
