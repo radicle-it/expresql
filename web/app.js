@@ -702,8 +702,14 @@ btnExamples.addEventListener('click', (e) => {
     const isOpen = examplesPanel.classList.toggle('open');
     if (isOpen) {
         const r = btnExamples.getBoundingClientRect();
-        examplesPanel.style.top  = r.bottom + 4 + 'px';
-        examplesPanel.style.left = r.left + 'px';
+        examplesPanel.style.top = r.bottom + 4 + 'px';
+        if (r.left < window.innerWidth / 2) {
+            examplesPanel.style.left  = r.left + 'px';
+            examplesPanel.style.right = '';
+        } else {
+            examplesPanel.style.left  = '';
+            examplesPanel.style.right = (window.innerWidth - r.right) + 'px';
+        }
     }
 });
 
