@@ -149,20 +149,6 @@
     --sql-constraint: #c586c0;
 }
 
-/* ── Embedded mode (iframe) ──────────────────────────────────────── */
-/* Hide branding only — keep Examples / Settings / Help buttons */
-html.embedded body > header .logo-link,
-html.embedded body > header .header-divider,
-html.embedded body > header .title,
-html.embedded body > header .subtitle,
-html.embedded body > header .spacer {
-    display: none;
-}
-/* Hide status bar — panels expand automatically via flex: 1 */
-html.embedded body > footer {
-    display: none;
-}
-
 /* Share button — hidden by default, opt-in via ?share */
 #btn-share { display: none; }
 html.show-share #btn-share { display: inline-flex; }
@@ -189,49 +175,6 @@ header {
     gap: 12px;
     flex-shrink: 0;
 }
-
-header .logo-link {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    text-decoration: none;
-}
-header .logo-img {
-    height: 34px;
-    border-radius: 4px;
-    padding: 3px 6px;
-    /*background: #fff;*/
-    display: block;
-}
-
-.header-divider {
-    width: 1px;
-    height: 26px;
-    background: var(--border);
-    flex-shrink: 0;
-}
-
-header .title {
-    color: var(--rw-red);
-    font-weight: 700;
-    font-size: 16px;
-    letter-spacing: -0.2px;
-    flex-shrink: 0;
-}
-header .subtitle {
-    color: var(--text-muted);
-    font-size: 12px;
-}
-header .spacer { flex: 1; }
-
-header .radicle-link {
-    color: var(--text-muted);
-    font-size: 10px;
-    text-decoration: none;
-    letter-spacing: 0.5px;
-    flex-shrink: 0;
-}
-header .radicle-link:hover { color: var(--text); }
 
 /* ── Toolbar buttons ─────────────────────────────────────────────── */
 .tool-btn {
