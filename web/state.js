@@ -23,6 +23,16 @@ emp_v = departments employees
 # settings = { "prefix": null, "semantics": "CHAR", "DV": false, pk: identityDataType }
 `;
 
+export const NEW_TAB_ESQL =
+`employees /insert 5
+   name /nn vc100
+   email /lower /nn
+   hire_date date /nn
+   department vc50
+
+# settings = { pk: identityDataType, auditcols: yes, apex: yes }
+`;
+
 export const state = {
     // ERD
     lastErdData:       null,

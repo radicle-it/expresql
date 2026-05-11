@@ -1,4 +1,4 @@
-import { state, LS_TABS, LS_KEY, LS_ERD_POS, LS_ERD_COL, DEFAULT_ESQL } from './state.js';
+import { state, LS_TABS, LS_KEY, LS_ERD_POS, LS_ERD_COL, DEFAULT_ESQL, NEW_TAB_ESQL } from './state.js';
 
 // Callbacks injected by app.js to avoid circular imports
 let _update;
@@ -155,7 +155,7 @@ export function switchSchemaTab(id) {
 
 export function addSchemaTab() {
     saveActiveTab();
-    const t = newTabData('Schema ' + (state.tabs.length + 1), '');
+    const t = newTabData('Schema ' + (state.tabs.length + 1), NEW_TAB_ESQL);
     state.tabs.push(t);
     state.activeSchemaTabId = t.id;
     applyActiveTab();
