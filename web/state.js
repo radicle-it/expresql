@@ -11,7 +11,7 @@ export const DEFAULT_ESQL =
    name /nn
    location
    country
-   employees /insert 4
+   employees /insert 1
       name /nn vc50
       email /lower
       cost center num
@@ -20,11 +20,11 @@ export const DEFAULT_ESQL =
 
 emp_v = departments employees
 
-# settings = { "prefix": null, "semantics": "CHAR", "DV": false, pk: identityDataType }
+# settings = { pk: identityDataType, auditcols: yes, apex: yes }
 `;
 
 export const NEW_TAB_ESQL =
-`employees /insert 5
+`employees /insert 1
    name /nn vc100
    email /lower /nn
    hire_date date /nn
