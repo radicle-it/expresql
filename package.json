@@ -1,21 +1,21 @@
-{
-  "name": "@radicle-it/espresql",
+﻿{
+  "name": "@radicle-it/expresql",
   "version": "2.0.0",
-  "description": "EspreSQL — ESQL shorthand to DDL, ERD and PL/SQL scaffolding (fork of @oracle/quicksql)",
-  "main": "./dist/espresql.js",
+  "description": "ExpreSQL — ESQL shorthand to DDL, ERD and PL/SQL scaffolding (fork of @oracle/quicksql)",
+  "main": "./dist/expresql.js",
   "type": "module",
   "exports": {
-    ".": "./dist/espresql.js"
+    ".": "./dist/expresql.js"
   },
   "engines": {
     "node": ">=16"
   },
   "bin": {
-    "espresql": "bin/index.js"
+    "expresql": "bin/index.js"
   },
   "config": {
-    "ddlLibraryName": "espresql",
-    "ddlLibraryFileName": "espresql"
+    "ddlLibraryName": "expresql",
+    "ddlLibraryFileName": "expresql"
   },
   "scripts": {
     "build": "run-p build:ddl build:ddl-oracle build:ddl-db2 && npm run build:mle && npm run build:web",
@@ -40,7 +40,7 @@
   "keywords": [
     "ExpreSQL",
     "Oracle",
-    "EspreSQL",
+    "ExpreSQL",
     "SQL",
     "DDL",
     "ERD",

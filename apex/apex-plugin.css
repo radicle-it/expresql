@@ -1,4 +1,4 @@
-/* ── EspreSQL APEX Plugin CSS ────────────────────────────────────────────────
+﻿/* ── ExpreSQL APEX Plugin CSS ────────────────────────────────────────────────
    Caricato DOPO app.css sulla pagina APEX.
    Usa !important sui valori critici per battere qualunque regola del tema
    Redwood (incluse quelle con !important nel suo layer normalize).
@@ -16,7 +16,7 @@ body {
 }
 
 /* 2 ── Plugin root: flex column container ───────────────────────────────── */
-.espresql-plugin-root {
+.expresql-plugin-root {
     display:        flex        !important;
     flex-direction: column      !important;
     overflow:       hidden      !important;
@@ -29,7 +29,7 @@ body {
 }
 
 /* 3 ── Button reset ─────────────────────────────────────────────────────── */
-.espresql-plugin-root button {
+.expresql-plugin-root button {
     background:  none       !important;
     border:      none       !important;
     color:       inherit    !important;
@@ -43,7 +43,7 @@ body {
 }
 
 /* 4 ── Toolbar buttons ──────────────────────────────────────────────────── */
-.espresql-plugin-root .tool-btn {
+.expresql-plugin-root .tool-btn {
     padding:       4px 12px               !important;
     background:    var(--bg-btn)          !important;
     border:        1px solid var(--border) !important;
@@ -56,11 +56,11 @@ body {
     white-space:   nowrap;
     flex-shrink:   0;
 }
-.espresql-plugin-root .tool-btn:hover { color: var(--text) !important; border-color: var(--border-hover) !important; background: var(--bg-hover) !important; }
-.espresql-plugin-root .tool-btn.ok    { color: var(--qs-datatype) !important; border-color: var(--qs-datatype) !important; }
+.expresql-plugin-root .tool-btn:hover { color: var(--text) !important; border-color: var(--border-hover) !important; background: var(--bg-hover) !important; }
+.expresql-plugin-root .tool-btn.ok    { color: var(--qs-datatype) !important; border-color: var(--qs-datatype) !important; }
 
 /* 5 ── Main panel tabs (DDL / ERD) ─────────────────────────────────────── */
-.espresql-plugin-root .tab-btn {
+.expresql-plugin-root .tab-btn {
     padding:        6px 18px              !important;
     background:     transparent           !important;
     border:         none                  !important;
@@ -74,11 +74,11 @@ body {
     cursor:         pointer               !important;
     transition:     color .15s;
 }
-.espresql-plugin-root .tab-btn:hover     { color: var(--text) !important; }
-.espresql-plugin-root .tab-btn.qs-active { color: var(--text) !important; border-bottom-color: var(--accent) !important; background: var(--bg) !important; }
+.expresql-plugin-root .tab-btn:hover     { color: var(--text) !important; }
+.expresql-plugin-root .tab-btn.qs-active { color: var(--text) !important; border-bottom-color: var(--accent) !important; background: var(--bg) !important; }
 
 /* 6 ── Schema tabs ──────────────────────────────────────────────────────── */
-.espresql-plugin-root .schema-tab {
+.expresql-plugin-root .schema-tab {
     display:       flex                        !important;
     align-items:   center                      !important;
     gap:           4px;
@@ -95,16 +95,16 @@ body {
     min-width:     60px;
     max-width:     160px;
 }
-.espresql-plugin-root .schema-tab:hover     { color: var(--text) !important; background: var(--bg-hover) !important; }
-.espresql-plugin-root .schema-tab.qs-active { color: var(--text) !important; border-bottom-color: var(--accent) !important; background: var(--bg) !important; }
-.espresql-plugin-root .schema-tab .tab-close {
+.expresql-plugin-root .schema-tab:hover     { color: var(--text) !important; background: var(--bg-hover) !important; }
+.expresql-plugin-root .schema-tab.qs-active { color: var(--text) !important; border-bottom-color: var(--accent) !important; background: var(--bg) !important; }
+.expresql-plugin-root .schema-tab .tab-close {
     font-size: 14px; line-height: 1; padding: 0 2px !important;
     border-radius: 2px; flex-shrink: 0; color: transparent !important;
 }
-.espresql-plugin-root .schema-tab:hover .tab-close,
-.espresql-plugin-root .schema-tab.qs-active .tab-close { color: var(--text-muted) !important; }
-.espresql-plugin-root .schema-tab .tab-close:hover     { color: var(--danger)     !important; background: rgba(199,70,52,0.15) !important; }
-.espresql-plugin-root .schema-tab-add {
+.expresql-plugin-root .schema-tab:hover .tab-close,
+.expresql-plugin-root .schema-tab.qs-active .tab-close { color: var(--text-muted) !important; }
+.expresql-plugin-root .schema-tab .tab-close:hover     { color: var(--danger)     !important; background: rgba(199,70,52,0.15) !important; }
+.expresql-plugin-root .schema-tab-add {
     padding:    6px 12px    !important;
     background: transparent !important;
     border:     none        !important;
@@ -113,10 +113,10 @@ body {
     cursor:     pointer     !important;
     flex-shrink: 0;
 }
-.espresql-plugin-root .schema-tab-add:hover { color: var(--text) !important; }
+.expresql-plugin-root .schema-tab-add:hover { color: var(--text) !important; }
 
 /* 7 ── Settings drawer tabs ─────────────────────────────────────────────── */
-.espresql-plugin-root .sett-tab {
+.expresql-plugin-root .sett-tab {
     flex:          1;
     padding:       7px 4px               !important;
     border:        none                  !important;
@@ -128,8 +128,8 @@ body {
     border-bottom: 2px solid transparent !important;
     transition:    color .12s, border-color .12s;
 }
-.espresql-plugin-root .sett-tab:hover     { color: var(--text) !important; }
-.espresql-plugin-root .sett-tab.qs-active { color: var(--text) !important; border-bottom-color: var(--accent) !important; }
+.expresql-plugin-root .sett-tab:hover     { color: var(--text) !important; }
+.expresql-plugin-root .sett-tab.qs-active { color: var(--text) !important; border-bottom-color: var(--accent) !important; }
 
 /* 8 ── Examples panel: filter chips e cards ─────────────────────────────── */
 /* Usa selettori ID (#examples-panel) per specificità 1,x,x → batte qualunque
@@ -198,11 +198,11 @@ body {
 }
 
 /* 9 ── Share button ─────────────────────────────────────────────────────── */
-.espresql-plugin-root #btn-share            { display: none; }
-.espresql-plugin-root.show-share #btn-share { display: inline-flex; }
+.expresql-plugin-root #btn-share            { display: none; }
+.expresql-plugin-root.show-share #btn-share { display: inline-flex; }
 
 /* 10 ── Toolbar div (sostituisce <header>) ──────────────────────────────── */
-.espresql-plugin-root .espresql-toolbar {
+.expresql-plugin-root .expresql-toolbar {
     padding:       0 16px                  !important;
     height:        48px                    !important;
     background:    var(--bg-ui)            !important;
@@ -212,11 +212,11 @@ body {
     gap:           12px;
     flex-shrink:   0;
 }
-.espresql-plugin-root .espresql-toolbar .title  { color: var(--rw-red) !important; font-weight: 700; font-size: 16px; letter-spacing: -0.2px; flex-shrink: 0; }
-.espresql-plugin-root .espresql-toolbar .spacer { flex: 1; }
+.expresql-plugin-root .expresql-toolbar .title  { color: var(--rw-red) !important; font-weight: 700; font-size: 16px; letter-spacing: -0.2px; flex-shrink: 0; }
+.expresql-plugin-root .expresql-toolbar .spacer { flex: 1; }
 
 /* 11 ── Status div (sostituisce <footer>) ───────────────────────────────── */
-.espresql-plugin-root #status {
+.expresql-plugin-root #status {
     padding:        3px 14px               !important;
     background:     var(--bg-ui)           !important;
     color:          var(--text-muted)      !important;
@@ -225,14 +225,14 @@ body {
     flex-shrink:    0;
     letter-spacing: 0.2px;
 }
-.espresql-plugin-root #status.status-active { background: var(--accent)   !important; color: #fff              !important; border-top-color: var(--accent)       !important; }
-.espresql-plugin-root #status.status-error  { background: var(--error-bg) !important; color: var(--error-text) !important; border-top-color: var(--error-border) !important; }
+.expresql-plugin-root #status.status-active { background: var(--accent)   !important; color: #fff              !important; border-top-color: var(--accent)       !important; }
+.expresql-plugin-root #status.status-error  { background: var(--error-bg) !important; color: var(--error-text) !important; border-top-color: var(--error-border) !important; }
 
 /* 12 ── Floating panels: position fixed → absolute ─────────────────────────
    I pannelli sono position:fixed in app.css ma in APEX il dialog usa CSS
    transform → fixed diventa relativo al container trasformato. Override a
-   absolute: si posizionano relativamente a .espresql-plugin-root (position:relative). */
-.espresql-plugin-root #examples-panel { position: absolute !important; }
-.espresql-plugin-root #settings-panel { position: absolute !important; }
-.espresql-plugin-root #help-drawer    { position: absolute !important; }
+   absolute: si posizionano relativamente a .expresql-plugin-root (position:relative). */
+.expresql-plugin-root #examples-panel { position: absolute !important; }
+.expresql-plugin-root #settings-panel { position: absolute !important; }
+.expresql-plugin-root #help-drawer    { position: absolute !important; }
 

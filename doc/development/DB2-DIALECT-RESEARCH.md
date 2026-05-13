@@ -1,4 +1,4 @@
-# IBM Db2 Dialect — Feasibility Study & Specification
+﻿# IBM Db2 Dialect — Feasibility Study & Specification
 
 > Research document · ExpreSQL project · May 2026
 
@@ -146,7 +146,7 @@ A direct comparison of the rapid-DDL-generation tooling market:
 
 | Tool | Oracle | PostgreSQL | MySQL | SQL Server | Db2 |
 |---|---|---|---|---|---|
-| Oracle EspreSQL | ✓ | — | — | — | — |
+| Oracle ExpreSQL | ✓ | — | — | — | — |
 | **ExpreSQL** | ✓ | planned? | — | — | **gap** |
 | SchemaHero | — | ✓ | ✓ | ✓ | — |
 | Liquibase | migration | migration | migration | migration | migration |

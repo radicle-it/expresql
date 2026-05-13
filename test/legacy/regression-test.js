@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 import fs from "fs";
 
@@ -69,7 +69,7 @@ function processFile( subdir, file ) {
         }        
         return;
     }
-    let ext = '.espresql';
+    let ext = '.expresql';
     if( !file.endsWith(ext) ) {
         ext = '.esql';
         if( !file.endsWith(ext) ) {
@@ -90,11 +90,11 @@ function processFile( subdir, file ) {
     let output = null;
     resetSeed();
     if( 0 < subdir.indexOf('/erd/') )
-        output = JSON.stringify(new espresql(text).getERD(),null,3);
+        output = JSON.stringify(new expresql(text).getERD(),null,3);
     else if( ext == '.json' )
         output = fromJSON(text, file);
     else {
-        const p = new espresql(text);
+        const p = new expresql(text);
         output = p.getDDL();
         const errors =  p.getErrors(text);
         checkNoError(errors);
@@ -169,6 +169,6 @@ console.log("              590 ms     as of 2/8/2024");
 console.log("              486 ms     as of 3/22/2024");
 
 
-import {espresql} from '../../dist/espresql.js';
-console.log("Version "+espresql.version());
+import {expresql} from '../../dist/expresql.js';
+console.log("Version "+expresql.version());
 

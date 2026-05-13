@@ -1,4 +1,4 @@
-// Directive autocomplete popup for the EspreSQL editor.
+﻿// Directive autocomplete popup for the ExpreSQL editor.
 
 let _update;
 

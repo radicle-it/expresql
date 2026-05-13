@@ -1,9 +1,9 @@
-/**
+﻿/**
  * Integration tests for syntax error detection (errorMsgs.ts).
  * Ported from error_msg_tests.js with proper Vitest matchers.
  */
 import { describe, test, expect } from 'vitest';
-import espresql, { toErrors }  from '../../src/ddl.js';
+import expresql, { toErrors }  from '../../src/ddl.js';
 import errorMsgs               from '../../src/utils/error-msgs.js';
 
 // ── Helpers (mirror error_msg_tests.js) ───────────────────────────────────────
@@ -46,71 +46,71 @@ describe('error detection', () => {
     });
 
     test('vc-200 and vc0 → invalidDatatype errors', () => {
-        const errors = new (espresql as any)(`dept\n    name vc-200\n    name vc0`).getErrors();
+        const errors = new (expresql as any)(`dept\n    name vc-200\n    name vc0`).getErrors();
         expectError(errors, 1, 4 + 4 + 2 + 1, errorMsgs.messages.invalidDatatype);
         expectError(errors, 2, 4 + 4 + 1,      errorMsgs.messages.invalidDatatype);
         expectNoError(errors, errorMsgs.messages.misalignedAttribute);
     });
 
     test('undefined FK target → undefinedObject error', () => {
-        const errors = new (espresql as any)(`dept\n    name\ncustomer\n    dept /fk department`).getErrors();
+        const errors = new (expresql as any)(`dept\n    name\ncustomer\n    dept /fk department`).getErrors();
         expectError(errors, 3, 4 + 4 + 1 + 3 + 1, errorMsgs.messages.undefinedObject + 'department');
         expectNoError(errors, errorMsgs.messages.misalignedAttribute);
     });
 
     test('view referencing undefined table → undefinedObject error', () => {
-        const errors = new (espresql as any)(`dept\n    name\nview customer_view customer`).getErrors();
+        const errors = new (expresql as any)(`dept\n    name\nview customer_view customer`).getErrors();
         expectError(errors, 2, 4 + 1 + 13 + 1, errorMsgs.messages.undefinedObject + 'customer');
         expectNoError(errors, errorMsgs.messages.misalignedAttribute);
     });
 
     test('misaligned column (3-space indent in 4-space context) → misalignedAttribute', () => {
-        const errors = new (espresql as any)(`dept\n   col1\n    "is this table or misaligned column?"`).getErrors();
+        const errors = new (expresql as any)(`dept\n   col1\n    "is this table or misaligned column?"`).getErrors();
         expectError(errors, 2, 4, errorMsgs.messages.misalignedAttribute + '3');
     });
 
     test('misaligned column in multi-column table → misalignedAttribute on last line', () => {
-        const errors = new (espresql as any)(`dept\n   col1\n   col2\n    "is this table or misaligned column?"`).getErrors();
+        const errors = new (expresql as any)(`dept\n   col1\n   col2\n    "is this table or misaligned column?"`).getErrors();
         expectError(errors, 3, 4, errorMsgs.messages.misalignedAttribute + '3');
     });
 
     test('nested tables with consistent indent → no misalignment error', () => {
-        const errors = new (espresql as any)(`dept\n   name\n   emp\n      name`).getErrors();
+        const errors = new (expresql as any)(`dept\n   name\n   emp\n      name`).getErrors();
         expectNoError(errors, errorMsgs.messages.misalignedAttribute);
     });
 
     test('settings line does not trigger spurious errors', () => {
-        const errors = new (espresql as any)(`dept\n   name\n   \nx = dept`).getErrors();
+        const errors = new (expresql as any)(`dept\n   name\n   \nx = dept`).getErrors();
         expectNoError(errors);
     });
 
     test('FK check respects APEX prefix on table names', () => {
-        const errors = new (espresql as any)(`# apex:Y\nteam_statuses\n    name /fk undefined`).getErrors();
+        const errors = new (expresql as any)(`# apex:Y\nteam_statuses\n    name /fk undefined`).getErrors();
         expectError(errors, 2, 4 + 4 + 1 + 3 + 1, errorMsgs.messages.undefinedObject + 'undefined');
     });
 
     test('FK with bracket comment does not cause false positive', () => {
-        const errors = new (espresql as any)(`team_statuses\n    name\n\nteams\n    name\n    status /fk team_statuses  [Status ]`).getErrors();
+        const errors = new (expresql as any)(`team_statuses\n    name\n\nteams\n    name\n    status /fk team_statuses  [Status ]`).getErrors();
         expectNoError(errors);
     });
 
     test('FK check works after block comment at start', () => {
-        const errors = new (espresql as any)(`/* line1\n    line2 */\nteam_statuses\n    name /fk undefined`).getErrors();
+        const errors = new (expresql as any)(`/* line1\n    line2 */\nteam_statuses\n    name /fk undefined`).getErrors();
         expectError(errors, 3, 4 + 4 + 1 + 3 + 1, errorMsgs.messages.undefinedObject + 'undefined');
     });
 
     test('misaligned column: 3-space indent where 4 is the pattern', () => {
-        const errors = new (espresql as any)(`emp\n    ename\n    deptno /fk dept\n  \ndept\n   dname`).getErrors();
+        const errors = new (expresql as any)(`emp\n    ename\n    deptno /fk dept\n  \ndept\n   dname`).getErrors();
         expectError(errors, 5, 3, errorMsgs.messages.misalignedAttribute + '4');
     });
 
     test('unknown table directive → tableDirectiveTypo error', () => {
-        const errors = new (espresql as any)(`emp /fk\n    ename  /audit`).getErrors();
+        const errors = new (expresql as any)(`emp /fk\n    ename  /audit`).getErrors();
         expectError(errors, 0, 5, errorMsgs.messages.tableDirectiveTypo);
     });
 
     test('unknown column directive → columnDirectiveTypo error', () => {
-        const errors = new (espresql as any)(`emp /fk\n    ename  /audit`).getErrors();
+        const errors = new (expresql as any)(`emp /fk\n    ename  /audit`).getErrors();
         expectError(errors, 1, 4 + 5 + 1 + 1 + 1, errorMsgs.messages.columnDirectiveTypo);
     });
 

@@ -1,4 +1,4 @@
-// Pure syntax-highlighting functions — no DOM, no state.
+﻿// Pure syntax-highlighting functions — no DOM, no state.
 
 export function esc(s) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -46,7 +46,7 @@ function tokenize(text, tokens, defaultCls) {
     return html;
 }
 
-// ── EspreSQL ─────────────────────────────────────────────────────
+// ── ExpreSQL ─────────────────────────────────────────────────────
 // All regexes pre-compiled once at module load with 'i' flag.
 
 const QS_INLINE = [
@@ -80,7 +80,7 @@ function qsLineContent(content, nameClass) {
     return html;
 }
 
-export function highlightEspreSQL(text) {
+export function highlightExpreSQL(text) {
     const lines  = text.split('\n');
     const result = [];
     let inBlock  = false;

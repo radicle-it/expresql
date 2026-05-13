@@ -1,5 +1,5 @@
--- =============================================================================
--- 05_install_test.sql  —  smoke test post-installazione espresql MLE
+﻿-- =============================================================================
+-- 05_install_test.sql  —  smoke test post-installazione expresql MLE
 -- Eseguire dopo install_package.sql. Tutti i test devono passare (= PASS).
 -- =============================================================================
 
@@ -29,21 +29,21 @@ DECLARE
     END;
 
 BEGIN
-    DBMS_OUTPUT.put_line(CHR(10) || '--- Smoke test espresql_pkg ---' || CHR(10));
+    DBMS_OUTPUT.put_line(CHR(10) || '--- Smoke test expresql_pkg ---' || CHR(10));
 
     -- Test 1: versione bundle
-    l_result := espresql_pkg.version();
+    l_result := expresql_pkg.version();
     check_test('version(): stringa non nulla', l_result IS NOT NULL, l_result);
 
     -- Test 2: tabella semplice
-    l_result := espresql_pkg.to_ddl('employees' || CHR(10) || '  name /nn');
+    l_result := expresql_pkg.to_ddl('employees' || CHR(10) || '  name /nn');
     check_test('to_ddl: contiene CREATE TABLE employees',
                INSTR(LOWER(l_result), 'create table employees') > 0);
     check_test('to_ddl: contiene NOT NULL',
                INSTR(LOWER(l_result), 'not null') > 0);
 
     -- Test 3: opzioni prefix
-    l_result := espresql_pkg.to_ddl(
+    l_result := expresql_pkg.to_ddl(
         'orders' || CHR(10) || '  amount num',
         '{"prefix":"sales"}'
     );
@@ -51,7 +51,7 @@ BEGIN
                INSTR(LOWER(l_result), 'create table sales_orders') > 0);
 
     -- Test 4: gerarchia padre-figlio genera FK
-    l_result := espresql_pkg.to_ddl(
+    l_result := expresql_pkg.to_ddl(
         'departments' || CHR(10) ||
         '  name /nn' || CHR(10) ||
         '  employees' || CHR(10) ||
@@ -62,11 +62,11 @@ BEGIN
                INSTR(LOWER(l_result), 'departments_id') > 0);
 
     -- Test 5: validate — input OK ritorna array vuoto
-    l_errors := espresql_pkg.validate('orders' || CHR(10) || '  amount num');
+    l_errors := expresql_pkg.validate('orders' || CHR(10) || '  amount num');
     check_test('validate: input valido ritorna []', l_errors = '[]');
 
     -- Test 6: struttura errore ha from.line (non line diretto)
-    l_errors := espresql_pkg.validate('employees' || CHR(10) || '  - bad');
+    l_errors := expresql_pkg.validate('employees' || CHR(10) || '  - bad');
     DECLARE
         l_line NUMBER;
     BEGIN
@@ -79,7 +79,7 @@ BEGIN
     END;
 
     -- Test 7: to_erd ritorna JSON non nullo
-    l_result := espresql_pkg.to_erd(
+    l_result := expresql_pkg.to_erd(
         'departments' || CHR(10) || '  name' || CHR(10) ||
         '  employees' || CHR(10) || '    name'
     );
@@ -87,7 +87,7 @@ BEGIN
 
     -- Test 8: to_ddl con p_options NULL non solleva eccezione
     BEGIN
-        l_result := espresql_pkg.to_ddl('simple_tbl', NULL);
+        l_result := expresql_pkg.to_ddl('simple_tbl', NULL);
         check_test('to_ddl: p_options NULL non solleva eccezione', TRUE);
     EXCEPTION
         WHEN OTHERS THEN

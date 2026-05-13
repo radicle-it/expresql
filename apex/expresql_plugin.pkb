@@ -1,4 +1,4 @@
-create or replace package body espresql_plugin as
+﻿create or replace package body expresql_plugin as
 
     -- ── shorthand ──────────────────────────────────────────────────────────
     procedure h(p in varchar2) as begin sys.htp.p(p); end;
@@ -13,7 +13,7 @@ create or replace package body espresql_plugin as
         l_theme      varchar2(20)   := lower(nvl(p_region.attribute_01, 'apex'));
         l_height     varchar2(200)  := nvl(p_region.attribute_02, 'calc(100vh - 120px)');
         l_share      varchar2(1)    := nvl(p_region.attribute_03, 'N');
-        l_files_base varchar2(4000) := nvl(p_region.attribute_04, '#APP_IMAGES#espresql/');
+        l_files_base varchar2(4000) := nvl(p_region.attribute_04, '#APP_IMAGES#expresql/');
 
         l_prefix     varchar2(4000);
         l_share_cls  varchar2(20);
@@ -30,8 +30,8 @@ create or replace package body espresql_plugin as
         l_share_cls := case when l_share = 'Y' then ' show-share' else '' end;
 
         -- ── CSS ──────────────────────────────────────────────────────────────
-        apex_css.add_file(p_url => l_prefix || 'web/app.css',         p_key => 'espresql-app-css');
-        apex_css.add_file(p_url => l_prefix || 'apex/apex-plugin.css', p_key => 'espresql-plugin-css');
+        apex_css.add_file(p_url => l_prefix || 'web/app.css',         p_key => 'expresql-app-css');
+        apex_css.add_file(p_url => l_prefix || 'apex/apex-plugin.css', p_key => 'expresql-plugin-css');
 
         -- ── JavaScript (loaded at end of <body>, in order) ───────────────────
         apex_javascript.add_library(
@@ -45,16 +45,16 @@ create or replace package body espresql_plugin as
             p_directory       => l_prefix || 'web/',
             p_version         => null,
             p_skip_if_loaded  => true,
-            p_key             => 'espresql-app');
+            p_key             => 'expresql-app');
 
         -- ── Plugin root ───────────────────────────────────────────────────────
-        h('<div class="espresql-plugin-root' || l_share_cls || '"'
+        h('<div class="expresql-plugin-root' || l_share_cls || '"'
             || ' data-theme="' || l_theme || '"'
             || ' style="height:' || sys.htf.escape_sc(l_height) || '">');
 
         -- ── Toolbar ───────────────────────────────────────────────────────────
-        h('<div class="espresql-toolbar">');
-        h('  <span class="title">EspreSQL</span>');
+        h('<div class="expresql-toolbar">');
+        h('  <span class="title">ExpreSQL</span>');
         h('  <span class="spacer"></span>');
         h('  <button id="btn-examples" class="tool-btn">Examples &#x25BE;</button>');
         h('  <button id="btn-settings" class="tool-btn">&#x2699; Settings</button>');
@@ -278,7 +278,7 @@ create or replace package body espresql_plugin as
         -- ── Help drawer ───────────────────────────────────────────────────────
         h('<aside id="help-drawer">');
         h('  <div class="hdw-hdr">');
-        h('    <strong>EspreSQL Reference</strong>');
+        h('    <strong>ExpreSQL Reference</strong>');
         h('    <button class="hdw-close" id="help-close">&times;</button>');
         h('  </div>');
         h('  <div class="hdw-tab-bar">');
@@ -357,7 +357,7 @@ create or replace package body espresql_plugin as
         h('          <tr><td>vect / vect<em>N</em></td><td>vector (23c+)</td></tr>');
         h('          <tr><td>file</td><td>APEX file upload columns</td></tr>');
         h('        </table>');
-        h('        <p class="hdw-note" style="margin-top:4px"><a href="doc/user/espresql-grammar.md#datatypes" target="_blank">&rarr; Full reference</a></p>');
+        h('        <p class="hdw-note" style="margin-top:4px"><a href="doc/user/expresql-grammar.md#datatypes" target="_blank">&rarr; Full reference</a></p>');
         h('      </div></details>');
         h('    </div>');
 
@@ -386,7 +386,7 @@ create or replace package body espresql_plugin as
         h('          <tr><td><code>toDiff(old, new, opts?)</code></td><td>Compute incremental migration</td></tr>');
         h('          <tr><td><code>fromJSON(json)</code></td><td>Convert JSON document to QSQL string</td></tr>');
         h('        </table>');
-        h('        <p class="hdw-note" style="margin-top:8px"><a href="doc/user/espresql-grammar.md" target="_blank">&rarr; Grammar Reference</a></p>');
+        h('        <p class="hdw-note" style="margin-top:8px"><a href="doc/user/expresql-grammar.md" target="_blank">&rarr; Grammar Reference</a></p>');
         h('      </div></details>');
         h('    </div>');
 
@@ -399,5 +399,5 @@ create or replace package body espresql_plugin as
         return p_result;
     end render;
 
-end espresql_plugin;
+end expresql_plugin;
 /

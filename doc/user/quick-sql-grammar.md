@@ -1,4 +1,4 @@
-# EspreSQL Grammar <!-- omit in toc -->
+﻿# ExpreSQL Grammar <!-- omit in toc -->
 
 ## Table of Contents <!-- omit in toc -->
 
@@ -58,7 +58,7 @@
     - [toErrors](#toerrors)
     - [toDiff](#todiff)
     - [fromJSON](#fromjson)
-    - [qsql\_version](#espresql_version)
+    - [qsql\_version](#expresql_version)
     - [registerGenerator / BaseGenerator](#registergenerator--basegenerator)
 - [Document](#document)
 - [Grammar](#grammar)
@@ -179,7 +179,7 @@ and is usually omitted from QSQL schema definition.
 
 ### Multi-lingual columns (/trans)
 
-Marking one or more columns with `/trans` activates EspreSQL's translation pattern. Three objects are generated:
+Marking one or more columns with `/trans` activates ExpreSQL's translation pattern. Three objects are generated:
 
 | Object | Purpose |
 |---|---|
@@ -191,7 +191,7 @@ Marking one or more columns with `/trans` activates EspreSQL's translation patte
 
 **Example input:**
 
-```espresql
+```expresql
 dept /immutable
   dname /trans
 
@@ -253,7 +253,7 @@ left join abc_dept_trans t
 
 Use the `transcontext` setting to change the language-resolution expression:
 
-```espresql
+```expresql
 # transcontext: "sys_context('MY_CTX','LANGUAGE')"
 ```
 
@@ -261,7 +261,7 @@ Use the `transcontext` setting to change the language-resolution expression:
 
 ### View Syntax
 
-```espresql
+```expresql
 view [view_name] [table name] [table name]...
 ```
 
@@ -270,7 +270,7 @@ spaces. Delimit table names by a space or comma.
 
 ### View Example
 
-```espresql
+```expresql
 dept 
   dname 
   loc 
@@ -286,7 +286,7 @@ predicates) only.
 
 ### Duality View Syntax (23ai+)
 
-```espresql
+```expresql
 dv [view_name] [root_table] [nested_table]...
 ```
 
@@ -294,7 +294,7 @@ JSON Relational Duality Views expose relational data as JSON documents. The firs
 
 ### Duality View Example
 
-```espresql
+```expresql
 # settings = {db: "23ai"}
 departments
     name
@@ -330,7 +330,7 @@ Oracle SQL annotations can be added to tables, columns, and views using curly br
 
 ### Annotation Syntax
 
-```espresql
+```expresql
 table_name {Key 'value', AnotherKey "value", FlagKey}
     column_name {Key 'value'}
 ```
@@ -343,7 +343,7 @@ table_name {Key 'value', AnotherKey "value", FlagKey}
 
 When an annotation has the key `DESCRIPTION`, a `COMMENT ON` statement is automatically generated from its value. This applies to both tables and columns. If a node has both a `DESCRIPTION` annotation and an explicit comment (`[...]` or `--`), the `DESCRIPTION` annotation takes precedence.
 
-```espresql
+```expresql
 departments {DESCRIPTION 'Main HR departments table', Classification 'HR'}
     name {DESCRIPTION 'The department name'}
 ```
@@ -362,7 +362,7 @@ comment on column departments.name is 'The department name';
 
 ### Annotation Examples
 
-```espresql
+```expresql
 -- Table-level annotation
 departments {UI_Display 'Departments', Classification 'HR'}
     name
@@ -381,7 +381,7 @@ view dept_v dept {UI_Display 'Department View'}
 
 ### AI Enrichment (aienrichment + db >= 26)
 
-When the `aienrichment` setting is `yes` and `db` is `26ai` or higher, EspreSQL additionally generates a PL/SQL block that populates the `METADATA_ANNOTATIONS` AI enrichment layer. This enables Oracle 26ai features such as `METADATA_ANNOTATIONS_USAGE`, `METADATA_ANNOTATIONS_GROUPS`, and `METADATA_ANNOTATIONS_GROUP_MEM` views.
+When the `aienrichment` setting is `yes` and `db` is `26ai` or higher, ExpreSQL additionally generates a PL/SQL block that populates the `METADATA_ANNOTATIONS` AI enrichment layer. This enables Oracle 26ai features such as `METADATA_ANNOTATIONS_USAGE`, `METADATA_ANNOTATIONS_GROUPS`, and `METADATA_ANNOTATIONS_GROUP_MEM` views.
 
 For key-value annotations, `metadata_annotations.set()` calls are generated:
 
@@ -402,22 +402,22 @@ declaratively set the generation options.
 > **UI vs inline-only settings**  
 > All settings are available both in the ⚙ Settings panel and as inline `#` directives. One exception: `resetsettings` has no persistent value — it is a one-shot directive that clears all active settings when the script is parsed. It cannot be represented as a panel control and must be written inline.
 
-Entering settings directly into the EspreSQL Shorthand pane ensures the same
+Entering settings directly into the ExpreSQL Shorthand pane ensures the same
 SQL generation options are utilized even if you download the script and later
 paste it back. For example, enter the following to prefix all table names with
 TEST and generate for schema OBE:
 
-```espresql
+```expresql
 # settings = { prefix: "test", schema: "OBE" }
 ```
 
 Alternatively, enter each setting on a separate line for the same result:
 
-```espresql
+```expresql
 # prefix: "test"
 ```
 
-```espresql
+```expresql
 # schema: "OBE"
 ```
 
@@ -426,7 +426,7 @@ multiple settings, or # to enter a single setting per line. All values are case
 insensitive. Brackets, spaces, and commas can be added for clarity but are
 ignored. To have all settings generated use:
 
-```espresql
+```expresql
 # verbose: true
 ```
 
@@ -530,7 +530,7 @@ Numeric aliases: `1` = `lookup`, `1h` = `lookup+hks`, `2` = `service`, `2h` = `s
 
 **Interface package**: controlled by the [`ifc`](#ifc) setting (`app`, `rest`, or `both`). Default is `app`, which generates `_app` (named-parameter procedures). Use `rest` to generate `_rst` (ORDS/HTTP handlers) instead, or `both` to generate both. `apex` is a backward-compatible alias for `app`.
 
-```espresql
+```expresql
 -- default: log table is app_audit_log (with prefix applied)
 employees /api full+hks /auditlog
   name vc100 /nn
@@ -547,7 +547,7 @@ employees /api full+hks /auditlog app_audit_log
 
 Per-table tier override (two tables, different tiers in the same schema):
 
-```espresql
+```expresql
 -- lookup_codes only needs the app interface
 lookup_codes /api lookup
   code  vc20 /nn
@@ -571,7 +571,7 @@ When `tenantid: yes` is active, every tenant-scoped table automatically receives
 
 Tables marked `/notenantid` are excluded from this behaviour and receive no `p_tenant_id` parameter.
 
-```espresql
+```expresql
 customers
   full_name vc200 /nn
   email     vc200 /nn /unique
@@ -638,7 +638,7 @@ The SQL expression used in the `_resolved` view to determine the current languag
 when using `/trans` column directives. For example, to use a different application
 context:
 
-```espresql
+```expresql
 # transcontext: "sys_context('MY_CTX','LANGUAGE')"
 ```
 
@@ -692,7 +692,7 @@ Selects the SQL dialect for DDL generation.
 
 **Example:**
 
-```espresql
+```expresql
 employees
   name         vc100 /nn
   hire_date    d
@@ -804,7 +804,7 @@ trigger logic.
 **Possible Values**: `true`, `false`  
 **Default Value**: `false`
 
-Enables the shared-schema multi-tenancy pattern. When set to `yes`, for each generated **tenant** table (not marked `/notenantid`) EspreSQL automatically:
+Enables the shared-schema multi-tenancy pattern. When set to `yes`, for each generated **tenant** table (not marked `/notenantid`) ExpreSQL automatically:
 
 1. **Adds a `TENANT_ID NUMBER NOT NULL` column** (second column after the PK). Nullable only when the table uses `/insert N` — in that case run `ALTER TABLE … MODIFY tenant_id NOT NULL` after populating the sample data with a valid tenant.
 2. **Generates an auto-FK `tenant_id → tenants(id)`** — when a table named `tenants` (or the value of `tenantref`) exists in the same script and `tenant_id` is synthetic (not declared explicitly). Customize the master table name with `tenantref: "workspaces"`.
@@ -816,9 +816,9 @@ Enables the shared-schema multi-tenancy pattern. When set to `yes`, for each gen
 
 If `tenant_id` is already declared as an explicit column, the synthetic column is skipped (no duplicate); the auto-FK is also skipped (the user manages it via `/fk`).
 
-**Supra-tenant tables** (lookup data, tenant master, global config) that must not have a `TENANT_ID` can be marked with the `/notenantid` table directive. EspreSQL skips the synthetic column and all tenant-scoped logic for those tables, and FK references to them remain simple (no composite).
+**Supra-tenant tables** (lookup data, tenant master, global config) that must not have a `TENANT_ID` can be marked with the `/notenantid` table directive. ExpreSQL skips the synthetic column and all tenant-scoped logic for those tables, and FK references to them remain simple (no composite).
 
-```espresql
+```expresql
 subscription_plans /notenantid   -- supra-tenant: shared by all tenants, no TENANT_ID
   name  vc100 /nn
   price num(10,2) /nn
@@ -880,7 +880,7 @@ When `api: yes` (or `api: true`) is combined with `tenantid: yes`, the generated
 
 Specifies the name of the master tenant table for the auto-FK generated by `tenantid: yes`. When the tenants master table has a name other than `tenants`, set this to the canonical table name (without prefix):
 
-```espresql
+```expresql
 workspaces /notenantid
   name vc200 /nn
 
@@ -890,7 +890,7 @@ documents
 # settings = { prefix: "app_", tenantid: yes, tenantref: "workspaces" }
 ```
 
-EspreSQL generates `FOREIGN KEY (tenant_id) REFERENCES app_workspaces (id)` on `app_documents`.
+ExpreSQL generates `FOREIGN KEY (tenant_id) REFERENCES app_workspaces (id)` on `app_documents`.
 
 ### rowVersion
 
@@ -958,7 +958,7 @@ Show all settings, not just settings that are different from the default.
 
 When set to `false`, suppresses all `INSERT` statements in the generated DDL even if `/insert N` directives appear in the schema. Useful when you want clean DDL without sample data, for example when deploying to production environments.
 
-```espresql
+```expresql
 # inserts: false
 employees /insert 10
   name vc100
@@ -987,7 +987,7 @@ The `_app` package exposes named IN/OUT parameters — no HTTP semantics.
 The `_rst` package (Oracle) uses ORDS bind variables (`:body_text`, `:p_id`, `:status`) and emits JSON via `htp.p`.  
 The `_rst` package (Db2) uses SQL PL `GET DIAGNOSTICS` for error handling and returns `json_object(…)` results.
 
-```espresql
+```expresql
 # settings = { ifc: rest }
 
 employees /api full+hks
@@ -996,7 +996,7 @@ employees /api full+hks
   row_version num /nn
 ```
 
-```espresql
+```expresql
 # settings = { ifc: both }
 
 employees /api
@@ -1012,7 +1012,7 @@ employees /api
 
 When set to `true`, automatically generates a JSON Relational Duality View for every parent-child relationship in the schema. Requires `db: 23c` or higher. Equivalent to adding `dv` statements manually for every table hierarchy.
 
-```espresql
+```expresql
 # settings = { db: "23c", dv: true }
 departments
   name
@@ -1030,7 +1030,7 @@ departments
 
 When enabled, all generated PL/SQL objects (triggers, packages, procedures) are created with the `EDITIONABLE` keyword, making them compatible with Oracle Edition-Based Redefinition (EBR). Requires Oracle 11g R2+.
 
-```espresql
+```expresql
 # editionable: true
 employees /api
   name vc100
@@ -1047,7 +1047,7 @@ employees /api
 
 Annotations with the `GROUP` key generate `metadata_annotations.create_group()` and `metadata_annotations.add_to_group()` calls. Flag annotations (no value) are skipped because the package requires a value argument.
 
-```espresql
+```expresql
 # settings = { db: "26ai", aienrichment: "yes" }
 employees {Classification 'HR', GROUP 'PII'}
   name {DESCRIPTION 'Full name', Sensitivity 'Private'}
@@ -1060,7 +1060,7 @@ employees {Classification 'HR', GROUP 'PII'}
 
 Maximum number of characters allowed for generated Oracle identifier names (tables, columns, constraints, indexes, packages). Oracle 12.2+ supports identifiers up to 128 characters; pre-12.2 releases support only 30. When targeting an older database, set this to `30` to avoid `ORA-00972: identifier is too long` errors.
 
-```espresql
+```expresql
 # settings = { db: "19c", namelen: 30 }
 ```
 
@@ -1070,7 +1070,7 @@ Maximum number of characters allowed for generated Oracle identifier names (tabl
 
 Global cap on the number of INSERT rows generated per table. Overrides any `/insert N` directive that exceeds this value. Useful to prevent accidentally generating large data sets in shared scripts.
 
-```espresql
+```expresql
 # datalimit: 50
 employees /insert 1000   -- capped at 50 rows
   name vc100
@@ -1078,7 +1078,7 @@ employees /insert 1000   -- capped at 50 rows
 
 ## Schema Migration
 
-The EspreSQL editor supports **inline schema migration** using the `# ---` delimiter. Write both schema versions in the same editor, separated by the delimiter, and the DDL panel switches to migration mode automatically.
+The ExpreSQL editor supports **inline schema migration** using the `# ---` delimiter. Write both schema versions in the same editor, separated by the delimiter, and the DDL panel switches to migration mode automatically.
 
 ### Syntax
 
@@ -1090,7 +1090,7 @@ Any number of dashes (2+), with or without spaces, is accepted: `# ---`, `#--`, 
 
 ### Example
 
-```espresql
+```expresql
 employees
   name vc100 /nn
   email vc200
@@ -1145,7 +1145,7 @@ For the programmatic API, see [`toDiff`](#todiff) in the section below.
 
 ## API Reference
 
-The EspreSQL library exposes a JavaScript API consumed by the browser UI and, via the Oracle MLE integration, by PL/SQL code running inside the database. All functions are exported from the `dist/espresql.js` (ESM) and `dist/espresql.umd.cjs` (UMD/CommonJS) bundles.
+The ExpreSQL library exposes a JavaScript API consumed by the browser UI and, via the Oracle MLE integration, by PL/SQL code running inside the database. All functions are exported from the `dist/expresql.js` (ESM) and `dist/expresql.umd.cjs` (UMD/CommonJS) bundles.
 
 ### toDDL
 
@@ -1153,12 +1153,12 @@ The EspreSQL library exposes a JavaScript API consumed by the browser UI and, vi
 toDDL(qsql: string, optionsJson?: string): string
 ```
 
-Converts a EspreSQL shorthand string to Oracle DDL. Returns the generated SQL as a plain string.
+Converts a ExpreSQL shorthand string to Oracle DDL. Returns the generated SQL as a plain string.
 
 The optional second argument must be a **JSON string** (not a parsed object) containing any settings you want to override. Settings passed here take effect even when `overridesettings` is not set.
 
 ```javascript
-import { toDDL } from './dist/espresql.js';
+import { toDDL } from './dist/expresql.js';
 
 const ddl = toDDL('employees\n  name vc100 /nn', '{"db":"23c","auditcols":"yes"}');
 console.log(ddl);
@@ -1178,7 +1178,7 @@ Returns a graph object describing the entity-relationship diagram. The object co
 toErrors(qsql: string): Array<ErrorEntry>
 ```
 
-Validates the EspreSQL shorthand and returns an array of diagnostic objects. Returns an empty array when there are no errors.
+Validates the ExpreSQL shorthand and returns an array of diagnostic objects. Returns an empty array when there are no errors.
 
 Each entry in the returned array has the following structure:
 
@@ -1200,7 +1200,7 @@ interface ErrorEntry {
 Example — checking errors and reading the first one:
 
 ```javascript
-import { toErrors } from './dist/espresql.js';
+import { toErrors } from './dist/expresql.js';
 
 const errors = toErrors('employees\n  /nn');   // column with no name
 if (errors.length > 0) {
@@ -1217,7 +1217,7 @@ if (errors.length > 0) {
 toDiff(oldQsql: string, newQsql: string, options?: unknown): DiffResult
 ```
 
-Computes an incremental Oracle DDL migration script between two EspreSQL schema versions. Returns a `DiffResult` object with the following structure:
+Computes an incremental Oracle DDL migration script between two ExpreSQL schema versions. Returns a `DiffResult` object with the following structure:
 
 ```typescript
 interface DiffResult {
@@ -1255,7 +1255,7 @@ interface DiffWarning {
 **Rename detection** — when exactly one column is dropped and one of the same base type is added on the same table, a `rename_hint` statement (commented `ALTER TABLE … RENAME COLUMN`) is emitted instead of a destructive DROP + ADD pair.
 
 ```javascript
-import { toDiff } from './dist/espresql.js';
+import { toDiff } from './dist/expresql.js';
 
 const v1 = `employees
   name vc100 /nn
@@ -1288,12 +1288,12 @@ The `options` parameter follows the same convention as `toDDL` — pass either a
 fromJSON(json: string | object): string
 ```
 
-Converts a JSON document (as a string or parsed object) to a EspreSQL shorthand string. The generated QSQL approximates the structure of the JSON document and can be further refined by the user.
+Converts a JSON document (as a string or parsed object) to a ExpreSQL shorthand string. The generated QSQL approximates the structure of the JSON document and can be further refined by the user.
 
-### espresql_version
+### expresql_version
 
 ```javascript
-espresql_version(): string
+expresql_version(): string
 ```
 
 Returns the library version string, e.g. `"2.0.0"`.
@@ -1310,7 +1310,7 @@ Extension point for adding custom SQL dialect generators. `BaseGenerator` is the
 
 ## Document
 
-The database defined via EspreSQL is populated with the data generated by
+The database defined via ExpreSQL is populated with the data generated by
 [chancejs](https://github.com/chancejs/chancejs). If QSQL code has been generated
 from json document, then the document is kept under the `#document` section, and
 is used to populate the database with genuine data.
@@ -1321,7 +1321,7 @@ See the [Car Racing Example](../../test/DV/car_racing/1.esql).
 > **Note:** All setting keys and directive names are case-insensitive. Values are also case-insensitive unless otherwise stated.
 
 ```abnf
-espresql::= stmt+
+expresql::= stmt+
 
 stmt::= tree
       | view

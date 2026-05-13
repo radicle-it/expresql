@@ -1,4 +1,4 @@
-import {espresql, toDDL} from "../../src/ddl.js";
+﻿import {expresql, toDDL} from "../../src/ddl.js";
 
 
 var assertionCnt = 0;
@@ -28,7 +28,7 @@ export default function small_tests() {
     assert( "0 < output.indexOf('create table right_departments')" );
     //                                         ^^^^     
 
-    output = new espresql(
+    output = new expresql(
         `Bug35683432
             name
         `, 
@@ -37,14 +37,14 @@ export default function small_tests() {
     assert( "0 < output.indexOf('Unknown setting: notanoption1')" );
 
 
-    output = new espresql(
+    output = new expresql(
         `Bug35683432
             name
 # settings = {"notAnOption2": "should raise an Error"}            ` 
     ).getDDL();
     assert( "0 < output.indexOf('Unknown setting: notanoption2')" );
 
-    output = new espresql(
+    output = new expresql(
         `departments
             name
         # settings = {"genpk": false}            
@@ -53,7 +53,7 @@ export default function small_tests() {
 
     assert( "-1 == output.indexOf('ID     NUMBER GENERATED'.toLowerCase())" );
  
-    output = new espresql(
+    output = new expresql(
         `departments
             name
         # settings = {genpk: false}            
@@ -63,7 +63,7 @@ export default function small_tests() {
     assert( "-1 == output.indexOf('ID     NUMBER GENERATED'.toLowerCase())" );
  
     // ddl.setOptionValue('genpk',false);
-    output = new espresql(
+    output = new expresql(
         `departments
             name
         `,
@@ -72,7 +72,7 @@ export default function small_tests() {
 
     assert( "-1 == output.indexOf('ID     NUMBER GENERATED'.toLowerCase())" );
 
-    output = new espresql(`
+    output = new expresql(`
 departments
     name
 # settings = { "api": true }
@@ -80,7 +80,7 @@ departments
 
     assert( "0 < output.indexOf('DEPARTMENTS_API'.toLowerCase())" );
 
-    output = new espresql(`
+    output = new expresql(`
 departments
         name
     # settings = { "Compress": "yEs" }
@@ -88,21 +88,21 @@ departments
 
     assert( "0 < output.indexOf(') compress;')" );
     
-    output = new espresql(`
+    output = new expresql(`
 Bug35650456
     name  vc32k
     `).getDDL();
 
     assert( "0 < output.indexOf('name    varchar2(32767 char)')" );
 
-    output = new espresql(`
+    output = new expresql(`
 Bug35668454
 # settings = { drop: "Y"}
     `).getDDL();
            
     assert( "0 <= output.indexOf('drop table bug35668454')" ); 
     
-    output = new espresql(`
+    output = new expresql(`
 Bugs35692739_35692703_35692625
    inventory json
    name vc50
@@ -119,7 +119,7 @@ Bugs35692739_35692703_35692625
     assert( "0 < output.indexOf('date_packed        timestamp with time zone,')" );
     assert( "0 < output.indexOf('date_production    timestamp with local time zone')" );
     
-    output = new espresql(`
+    output = new expresql(`
 Bug35683307 /insert 1
   # settings = { inserts: false}
             `).getDDL();
@@ -127,7 +127,7 @@ Bug35683307 /insert 1
     assert( "-1 == output.indexOf('insert into')" );
 
     // NOTE: This test can't be performed anymore since it uses an internal method of ddl.js
-    /*output = new espresql(`
+    /*output = new expresql(`
 ER_35698875 
       # settings = { inserts: false}
                 `);
@@ -136,7 +136,7 @@ ER_35698875
     //console.log(ddl.getOptionValue('inserts'));
     //console.log(ddl.appliedOptions['inserts'].value);
 
-    output = new espresql(`
+    output = new expresql(`
 Bug_35683200 /insert 1
 view bv Bug_35683200
 # settings = { inserts: false}
@@ -147,7 +147,7 @@ view bv Bug_35683200
     assert( "0 < output.indexOf('replace view hr.the_bv')" );
     assert( "0 < output.indexOf('# settings = {\"inserts\":false,\"prefix\":\"The\",\"schema\":\"HR\"}')" );
     
-    output = new espresql(`
+    output = new expresql(`
 Bug_35677264
    product
    amt number
@@ -159,7 +159,7 @@ Bug_35677264
     assert( "0 < output.indexOf('number default on null to_number(sys_guid(), ')" );
     assert( "0 < output.indexOf('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')" );
     
-    output = new espresql(`
+    output = new expresql(`
 Bug_35677301
 
 # settings = { semantics: "CHAR", auditCols: true, language: "EN", APEX: true, createdCol: "created_col", createdByCol: "created_by_col", updatedCol: "updated_col", updatedByCol: "updated_by_col" }
@@ -170,7 +170,7 @@ Bug_35677301
     assert( "0 < output.indexOf('updated_col')" );
     assert( "0 < output.indexOf('updated_by_col')" );
 
-    output = new espresql(`
+    output = new expresql(`
 Bug35714241
     proficiency /check 'Test'
     `).getDDL();
@@ -178,7 +178,7 @@ Bug35714241
     assert( "0 < output.indexOf(\"in ('Test'\")" );
    
     // 35714343
-    output = new espresql(`
+    output = new expresql(`
 departments
     dname
     emp
@@ -189,7 +189,7 @@ departments
     assert( " output.indexOf('department_id    number') ==  output.lastIndexOf('department_id    number') " );
 
     // 35715610
-    output = new espresql(`
+    output = new expresql(`
 dept
     dname
     emp /cascade
@@ -202,7 +202,7 @@ dept
     assert( "0 < output.indexOf('references dept on delete cascade')" );
 
     // 35724078
-    output = new espresql(`
+    output = new expresql(`
 dept
     name
     
@@ -214,28 +214,28 @@ dept
     //assert( "0 < output.indexOf('# settings = {\"apex\":\"Y\",\"db\":\"19c\",\"pk\":\"IDENTITY\"}')" );
     assert( "0 < output.indexOf('# settings = {\"apex\":\"Y\",\"db\":\"19c\",\"pk\":\"IDENTITY\"}')" );
 
-    output = new espresql(`
+    output = new expresql(`
 dept /insert 5
     name
 # inserts : N`,'{"inserts":"N"}').getDDL();
 
     assert( "0 > output.indexOf('# inserts : N')" );
     
-    output = new espresql(`
+    output = new expresql(`
 Bug35737572
     flight_json json
     `).getDDL();
 
     assert( "0 < output.indexOf('clob check (flight_json is json)')" );
      
-    output = new espresql(`
+    output = new expresql(`
 Bug35737578
     flight_file file
     `).getDDL();
    
     assert( "0 < output.indexOf('flight_file_filename')" );
          
-    output = new espresql(`
+    output = new expresql(`
 bug35748389
     name
     
@@ -245,7 +245,7 @@ bug35748389
     assert( "output.indexOf('trigger') < 0" );
     assert( "0 < output.indexOf('constraint bug35748389_id_pk primary key,')" );
          
-    output = new espresql(`
+    output = new expresql(`
 bug35748389_2
     name
     
@@ -256,7 +256,7 @@ bug35748389_2
     assert( "0 < output.indexOf('number default on null bug35748389_2_seq.nextval')" );
     assert( "0 < output.indexOf('constraint bug35748389_2_id_pk primary key,')" );
          
-    output = new espresql(
+    output = new expresql(
     `bug35748389_3
         name
     
@@ -266,7 +266,7 @@ bug35748389_2
     assert( "output.indexOf('trigger') < 0" );
     assert( "output.indexOf('id') < 0" );
          
-    output = new espresql(
+    output = new expresql(
     `bug35748389_4
         name
     
@@ -277,7 +277,7 @@ bug35748389_2
     assert( "0 < output.indexOf('number generated by default on null as identity')" );
     assert( "0 < output.indexOf('constraint bug35748389_4_id_pk primary key,')" );
  
-    output = new espresql(
+    output = new expresql(
     `Bug 35756025
     deptno                         num(2,0)  /nn /pk 
     dname                          vc(14) 
@@ -287,7 +287,7 @@ bug35748389_2
     assert( "0 < output.indexOf('number(2,0) default on null to_number(sys_guid(), ')" );
     assert( "0 < output.indexOf('constraint bug_35756025_deptno_pk primary key,')" );
 
-    output = new espresql(
+    output = new expresql(
     `Bug 35757130
     file_name                      vc(512) 
     file_mimetype                  vc(512) 
@@ -301,7 +301,7 @@ bug35748389_2
     assert( "output.indexOf('file_mimetype_mimetype') < 0" );
     assert( "output.indexOf('file_lastupd_filename') < 0" );
     
-    output = new espresql(
+    output = new expresql(
     `Bug35737917 /auditcols
         name
     # settings = {"apex":"false"}
@@ -310,7 +310,7 @@ bug35748389_2
     assert( "0 < output.indexOf(':new.created_by := user;')" );
     assert( "output.indexOf('APEX$SESSION') < 0" );
 
-    output = new espresql(
+    output = new expresql(
     `Bug35757000 
             name
     # settings = {"overrideSettings":"true"}
@@ -318,7 +318,7 @@ bug35748389_2
                    
     assert( "output.indexOf('x_') < 0" );
     
-    output = new espresql(
+    output = new expresql(
     `Bug35650456_2
         job vc5000
     
@@ -329,7 +329,7 @@ bug35748389_2
     assert( " output.indexOf('Non-default options') ==  output.lastIndexOf('Non-default options') " );
 
     // Bug 35775121
-    output = new espresql( 
+    output = new expresql( 
 `dept
     name
 
@@ -342,20 +342,20 @@ emp
     assert( " 0 < output.indexOf('references dept on delete cascade,') " );
     assert( " output.indexOf('dept_id    integer') < 0 " );
     
-    output = new espresql( 
+    output = new expresql( 
         `demo_item_order
             comment vc80`).getDDL();
                 
     assert( " 0 < output.indexOf('the_comment') " );
 
-    output = new espresql( 
+    output = new expresql( 
 `team_members /insert 1
     username /nn /upper
 projects /insert 1
     name /nn
     project_lead /nn /references team_members`).getDDL();
                                       
-    output = new espresql( 
+    output = new expresql( 
 `person
     id num /pk
     name vc40
@@ -368,26 +368,26 @@ projects /insert 1
     //////////////////////////////id           number 
     assert( " 0 < output.indexOf('person_id_pk primary key') " );    
 
-    output = new espresql( 
+    output = new expresql( 
 `countries
     code vc2 /pk
     `).getDDL();
     assert( " 0 < output.indexOf('code    varchar2(2 char) not null') " ); 
 
-    output = new espresql( 
+    output = new expresql( 
 `countries
     country_id vc2 /pk 
     `).getDDL();
     assert( " 0 < output.indexOf('country_id    varchar2(2 char) not null') " ); 
                     
-    output = new espresql( 
+    output = new expresql( 
 `Bug35827840
     col1 vc
     `).getDDL();
         
     assert( " 0 < output.indexOf('col1    varchar2(4000') " );     
 
-    output = new espresql( 
+    output = new expresql( 
 `Bug35827927
     colstr string
     colvarchar varchar
@@ -400,7 +400,7 @@ projects /insert 1
     assert( " 0 < output.indexOf('colvarchar2    varchar2(4000') " );                                     
     assert( " 0 < output.indexOf('colchar    ') " );   
     
-    output = new espresql( 
+    output = new expresql( 
 `Bug35814922
     important_yn
     important1 yn
@@ -416,7 +416,7 @@ projects /insert 1
     assert( " 0 < output.indexOf('is_important    varchar2(1') " );    
     assert( " 0 < output.indexOf('constraint bug35814922_is_important') " );    
     
-    output = new espresql( 
+    output = new expresql( 
 `Bug35842845 
     ファーストネーム vc200 
     Das Gedöns	vc200 
@@ -428,7 +428,7 @@ projects /insert 1
     //assert( " 0 < output.indexOf('\"locatilon;drop user sys;\"') " );                                     
     assert( " 0 < output.indexOf('\"country;shutdown abort;a\"') " ); 
     
-    output = new espresql( 
+    output = new expresql( 
         `"Test" 
             "CamelCase"
             x   [coMment]  
@@ -442,19 +442,19 @@ projects /insert 1
     assert( " 0 < output.indexOf('comment on column \"Test\".x2 is ') " );                                     
          
     // 35936560
-    output = new espresql( 
+    output = new expresql( 
     `mytable /rest
         name
     `).getDDL();
     assert( " output.indexOf('p_object')+5 < output.indexOf('MYTABLE') " );    
                                      
-    output = new espresql( 
+    output = new expresql( 
     `"yourTable" /rest
     name      
     `).getDDL();
     assert( " output.indexOf('p_object')+5 < output.lastIndexOf('yourTable') " ); 
 
-    output = new espresql( 
+    output = new expresql( 
     `customers
         cid /pk
     
@@ -464,15 +464,15 @@ projects /insert 1
     assert( " 0 < output.indexOf('cid    number default on null customers_seq.nextval') " ); 
     assert( " output.indexOf('trigger') < 0 " ); 
                                             
-    output = new espresql( 
+    output = new expresql( 
     `customers
         id
     `).getDDL();
         
     assert( " output.indexOf('id    varchar2') < 0 " ); 
 
-    // https://github.com/oracle/espresql/issues/26
-    output = new espresql( 
+    // https://github.com/oracle/expresql/issues/26
+    output = new expresql( 
 `dept
     name
 
@@ -483,8 +483,8 @@ view v dept
         
     assert( "output.indexOf('from') <  output.lastIndexOf('abc_dept') " ); 
 
-    // https://github.com/oracle/espresql/issues/27
-    output = new espresql( `dept
+    // https://github.com/oracle/expresql/issues/27
+    output = new expresql( `dept
     name
         
     # settings = {prefix: "prefix", schema: "schema"}
@@ -492,8 +492,8 @@ view v dept
                     
     assert( "output.indexOf('schema.prefix_dept_id_pk') < 0 " ); 
             
-    // https://github.com/oracle/espresql/issues/28
-    output = new espresql( `# settings = {"pk":"GUID"}
+    // https://github.com/oracle/expresql/issues/28
+    output = new expresql( `# settings = {"pk":"GUID"}
 students /insert 2 
         name
     `).getDDL();
@@ -501,8 +501,8 @@ students /insert 2
     assert( "output.indexOf('trigger') < 0 " ); 
     assert( "output.indexOf('alter') < 0 " ); 
 
-    // https://github.com/oracle/espresql/issues/29
-    output = new espresql( `employees /insert 1
+    // https://github.com/oracle/expresql/issues/29
+    output = new expresql( `employees /insert 1
        date hired
    
    #settings={ date:timestamp}
@@ -510,8 +510,8 @@ students /insert 2
                        
     assert( "output.indexOf('N/A') < 0 " );  
 
-    // https://github.com/oracle/espresql/issues/31
-    output = new espresql( `departments /audit cols
+    // https://github.com/oracle/expresql/issues/31
+    output = new expresql( `departments /audit cols
    name 
    employees /audit columns
        name 
@@ -521,8 +521,8 @@ students /insert 2
     assert( "output.indexOf('audit all') < 0 " );  
     assert( "output.indexOf('created       date not null') <  output.lastIndexOf('created          date not null,')" );  
 
-    // https://github.com/oracle/espresql/issues/32
-    output = new espresql( `queues
+    // https://github.com/oracle/expresql/issues/32
+    output = new expresql( `queues
     created /default sysdate
     created dt /default systimestamp
     `).getDDL();
@@ -530,8 +530,8 @@ students /insert 2
     assert( "0 < output.indexOf('default on null sysdate')" );  
     assert( "0 < output.indexOf('default on null systimestamp')" );  
 
-    // https://github.com/oracle/espresql/issues/32
-    output = new espresql( `# pk: SEQ
+    // https://github.com/oracle/expresql/issues/32
+    output = new expresql( `# pk: SEQ
     # drop: Y
 students 
     name
@@ -539,22 +539,22 @@ students
                    
     assert( "0 < output.indexOf('drop sequence students_seq')" );  
 
-    // https://github.com/oracle/espresql/issues/42
-    output = new espresql( `test
+    // https://github.com/oracle/expresql/issues/42
+    output = new expresql( `test
     approved boolean /default N
     `).getDDL();
                        
     assert( "0 < output.indexOf(\"default on null 'N'\")" );   
 
-    // https://github.com/oracle/espresql/issues/43
-    output = new espresql( `test
+    // https://github.com/oracle/expresql/issues/43
+    output = new expresql( `test
         foo_id int /nn /fk foo
     `).getDDL();
                            
     assert( "0 < output.indexOf(\"foo_id    integer\")" );      
 
-    // https://github.com/oracle/espresql/issues/46
-    output = new espresql( `test
+    // https://github.com/oracle/expresql/issues/46
+    output = new expresql( `test
         test_name
         test_description
         test_number
@@ -566,37 +566,37 @@ students
     assert( "0 < output.indexOf(\"test_number         number\")" );      
     assert( "0 < output.indexOf(\"test_date           date\")" );      
 
-    // https://github.com/oracle/espresql/issues/48
-    output = new espresql( `support
+    // https://github.com/oracle/expresql/issues/48
+    output = new expresql( `support
     support_email vc100 /default support@oracle.com
     `).getDDL();
                            
     assert( "0 < output.indexOf(\"support_email    varchar2(100 char) default on null 'support@oracle.com'\")" );      
 
-    // https://github.com/oracle/espresql/issues/49
-    output = new espresql( `change_history
+    // https://github.com/oracle/expresql/issues/49
+    output = new expresql( `change_history
     data_type vc20 /check VARCHAR2,CLOB,TSWLTZ
     `).getDDL();
                            
     assert( "0 < output.indexOf(\"data_type    varchar2(20\")" );      
 
-    // https://github.com/oracle/espresql/issues/51
-    output = new espresql( `foo
+    // https://github.com/oracle/expresql/issues/51
+    output = new expresql( `foo
     bar /boolean /default y
     `).getDDL();
                         
     assert( "0 < output.indexOf(\"varchar2(1 char) default on null 'y'\")" );   
     assert( "0 < output.indexOf(\"constraint foo_bar check (bar in ('Y','N'))\")" );   
     
-    // https://github.com/oracle/espresql/issues/47
-    output = new espresql( `employee /UK first_name, last_name
+    // https://github.com/oracle/expresql/issues/47
+    output = new expresql( `employee /UK first_name, last_name
     first_name
     last_name `).getDDL();
                        
     assert( "0 < output.indexOf(\"alter table employee add constraint employee_uk unique (first_name,last_name);\")" );    
 
-    // https://github.com/oracle/espresql/issues/47
-    output = new espresql( `employee /pk first_name, last_name
+    // https://github.com/oracle/expresql/issues/47
+    output = new expresql( `employee /pk first_name, last_name
     first_name
     last name
     job history
@@ -608,8 +608,8 @@ students
     assert( "0 < output.indexOf(\"alter table employee add constraint employee_pk primary key (first_name,last_name);\")" );    
     assert( "0 < output.indexOf(\"constraint employee_job_history_fk foreign key (first_name,last_name) references employee;\")" );  
     
-    // https://github.com/oracle/espresql/issues/52
-    output = new espresql(`dept
+    // https://github.com/oracle/expresql/issues/52
+    output = new expresql(`dept
     dname
     emp /setnull
         dept_id
@@ -620,7 +620,7 @@ students
     assert( "0 < output.indexOf('constraint emp_dept_id_fk')" );
     assert( "0 < output.indexOf('references dept on delete set null')" );
 
-    output = new espresql(`dept
+    output = new expresql(`dept
     dname
     # settings = {"prefix": "abc_"} 
     `).getDDL();
@@ -628,14 +628,14 @@ students
     assert( "0 < output.indexOf('abc_dept')" );
     assert( "output.indexOf('abc__dept') < 0 " );  
 
-    output = new espresql(`dept
+    output = new expresql(`dept
      dname
     `).getDDL();
 
     assert( "0 < output.indexOf('number default on null to_number(sys_guid()')" );
 
-    // https://github.com/oracle/espresql/issues/51
-    output = new espresql(`boolvalues
+    // https://github.com/oracle/expresql/issues/51
+    output = new expresql(`boolvalues
     is_legal
     finished_yn
     ok   bool
@@ -647,8 +647,8 @@ students
     assert( "0 < output.indexOf('ok             boolean,')" );
     assert( "0 < output.indexOf('yes            boolean')" );
 
-    // https://github.com/oracle/espresql/issues/51
-    output = new espresql(`boolvalues
+    // https://github.com/oracle/expresql/issues/51
+    output = new expresql(`boolvalues
     is_legal
     finished_yn
     ok   bool
@@ -659,8 +659,8 @@ students
     assert( "0 < output.indexOf('finished_yn    boolean,')" );
     assert( "0 < output.indexOf('ok             boolean,')" );
     assert( "0 < output.indexOf('yes            boolean')" );
-    // https://github.com/oracle/espresql/issues/51
-    output = new espresql(`boolvalues
+    // https://github.com/oracle/expresql/issues/51
+    output = new expresql(`boolvalues
     is_legal
     finished_yn
     ok   bool
@@ -672,7 +672,7 @@ students
     assert( "0 < output.indexOf('ok             boolean,')" );
     assert( "0 < output.indexOf('yes            boolean')" );
     // 26ai db version
-    output = new espresql(`boolvalues
+    output = new expresql(`boolvalues
     is_legal
     finished_yn
     ok   bool
@@ -684,55 +684,55 @@ students
     assert( "0 < output.indexOf('ok             boolean,')" );
     assert( "0 < output.indexOf('yes            boolean')" );
 
-    output = new espresql(`boolvalues
+    output = new expresql(`boolvalues
     ok   bool
     #boolean:yn
     #db:"26ai"`).getDDL();
     assert( "output.indexOf('ok    boolean') < 0" );
 
-    // https://github.com/oracle/espresql/issues/51
-    output = new espresql(`boolvalues
+    // https://github.com/oracle/expresql/issues/51
+    output = new expresql(`boolvalues
         ok   bool
         #boolean:native`).getDDL();
     assert( "0 < output.indexOf('ok    boolean')" );
 
-    output = new espresql(`boolvalues
+    output = new expresql(`boolvalues
     ok   bool
     #boolean:yn
     #db:"23c"`).getDDL();
     assert( "output.indexOf('ok    boolean') < 0" );
 
     // reserved word table name should not get "the_" prefix when user prefix is set
-    output = new espresql(`comment
+    output = new expresql(`comment
     text
     # settings = {"prefix":"app"}`).getDDL();
     assert( "0 < output.indexOf('app_comment')" );
     assert( "output.indexOf('the_comment') < 0" );
 
-    output = new espresql(`comment
+    output = new expresql(`comment
     text`).getDDL();
     assert( "0 < output.indexOf('the_comment')" );
 
     // /flashback directive (Flashback Data Archive)
-    output = new espresql(`departments /flashback
+    output = new expresql(`departments /flashback
     name`).getDDL();
     assert( "0 < output.indexOf('alter table departments flashback archive;')" );
 
-    output = new espresql(`departments /flashback myarchive
+    output = new expresql(`departments /flashback myarchive
     name`).getDDL();
     assert( "0 < output.indexOf('alter table departments flashback archive myarchive;')" );
 
     // /fda alias
-    output = new espresql(`departments /fda
+    output = new expresql(`departments /fda
     name`).getDDL();
     assert( "0 < output.indexOf('alter table departments flashback archive;')" );
 
-    output = new espresql(`departments /fda myarchive
+    output = new expresql(`departments /fda myarchive
     name`).getDDL();
     assert( "0 < output.indexOf('alter table departments flashback archive myarchive;')" );
 
-    // https://github.com/oracle/espresql/issues/55
-    output = new espresql(`escape /insert 1
+    // https://github.com/oracle/expresql/issues/55
+    output = new expresql(`escape /insert 1
     financial_year /check '23/24', \`'24/25'\`
     surname vc60 /check 'O''Hara', q'{O'Tool}'  
     start_date /check  \`to_date('01-APR-2025','DD-MON-YYYY')\``).getDDL();
@@ -743,12 +743,12 @@ students
     assert( "output.indexOf(\"q''{O''Tool}''\") < 0" );
     assert( "output.indexOf(\"to_date(''01-APR-2025'',''DD-MON-YYYY'')\") < 0" );
   
-    output = new espresql(`departments /insert 1
+    output = new expresql(`departments /insert 1
     name /nn
     # settings = {"prefix":"test"}`).getDDL();
     assert( "0 < output.indexOf(\"insert into test_departments (\")" );
 
-    output = new espresql(`# settings = {prefixPKwithTname:true, "api":"Y"}
+    output = new expresql(`# settings = {prefixPKwithTname:true, "api":"Y"}
 person
     first_name 
     last_name
@@ -759,7 +759,7 @@ addreess
     person_id`).getDDL();
     assert( "output.indexOf(\"p_id\") < 0" );
     
-    output = new espresql(`test /insert 1 /colprefix pre 
+    output = new expresql(`test /insert 1 /colprefix pre 
    t1    
     #drop:true
     `).getDDL();
@@ -767,8 +767,8 @@ addreess
     assert( "0 < output.indexOf(\"pre_t1\")" );
     assert( "output.indexOf(\" t1\") < 0" );
 
-    // https://github.com/oracle/espresql/issues/63
-    output = new espresql(`t
+    // https://github.com/oracle/expresql/issues/63
+    output = new expresql(`t
     s vc20 /nn /unique
     #prefix: e01
     `).getDDL();
@@ -776,19 +776,19 @@ addreess
     assert( "0 < output.indexOf(\"e01_t_id_pk\")" );
     assert( "0 < output.indexOf(\"e01_t_s_unq\")" );
 
-   // https://github.com/oracle/espresql/issues/65
-   output = new espresql(`reports /insert 1
+   // https://github.com/oracle/expresql/issues/65
+   output = new expresql(`reports /insert 1
    created date
    description vc20
    pdf blob 
    `).getDDL();
    output = output.substring(0, output.indexOf("-- Generated by Quick SQL"));
    assert( "output.indexOf(\"N/A\") < 0" );
-   src = espresql.lexer( output, false, true, '`' );
+   src = expresql.lexer( output, false, true, '`' );
    assert( "src[56].value.length <= 20+2" );  // e.g. 'Eha ikuda ca balte v'"
 
-   // https://github.com/oracle/espresql/issues/67
-   output = new espresql(`departments 
+   // https://github.com/oracle/expresql/issues/67
+   output = new expresql(`departments 
    name 
    employees 
       name 
@@ -798,34 +798,34 @@ view emp_v departments employees
    output = output.substring(0, output.indexOf("-- Generated by Quick SQL"));
    assert( "output.indexOf(\"departments.id/\") < 0" );
 
-    output = new espresql( `issue78  /insert 2
+    output = new expresql( `issue78  /insert 2
     name
     `).getDDL();
     //console.log(output);
-    // src = espresql.lexer( output, false, true, '`' );
+    // src = expresql.lexer( output, false, true, '`' );
     // src[?].value != src[?].value
     assert( "0 < output.indexOf('Landon Glover') " );
     assert( "0 < output.indexOf('Jack Jackson') " );
 
     // Oracle annotations - table level
-    output = new espresql(`departments {UI_Display 'Departments', Classification 'HR'}
+    output = new expresql(`departments {UI_Display 'Departments', Classification 'HR'}
     name`).getDDL();
     assert( "0 < output.indexOf('annotations (UI_Display')" );
     assert( "0 < output.indexOf(')\\nannotations (')" );
 
     // Oracle annotations - column level
-    output = new espresql(`departments
+    output = new expresql(`departments
     name {UI_Display 'Department Name'}`).getDDL();
     assert( "0 < output.indexOf('annotations (UI_Display')" );
     assert( "0 < output.indexOf('char) annotations (')" );
 
     // Oracle annotations - flag annotation (no value)
-    output = new espresql(`departments
+    output = new expresql(`departments
     code {SurrogateKey}`).getDDL();
     assert( "0 < output.indexOf('annotations (SurrogateKey)')" );
 
     // Oracle annotations - both comments and annotations
-    output = new espresql(`departments [Main table] {Classification 'HR'}
+    output = new expresql(`departments [Main table] {Classification 'HR'}
     name [Full name] {UI_Display 'Name'}`).getDDL();
     assert( "0 < output.indexOf('comment on table departments')" );
     assert( "0 < output.indexOf('comment on column departments.name')" );
@@ -833,31 +833,31 @@ view emp_v departments employees
     assert( "0 < output.indexOf('annotations (UI_Display')" );
 
     // Oracle annotations - multiple annotations on column
-    output = new espresql(`departments
+    output = new expresql(`departments
     name {UI_Display 'Name', Highlight}`).getDDL();
     assert( "0 < output.indexOf('Highlight')" );
     assert( "0 < output.indexOf('UI_Display')" );
 
     // Oracle annotations - annotations with /nn option
-    output = new espresql(`departments
+    output = new expresql(`departments
     name /nn {Format 'text'}`).getDDL();
     assert( "0 < output.indexOf('not null')" );
     assert( "0 < output.indexOf('annotations (Format')" );
 
     // Oracle annotations - table name is not affected
-    output = new espresql(`departments {SomeAnnotation}
+    output = new expresql(`departments {SomeAnnotation}
     name`).getDDL();
     assert( "0 < output.indexOf('create table departments')" );
 
     // Oracle annotations - view level
-    output = new espresql(`dept
+    output = new expresql(`dept
     name
 view dept_v dept {UI_Display 'Department View'}`).getDDL();
     assert( "0 < output.indexOf('annotations (ui_display')" );
     assert( "0 < output.indexOf('view dept_v')" );
 
     // Oracle annotations - view with multiple annotations
-    output = new espresql(`dept
+    output = new expresql(`dept
     name
 view dept_v dept {Purpose 'reporting', Classification 'HR'}`).getDDL();
     assert( "0 < output.indexOf('annotations (purpose')" );
@@ -865,27 +865,27 @@ view dept_v dept {Purpose 'reporting', Classification 'HR'}`).getDDL();
     assert( "0 < output.indexOf(' as')" );
 
     // DESCRIPTION annotation generates comment on table
-    output = new espresql(`departments {DESCRIPTION 'Main HR departments table'}
+    output = new expresql(`departments {DESCRIPTION 'Main HR departments table'}
     name`).getDDL();
     assert( "0 < output.indexOf('comment on table departments')" );
     assert( "0 < output.indexOf('Main HR departments table')" );
     assert( "0 < output.indexOf('annotations (DESCRIPTION')" );
 
     // DESCRIPTION annotation generates comment on column
-    output = new espresql(`departments
+    output = new expresql(`departments
     name {DESCRIPTION 'The department name'}`).getDDL();
     assert( "0 < output.indexOf('comment on column departments.name')" );
     assert( "0 < output.indexOf('The department name')" );
 
     // DESCRIPTION annotation with explicit comment - DESCRIPTION wins
-    output = new espresql(`departments [Explicit comment] {DESCRIPTION 'Annotation description'}
+    output = new expresql(`departments [Explicit comment] {DESCRIPTION 'Annotation description'}
     name`).getDDL();
     assert( "0 < output.indexOf('comment on table departments')" );
     assert( "0 < output.indexOf(\"is 'Annotation description'\")" );
     assert( "0 > output.indexOf(\"is 'Explicit comment'\")" );
 
     // DESCRIPTION annotation mixed with other annotations
-    output = new espresql(`departments {DESCRIPTION 'HR table', Classification 'HR'}
+    output = new expresql(`departments {DESCRIPTION 'HR table', Classification 'HR'}
     name`).getDDL();
     assert( "0 < output.indexOf('comment on table departments')" );
     assert( "0 < output.indexOf('HR table')" );
@@ -893,7 +893,7 @@ view dept_v dept {Purpose 'reporting', Classification 'HR'}`).getDDL();
     assert( "0 < output.indexOf('Classification')" );
 
     // DESCRIPTION annotation with double quotes
-    output = new espresql(`projects {DESCRIPTION "Projects table"}
+    output = new expresql(`projects {DESCRIPTION "Projects table"}
     start_date date {DESCRIPTION "Start date of the project"}`).getDDL();
     assert( "0 < output.indexOf('comment on table projects')" );
     assert( "0 < output.indexOf('Projects table')" );
@@ -901,7 +901,7 @@ view dept_v dept {Purpose 'reporting', Classification 'HR'}`).getDDL();
     assert( "0 < output.indexOf('Start date of the project')" );
 
     // /trans column directive - single table with one /trans column
-    output = new espresql(`knowledge_type
+    output = new expresql(`knowledge_type
     knowledge_type vc(1024) /nn /trans
     display_order number`).getDDL();
     assert( "0 < output.indexOf('create table language')" );
@@ -918,7 +918,7 @@ view dept_v dept {Purpose 'reporting', Classification 'HR'}`).getDDL();
     assert( "0 < output.indexOf(\"sys_context('APP_CTX','LANG')\")" );
 
     // /trans on clob column - correct type in _trans table
-    output = new espresql(`articles
+    output = new expresql(`articles
     title vc(200) /trans
     body clob /trans
     status vc(20)`).getDDL();
@@ -931,7 +931,7 @@ view dept_v dept {Purpose 'reporting', Classification 'HR'}`).getDDL();
     assert( "0 < output.indexOf('k.status')" );
 
     // /translation and /translations aliases work too
-    output = new espresql(`products
+    output = new expresql(`products
     product_name vc(200) /translation
     description vc(4000) /translations`).getDDL();
     assert( "0 < output.indexOf('create table products_trans')" );
@@ -939,14 +939,14 @@ view dept_v dept {Purpose 'reporting', Classification 'HR'}`).getDDL();
     assert( "0 < output.indexOf('trans_description')" );
 
     // Custom transcontext setting
-    output = new espresql(`items
+    output = new expresql(`items
     item_name vc(100) /trans
     # transcontext: "sys_context('MY_CTX','LANGUAGE')"
     `).getDDL();
     assert( "0 < output.indexOf(\"sys_context('MY_CTX','LANGUAGE')\")" );
 
     // No /trans columns -> no language table or extra output
-    output = new espresql(`simple_table
+    output = new expresql(`simple_table
     name
     description`).getDDL();
     assert( "output.indexOf('create table language') < 0" );
@@ -954,7 +954,7 @@ view dept_v dept {Purpose 'reporting', Classification 'HR'}`).getDDL();
     assert( "output.indexOf('_resolved') < 0" );
 
     // Feature: /immutable directive
-    output = new espresql(`inspection_p /immutable
+    output = new expresql(`inspection_p /immutable
     finding vc(200)
     severity vc(20)`).getDDL();
     assert( "0 < output.indexOf('before update or delete')" );
@@ -964,13 +964,13 @@ view dept_v dept {Purpose 'reporting', Classification 'HR'}`).getDDL();
     assert( "0 < output.indexOf('inspection_p is immutable')" );
 
     // /immutable not present -> no immutable trigger
-    output = new espresql(`regular_table
+    output = new expresql(`regular_table
     name`).getDDL();
     assert( "output.indexOf('insertonly') < 0" );
     assert( "output.indexOf('raise_application_error') < 0" );
 
     // Feature: /soda directive
-    output = new espresql(`mycollection /soda`).getDDL();
+    output = new expresql(`mycollection /soda`).getDDL();
     assert( "0 < output.indexOf('create table mycollection')" );
     assert( "0 < output.indexOf('id              varchar2(255 char)')" );
     assert( "0 < output.indexOf('mycollection_id_pk primary key')" );
@@ -980,18 +980,18 @@ view dept_v dept {Purpose 'reporting', Classification 'HR'}`).getDDL();
     assert( "0 < output.indexOf('json_document   json')" );
 
     // /soda with semantics: byte
-    output = new espresql(`mycollection /soda
+    output = new expresql(`mycollection /soda
     # settings = {"semantics":"byte"}`).getDDL();
     assert( "0 < output.indexOf('varchar2(255 byte)')" );
 
     // /soda with prefix
-    output = new espresql(`docs /soda
+    output = new expresql(`docs /soda
     # settings = {"prefix":"app"}`).getDDL();
     assert( "0 < output.indexOf('create table app_docs')" );
     assert( "0 < output.indexOf('json_document')" );
 
     // Feature: Default date expressions (unquoted)
-    output = new espresql(`events
+    output = new expresql(`events
     created_at ts /default current_timestamp
     modified_at ts /default systimestamp
     regular_col vc(20) /default hello`).getDDL();
@@ -1000,12 +1000,12 @@ view dept_v dept {Purpose 'reporting', Classification 'HR'}`).getDDL();
     assert( "0 < output.indexOf(\"default on null 'hello'\")" );
 
     // localtimestamp also unquoted
-    output = new espresql(`events2
+    output = new expresql(`events2
     created_at ts /default localtimestamp`).getDDL();
     assert( "0 < output.indexOf('default on null localtimestamp')" );
 
     // Feature: Table groups via TGROUP annotation
-    output = new espresql(`departments {TGROUP 'HR Tables'}
+    output = new expresql(`departments {TGROUP 'HR Tables'}
     name
 employees {TGROUP 'HR Tables'}
     name
@@ -1022,25 +1022,25 @@ projects {TGROUP 'PM Tables'}
 
     // Feature: AI enrichment via metadata_annotations (aienrichment + db >= 26)
     // Table annotations → metadata_annotations.set()
-    output = new espresql(`departments {Classification 'HR', UI_Display 'Departments'}
+    output = new expresql(`departments {Classification 'HR', UI_Display 'Departments'}
     name`, '{"db":"26ai", "aienrichment":"yes"}').getDDL();
     assert( "0 < output.indexOf('AI enrichment')" );
     assert( "0 < output.indexOf(\"metadata_annotations.set('Classification', 'HR', 'DEPARTMENTS')\")" );
     assert( "0 < output.indexOf(\"metadata_annotations.set('UI_Display', 'Departments', 'DEPARTMENTS')\")" );
 
     // Column annotations → set() with 'TABLE COLUMN' type
-    output = new espresql(`departments
+    output = new expresql(`departments
     name {UI_Display 'Department Name'}`, '{"db":"26ai", "aienrichment":"yes"}').getDDL();
     assert( "0 < output.indexOf(\"metadata_annotations.set('UI_Display', 'Department Name', 'DEPARTMENTS.NAME', 'TABLE COLUMN')\")" );
 
     // View annotations → set() with 'VIEW' type
-    output = new espresql(`departments
+    output = new expresql(`departments
     name
 view dept_v departments {UI_Display 'Department View'}`, '{"db":"26ai", "aienrichment":"yes"}').getDDL();
     assert( "0 < output.indexOf(\"metadata_annotations.set('UI_Display', 'Department View', 'DEPT_V', 'VIEW')\")" );
 
     // TGROUP annotations → create_group() + add_to_group()
-    output = new espresql(`departments {TGROUP 'HR Tables'}
+    output = new expresql(`departments {TGROUP 'HR Tables'}
     name
 employees {TGROUP 'HR Tables'}
     name`, '{"db":"26ai", "aienrichment":"yes"}').getDDL();
@@ -1049,32 +1049,32 @@ employees {TGROUP 'HR Tables'}
     assert( "0 < output.indexOf(\"metadata_annotations.add_to_group('HR Tables', 'EMPLOYEES', 'TABLE')\")" );
 
     // No enrichment when db < 26 (even with aienrichment on)
-    output = new espresql(`departments {Classification 'HR'}
+    output = new expresql(`departments {Classification 'HR'}
     name`, '{"db":"23ai", "aienrichment":"yes"}').getDDL();
     assert( "-1 == output.indexOf('metadata_annotations')" );
 
     // No enrichment when db not set
-    output = new espresql(`departments {Classification 'HR'}
+    output = new expresql(`departments {Classification 'HR'}
     name`, '{"aienrichment":"yes"}').getDDL();
     assert( "-1 == output.indexOf('metadata_annotations')" );
 
     // No enrichment when aienrichment not enabled
-    output = new espresql(`departments {Classification 'HR'}
+    output = new expresql(`departments {Classification 'HR'}
     name`, '{"db":"26ai"}').getDDL();
     assert( "-1 == output.indexOf('metadata_annotations')" );
 
     // Flag annotations skipped (no value)
-    output = new espresql(`departments {SurrogateKey}
+    output = new expresql(`departments {SurrogateKey}
     name`, '{"db":"26ai", "aienrichment":"yes"}').getDDL();
     assert( "-1 == output.indexOf('metadata_annotations')" );
 
     // Object prefix applied correctly
-    output = new espresql(`departments {Classification 'HR'}
+    output = new expresql(`departments {Classification 'HR'}
     name`, '{"db":"26ai", "aienrichment":"yes", "prefix":"APP"}').getDDL();
     assert( "0 < output.indexOf(\"metadata_annotations.set('Classification', 'HR', 'APP_DEPARTMENTS')\")" );
 
     // Feature: Views with translation awareness
-    output = new espresql(`locations
+    output = new expresql(`locations
     name vc(200) /trans
     code vc(10)
     tenant_id
@@ -1089,14 +1089,14 @@ view location_v locations`).getDDL();
     assert( "0 < output.indexOf('locations.code')" );
 
     // View without /trans -> no LEFT JOIN
-    output = new espresql(`dept
+    output = new expresql(`dept
     name
 view dept_v dept`).getDDL();
     assert( "output.indexOf('left join') < 0" );
     assert( "output.indexOf('coalesce') < 0" );
 
     // -- Issue #1: Boolean native type with db >= 23 should use true/false, not 'Y'/'N'
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"db":"23ai","pk":"IDENTITY"}
 tenant
   is_active vc(1) /nn /check Y, N /default Y
@@ -1110,7 +1110,7 @@ tenant
     assert( "0 < output.indexOf('boolean default on null false')" );
 
     // Boolean with db < 23 should still use varchar2 Y/N
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"db":"19c","pk":"IDENTITY"}
 tenant
   is_active vc(1) /nn /check Y, N /default Y
@@ -1120,7 +1120,7 @@ tenant
     assert( "0 < output.indexOf(\"in ('Y','N')\")" );
 
     // -- Issue #6: View FROM clause should have space between table name and alias
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"prefix":"IW","pk":"IDENTITY"}
 dept
     name
@@ -1129,7 +1129,7 @@ view dept_v dept`).getDDL();
     assert( "output.indexOf('iw_deptdept') < 0" );
 
     // -- Issue #7: Reserved word 'user' should be amended in view aliases
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"prefix":"IW","pk":"IDENTITY"}
 user
     username vc(50)
@@ -1141,7 +1141,7 @@ view task_v task user`).getDDL();
     assert( "0 < output.indexOf('the_user.username')" );
 
     // -- Issue #10: View WHERE clause should use actual FK column name
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"prefix":"IW","pk":"IDENTITY"}
 user
     username vc(50)
@@ -1153,7 +1153,7 @@ view stats_v visit user`).getDDL();
     assert( "output.indexOf('(+)') < 0" );
 
     // -- Issue #9: Duplicate column aliases should be disambiguated
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"prefix":"IW","pk":"IDENTITY"}
 user
     username vc(50)
@@ -1164,7 +1164,7 @@ view auth_v user auth`).getDDL();
     assert( "0 < output.indexOf('auth_user_id')" );
 
     // -- Issue #11: SODA collection should not get a BIU trigger
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"pk":"IDENTITY","rowversion":true,"auditcols":"Y","apex":"Y"}
 visit_inspection_c /soda
 `).getDDL();
@@ -1172,7 +1172,7 @@ visit_inspection_c /soda
     assert( "0 < output.indexOf('json_document')" );
 
     // -- Recommendation #13: Native JSON type for db >= 23
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"db":"23ai"}
 test_json
     payload json
@@ -1182,7 +1182,7 @@ test_json
     assert( "output.indexOf('is json') < 0" );
 
     // Native JSON not used for db < 23
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"db":"19c"}
 test_json
     payload json
@@ -1190,7 +1190,7 @@ test_json
     assert( "0 < output.indexOf('clob check (payload is json)')" );
 
     // -- Recommendation #14: Audit date type setting (timestamp with time zone)
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"auditdate":"timestamp with time zone","auditcols":"Y","apex":"Y"}
 test_audit
     name
@@ -1200,7 +1200,7 @@ test_audit
     assert( "output.indexOf(':= sysdate') < 0" );
 
     // Audit date type defaults to Date Data Type when auditdate not set
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"auditcols":"Y","apex":"Y"}
 test_audit2
     name
@@ -1208,7 +1208,7 @@ test_audit2
     assert( "0 < output.indexOf('sysdate')" );
 
     // -- Recommendation #16: DROP IF EXISTS for db >= 23
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"db":"26ai","drop":"Y"}
 test_drop
     name
@@ -1216,7 +1216,7 @@ test_drop
     assert( "0 <= output.indexOf('drop table if exists')" );
 
     // DROP without IF EXISTS for db < 23
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"db":"19c","drop":"Y"}
 test_drop2
     name
@@ -1225,7 +1225,7 @@ test_drop2
     assert( "output.indexOf('if exists') < 0" );
 
     // -- Recommendation #17: IMMUTABLE TABLE for db >= 23 uses CREATE IMMUTABLE TABLE ... NO DROP NO DELETE
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"db":"23ai"}
 audit_log /immutable
     finding vc(200)
@@ -1238,7 +1238,7 @@ audit_log /immutable
     assert( "output.indexOf('insertonly') < 0" );
 
     // IMMUTABLE TABLE for db < 23 uses trigger-based approach
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"db":"19c"}
 audit_log /immutable
     finding vc(200)
@@ -1249,7 +1249,7 @@ audit_log /immutable
     assert( "0 < output.indexOf('insertonly')" );
 
     // -- Recommendation #18: VECTOR INDEX for db >= 23
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"db":"26ai"}
 documents
     title vc(200)
@@ -1260,7 +1260,7 @@ documents
     assert( "0 < output.indexOf('with distance cosine')" );
 
     // No vector index for db < 23
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"db":"19c"}
 documents
     title vc(200)
@@ -1269,7 +1269,7 @@ documents
     assert( "output.indexOf('create vector index') < 0" );
 
     // -- Recommendation #22: COMPRESS ADVANCED for db >= 23
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"db":"26ai","compress":"Y"}
 big_table
     name
@@ -1278,7 +1278,7 @@ big_table
     assert( "output.indexOf(') compress;') < 0" );
 
     // Regular compress for db < 23
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"db":"19c","compress":"Y"}
 big_table2
     name
@@ -1287,7 +1287,7 @@ big_table2
     assert( "output.indexOf('row store compress advanced') < 0" );
 
     // -- Feature: Oracle DOMAIN types (23ai+)
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"db":"23ai"}
 users
     email /domain email_d /nn
@@ -1298,7 +1298,7 @@ users
     assert( "output.indexOf('varchar2') < 0 || output.indexOf('varchar2') > output.indexOf('phone_d')" );
 
     // Domain directive ignored for db < 23
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"db":"19c"}
 users2
     email /domain email_d
@@ -1307,7 +1307,7 @@ users2
     assert( "0 < output.indexOf('email    varchar2')" );
 
     // -- Feature: SDO_GEOMETRY spatial type
-    output = new espresql(`
+    output = new expresql(`
 addresses
     street_name
     location geometry
@@ -1315,7 +1315,7 @@ addresses
     assert( "0 < output.indexOf('sdo_geometry')" );
     assert( "0 < output.indexOf('indextype is mdsys.spatial_index_v2')" );
 
-    output = new espresql(`
+    output = new expresql(`
 addresses2
     street_name
     geo sdo_geometry
@@ -1324,7 +1324,7 @@ addresses2
     assert( "0 < output.indexOf('indextype is mdsys.spatial_index_v2')" );
 
     // -- Feature: JSON Relational Duality Views
-    output = new espresql(`
+    output = new expresql(`
 # settings = {"db":"23ai"}
 departments
     name

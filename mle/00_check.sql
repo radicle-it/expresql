@@ -1,4 +1,4 @@
--- Verifica stato oggetti espresql nel schema corrente
+﻿-- Verifica stato oggetti expresql nel schema corrente
 SET SERVEROUTPUT ON
 
 SELECT 'MLE MODULE'   AS tipo, module_name   AS nome, status FROM user_mle_modules  WHERE module_name LIKE 'QUICKSQL%'

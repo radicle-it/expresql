@@ -1,5 +1,5 @@
--- =============================================================================
--- EspreSQL — APEX Plug-in: PL/SQL render package installer
+﻿-- =============================================================================
+-- ExpreSQL — APEX Plug-in: PL/SQL render package installer
 -- =============================================================================
 -- This script installs only the PL/SQL package used by the plug-in render
 -- function.  The plug-in definition itself must be created (once) via the
@@ -8,8 +8,8 @@
 -- Run as the APEX workspace parsing schema.
 -- =============================================================================
 
-@@espresql_plugin.pks
-@@espresql_plugin.pkb
+@@expresql_plugin.pks
+@@expresql_plugin.pkb
 
-show errors package      espresql_plugin
-show errors package body espresql_plugin
+show errors package      expresql_plugin
+show errors package body expresql_plugin

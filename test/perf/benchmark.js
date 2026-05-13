@@ -1,7 +1,7 @@
-import { readFileSync } from 'fs';
+﻿import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
-import { espresql } from '../../src/ddl.js';
+import { expresql } from '../../src/ddl.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -13,7 +13,7 @@ for (let i = 0; i < 1000; i++)
 
 // Real-world inspectwise schema
 const inspectwise = readFileSync(
-    resolve(__dirname, '../../espresql-extension-vscode/examples/inspectwise.espresql'),
+    resolve(__dirname, '../../expresql-extension-vscode/examples/inspectwise.expresql'),
     'utf8'
 );
 
@@ -28,7 +28,7 @@ function bench(name, input, runs) {
     let output;
     for (let i = 0; i < runs; i++) {
         const t0 = performance.now();
-        output = espresql.toDDL(input);
+        output = expresql.toDDL(input);
         times.push(performance.now() - t0);
     }
     const med = median(times);
@@ -39,8 +39,8 @@ function bench(name, input, runs) {
 console.log('QuickSQL Benchmark\n');
 
 // Warmup
-espresql.toDDL(syntheticInput);
-espresql.toDDL(inspectwise);
+expresql.toDDL(syntheticInput);
+expresql.toDDL(inspectwise);
 
 const r1 = bench('synthetic-1000', syntheticInput, 5);
 const r2 = bench('inspectwise-484', inspectwise, 5);

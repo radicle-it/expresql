@@ -1,4 +1,4 @@
-import  {espresql,fromJSON} from "../../src/ddl.js";
+﻿import  {expresql,fromJSON} from "../../src/ddl.js";
 
 let input = "table\n";
 for( let i = 0; i < 1000; i++)
@@ -7,7 +7,7 @@ console.log('input='+input.substring(0,1000));
     
 let t1 = Date.now();
 
-let output = espresql.toDDL(input);
+let output = expresql.toDDL(input);
 console.log("length="+output.length);
 console.log(output.substring(0,1000));
 

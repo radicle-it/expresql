@@ -1,17 +1,17 @@
--- =============================================================================
+﻿-- =============================================================================
 -- 03_install_env.sql
 -- Crea l'MLE environment che collega i due moduli.
--- espresql_api_module importa 'espresql' → risolto in espresql_module.
+-- expresql_api_module importa 'expresql' → risolto in expresql_module.
 --
 -- Prerequisiti: entrambi i moduli devono essere già installati.
 -- =============================================================================
 
-PROMPT >>> Creazione espresql_env...
+PROMPT >>> Creazione expresql_env...
 
-CREATE OR REPLACE MLE ENV espresql_env
+CREATE OR REPLACE MLE ENV expresql_env
 IMPORTS (
-    espresql     FROM espresql_module,       -- usato da espresql_api_module
-    espresql_api FROM espresql_api_module    -- esposto al package PL/SQL
+    expresql     FROM expresql_module,       -- usato da expresql_api_module
+    expresql_api FROM expresql_api_module    -- esposto al package PL/SQL
 );
 /
 

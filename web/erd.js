@@ -1,4 +1,4 @@
-import { toERD }                     from '../dist/espresql.js';
+﻿import { toERD }                     from '../dist/expresql.js';
 import { state, LS_ERD_POS, LS_ERD_COL } from './state.js';
 
 // ── Layout constants ──────────────────────────────────────────────
@@ -59,7 +59,7 @@ const GRAPH_BG  = { dark: '#1a1a1a', light: '#F0EDEA' };
 const BODY_FILL = { dark: '#1a1a1a', light: '#FFFFFF' };
 
 function currentTheme() {
-    const r = document.querySelector('.espresql-plugin-root') || document.documentElement;
+    const r = document.querySelector('.expresql-plugin-root') || document.documentElement;
     return r.dataset.theme === 'light' ? 'light' : 'dark';
 }
 

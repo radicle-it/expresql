@@ -1,10 +1,10 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
-EspreSQL is an ESQL shorthand-to-DDL compiler. It takes indentation-based shorthand and produces relational DDL, ERD metadata, and PL/SQL scaffolding. Forked from Oracle's Quick SQL, rewritten in TypeScript with a multi-dialect architecture.
+ExpreSQL is an ESQL shorthand-to-DDL compiler. It takes indentation-based shorthand and produces relational DDL, ERD metadata, and PL/SQL scaffolding. Forked from Oracle's Quick SQL, rewritten in TypeScript with a multi-dialect architecture.
 
 ## Commands
 
@@ -57,7 +57,7 @@ node bin/index.js <file.esql or file.json>
 
 ### Main entry point
 
-`src/ddl.ts` — exports `espresql` class with `toDDL()`, `toERD()`, `fromJSON()`. The `toDDL` convenience function combines lexing, parsing, and generation.
+`src/ddl.ts` — exports `expresql` class with `toDDL()`, `toERD()`, `fromJSON()`. The `toDDL` convenience function combines lexing, parsing, and generation.
 
 ## Key Directories
 
@@ -74,13 +74,13 @@ node bin/index.js <file.esql or file.json>
 ## Build System
 
 Vite builds three separate libraries controlled by `TARGET_LIBRARY` env var:
-- **DDL**: entry `src/ddl.ts` → `dist/espresql.js` (core + all dialects)
-- **DDL-ORACLE**: entry `src/ddl-oracle.ts` → `dist/espresql-oracle.js`
-- **DDL-DB2**: entry `src/ddl-db2.ts` → `dist/espresql-db2.js`
+- **DDL**: entry `src/ddl.ts` → `dist/expresql.js` (core + all dialects)
+- **DDL-ORACLE**: entry `src/ddl-oracle.ts` → `dist/expresql-oracle.js`
+- **DDL-DB2**: entry `src/ddl-db2.ts` → `dist/expresql-db2.js`
 
 ## Testing Conventions
 
-- Vitest tests use `toDDL()` / `espresql` class, assert on output strings with `toContain()` / `toMatch()`
+- Vitest tests use `toDDL()` / `expresql` class, assert on output strings with `toContain()` / `toMatch()`
 - Call `resetSeed()` in `beforeEach` for deterministic sample data
 - Legacy JS regression tests (`npm test`) compare output against `.sql` baselines in `test/` fixture dirs
 - Both test suites must pass: `npm test` (legacy) and `npm run test:ts` (vitest)

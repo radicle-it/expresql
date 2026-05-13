@@ -9675,9 +9675,9 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 	})();
 })))(), 1);
 function fe(e, t, n, r) {
-	let i = new de.default(pe++), a = n.toUpperCase(), o = e.toUpperCase(), s = t.toUpperCase();
+	let i = new de.default(N++), a = n.toUpperCase(), o = e.toUpperCase(), s = t.toUpperCase();
 	if (r != null && 0 < r.length) {
-		let e = r.length, t = r[Math.floor(N() * (e - 0)) + 0];
+		let e = r.length, t = r[Math.floor(P() * (e - 0)) + 0];
 		return !a.startsWith("INTEGER") && !a.startsWith("NUMBER") && !a.startsWith("DATE") && (!t.toLowerCase || t.toLowerCase() !== "null") && (!t.charAt || t.charAt(0) !== "q" && t.charAt(1) !== "'") && (t.charAt && t.charAt(0) === "'" && (t = t.substring(1, t.length - 1)), t = t.split("'").join("''"), t = "'" + t + "'"), t;
 	}
 	if (s === "NAME" && 0 <= o.indexOf("DEPARTMENT")) {
@@ -9687,7 +9687,7 @@ function fe(e, t, n, r) {
 			"Delivery",
 			"Manufacturing"
 		];
-		return "'" + e[Math.floor(N() * e.length)] + "'";
+		return "'" + e[Math.floor(P() * e.length)] + "'";
 	}
 	if (i[s.toLowerCase()] !== void 0 && s.indexOf("NAME") < 0) return "'" + i[s.toLowerCase()]() + "'";
 	if (s === "FIRST_NAME") return "'" + i.first() + "'";
@@ -9721,35 +9721,35 @@ function fe(e, t, n, r) {
 			"Evangelist",
 			"Salesman"
 		];
-		return "'" + e[Math.floor(N() * e.length)] + "'";
+		return "'" + e[Math.floor(P() * e.length)] + "'";
 	}
-	return a.startsWith("INTEGER") || a.startsWith("NUMBER") ? Math.floor(N() * 100) : a.startsWith("DATE") || a.startsWith("TIMESTAMP") ? "sysdate-" + Math.floor(N() * 100) : a === "BLOB" || a === "LONG" ? "null" : "'N/A'";
+	return a.startsWith("INTEGER") || a.startsWith("NUMBER") ? Math.floor(P() * 100) : a.startsWith("DATE") || a.startsWith("TIMESTAMP") ? "sysdate-" + Math.floor(P() * 100) : a === "BLOB" || a === "LONG" ? "null" : "'N/A'";
 }
-var pe = 1;
-function me() {
-	pe = 1;
+var N = 1;
+function pe() {
+	N = 1;
 }
-function N() {
-	let e = Math.sin(pe++) * 1e4;
+function P() {
+	let e = Math.sin(N++) * 1e4;
 	return e - Math.floor(e);
 }
 //#endregion
 //#region src/compiler/base-generator.ts
-function he(e) {
+function me(e) {
 	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
 }
-function ge(e, t, n, r) {
+function he(e, t, n, r) {
 	let i = [];
 	if (typeof e != "object" || !e) return null;
 	let a = e[n];
 	a != null && t === r && i.push(a);
 	for (let t in e) {
-		let a = e[t], o = ge(a, t, n, r);
+		let a = e[t], o = he(a, t, n, r);
 		o !== null && (i = i.concat(o));
 	}
 	return i;
 }
-var _e = class {
+var ge = class {
 	constructor(e) {
 		this._ddl = e;
 	}
@@ -9945,7 +9945,7 @@ var _e = class {
 		return t;
 	}
 	generateData(e, t) {
-		if (me(), this._ddl.optionEQvalue("inserts", !1)) return "";
+		if (pe(), this._ddl.optionEQvalue("inserts", !1)) return "";
 		let n = this.inserts4tbl(e, t), r = this._orderedTableNodes(e), i = "";
 		for (let e of r) {
 			let t = n[this._ddl.objPrefix() + e.parseName()];
@@ -9982,9 +9982,9 @@ var _e = class {
 			a ?? (a = this._ddl.find(t), a?.isMany2One?.() && !t.endsWith("_id") && (n = t, t = l(t) ?? t, r = "_id")), i += O + t + r + ",\n";
 		}
 		for (let t of e.regularColumns()) a != null && t.parseName() === "id" || t.isOption("pk") || (i += O + t.parseName() + ",\n");
-		if (i = he(i), i += ") values (\n", a != null) s = t + 1, i += O + s + ",\n";
+		if (i = me(i), i += ") values (\n", a != null) s = t + 1, i += O + s + ",\n";
 		else if (o != null) {
-			let r = o, a = ge(this._ddl.data, null, r, e.parseName()), c = -1;
+			let r = o, a = he(this._ddl.data, null, r, e.parseName()), c = -1;
 			n != null && (c = n[r]), a != null && a[t] != null && (c = a[t]), c !== -1 && typeof c == "string" && (c = "'" + c + "'"), s = c === -1 ? t + 1 : c, i += O + s + ",\n";
 		}
 		for (let t in e.fks ?? {}) {
@@ -10001,7 +10001,7 @@ var _e = class {
 			let c = String(this._ddl.getOptionValue("Data Language") ?? "EN"), l = fe(r, s, this.colType(t._inferTypeFull()), o);
 			i += O + String(ue(c, l)) + ",\n";
 		}
-		return i = he(i), i += ");\n", i;
+		return i = me(i), i += ");\n", i;
 	}
 	_resolveFkSampleValues(e, t, n, r, i, a) {
 		let o = this._ddl.find(n), s = [], c = "INTEGER";
@@ -10030,41 +10030,41 @@ var _e = class {
 			values: s
 		};
 	}
-}, ve = {}, P = {};
-function F(e, t) {
-	ve[e.toLowerCase()] = t;
+}, F = {}, I = {};
+function _e(e, t) {
+	F[e.toLowerCase()] = t;
 }
-function ye(e) {
-	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = ve[t];
+function ve(e) {
+	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = F[t];
 	if (n == null) {
-		let e = Object.keys(ve).join(", ");
+		let e = Object.keys(F).join(", ");
 		throw Error(`Unknown SQL dialect: "${t}". Registered dialects: ${e}`);
 	}
 	return n(e);
 }
-function be(e, t) {
-	P[e.toLowerCase()] = t;
+function ye(e, t) {
+	I[e.toLowerCase()] = t;
 }
-function xe(e) {
-	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = P[t];
+function be(e) {
+	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = I[t];
 	if (n == null) {
-		let e = Object.keys(P).join(", ");
+		let e = Object.keys(I).join(", ");
 		throw Error(`Unknown SQL dialect for diff: "${t}". Registered dialects: ${e}`);
 	}
 	return n(e);
 }
 //#endregion
 //#region src/utils/json-to-qsql.ts
-function I(e) {
+function L(e) {
 	let t = "";
 	for (let n = 0; n < e; n++) t += "   ";
 	return t;
 }
-function Se(e, t) {
+function xe(e, t) {
 	for (let n in e) if (JSON.stringify(e[n]) === JSON.stringify(t)) return !0;
 	return !1;
 }
-function L(e) {
+function R(e) {
 	let t = ["_id", "Id"];
 	if (e.id != null) return {
 		key: "id",
@@ -10079,12 +10079,12 @@ function L(e) {
 	}
 	return null;
 }
-function Ce(e) {
+function Se(e) {
 	if (typeof e != "object" || !e) return !1;
 	for (let t in e) if (!(e[t] != null && typeof e[t] == "object")) return !0;
 	return !1;
 }
-function we(e) {
+function Ce(e) {
 	let t = null;
 	outer: for (let n in e) if (n === "0") for (let r in e[n]) {
 		t = r;
@@ -10096,41 +10096,41 @@ function we(e) {
 	}
 	return t == null || t.toLowerCase() === "id" ? null : t.toLowerCase().endsWith("_id") ? t.substring(0, t.length - 3) : t.endsWith("Id") ? t.substring(0, t.length - 2) : null;
 }
-function Te(e, t, n) {
+function we(e, t, n) {
 	let r = !1, i = !1;
 	for (let a in e) for (let o = 0; o < a; o++) if (e[a][t] === e[o][t] && e[a][n] !== e[o][n] ? r = !0 : e[a][t] !== e[o][t] && e[a][n] === e[o][n] && (i = !0), r && i) return !0;
 	return !1;
 }
-function R(e) {
+function z(e) {
 	if (typeof e != "object" || !e) return "";
 	let t = "(";
 	for (let n in e) {
-		if (n === "0") return R(e[n]);
+		if (n === "0") return z(e[n]);
 		e[n] != null && typeof e[n] == "object" || (t += n + ",");
 	}
 	return t.lastIndexOf(",") === t.length - 1 && (t = t.substring(0, t.length - 1)), t + ")";
 }
-function Ee(e, t) {
+function Te(e, t) {
 	let n = e, r = t, i = n.indexOf("(");
 	0 < i && (n = n.substring(0, i));
 	let a = r.indexOf("(");
 	return 0 < a && (r = r.substring(0, a)), n + "_" + r + "(" + n + "_id," + r + "_id)";
 }
-var De = class {
+var Ee = class {
 	constructor() {
 		this.tableContent = {}, this.notNormalized = [], this.tableSignatures = [], this.child2parent = {}, this.objCounts = {}, this.idSeq = 1;
 	}
 	output(e, t, n, r) {
 		if (r !== !1 && this.notNormalized.includes(e)) {
-			let r = Ee(this.parent(e) ?? "", e), i = this.tableContent[r];
+			let r = Te(this.parent(e) ?? "", e), i = this.tableContent[r];
 			if (i != null) {
-				let a = "\n" + I(n) + this.tableName(r) + " /insert " + i.length;
-				if (Te(i, this.refIdName(this.parent(e) ?? ""), this.refIdName(e))) return a + this.output(e, t, n + 1, !1);
+				let a = "\n" + L(n) + this.tableName(r) + " /insert " + i.length;
+				if (we(i, this.refIdName(this.parent(e) ?? ""), this.refIdName(e))) return a + this.output(e, t, n + 1, !1);
 			}
 		}
-		let i = this.notNormalized.includes(e) ? ">" : "", a = "\n" + I(n) + i + this.tableName(e);
+		let i = this.notNormalized.includes(e) ? ">" : "", a = "\n" + L(n) + i + this.tableName(e);
 		if (typeof t == "number" && (a += " num", e.endsWith("_id") || e.endsWith("Id"))) return a += " /pk", a;
-		if (e === "id") return "\n" + I(n) + "id vc32 /pk";
+		if (e === "id") return "\n" + L(n) + "id vc32 /pk";
 		tofinal: if (typeof t == "object" && t) {
 			if (Array.isArray(t)) for (let i in t) {
 				if (1 <= i) break;
@@ -10147,10 +10147,10 @@ var De = class {
 					let a = l(e) ?? "", o = r.toLowerCase();
 					if (e != null && a + "_id" === o && 0 < n && (i = r), a + "_id" === o || !isNaN(r) && !Array.isArray(t)) continue;
 				}
-				let s = this.output(r + R(o), o, n + 1);
+				let s = this.output(r + z(o), o, n + 1);
 				a += s;
 			}
-			i !== "" && (a += "\n" + I(n) + i);
+			i !== "" && (a += "\n" + L(n) + i);
 		}
 		return a;
 	}
@@ -10161,8 +10161,8 @@ var De = class {
 			if (typeof a == "object" && a) {
 				let t = e, o = n;
 				if (isNaN(i)) {
-					t = i + R(a);
-					let e = L(r);
+					t = i + z(a);
+					let e = R(r);
 					e != null && (o = e);
 				}
 				this.flatten(t, a, o);
@@ -10171,15 +10171,15 @@ var De = class {
 		!this.notNormalized.includes(e) && n != null && Object.keys(r).length && (r[n.key] = n.value);
 		let i = 0 < Object.keys(r).length, a = this.tableContent[e];
 		if (i) {
-			if (a ??= [], Se(a, r) || a.push(r), this.notNormalized.includes(e)) {
+			if (a ??= [], xe(a, r) || a.push(r), this.notNormalized.includes(e)) {
 				let t = this.parent(e);
 				if (t != null) {
-					let i = Ee(t, e), a = this.tableContent[i];
+					let i = Te(t, e), a = this.tableContent[i];
 					a ??= [];
 					let o = {};
 					o[this.refIdName(t)] = n?.value;
-					let s = L(r);
-					s ??= (r.id = this.idSeq++, L(r)), o[this.refIdName(e)] = s.value, a.push(o), this.tableContent[i] = a;
+					let s = R(r);
+					s ??= (r.id = this.idSeq++, R(r)), o[this.refIdName(e)] = s.value, a.push(o), this.tableContent[i] = a;
 				}
 			}
 			this.tableContent[e] = a;
@@ -10191,12 +10191,12 @@ var De = class {
 			let r = t[n];
 			if (typeof r == "object" && r) {
 				let a = e;
-				if (isNaN(n)) a = n + R(r);
+				if (isNaN(n)) a = n + z(r);
 				else if (!Array.isArray(t)) continue;
 				a !== e && (this.child2parent[a] = e), this.duplicatesAndParents(a, r), i = !0;
 			}
 		}
-		Ce(t) && !this.tableSignatures.includes(e) && this.tableSignatures.push(e), i || (this.objCounts[n] = r + 1), 1 < this.objCounts[n] && !this.notNormalized.includes(e) && this.notNormalized.push(e);
+		Se(t) && !this.tableSignatures.includes(e) && this.tableSignatures.push(e), i || (this.objCounts[n] = r + 1), 1 < this.objCounts[n] && !this.notNormalized.includes(e) && this.notNormalized.push(e);
 	}
 	parent(e) {
 		let t = this.child2parent[e];
@@ -10216,12 +10216,12 @@ var De = class {
 		return (l(this.tableName(e)) ?? this.tableName(e)) + "_id";
 	}
 };
-function Oe(e, t) {
-	let n = JSON.parse(e), r = we(n);
+function De(e, t) {
+	let n = JSON.parse(e), r = Ce(n);
 	r != null && (t = r), t ??= "root_tbl";
-	let i = new De();
-	i.duplicatesAndParents(t + R(n), n), i.flatten(t + R(n), n);
-	let a = i.output(t + R(n), n, 0);
+	let i = new Ee();
+	i.duplicatesAndParents(t + z(n), n), i.flatten(t + z(n), n);
+	let a = i.output(t + z(n), n, 0);
 	a += "\n\n#settings = { genpk: false, drop: true, pk: identityDataType, semantics: char }", a += "\n\n#flattened = \n";
 	let o = {};
 	for (let e in i.tableContent) o[i.tableName(e)] = i.tableContent[e];
@@ -10229,15 +10229,15 @@ function Oe(e, t) {
 }
 //#endregion
 //#region src/utils/error-msgs.ts
-var z = class {
+var B = class {
 	constructor(e, t, n, r) {
-		this.from = t, this.to = n ?? new B(t.line, t.depth + 1), this.message = e, this.severity = r ?? "error";
+		this.from = t, this.to = n ?? new V(t.line, t.depth + 1), this.message = e, this.severity = r ?? "error";
 	}
-}, B = class {
+}, V = class {
 	constructor(e, t) {
 		this.line = e, this.depth = t;
 	}
-}, ke = [
+}, Oe = [
 	"api",
 	"audit",
 	"auditcols",
@@ -10258,7 +10258,7 @@ var z = class {
 	"pk",
 	"cascade",
 	"setnull"
-], Ae = /* @__PURE__ */ "idx.index.indexed.unique.uk.check.constant.default.domain.hidden.invincible.values.upper.lower.nn.not.between.references.reference.cascade.setnull.fk.pk.trans.translation.translations".split("."), V = {
+], ke = /* @__PURE__ */ "idx.index.indexed.unique.uk.check.constant.default.domain.hidden.invincible.values.upper.lower.nn.not.between.references.reference.cascade.setnull.fk.pk.trans.translation.translations".split("."), H = {
 	duplicateId: "Explicit ID column conflicts with genpk",
 	invalidDatatype: "Invalid Datatype",
 	undefinedObject: "Undefined Object: ",
@@ -10266,76 +10266,76 @@ var z = class {
 	tableDirectiveTypo: "Unknown Table directive",
 	columnDirectiveTypo: "Unknown Column directive"
 };
-function je(e) {
+function Ae(e) {
 	let t = e, n = [], r = [];
 	for (let t = 0; t < e.forest.length; t++) e.forest[t].inferType() === "table" && (r = r.concat(e.forest[t].descendants()));
-	n = n.concat(Fe(r));
+	n = n.concat(Pe(r));
 	let i = t.descendants();
 	for (let e = 0; e < i.length; e++) {
 		let r = i[e];
 		if (t.optionEQvalue("genpk", !0) && i[e].parseName() === "id") {
 			let e = r.content.toLowerCase().indexOf("id");
-			n.push(new z(V.duplicateId, new B(r.line, e), new B(r.line, e + 2)));
+			n.push(new B(H.duplicateId, new V(r.line, e), new V(r.line, e + 2)));
 			continue;
 		}
 		let a = r.src[2];
 		if (2 < r.src.length && a.value === "-") {
 			let e = a.begin;
-			n.push(new z(V.invalidDatatype, new B(r.line, e), new B(r.line, e + 2)));
+			n.push(new B(H.invalidDatatype, new V(r.line, e), new V(r.line, e + 2)));
 			continue;
 		}
 		let o = r.src[1];
 		if (1 < r.src.length && o.value === "vc0") {
 			let e = o.begin;
-			n.push(new z(V.invalidDatatype, new B(r.line, e)));
+			n.push(new B(H.invalidDatatype, new V(r.line, e)));
 			continue;
 		}
-		n = n.concat(Ne(t, r)), n = n.concat(Pe(t, r)), n = n.concat(Me(t, r));
+		n = n.concat(Me(t, r)), n = n.concat(Ne(t, r)), n = n.concat(je(t, r));
 	}
 	return n;
 }
-function Me(e, t) {
+function je(e, t) {
 	let n = t.inferType() === "table", r = [], i = t.src, a = !1;
 	for (let e = 1; e < i.length; e++) {
 		if (i[e].value === "/") {
 			a = !0;
 			continue;
 		}
-		a && (a = !1, n && ke.indexOf(i[e].value.toLowerCase()) < 0 && r.push(new z(V.tableDirectiveTypo, new B(t.line, i[e].begin), new B(t.line, i[e].begin + i[e].value.length))), !n && Ae.indexOf(i[e].value.toLowerCase()) < 0 && r.push(new z(V.columnDirectiveTypo, new B(t.line, i[e].begin), new B(t.line, i[e].begin + i[e].value.length))));
+		a && (a = !1, n && Oe.indexOf(i[e].value.toLowerCase()) < 0 && r.push(new B(H.tableDirectiveTypo, new V(t.line, i[e].begin), new V(t.line, i[e].begin + i[e].value.length))), !n && ke.indexOf(i[e].value.toLowerCase()) < 0 && r.push(new B(H.columnDirectiveTypo, new V(t.line, i[e].begin), new V(t.line, i[e].begin + i[e].value.length))));
 	}
 	return r;
 }
-function Ne(e, t) {
+function Me(e, t) {
 	let n = [];
 	if (t.inferType() === "view") {
 		let r = t.src;
-		for (let i = 2; i < r.length; i++) e.find(r[i].value) ?? n.push(new z(V.undefinedObject + r[i].value, new B(t.line, r[i].begin), new B(t.line, r[i].begin + r[i].value.length)));
+		for (let i = 2; i < r.length; i++) e.find(r[i].value) ?? n.push(new B(H.undefinedObject + r[i].value, new V(t.line, r[i].begin), new V(t.line, r[i].begin + r[i].value.length)));
 	}
 	return n;
 }
-function Pe(e, t) {
+function Ne(e, t) {
 	let n = [];
 	if (t.isOption("fk") || 0 < t.indexOf("reference", !0)) {
 		let r = t.indexOf("fk");
 		if (r < 0 && (r = t.indexOf("reference")), r++, t.src.length - 1 < r || t.src[r].value === "/") return n;
-		e.find(t.src[r].value) ?? n.push(new z(V.undefinedObject + t.src[r].value, new B(t.line, t.src[r].begin), new B(t.line, t.src[r].begin + t.src[r].value.length)));
+		e.find(t.src[r].value) ?? n.push(new B(H.undefinedObject + t.src[r].value, new V(t.line, t.src[r].begin), new V(t.line, t.src[r].begin + t.src[r].value.length)));
 	}
 	return n;
 }
-function Fe(e) {
-	let t = [], n = Ie(e);
+function Pe(e) {
+	let t = [], n = Fe(e);
 	for (let r = 1; r < e.length; r++) {
-		let i = e[r], a = Le(i);
-		n !== null && a % n !== 0 && t.push(new z(V.misalignedAttribute + n, new B(i.line, a)));
+		let i = e[r], a = Ie(i);
+		n !== null && a % n !== 0 && t.push(new B(H.misalignedAttribute + n, new V(i.line, a)));
 	}
 	return t;
 }
-function Ie(e) {
+function Fe(e) {
 	let t = [];
-	for (let n = 0; n < e.length; n++) t[n] = Le(e[n]);
+	for (let n = 0; n < e.length; n++) t[n] = Ie(e[n]);
 	let n = {};
 	for (let e = 0; e < t.length; e++) {
-		let r = Re(t, e);
+		let r = Le(t, e);
 		if (r != null) {
 			let i = t[e] - t[r];
 			n[i] = (n[i] ?? 0) + 1;
@@ -10348,23 +10348,23 @@ function Ie(e) {
 	}
 	return r;
 }
-function Le(e) {
+function Ie(e) {
 	return e.src[0].begin;
 }
-function Re(e, t) {
+function Le(e, t) {
 	for (let n = t; 0 <= n; n--) if (e[n] < e[t]) return n;
 	return null;
 }
-var ze = {
-	findErrors: je,
-	messages: V
-}, Be = "identityDataType", H = "guid", Ve = "Timestamp with time zone", He = "Timestamp with local time zone";
-function Ue(e) {
+var Re = {
+	findErrors: Ae,
+	messages: H
+}, ze = "identityDataType", U = "guid", Be = "Timestamp with time zone", Ve = "Timestamp with local time zone";
+function He(e) {
 	if (e == null) return null;
 	let t = typeof e == "string" ? e.toLowerCase() : e;
-	return t === "yes" || t === "y" || t === "true" || t === !0 ? !0 : t === "no" || t === "n" || t === "false" || t === !1 ? !1 : t === Be.toLowerCase() ? "identity" : t === H.toLowerCase() ? "guid" : t === Ve.toLowerCase() ? "tswtz" : t === He.toLowerCase() ? "tswltz" : typeof t == "string" ? t : String(t);
+	return t === "yes" || t === "y" || t === "true" || t === !0 ? !0 : t === "no" || t === "n" || t === "false" || t === !1 ? !1 : t === ze.toLowerCase() ? "identity" : t === U.toLowerCase() ? "guid" : t === Be.toLowerCase() ? "tswtz" : t === Ve.toLowerCase() ? "tswltz" : typeof t == "string" ? t : String(t);
 }
-var U = {
+var W = {
 	apex: {
 		label: "APEX",
 		value: "no",
@@ -10438,8 +10438,8 @@ var U = {
 		check: [
 			"DATE",
 			"TIMESTAMP",
-			Ve,
-			He
+			Be,
+			Ve
 		]
 	},
 	db: {
@@ -10481,10 +10481,10 @@ var U = {
 	},
 	pk: {
 		label: "Primary Key Maintenance",
-		value: H,
+		value: U,
 		check: [
-			Be,
-			H,
+			ze,
+			U,
 			"SEQ",
 			"NONE"
 		]
@@ -10554,9 +10554,9 @@ var U = {
 		value: "no",
 		check: ["yes", "no"]
 	}
-}, W = class {
+}, G = class {
 	constructor(e, t) {
-		this._ddl = null, this._erd = null, this._errors = null, this.postponedAlters = [], this.postponedAltersSet = /* @__PURE__ */ new Set(), this._labelToKey = {}, this.name2node = null, this.options = JSON.parse(JSON.stringify(U)), this.input = e;
+		this._ddl = null, this._erd = null, this._errors = null, this.postponedAlters = [], this.postponedAltersSet = /* @__PURE__ */ new Set(), this._labelToKey = {}, this.name2node = null, this.options = JSON.parse(JSON.stringify(W)), this.input = e;
 		for (let e in this.options) {
 			let t = this.options[e].label;
 			t != null && (this._labelToKey[t.toLowerCase()] = e);
@@ -10573,7 +10573,7 @@ var U = {
 		return n?.value ?? null;
 	}
 	optionEQvalue(e, t) {
-		return Ue(this.getOptionValue(e)) == Ue(t);
+		return He(this.getOptionValue(e)) == He(t);
 	}
 	setOptionValue(e, t) {
 		let n = e.toLowerCase();
@@ -10591,12 +10591,12 @@ var U = {
 	}
 	nonDefaultOptions() {
 		let e = {};
-		for (let t in this.options) U[t] && !this.optionEQvalue(t, U[t].value) && (e[t] = this.options[t].value);
+		for (let t in this.options) W[t] && !this.optionEQvalue(t, W[t].value) && (e[t] = this.options[t].value);
 		return e;
 	}
 	unknownOptions() {
 		let e = [];
-		for (let t in this.options) U[t] ?? e.push(t);
+		for (let t in this.options) W[t] ?? e.push(t);
 		return e;
 	}
 	setOptions(e) {
@@ -10638,48 +10638,48 @@ var U = {
 		return e;
 	}
 	getERD() {
-		return this._erd ??= ye(this).generateERD(), this._erd;
+		return this._erd ??= ve(this).generateERD(), this._erd;
 	}
 	getDDL() {
-		return this._ddl ??= ye(this).generateFullDDL() + this._makeFooter(), this._ddl;
+		return this._ddl ??= ve(this).generateFullDDL() + this._makeFooter(), this._ddl;
 	}
 	_makeFooter() {
-		let e = (e) => e.replace(/\/\*/g, "--<--").replace(/\*\//g, "-->--").replace(/\/*\s*Non-default options:/g, ""), t = `-- Generated by Radicle EspreSQL ${this.version()} ${(/* @__PURE__ */ new Date()).toLocaleString()}\n\n`;
+		let e = (e) => e.replace(/\/\*/g, "--<--").replace(/\*\//g, "-->--").replace(/\/*\s*Non-default options:/g, ""), t = `-- Generated by Radicle ExpreSQL ${this.version()} ${(/* @__PURE__ */ new Date()).toLocaleString()}\n\n`;
 		t += "/*\n", t += e(this.input), t += "\n";
 		for (let e of this.unknownOptions()) t += "*** Unknown setting: " + e + "\n";
 		return t += "\n*/", t;
 	}
 	getErrors() {
-		return this._errors ??= ze.findErrors(this), this._errors;
+		return this._errors ??= Re.findErrors(this), this._errors;
 	}
 	version() {
-		return G();
+		return q();
 	}
 };
+function Ue(e, t) {
+	return De(e, t);
+}
 function We(e, t) {
-	return Oe(e, t);
+	return new G(e, t).getERD();
+}
+function K(e, t) {
+	return new G(e, t).getDDL();
 }
 function Ge(e, t) {
-	return new W(e, t).getERD();
+	return new G(e, t).getErrors();
 }
-function Ke(e, t) {
-	return new W(e, t).getDDL();
+function Ke(e, t, n) {
+	let r = new G(t, n), i = new G(e, n);
+	return be(r).compute(i, r);
 }
-function qe(e, t) {
-	return new W(e, t).getErrors();
-}
-function Je(e, t, n) {
-	let r = new W(t, n), i = new W(e, n);
-	return xe(r).compute(i, r);
-}
-function G() {
+function q() {
 	return "2.0.0";
 }
-W.toDDL = Ke, W.toERD = Ge, W.toErrors = qe, W.toDiff = Je, W.fromJSON = We, W.version = G, W.lexer = x;
+G.toDDL = K, G.toERD = We, G.toErrors = Ge, G.toDiff = Ke, G.fromJSON = Ue, G.version = q, G.lexer = x;
 //#endregion
 //#region src/oracle/types.ts
-var Ye = "generated by default on null as identity";
-function K(e, t, n) {
+var qe = "generated by default on null as identity";
+function J(e, t, n) {
 	switch (e.base) {
 		case "varchar": return `varchar2(${e.varcharLen ?? 4e3}${t})`;
 		case "number": return e.numericSpec ? `number${e.numericSpec}` : "number";
@@ -10697,19 +10697,19 @@ function K(e, t, n) {
 		default: return e.base;
 	}
 }
-function q(e) {
+function Y(e) {
 	let t = e.getOptionValue("db");
 	return t != null && t.length > 0 && 23 <= (p(t) ?? 0);
 }
-function Xe(e, t, n) {
-	return t.optionEQvalue("pk", "identityDataType") ? Ye : t.optionEQvalue("pk", "seq") ? ("default on null " + e + n.seq + ".NEXTVAL ").toLowerCase() : t.optionEQvalue("pk", "guid") ? "default on null to_number(sys_guid(), 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX') " : "not null";
+function Je(e, t, n) {
+	return t.optionEQvalue("pk", "identityDataType") ? qe : t.optionEQvalue("pk", "seq") ? ("default on null " + e + n.seq + ".NEXTVAL ").toLowerCase() : t.optionEQvalue("pk", "guid") ? "default on null to_number(sys_guid(), 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX') " : "not null";
 }
 //#endregion
 //#region src/oracle/view.ts
-function Ze(e) {
+function Ye(e) {
 	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
 }
-var Qe = class {
+var Xe = class {
 	constructor(e, t) {
 		this.ctx = e, this.naming = t;
 	}
@@ -10724,7 +10724,7 @@ var Qe = class {
 		let t = this.ctx.objPrefix() + e.parseName(), n = e.src, r = this._buildViewSetup(e, n);
 		if (r === null) return "";
 		let i = "create or replace view " + t;
-		e.annotations !== null && (i += "\nannotations (" + e.annotations + ")"), i += " as\n", i += "select\n", i += this._buildViewColList(e, n, r.aliasMap, r.tblCache, r.colCnts, r.tblTransCols, r.maxLen), i = Ze(i);
+		e.annotations !== null && (i += "\nannotations (" + e.annotations + ")"), i += " as\n", i += "select\n", i += this._buildViewColList(e, n, r.aliasMap, r.tblCache, r.colCnts, r.tblTransCols, r.maxLen), i = Ye(i);
 		let { sortedTables: a, joinConditions: o } = this._sortViewTables(e, n, r.tblCache);
 		return i += "from\n", i += this._buildViewFromClause(e, a, r.aliasMap, o, r.tblTransCols, r.tblCache), i = i.toLowerCase(), i.endsWith("\n") && (i = i.trimEnd()), i.endsWith("\n") || (i += "\n"), i += "/\n", i.toLowerCase();
 	}
@@ -10917,7 +10917,7 @@ var Qe = class {
 		if (e.inferType() !== "table") return "";
 		let t = e.getTransColumns();
 		if (t.length === 0) return "";
-		let n = this.ctx.objPrefix() + e.parseName(), r = n + "_trans", i = this.ctx.semantics(), a = q(this.ctx), o = 13, s = (l(e.parseName()) ?? e.parseName()) + "_id";
+		let n = this.ctx.objPrefix() + e.parseName(), r = n + "_trans", i = this.ctx.semantics(), a = Y(this.ctx), o = 13, s = (l(e.parseName()) ?? e.parseName()) + "_id";
 		s.length > o && (o = s.length);
 		for (let e of t) {
 			let t = "trans_" + e.parseName();
@@ -10925,11 +10925,11 @@ var Qe = class {
 		}
 		2 > o && (o = 2);
 		let c = "create table " + r + " (\n", u = O + " ".repeat(o - 2);
-		c += O + "id" + u + "number " + Xe(r, this.ctx, this.naming) + "\n", c += O + O + " ".repeat(o) + "constraint " + r + "_id" + this.naming.pk + " primary key,\n", u = O + " ".repeat(o - s.length), c += O + s + u + "number not null,\n", u = O + " ".repeat(o - 13), c += O + "language_code" + u + `varchar2(5${i}) not null,\n`;
+		c += O + "id" + u + "number " + Je(r, this.ctx, this.naming) + "\n", c += O + O + " ".repeat(o) + "constraint " + r + "_id" + this.naming.pk + " primary key,\n", u = O + " ".repeat(o - s.length), c += O + s + u + "number not null,\n", u = O + " ".repeat(o - 13), c += O + "language_code" + u + `varchar2(5${i}) not null,\n`;
 		for (let e of t) {
 			let t = "trans_" + e.parseName();
 			u = O + " ".repeat(o - t.length);
-			let n = K(e._inferTypeFull(), i, a);
+			let n = J(e._inferTypeFull(), i, a);
 			c += O + t + u + n + ",\n";
 		}
 		c += O + "constraint " + r + this.naming.uk + " unique (" + s + ", language_code)\n", c += ");\n\n";
@@ -10960,16 +10960,16 @@ var Qe = class {
 };
 //#endregion
 //#region src/oracle/plsql.ts
-function $e(e) {
+function Ze(e) {
 	return e.isOption("lower") ? "lower" : e.isOption("upper") ? "upper" : "";
 }
-function et(e) {
+function Qe(e) {
 	let t = e.getExplicitPkName();
 	if (t == null || t.includes(",")) return null;
 	let n = e.findChild(t);
 	return n == null ? e.getPkType() : n.getPlsqlType();
 }
-var J = class {
+var X = class {
 	constructor(e, t) {
 		this.ctx = e, this.naming = t;
 	}
@@ -10987,7 +10987,7 @@ var J = class {
 		let i = !1, a = e.apexUser();
 		e.hasRowKey() && (r += "    :new.row_key := compress_int(row_key_seq.nextval);\n", i = !0);
 		for (let t of e.children) {
-			let e = $e(t);
+			let e = Ze(t);
 			e !== "" && (r += "    :new." + t.parseName().toLowerCase() + " := " + e + "(:new." + t.parseName().toLowerCase() + ");\n", i = !0);
 		}
 		if (e.hasRowVersion() && (r += "    :new.row_version := 1;\n", i = !0), e.hasAuditCols()) {
@@ -11014,7 +11014,7 @@ var J = class {
 		o += "    before update\n    on " + a + "\n    for each row\nbegin\n";
 		let s = e.apexUser();
 		for (let t of e.children) {
-			let e = $e(t);
+			let e = Ze(t);
 			e !== "" && (o += "    :new." + t.parseName().toLowerCase() + " := " + e + "(:new." + t.parseName().toLowerCase() + ");\n");
 		}
 		if (n && (o += "    :new.row_version := nvl(:old.row_version, 0) + 1;\n"), r) {
@@ -11038,7 +11038,7 @@ var J = class {
 		i += O + O + "p_" + a + "        in  " + s + n, this._hasSyntheticTenantId(e) && (i += ",\n" + O + O + "p_tenant_id   " + r + "  integer" + n);
 		for (let t in e.fks ?? {}) {
 			let a = e.fks[t], o = "integer", s = this.ctx.find(a);
-			s !== null && (o = et(s) ?? o), i += ",\n" + O + O + "P_" + t + "   " + r + "  " + o + n;
+			s !== null && (o = Qe(s) ?? o), i += ",\n" + O + O + "P_" + t + "   " + r + "  " + o + n;
 		}
 		for (let t of e.regularColumns()) i += ",\n" + O + O + "P_" + t.parseName() + "   " + r + "  " + t.getPlsqlType() + n;
 		return i += "\n    )", i;
@@ -11299,19 +11299,19 @@ var J = class {
 		let t = this.ctx.objPrefix() + e.parseName(), n = e.getPkName(), r = this._hasSyntheticTenantId(e), i = r ? ",\n        p_tenant_id           in integer" : "", a = n + " = p_" + n + (r ? " and tenant_id = p_tenant_id" : ""), o = ("create or replace package " + t.toLowerCase() + "_API\nis\n\n").toLowerCase();
 		return o += this.procDecl(e, "get") + ";\n\n", o += this.procDecl(e, "insert") + ";\n\n", o += this.procDecl(e, "update") + ";\n\n", o += "    procedure delete_row (\n        p_" + n + "              in integer" + i + "\n    );\nend " + t.toLowerCase() + "_api;\n/\n\n", o += ("create or replace package body " + t.toLowerCase() + "_API\nis\n\n").toLowerCase(), o += this.procDecl(e, "get") + "\n" + this._getRowBody(e), o += this.procDecl(e, "insert") + "\n" + this._insertRowBody(e), o += this.procDecl(e, "update") + "\n" + this._updateRowBody(e), o += "    procedure delete_row (\n        p_" + n + "              in integer" + i + "\n    )\n    is\n    begin\n        delete from " + t.toLowerCase() + " where " + a + ";\n    end delete_row;\nend " + t.toLowerCase() + "_api;\n/\n", o.toLowerCase();
 	}
-}, tt = " not null";
-function nt(e) {
+}, $e = " not null";
+function et(e) {
 	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
 }
-var Y = class extends _e {
+var Z = class extends ge {
 	constructor(e, t) {
-		super(e), this._naming = t ?? D, this._view = new Qe(e, this._naming), this._plsql = new J(e, this._naming);
+		super(e), this._naming = t ?? D, this._view = new Xe(e, this._naming), this._plsql = new X(e, this._naming);
 	}
 	colType(e) {
 		return this._toOracleType(e);
 	}
 	_pkTypeModifier(e, t) {
-		return Xe(e, this._ddl, t ?? this._naming);
+		return Je(e, this._ddl, t ?? this._naming);
 	}
 	_globalOnDelete() {
 		let e = this._ddl.getOptionValue("ondelete") ?? "";
@@ -11327,7 +11327,7 @@ var Y = class extends _e {
 		return n === null ? e.getPkType() : this._toOracleType(n._inferTypeFull());
 	}
 	_toOracleType(e) {
-		return K(e, this._ddl.semantics(), q(this._ddl));
+		return J(e, this._ddl.semantics(), Y(this._ddl));
 	}
 	_buildColumnConstraints(e, t, n) {
 		if (e.isOption("unique") || e.isOption("uk")) {
@@ -11421,7 +11421,7 @@ var Y = class extends _e {
 				for (let t in e.children) {
 					let n = e.children[t];
 					if (r === n.parseName()) {
-						(n.isOption("nn") || n.isOption("notnull")) && (o = tt), n.isOption("cascade") ? a = " on delete cascade" : n.isOption("setnull") && (a = " on delete set null");
+						(n.isOption("nn") || n.isOption("notnull")) && (o = $e), n.isOption("cascade") ? a = " on delete cascade" : n.isOption("setnull") && (a = " on delete set null");
 						break;
 					}
 				}
@@ -11595,7 +11595,7 @@ var Y = class extends _e {
 		let n = this._ddl.getOptionValue("db"), r = n !== null && n.length > 0 && 23 <= (p(n) ?? 0), i = "";
 		e.isOption("immutable") && r && (i = "immutable ");
 		let a = e.getGenIdColName(), o = this._genSequence(e, t);
-		return o += this._genTableHeader(e, t, i, a), o += this._genTenantIdColumn(e), o += this._genFkColumns(e, t), o += this._genRowKeyColumn(e, t), o += this._genRegularColumns(e, t, a), o += this._genRowVersionColumn(e), o += this._genAuditColumns(e), o += this._genAdditionalColumns(e), o += e.genConstraint(), o = nt(o), o += this._genTableFooter(e, t, i, r), o += this._genMultiColFkAlters(e, t), o += this._genIndexes(e, t, r), this._genTenantIdFk(e, t), o += this._genComments(e, t), o += "\n", o;
+		return o += this._genTableHeader(e, t, i, a), o += this._genTenantIdColumn(e), o += this._genFkColumns(e, t), o += this._genRowKeyColumn(e, t), o += this._genRegularColumns(e, t, a), o += this._genRowVersionColumn(e), o += this._genAuditColumns(e), o += this._genAdditionalColumns(e), o += e.genConstraint(), o = et(o), o += this._genTableFooter(e, t, i, r), o += this._genMultiColFkAlters(e, t), o += this._genIndexes(e, t, r), this._genTenantIdFk(e, t), o += this._genComments(e, t), o += "\n", o;
 	}
 	generateDDL(e) {
 		if (e.inferType() === "view" || e.inferType() === "dv") return "";
@@ -11784,7 +11784,7 @@ var Y = class extends _e {
 		}
 		return n;
 	}
-}, rt = {
+}, tt = {
 	drop_package: 1,
 	drop_view: 2,
 	drop_fk: 3,
@@ -11807,7 +11807,7 @@ var Y = class extends _e {
 	create_package: 15,
 	create_view: 16
 };
-function X(e, t, n, r, i = !1) {
+function Q(e, t, n, r, i = !1) {
 	let a = {
 		kind: e,
 		table: t,
@@ -11816,7 +11816,7 @@ function X(e, t, n, r, i = !1) {
 	};
 	return r !== void 0 && (a.column = r), a;
 }
-function Z(e, t, n, r, i = !1) {
+function $(e, t, n, r, i = !1) {
 	let a = {
 		level: e,
 		table: t,
@@ -11825,11 +11825,11 @@ function Z(e, t, n, r, i = !1) {
 	};
 	return r !== void 0 && (a.column = r), a;
 }
-var it = class {
+var nt = class {
 	compute(e, t) {
 		let n = [], r = [], i = this._tableMap(e), a = this._tableMap(t), o = this._viewMap(e), s = this._viewMap(t), c = [];
 		for (let [e, t] of i) a.has(e) || c.push(t);
-		for (let t of this._reverseTopoSort(c, e)) n.push(...this._dropTable(t, e)), r.push(Z("DESTRUCTIVE", t.parseName(), `table dropped: ${t.parseName()}`));
+		for (let t of this._reverseTopoSort(c, e)) n.push(...this._dropTable(t, e)), r.push($("DESTRUCTIVE", t.parseName(), `table dropped: ${t.parseName()}`));
 		let l = [];
 		for (let [e, t] of a) i.has(e) || l.push(t);
 		for (let e of this._topoSort(l, t)) n.push(...this._createTable(e, t));
@@ -11879,19 +11879,19 @@ var it = class {
 		return [...this._topoSort(e, t)].reverse();
 	}
 	_dropTable(e, t) {
-		let n = [], r = e.parseName(), i = t.objPrefix() + r, a = q(t) ? "if exists " : "", o = this._apiKind(e, t);
-		if (o === "layered") for (let i of this._layeredPkgNames(e, t)) n.push(X("drop_package", r, `drop package ${a}${i};\n`));
-		else o === "simple" && n.push(X("drop_package", r, `drop package ${a}${i}_api;\n`));
-		return t.optionEQvalue("pk", "SEQ") && n.push(X("drop_sequence", r, `drop sequence ${a}${i}${D.seq};\n`)), n.push(X("drop_table", r, `drop table ${a}${i} cascade constraints;\n`)), n;
+		let n = [], r = e.parseName(), i = t.objPrefix() + r, a = Y(t) ? "if exists " : "", o = this._apiKind(e, t);
+		if (o === "layered") for (let i of this._layeredPkgNames(e, t)) n.push(Q("drop_package", r, `drop package ${a}${i};\n`));
+		else o === "simple" && n.push(Q("drop_package", r, `drop package ${a}${i}_api;\n`));
+		return t.optionEQvalue("pk", "SEQ") && n.push(Q("drop_sequence", r, `drop sequence ${a}${i}${D.seq};\n`)), n.push(Q("drop_table", r, `drop table ${a}${i} cascade constraints;\n`)), n;
 	}
 	_createTable(e, t) {
-		let n = [], r = e.parseName(), i = t.objPrefix() + r, a = new Y(t);
-		t.optionEQvalue("pk", "SEQ") && n.push(X("add_sequence", r, `create sequence  ${i}${D.seq};\n`)), e.lateInitFks();
+		let n = [], r = e.parseName(), i = t.objPrefix() + r, a = new Z(t);
+		t.optionEQvalue("pk", "SEQ") && n.push(Q("add_sequence", r, `create sequence  ${i}${D.seq};\n`)), e.lateInitFks();
 		let o = t.postponedAlters.length, s = a.generateTable(e), c = t.postponedAlters.slice(o);
 		for (let e of c) s += e + "\n";
-		n.push(X("create_table", r, s));
-		let l = new J(t, D), u = l.generateTrigger(e);
-		u && n.push(X("create_trigger", r, u));
+		n.push(Q("create_table", r, s));
+		let l = new X(t, D), u = l.generateTrigger(e);
+		u && n.push(Q("create_trigger", r, u));
 		let d = this._apiKind(e, t);
 		return d === "layered" ? n.push(...this._splitPkgBlocks(l.generateLayeredTAPI(e), r)) : d === "simple" && n.push(...this._splitPkgBlocks(l.generateTAPI(e), r)), n;
 	}
@@ -11903,8 +11903,8 @@ var it = class {
 		let d = [];
 		for (let [e, t] of l) c.has(e) || d.push(t);
 		let f = this._detectRenames(u, d), p = new Set([...f.keys()].map((e) => e.parseName())), m = new Set([...f.values()].map((e) => e.parseName()));
-		for (let [e, t] of f) i.push(X("rename_hint", o, `-- alter table ${s} rename column ${e.parseName()} to ${t.parseName()};\n`, e.parseName())), a.push(Z("INFO", o, `suspected rename: ${e.parseName()} → ${t.parseName()} (verify before applying)`, e.parseName()));
-		for (let e of u) p.has(e.parseName()) || (i.push(...this._dropColumn(s, o, e)), a.push(Z("DESTRUCTIVE", o, `column dropped: ${e.parseName()}`, e.parseName())));
+		for (let [e, t] of f) i.push(Q("rename_hint", o, `-- alter table ${s} rename column ${e.parseName()} to ${t.parseName()};\n`, e.parseName())), a.push($("INFO", o, `suspected rename: ${e.parseName()} → ${t.parseName()} (verify before applying)`, e.parseName()));
+		for (let e of u) p.has(e.parseName()) || (i.push(...this._dropColumn(s, o, e)), a.push($("DESTRUCTIVE", o, `column dropped: ${e.parseName()}`, e.parseName())));
 		for (let e of d) {
 			if (m.has(e.parseName())) continue;
 			let { stmts: t, warns: n } = this._addColumn(s, o, e, r);
@@ -11917,9 +11917,9 @@ var it = class {
 			i.push(...u), a.push(...d);
 		}
 		let h = e.hasRowVersion(), g = t.hasRowVersion();
-		!h && g && (i.push(X("add_column", o, `-- ⚠ MANUAL INTERVENTION REQUIRED
+		!h && g && (i.push(Q("add_column", o, `-- ⚠ MANUAL INTERVENTION REQUIRED
 -- Initialize row_version for existing rows, then add NOT NULL:
--- alter table ${s} add (row_version integer);\n-- update ${s} set row_version = 0;\n-- commit;\n-- alter table ${s} modify (row_version not null);\n`, "row_version", !0)), a.push(Z("INFO", o, "rowversion added — requires manual column initialization", "row_version", !0))), h && !g && (i.push(X("set_unused", o, `alter table ${s} set unused column row_version;\n`, "row_version")), i.push(X("drop_unused_columns", o, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${s} drop unused columns;\n`, "row_version")), a.push(Z("DESTRUCTIVE", o, "row_version column dropped", "row_version")));
+-- alter table ${s} add (row_version integer);\n-- update ${s} set row_version = 0;\n-- commit;\n-- alter table ${s} modify (row_version not null);\n`, "row_version", !0)), a.push($("INFO", o, "rowversion added — requires manual column initialization", "row_version", !0))), h && !g && (i.push(Q("set_unused", o, `alter table ${s} set unused column row_version;\n`, "row_version")), i.push(Q("drop_unused_columns", o, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${s} drop unused columns;\n`, "row_version")), a.push($("DESTRUCTIVE", o, "row_version column dropped", "row_version")));
 		let { stmts: _, warns: v } = this._diffPk(e, t, n, r, c, l);
 		i.push(..._), a.push(...v), i.push(...this._diffFKs(e, t, n, r)), i.push(...this._diffIndexes(e, t, n, r)), i.push(...this._diffTriggers(e, t, n, r));
 		let y = u.some((e) => !p.has(e.parseName())) || d.some((e) => !m.has(e.parseName())) || i.some((e) => e.kind === "modify_column"), { stmts: b, warns: x } = this._diffPackages(e, t, n, r, y);
@@ -11956,20 +11956,20 @@ var it = class {
 			warns: s
 		};
 		let p = d.type === "none" ? "none" : `${d.type}(${d.columns.join(", ")})`, m = f.type === "none" ? "none" : `${f.type}(${f.columns.join(", ")})`;
-		s.push(Z("DESTRUCTIVE", c, `Primary key change on "${c}": ${p} → ${m}. All FKs referencing this table must be dropped and re-created. Data migration required.`, void 0, !0));
+		s.push($("DESTRUCTIVE", c, `Primary key change on "${c}": ${p} → ${m}. All FKs referencing this table must be dropped and re-created. Data migration required.`, void 0, !0));
 		for (let e of f.columns) {
 			let t = i.get(e), n = a.get(e);
-			n != null && (this._isNotNull(n) || (t == null ? o.push(X("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED\n-- Populate ${e} for existing rows, then add NOT NULL:\n-- update ${u} set ${e} = ??? where ${e} is null;\n-- commit;\n-- alter table ${u} modify (${e} not null);\n`, e, !0)) : this._isNotNull(t) || o.push(X("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED\n-- Ensure all rows have a non-null ${e} value, then:\n-- alter table ${u} modify (${e} not null);\n`, e, !0))));
+			n != null && (this._isNotNull(n) || (t == null ? o.push(Q("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED\n-- Populate ${e} for existing rows, then add NOT NULL:\n-- update ${u} set ${e} = ??? where ${e} is null;\n-- commit;\n-- alter table ${u} modify (${e} not null);\n`, e, !0)) : this._isNotNull(t) || o.push(Q("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED\n-- Ensure all rows have a non-null ${e} value, then:\n-- alter table ${u} modify (${e} not null);\n`, e, !0))));
 		}
-		if (d.constraintName && o.push(X("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED
+		if (d.constraintName && o.push(Q("modify_column", c, `-- ⚠ MANUAL INTERVENTION REQUIRED
 -- Drop the old primary key constraint before continuing:
 -- alter table ${l} drop constraint ${d.constraintName};\n`, void 0, !0)), d.type === "surrogate") {
 			let e = d.columns[0];
-			a.has(e) || (o.push(X("set_unused", c, `alter table ${l} set unused column ${e};\n`, e)), o.push(X("drop_unused_columns", c, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${l} drop unused columns;\n`, e))), n.optionEQvalue("pk", "SEQ") && o.push(X("drop_sequence", c, `drop sequence ${l}${D.seq};\n`));
+			a.has(e) || (o.push(Q("set_unused", c, `alter table ${l} set unused column ${e};\n`, e)), o.push(Q("drop_unused_columns", c, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${l} drop unused columns;\n`, e))), n.optionEQvalue("pk", "SEQ") && o.push(Q("drop_sequence", c, `drop sequence ${l}${D.seq};\n`));
 		}
 		if (f.columns.length > 0) {
 			let e = f.columns.join(", ");
-			o.push(X("add_fk", c, `-- ⚠ MANUAL INTERVENTION REQUIRED
+			o.push(Q("add_fk", c, `-- ⚠ MANUAL INTERVENTION REQUIRED
 -- After all PK columns are NOT NULL, add the primary key:
 -- alter table ${u} add constraint ${f.constraintName} primary key (${e});\n`, void 0, !0));
 		}
@@ -11988,9 +11988,9 @@ var it = class {
 		});
 		if (s(e) === s(t)) return i;
 		let c = (e) => e.children.some((e) => e.isOption("lower") || e.isOption("upper")), l = c(e) || e.hasRowVersion() || e.hasAuditCols() || e.hasRowKey(), u = c(e) || e.hasRowVersion() || e.hasAuditCols(), d = c(t) || t.hasRowVersion() || t.hasAuditCols() || t.hasRowKey(), f = c(t) || t.hasRowVersion() || t.hasAuditCols();
-		if (l && i.push(X("drop_trigger", a, `drop trigger ${o}${D.bi};\n`)), u && i.push(X("drop_trigger", a, `drop trigger ${o}${D.bu};\n`)), d || f) {
-			let e = new J(r, D).generateTrigger(t);
-			e && i.push(X("create_trigger", a, e));
+		if (l && i.push(Q("drop_trigger", a, `drop trigger ${o}${D.bi};\n`)), u && i.push(Q("drop_trigger", a, `drop trigger ${o}${D.bu};\n`)), d || f) {
+			let e = new X(r, D).generateTrigger(t);
+			e && i.push(Q("create_trigger", a, e));
 		}
 		return i;
 	}
@@ -12022,7 +12022,7 @@ var it = class {
 		return n;
 	}
 	_addColumn(e, t, n, r) {
-		let i = [], a = [], o = q(r), s = K(n._inferTypeFull(), r.semantics(), o), c = n.parseName(), l = this._isNotNull(n), u = "";
+		let i = [], a = [], o = Y(r), s = J(n._inferTypeFull(), r.semantics(), o), c = n.parseName(), l = this._isNotNull(n), u = "";
 		if (n.isOption("default")) {
 			let e = n.getDefaultValue() ?? "", t = [
 				"sysdate",
@@ -12043,21 +12043,21 @@ var it = class {
 				"systimestamp",
 				"localtimestamp"
 			], l = s.startsWith("integer") || s.startsWith("number") || s.startsWith("date") || s.startsWith("timestamp") || o.includes(r.toLowerCase()), u = !n.isOption("default") || l ? "" : "'", f = o.includes(r.toLowerCase()) ? r : `${u}${r}${u}`, p = n.isOption("default");
-			i.push(X("add_column", t, `alter table ${e} add (${d});\n`, c)), i.push(X("add_column", t, "-- ⚠ MANUAL INTERVENTION REQUIRED\n" + (p ? "-- Populate existing rows with the default value before step 3.\n" : "-- Populate existing rows before step 3. Replace ??? with the correct expression.\n") + `-- update ${e} set ${c} = ${f} where ${c} is null;\n-- commit;\n`, c, !0)), i.push(X("modify_column", t, `alter table ${e} modify (${c} not null);\n`, c)), a.push(Z("DESTRUCTIVE", t, `added NOT NULL column ${c} — requires manual data population`, c, !0));
-		} else i.push(X("add_column", t, `alter table ${e} add (${d});\n`, c));
+			i.push(Q("add_column", t, `alter table ${e} add (${d});\n`, c)), i.push(Q("add_column", t, "-- ⚠ MANUAL INTERVENTION REQUIRED\n" + (p ? "-- Populate existing rows with the default value before step 3.\n" : "-- Populate existing rows before step 3. Replace ??? with the correct expression.\n") + `-- update ${e} set ${c} = ${f} where ${c} is null;\n-- commit;\n`, c, !0)), i.push(Q("modify_column", t, `alter table ${e} modify (${c} not null);\n`, c)), a.push($("DESTRUCTIVE", t, `added NOT NULL column ${c} — requires manual data population`, c, !0));
+		} else i.push(Q("add_column", t, `alter table ${e} add (${d});\n`, c));
 		if (n.isOption("check") || n.isOption("values")) {
 			let a = n.isOption("check") ? n.getValues("check") : n.getValues("values"), o = f(r.objPrefix(), `${t}_${c}`, D.ck);
-			i.push(X("add_column", t, `alter table ${e} add constraint ${o} check (${c} in (${a}));\n`, c));
+			i.push(Q("add_column", t, `alter table ${e} add constraint ${o} check (${c} in (${a}));\n`, c));
 		} else if (n.isOption("between")) {
 			let r = n.getBetweenClause() ?? "", a = f(`${t}_${c}`, D.bet);
-			i.push(X("add_column", t, `alter table ${e} add constraint ${a} check (${c} between ${r});\n`, c));
+			i.push(Q("add_column", t, `alter table ${e} add constraint ${a} check (${c} between ${r});\n`, c));
 		}
 		if (n.isOption("unique") || n.isOption("uk")) {
 			let n = `${e}_${c}${D.unq}`, r = `create unique index ${n} on ${e} (${c});\n`;
-			i.push(X("add_index", t, o ? `create unique index if not exists ${n} on ${e} (${c});\n` : this._wrapIndex(r)));
+			i.push(Q("add_index", t, o ? `create unique index if not exists ${n} on ${e} (${c});\n` : this._wrapIndex(r)));
 		} else if (n.isOption("idx") || n.isOption("index")) {
 			let n = `${e}_${c}${D.idx}`, r = `create index ${n} on ${e} (${c});\n`;
-			i.push(X("add_index", t, o ? `create index if not exists ${n} on ${e} (${c});\n` : this._wrapIndex(r)));
+			i.push(Q("add_index", t, o ? `create index if not exists ${n} on ${e} (${c});\n` : this._wrapIndex(r)));
 		}
 		return {
 			stmts: i,
@@ -12066,23 +12066,23 @@ var it = class {
 	}
 	_dropColumn(e, t, n) {
 		let r = n.parseName();
-		return [X("set_unused", t, `alter table ${e} set unused column ${r};\n`, r), X("drop_unused_columns", t, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${e} drop unused columns;\n`, r)];
+		return [Q("set_unused", t, `alter table ${e} set unused column ${r};\n`, r), Q("drop_unused_columns", t, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${e} drop unused columns;\n`, r)];
 	}
 	_modifyColumn(e, t, n, r, i, a) {
-		let o = [], s = [], c = n._inferTypeFull(), l = r._inferTypeFull(), u = q(a), d = K(c, i.semantics(), q(i)), p = K(l, a.semantics(), u), m = this._isNotNull(n), h = this._isNotNull(r), g = r.parseName(), _ = d !== p, v = m !== h;
+		let o = [], s = [], c = n._inferTypeFull(), l = r._inferTypeFull(), u = Y(a), d = J(c, i.semantics(), Y(i)), p = J(l, a.semantics(), u), m = this._isNotNull(n), h = this._isNotNull(r), g = r.parseName(), _ = d !== p, v = m !== h;
 		if (_ || v) if (c.base !== l.base) {
 			let n = h ? " not null" : m ? " null" : "";
-			o.push(X("modify_column", t, `alter table ${e} modify (${g} ${p}${n});\n`, g)), s.push(Z("LOSSY", t, `base type changed on ${g}: ${c.base} → ${l.base}`, g));
+			o.push(Q("modify_column", t, `alter table ${e} modify (${g} ${p}${n});\n`, g)), s.push($("LOSSY", t, `base type changed on ${g}: ${c.base} → ${l.base}`, g));
 		} else {
 			let n = [];
 			_ && n.push(p), v && n.push(h ? "not null" : "null");
 			let r = n.join(" ");
-			if (!m && h) o.push(X("modify_column", t, `-- ⚠ MANUAL INTERVENTION REQUIRED
+			if (!m && h) o.push(Q("modify_column", t, `-- ⚠ MANUAL INTERVENTION REQUIRED
 -- Ensure all rows have a non-null value before executing.
--- alter table ${e} modify (${g} ${r});\n`, g, !0)), s.push(Z("DESTRUCTIVE", t, `adding NOT NULL on ${g} — requires manual verification`, g, !0));
-			else if (o.push(X("modify_column", t, `alter table ${e} modify (${g} ${r});\n`, g)), _ && c.base === "varchar") {
+-- alter table ${e} modify (${g} ${r});\n`, g, !0)), s.push($("DESTRUCTIVE", t, `adding NOT NULL on ${g} — requires manual verification`, g, !0));
+			else if (o.push(Q("modify_column", t, `alter table ${e} modify (${g} ${r});\n`, g)), _ && c.base === "varchar") {
 				let e = c.varcharLen ?? 4e3, n = l.varcharLen ?? 4e3;
-				n < e && s.push(Z("LOSSY", t, `varchar size reduced on ${g}: ${e} → ${n}`, g));
+				n < e && s.push($("LOSSY", t, `varchar size reduced on ${g}: ${e} → ${n}`, g));
 			}
 		}
 		let y = n.getDefaultValue(), b = r.getDefaultValue();
@@ -12094,22 +12094,22 @@ var it = class {
 				"systimestamp",
 				"localtimestamp"
 			], i = p.startsWith("integer") || p.startsWith("number") || p.startsWith("date") || p.startsWith("timestamp") || r.includes(n.toLowerCase()) ? "" : "'", a = r.includes(n.toLowerCase()) ? `default on null ${n}` : `default on null ${i}${n}${i}`;
-			o.push(X("modify_column", t, `alter table ${e} modify (${g} ${a});\n`, g));
-		} else o.push(X("modify_column", t, `alter table ${e} modify (${g} default null);\n`, g));
+			o.push(Q("modify_column", t, `alter table ${e} modify (${g} ${a});\n`, g));
+		} else o.push(Q("modify_column", t, `alter table ${e} modify (${g} default null);\n`, g));
 		let x = n.isOption("hidden") || n.isOption("invincible"), S = r.isOption("hidden") || r.isOption("invincible");
-		x !== S && o.push(X("modify_column", t, `alter table ${e} modify (${g} ${S ? "invisible" : "visible"});\n`, g));
+		x !== S && o.push(Q("modify_column", t, `alter table ${e} modify (${g} ${S ? "invisible" : "visible"});\n`, g));
 		let C = n.isOption("check") || n.isOption("values"), w = r.isOption("check") || r.isOption("values"), T = n.isOption("between"), E = r.isOption("between"), O = C ? JSON.stringify(n.parseValues()) : T ? n.getBetweenClause() : null;
 		if (O !== (w ? JSON.stringify(r.parseValues()) : E ? r.getBetweenClause() : null)) {
 			if (O !== null) {
 				let n = T ? f(`${t}_${g}`, D.bet) : f(i.objPrefix(), `${t}_${g}`, D.ck);
-				o.push(X("modify_column", t, `alter table ${e} drop constraint ${n};\n`, g));
+				o.push(Q("modify_column", t, `alter table ${e} drop constraint ${n};\n`, g));
 			}
 			if (w) {
 				let n = w && r.isOption("check") ? r.getValues("check") : r.getValues("values"), i = f(a.objPrefix(), `${t}_${g}`, D.ck);
-				o.push(X("modify_column", t, `alter table ${e} add constraint ${i} check (${g} in (${n}));\n`, g));
+				o.push(Q("modify_column", t, `alter table ${e} add constraint ${i} check (${g} in (${n}));\n`, g));
 			} else if (E) {
 				let n = r.getBetweenClause() ?? "", i = f(`${t}_${g}`, D.bet);
-				o.push(X("modify_column", t, `alter table ${e} add constraint ${i} check (${g} between ${n});\n`, g));
+				o.push(Q("modify_column", t, `alter table ${e} add constraint ${i} check (${g} between ${n});\n`, g));
 			}
 		}
 		return {
@@ -12118,12 +12118,12 @@ var it = class {
 		};
 	}
 	_diffFKs(e, t, n, r) {
-		let i = [], a = t.parseName(), o = n.objPrefix() + a, s = r.objPrefix() + a, c = q(r), l = e.fks ?? {}, u = t.fks ?? {};
-		for (let e in l) e in u || (i.push(X("drop_fk", a, `alter table ${o} drop constraint ${o}_${e}_fk;\n`)), i.push(X("set_unused", a, `alter table ${o} set unused column ${e};\n`, e)), i.push(X("drop_unused_columns", a, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${o} drop unused columns;\n`, e)));
+		let i = [], a = t.parseName(), o = n.objPrefix() + a, s = r.objPrefix() + a, c = Y(r), l = e.fks ?? {}, u = t.fks ?? {};
+		for (let e in l) e in u || (i.push(Q("drop_fk", a, `alter table ${o} drop constraint ${o}_${e}_fk;\n`)), i.push(Q("set_unused", a, `alter table ${o} set unused column ${e};\n`, e)), i.push(Q("drop_unused_columns", a, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${o} drop unused columns;\n`, e)));
 		for (let e in u) {
 			if (e in l) continue;
 			let t = u[e], n = r.find(t) == null ? "" : r.objPrefix(), o = `${s}_${e}_fk`, d = this._fkColType(t, r) ?? "number", f = `alter table ${s} add constraint ${o}\n    foreign key (${e})\n    references ${n}${t};\n`;
-			i.push(X("add_column", a, `alter table ${s} add (${e} ${d});\n`, e)), i.push(X("add_fk", a, c ? f : this._wrapConstraint(f)));
+			i.push(Q("add_column", a, `alter table ${s} add (${e} ${d});\n`, e)), i.push(Q("add_fk", a, c ? f : this._wrapConstraint(f)));
 		}
 		return i;
 	}
@@ -12133,46 +12133,46 @@ var it = class {
 		let r = n.getExplicitPkName();
 		if (r == null || r.includes(",")) return null;
 		let i = n.findChild(r);
-		return i == null ? n.getPkType() || null : K(i._inferTypeFull(), t.semantics(), q(t));
+		return i == null ? n.getPkType() || null : J(i._inferTypeFull(), t.semantics(), Y(t));
 	}
 	_diffIndexes(e, t, n, r) {
-		let i = [], a = t.parseName(), o = r.objPrefix() + a, s = n.objPrefix() + a, c = q(r), l = this._colMap(e), u = this._colMap(t);
+		let i = [], a = t.parseName(), o = r.objPrefix() + a, s = n.objPrefix() + a, c = Y(r), l = this._colMap(e), u = this._colMap(t);
 		for (let [e, t] of u) {
 			let n = l.get(e);
 			if (n == null) continue;
 			let r = n.isOption("idx") || n.isOption("index"), u = t.isOption("idx") || t.isOption("index"), d = n.isOption("unique") || n.isOption("uk"), f = t.isOption("unique") || t.isOption("uk");
 			if (!r && u) {
 				let t = `${o}_${e}_i`, n = `create index ${t} on ${o} (${e});\n`;
-				i.push(X("add_index", a, c ? `create index if not exists ${t} on ${o} (${e});\n` : this._wrapIndex(n)));
+				i.push(Q("add_index", a, c ? `create index if not exists ${t} on ${o} (${e});\n` : this._wrapIndex(n)));
 			}
 			if (r && !u) {
 				let t = `${s}_${e}_i`;
-				i.push(X("drop_index", a, `drop index ${t};\n`));
+				i.push(Q("drop_index", a, `drop index ${t};\n`));
 			}
 			if (!d && f) {
 				let t = `${o}_${e}_unq`, n = `create unique index ${t} on ${o} (${e});\n`;
-				i.push(X("add_index", a, c ? `create unique index if not exists ${t} on ${o} (${e});\n` : this._wrapIndex(n)));
+				i.push(Q("add_index", a, c ? `create unique index if not exists ${t} on ${o} (${e});\n` : this._wrapIndex(n)));
 			}
 			if (d && !f) {
 				let t = `${s}_${e}_unq`;
-				i.push(X("drop_index", a, `drop index ${t};\n`));
+				i.push(Q("drop_index", a, `drop index ${t};\n`));
 			}
 		}
 		let d = (e) => {
 			let t = e.isOption("unique") ? e.getOptionValue("unique") : e.isOption("uk") ? e.getOptionValue("uk") : null;
 			return !t || typeof t != "string" ? null : t.split(",").map((e) => e.trim()).join(",");
 		}, f = d(e), p = d(t);
-		if (f !== p && (f != null && i.push(X("drop_index", a, `alter table ${s} drop constraint ${s}${D.uk};\n`)), p != null)) {
+		if (f !== p && (f != null && i.push(Q("drop_index", a, `alter table ${s} drop constraint ${s}${D.uk};\n`)), p != null)) {
 			let e = p.split(",").join(", "), t = `alter table ${o} add constraint ${`${o}${D.uk}`} unique (${e});\n`;
-			i.push(X("add_index", a, c ? t : this._wrapConstraint(t)));
+			i.push(Q("add_index", a, c ? t : this._wrapConstraint(t)));
 		}
 		return i;
 	}
 	_diffViews(e, t, n) {
-		let r = [], i = q(n) ? "if exists " : "";
+		let r = [], i = Y(n) ? "if exists " : "";
 		for (let [a] of e) if (!t.has(a)) {
 			let e = n.objPrefix() + a;
-			r.push(X("drop_view", a, `drop view ${i}${e};\n`));
+			r.push(Q("drop_view", a, `drop view ${i}${e};\n`));
 		}
 		let a = [];
 		for (let [n, r] of t) {
@@ -12180,8 +12180,8 @@ var it = class {
 			(t == null || t.trimmedContent() !== r.trimmedContent()) && a.push(r);
 		}
 		for (let e of this._topoSortViews(a, t)) {
-			let t = new Y(n).generateView(e);
-			t && r.push(X("create_view", e.parseName(), t));
+			let t = new Z(n).generateView(e);
+			t && r.push(Q("create_view", e.parseName(), t));
 		}
 		return r;
 	}
@@ -12201,14 +12201,14 @@ var it = class {
 		return i;
 	}
 	_diffPackages(e, t, n, r, i) {
-		let a = [], o = [], s = t.parseName(), c = q(r) ? "if exists " : "", l = this._apiKind(e, n), u = this._apiKind(t, r);
-		for (let i of this._droppedPkgs(e, t, n, r, l, u)) a.push(X("drop_package", s, `drop package ${c}${i};\n`));
+		let a = [], o = [], s = t.parseName(), c = Y(r) ? "if exists " : "", l = this._apiKind(e, n), u = this._apiKind(t, r);
+		for (let i of this._droppedPkgs(e, t, n, r, l, u)) a.push(Q("drop_package", s, `drop package ${c}${i};\n`));
 		let d = e.isOption("auditlog") !== t.isOption("auditlog"), f = (e.isOption("apex") || e.isOption("apx")) !== (t.isOption("apex") || t.isOption("apx")), p = i || l !== u || d || f;
 		if (u === "layered" && p) {
-			let e = new J(r, D);
+			let e = new X(r, D);
 			a.push(...this._splitPkgBlocks(e.generateLayeredTAPI(t), s));
 		} else if (u === "simple" && p) {
-			let e = new J(r, D);
+			let e = new X(r, D);
 			a.push(...this._splitPkgBlocks(e.generateTAPI(t), s));
 		}
 		return {
@@ -12250,7 +12250,7 @@ var it = class {
 	}
 	_splitPkgBlocks(e, t) {
 		let n = [], r = e.split(/\n\/\s*(?:\n|$)/);
-		for (let e of r) e = e.trim(), e && n.push(X("create_package", t, e + "\n/\n"));
+		for (let e of r) e = e.trim(), e && n.push(Q("create_package", t, e + "\n/\n"));
 		return n;
 	}
 	_wrapIndex(e) {
@@ -12263,7 +12263,7 @@ var it = class {
 		return [...e].sort((e, t) => this._step(e) - this._step(t));
 	}
 	_step(e) {
-		return e.kind === "create_package" ? e.sql.toLowerCase().includes("package body ") ? 17 : 15 : rt[e.kind] ?? 99;
+		return e.kind === "create_package" ? e.sql.toLowerCase().includes("package body ") ? 17 : 15 : tt[e.kind] ?? 99;
 	}
 	_summary(e, t, n, r) {
 		let i = 0, a = 0, o = 0;
@@ -12282,7 +12282,7 @@ var it = class {
 	}
 	_buildPreamble(e, t) {
 		let n = e.filter((e) => e.requiresManualIntervention), r = t.filter((e) => e.level === "INFO"), i = e.filter((e) => e.kind === "drop_table").map((e) => e.table), a = t.filter((e) => e.message.startsWith("column dropped")), o = "";
-		if (o += "-- ============================================================\n", o += "-- EspreSQL Migration Script\n", o += `-- Generated : ${(/* @__PURE__ */ new Date()).toISOString()}\n`, o += "-- ============================================================\n", n.length > 0) {
+		if (o += "-- ============================================================\n", o += "-- ExpreSQL Migration Script\n", o += `-- Generated : ${(/* @__PURE__ */ new Date()).toISOString()}\n`, o += "-- ============================================================\n", n.length > 0) {
 			o += "--\n", o += `-- ⚠ MANUAL STEPS REQUIRED (statementsRequiringIntervention = ${n.length})\n`, o += "--\n";
 			for (let e of n) {
 				o += `--   [${e.table}${e.column ? "." + e.column : ""}]\n`;
@@ -12299,546 +12299,6 @@ var it = class {
 		return (i.length > 0 || a.length > 0) && (o += "--\n", o += "-- ⚠ DESTRUCTIVE OPERATIONS\n", i.length > 0 && (o += `--   Tables dropped  : ${i.length}\n`), a.length > 0 && (o += `--   Columns dropped : ${a.length}\n`), o += "--   Apply during a maintenance window.\n", o += "--\n"), o += "-- ============================================================\n", o += "\n", o;
 	}
 };
+_e("oracle", (e) => new Z(e)), ye("oracle", (e) => new nt());
 //#endregion
-//#region src/db2/types.ts
-function Q(e) {
-	if (e.needsBoolCheck && (e.varcharLen === 1 || e.varcharLen == null)) return "boolean";
-	switch (e.base) {
-		case "varchar": return `varchar(${e.varcharLen ?? 4e3})`;
-		case "number": return e.numericSpec ? `decimal${e.numericSpec}` : "decimal(15,4)";
-		case "integer": return "integer";
-		case "float": return "double";
-		case "date": return "date";
-		case "timestamp": return "timestamp";
-		case "tswtz": return "timestamp with time zone";
-		case "tswltz": return "timestamp";
-		case "clob": return "clob";
-		case "blob": return "blob";
-		case "boolean": return "boolean";
-		case "geometry": return "db2gse.st_geometry";
-		case "json": return "json";
-		case "xml": return "xml";
-		case "vector": return "clob";
-		default: return e.base === "" ? "varchar(255)" : e.base;
-	}
-}
-//#endregion
-//#region src/db2/plsql.ts
-function $(e, t) {
-	let n = e.find(t);
-	if (n == null) return "integer";
-	let r = n.getExplicitPkName();
-	if (r == null || r.includes(",")) return "integer";
-	let i = n.findChild(r);
-	return i == null ? "integer" : Q(i._inferTypeFull());
-}
-var at = class {
-	constructor(e, t) {
-		this.ctx = e, this.naming = t;
-	}
-	generateTrigger(e) {
-		return e.inferType() === "table" ? this._generateBITrigger(e) + this._generateBUTrigger(e) : "";
-	}
-	_generateBITrigger(e) {
-		let t = e.hasRowVersion(), n = e.hasAuditCols(), r = e.children.some((e) => e.isOption("lower") || e.isOption("upper"));
-		if (!t && !n && !r) return "";
-		let i = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), a = "--#SET TERMINATOR @\n";
-		a += `create or replace trigger ${i}${this.naming.bi}\n`, a += `before insert on ${i}\n`, a += "referencing new as n\n", a += "for each row\n", a += "begin\n";
-		for (let t of e.children) t.isOption("lower") ? a += `    set n.${t.parseName()} = lower(n.${t.parseName()});\n` : t.isOption("upper") && (a += `    set n.${t.parseName()} = upper(n.${t.parseName()});\n`);
-		return t && (a += "    set n.row_version = 1;\n"), n && (a += `    set n.${this.ctx.getOptionValue("createdcol")}   = current timestamp;\n`, a += `    set n.${this.ctx.getOptionValue("createdbycol")} = current user;\n`, a += `    set n.${this.ctx.getOptionValue("updatedcol")}   = current timestamp;\n`, a += `    set n.${this.ctx.getOptionValue("updatedbycol")} = current user;\n`), a += "end @\n--#SET TERMINATOR ;\n", a;
-	}
-	_generateBUTrigger(e) {
-		let t = e.hasRowVersion(), n = e.hasAuditCols(), r = e.children.some((e) => e.isOption("lower") || e.isOption("upper"));
-		if (!t && !n && !r) return "";
-		let i = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), a = "--#SET TERMINATOR @\n";
-		a += `create or replace trigger ${i}${this.naming.bu}\n`, a += `before update on ${i}\n`, a += "referencing new as n old as o\n", a += "for each row\n", a += "begin\n";
-		for (let t of e.children) t.isOption("lower") ? a += `    set n.${t.parseName()} = lower(n.${t.parseName()});\n` : t.isOption("upper") && (a += `    set n.${t.parseName()} = upper(n.${t.parseName()});\n`);
-		return t && (a += "    set n.row_version = coalesce(o.row_version, 0) + 1;\n"), n && (a += `    set n.${this.ctx.getOptionValue("updatedcol")}   = current timestamp;\n`, a += `    set n.${this.ctx.getOptionValue("updatedbycol")} = current user;\n`), a += "end @\n--#SET TERMINATOR ;\n", a;
-	}
-	_getTier(e) {
-		let t = e.getOptionValue("api"), n = t == null || String(t).trim() === "" ? "full+hks" : String(t).trim().toLowerCase();
-		switch (n) {
-			case "layered":
-			case "3h": return "full+hks";
-			case "3": return "full";
-			case "2h": return "service+hks";
-			case "2": return "service";
-			case "1h": return "lookup+hks";
-			case "1": return "lookup";
-			default: return n;
-		}
-	}
-	_svcCols(e) {
-		return e.children.filter((e) => e.children.length === 0 && e.refId() === null && e.parseName().toLowerCase() !== "row_version");
-	}
-	generateLayeredTAPI(e) {
-		if (e.inferType() !== "table") return "";
-		e.lateInitFks();
-		let t = this._getTier(e), n = ["full", "full+hks"].includes(t), r = t.endsWith("+hks"), i = [
-			"service",
-			"service+hks",
-			"full",
-			"full+hks"
-		].includes(t), a = String(this.ctx.getOptionValue("ifc") ?? "app").toLowerCase(), o = a === "app" || a === "apex" || a === "both" || a === "", s = a === "rest" || a === "both", c = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), l = (e.getPkName() ?? "id").toLowerCase(), u = "integer", d = "--#SET TERMINATOR @\n";
-		return d += `-- TAPI: ${c}  tier=${t}\n\n`, n && (d += `create schema ${c}_dal @\n\n`, d += this._generateDal(e, c, l, u)), r && (d += `create schema ${c}_hks @\n\n`, d += this._generateHks(e, c, l, u, n)), i && (d += `create schema ${c}_svc @\n\n`, d += this._generateSvc(e, c, l, u, n, r)), o && (d += `create schema ${c}_app @\n\n`, d += this._generateApp(e, c, l, u, i, n, r)), s && (d += `create schema ${c}_rst @\n\n`, d += this._generateRst(e, c, l, u, i, n, r)), d += "--#SET TERMINATOR ;\n", d;
-	}
-	_generateDal(e, t, n, r) {
-		let i = Object.keys(e.fks ?? {}), a = this._svcCols(e), o = "";
-		o += `create or replace procedure ${t}_dal.p_get_by_id (\n`, o += `    in p_${n} ${r}\n`, o += ")\nlanguage sql\ndynamic result sets 1\nbegin\n", o += "    declare c cursor with return for\n", o += `        select * from ${t} where ${n} = p_${n};\n`, o += "    open c;\n", o += "end @\n\n", o += `create or replace procedure ${t}_dal.p_insert_row (\n`;
-		for (let t of i) o += `    in  p_${t} ${$(this.ctx, e.fks[t])},\n`;
-		for (let e of a) o += `    in  p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
-		o += `    out p_${n} ${r}\n`, o += ")\nlanguage sql\nbegin\n", o += `    insert into ${t} (\n`;
-		for (let e of i) o += `        ${e},\n`;
-		for (let e of a) o += `        ${e.parseName()},\n`;
-		o = o.replace(/,\n$/, "\n"), o += "    ) values (\n";
-		for (let e of i) o += `        p_${e},\n`;
-		for (let e of a) o += `        p_${e.parseName()},\n`;
-		o = o.replace(/,\n$/, "\n"), o += "    );\n", o += `    set p_${n} = identity_val_local();\n`, o += "end @\n\n", o += `create or replace procedure ${t}_dal.p_update_row (\n`, o += `    in p_${n} ${r},\n`;
-		for (let t of i) o += `    in p_${t} ${$(this.ctx, e.fks[t])},\n`;
-		for (let e of a) o += `    in p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
-		o = o.replace(/,\n$/, "\n"), o += ")\nlanguage sql\nbegin\n", o += `    update ${t} set\n`;
-		for (let e of i) o += `        ${e} = p_${e},\n`;
-		for (let e of a) o += `        ${e.parseName()} = p_${e.parseName()},\n`;
-		return o = o.replace(/,\n$/, "\n"), o += `    where ${n} = p_${n};\n`, o += "end @\n\n", o += `create or replace procedure ${t}_dal.p_delete_row (\n`, o += `    in p_${n} ${r}\n`, o += ")\nlanguage sql\nbegin\n", o += `    delete from ${t} where ${n} = p_${n};\n`, o += "end @\n\n", o;
-	}
-	_generateHks(e, t, n, r, i) {
-		let a = i ? `${t}_dal.t_id` : r, o = "";
-		o += `create or replace procedure ${t}_hks.p_validate (\n`, o += "    in p_action varchar(10),\n", o += "    in p_row    varchar(32000)\n", o += ")\nlanguage sql\nbegin\n    -- stub: add validation logic\n    return;\nend @\n\n";
-		for (let e of [
-			"p_before_insert",
-			"p_after_insert",
-			"p_before_update",
-			"p_after_update"
-		]) o += `create or replace procedure ${t}_hks.${e} (\n`, o += "    in p_row varchar(32000)\n", o += ")\nlanguage sql\nbegin\n    -- stub\n    return;\nend @\n\n";
-		return o += `create or replace procedure ${t}_hks.p_before_delete (\n`, o += `    in p_${n} ${a}\n`, o += ")\nlanguage sql\nbegin\n    -- stub\n    return;\nend @\n\n", o += `create or replace procedure ${t}_hks.p_after_delete (\n`, o += `    in p_${n} ${a}\n`, o += ")\nlanguage sql\nbegin\n    -- stub\n    return;\nend @\n\n", o;
-	}
-	_generateSvc(e, t, n, r, i, a) {
-		let o = Object.keys(e.fks ?? {}), s = this._svcCols(e), c = "";
-		c += `create or replace procedure ${t}_svc.get (\n`, c += `    in  p_${n} ${r},\n`, c += "    out p_result  varchar(32000)\n", c += ")\nlanguage sql\ndynamic result sets 1\nbegin\n", i ? c += `    call ${t}_dal.p_get_by_id(p_${n});\n` : (c += "    -- private get (absorbed from absent _dal)\n", c += "    declare c cursor with return for\n", c += `        select * from ${t} where ${n} = p_${n};\n`, c += "    open c;\n"), c += "end @\n\n", c += `create or replace procedure ${t}_svc.ins (\n`;
-		for (let t of o) c += `    in  p_${t} ${$(this.ctx, e.fks[t])},\n`;
-		for (let e of s) c += `    in  p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
-		if (c += `    out p_${n} ${r},\n`, c += "    out p_status  varchar(20)\n", c += ")\nlanguage sql\nbegin\n", c += "    declare exit handler for sqlexception\n", c += "    begin\n", c += "        set p_status = 'ERROR';\n", c += "    end;\n", a && (c += `    call ${t}_hks.p_validate('INSERT', '');\n`), a && (c += `    call ${t}_hks.p_before_insert('');\n`), i) {
-			c += `    call ${t}_dal.p_insert_row(`;
-			let e = [
-				...o.map((e) => `p_${e}`),
-				...s.map((e) => `p_${e.parseName()}`),
-				`p_${n}`
-			];
-			c += e.join(", ") + ");\n";
-		} else {
-			c += "    -- private insert (absorbed from absent _dal)\n", c += `    insert into ${t} (`;
-			let e = [...o, ...s.map((e) => e.parseName())];
-			c += e.join(", ") + ") values (", c += e.map((e) => `p_${e}`).join(", ") + ");\n", c += `    set p_${n} = identity_val_local();\n`;
-		}
-		a && (c += `    call ${t}_hks.p_after_insert('');\n`), c += "    set p_status = 'SUCCESS';\n", c += "end @\n\n", c += `create or replace procedure ${t}_svc.upd (\n`, c += `    in  p_${n} ${r},\n`;
-		for (let t of o) c += `    in  p_${t} ${$(this.ctx, e.fks[t])},\n`;
-		for (let e of s) c += `    in  p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
-		if (c += "    out p_status  varchar(20)\n", c += ")\nlanguage sql\nbegin\n", c += "    declare exit handler for sqlexception\n", c += "    begin\n", c += "        set p_status = 'ERROR';\n", c += "    end;\n", a && (c += `    call ${t}_hks.p_validate('UPDATE', '');\n`), a && (c += `    call ${t}_hks.p_before_update('');\n`), i) {
-			c += `    call ${t}_dal.p_update_row(p_${n}`;
-			for (let e of o) c += `, p_${e}`;
-			for (let e of s) c += `, p_${e.parseName()}`;
-			c += ");\n";
-		} else {
-			c += "    -- private update (absorbed from absent _dal)\n", c += `    update ${t} set\n`;
-			let e = [...o.map((e) => `        ${e} = p_${e}`), ...s.map((e) => `        ${e.parseName()} = p_${e.parseName()}`)];
-			c += e.join(",\n") + `\n    where ${n} = p_${n};\n`;
-		}
-		return a && (c += `    call ${t}_hks.p_after_update('');\n`), c += "    set p_status = 'SUCCESS';\n", c += "end @\n\n", c += `create or replace procedure ${t}_svc.del (\n`, c += `    in  p_${n} ${r},\n`, c += "    out p_status  varchar(20)\n", c += ")\nlanguage sql\nbegin\n", c += "    declare exit handler for sqlexception\n", c += "    begin\n", c += "        set p_status = 'ERROR';\n", c += "    end;\n", a && (c += `    call ${t}_hks.p_before_delete(p_${n});\n`), i ? c += `    call ${t}_dal.p_delete_row(p_${n});\n` : (c += "    -- private delete (absorbed from absent _dal)\n", c += `    delete from ${t} where ${n} = p_${n};\n`), a && (c += `    call ${t}_hks.p_after_delete(p_${n});\n`), c += "    set p_status = 'SUCCESS';\n", c += "end @\n\n", c;
-	}
-	_generateApp(e, t, n, r, i, a, o) {
-		let s = Object.keys(e.fks ?? {}), c = this._svcCols(e), l = "";
-		l += `create or replace procedure ${t}_app.get (\n`, l += `    in  p_${n}  ${r}`;
-		for (let t of s) l += `,\n    out p_${t} ${$(this.ctx, e.fks[t])}`;
-		for (let e of c) l += `,\n    out p_${e.parseName()} ${Q(e._inferTypeFull())}`;
-		l += "\n)\nlanguage sql\nbegin\n";
-		let u = [...s, ...c.map((e) => e.parseName())];
-		u.length > 0 && (l += "    select\n", l += u.map((e) => `        ${e}`).join(",\n") + "\n", l += "    into\n", l += u.map((e) => `        p_${e}`).join(",\n") + "\n", l += `    from ${t}\n`, l += `    where ${n} = p_${n};\n`), l += "end @\n\n", l += `create or replace procedure ${t}_app.ins (\n`;
-		for (let t of s) l += `    in  p_${t} ${$(this.ctx, e.fks[t])},\n`;
-		for (let e of c) l += `    in  p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
-		if (l += `    out p_${n} ${r},\n`, l += "    out p_status  varchar(20)\n", l += ")\nlanguage sql\nbegin\n", i) {
-			l += `    call ${t}_svc.ins(`;
-			let e = [
-				...s.map((e) => `p_${e}`),
-				...c.map((e) => `p_${e.parseName()}`),
-				`p_${n}`,
-				"p_status"
-			];
-			l += e.join(", ") + ");\n";
-		} else {
-			if (l += "    -- private insert (absorbed from absent _svc)\n", o && (l += `    call ${t}_hks.p_validate('INSERT', '');\n`), o && (l += `    call ${t}_hks.p_before_insert('');\n`), a) {
-				l += `    call ${t}_dal.p_insert_row(`;
-				let e = [
-					...s.map((e) => `p_${e}`),
-					...c.map((e) => `p_${e.parseName()}`),
-					`p_${n}`
-				];
-				l += e.join(", ") + ");\n";
-			} else {
-				let e = [...s, ...c.map((e) => e.parseName())];
-				l += `    insert into ${t} (`, l += e.join(", ") + ") values (", l += e.map((e) => `p_${e}`).join(", ") + ");\n", l += `    set p_${n} = identity_val_local();\n`;
-			}
-			o && (l += `    call ${t}_hks.p_after_insert('');\n`), l += "    set p_status = 'SUCCESS';\n";
-		}
-		l += "end @\n\n", l += `create or replace procedure ${t}_app.upd (\n`, l += `    in  p_${n} ${r},\n`;
-		for (let t of s) l += `    in  p_${t} ${$(this.ctx, e.fks[t])},\n`;
-		for (let e of c) l += `    in  p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
-		if (l += "    out p_status  varchar(20)\n", l += ")\nlanguage sql\nbegin\n", i) {
-			l += `    call ${t}_svc.upd(p_${n}`;
-			for (let e of s) l += `, p_${e}`;
-			for (let e of c) l += `, p_${e.parseName()}`;
-			l += ", p_status);\n";
-		} else {
-			if (l += "    -- private update (absorbed from absent _svc)\n", o && (l += `    call ${t}_hks.p_validate('UPDATE', '');\n`), o && (l += `    call ${t}_hks.p_before_update('');\n`), a) {
-				l += `    call ${t}_dal.p_update_row(p_${n}`;
-				for (let e of s) l += `, p_${e}`;
-				for (let e of c) l += `, p_${e.parseName()}`;
-				l += ");\n";
-			} else {
-				l += `    update ${t} set\n`;
-				let e = [...s.map((e) => `        ${e} = p_${e}`), ...c.map((e) => `        ${e.parseName()} = p_${e.parseName()}`)];
-				l += e.join(",\n") + `\n    where ${n} = p_${n};\n`;
-			}
-			o && (l += `    call ${t}_hks.p_after_update('');\n`), l += "    set p_status = 'SUCCESS';\n";
-		}
-		return l += "end @\n\n", l += `create or replace procedure ${t}_app.del (\n`, l += `    in  p_${n}  ${r},\n`, l += "    out p_status   varchar(20)\n", l += ")\nlanguage sql\nbegin\n", i ? l += `    call ${t}_svc.del(p_${n}, p_status);\n` : (l += "    -- private delete (absorbed from absent _svc)\n", o && (l += `    call ${t}_hks.p_before_delete(p_${n});\n`), a ? l += `    call ${t}_dal.p_delete_row(p_${n});\n` : l += `    delete from ${t} where ${n} = p_${n};\n`, o && (l += `    call ${t}_hks.p_after_delete(p_${n});\n`), l += "    set p_status = 'SUCCESS';\n"), l += "end @\n\n", l;
-	}
-	_generateRst(e, t, n, r, i, a, o) {
-		let s = Object.keys(e.fks ?? {}), c = this._svcCols(e), l = "";
-		if (l += `create or replace procedure ${t}_rst.get (\n`, l += `    in  p_${n} ${r},\n`, l += "    out p_result  varchar(32000),\n", l += "    out p_status  integer\n", l += ")\nlanguage sql\nbegin\n", l += "    declare continue handler for sqlexception\n", l += "    begin\n", l += "        get diagnostics exception 1 p_result = message_text;\n", l += "        set p_result = json_object('error': p_result);\n", l += "        set p_status = 500;\n", l += "    end;\n", l += "    set p_status = 200;\n", i) l += `    call ${t}_svc.get(p_${n}, p_result);\n`;
-		else if (a) l += `    call ${t}_dal.p_get_by_id(p_${n});\n`;
-		else {
-			l += "    -- private get (absorbed from absent _svc/_dal)\n", l += "    select json_object(";
-			let e = c.map((e) => `'${e.parseName()}': ${e.parseName()}`);
-			e.length > 0 && (l += e.join(", ")), l += `)\n    into p_result from ${t} where ${n} = p_${n};\n`;
-		}
-		l += "end @\n\n", l += `create or replace procedure ${t}_rst.ins (\n`;
-		for (let t of s) l += `    in  p_${t} ${$(this.ctx, e.fks[t])},\n`;
-		for (let e of c) l += `    in  p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
-		if (l += `    out p_${n}  ${r},\n`, l += "    out p_result   varchar(32000),\n", l += "    out p_status   integer\n", l += ")\nlanguage sql\nbegin\n", l += "    declare p_svc_status varchar(20);\n", l += "    declare continue handler for sqlexception\n", l += "    begin\n", l += "        get diagnostics exception 1 p_result = message_text;\n", l += "        set p_result = json_object('error': p_result);\n", l += "        set p_status = 500;\n", l += "    end;\n", l += "    set p_status = 201;\n", i) {
-			l += `    call ${t}_svc.ins(`;
-			let e = [
-				...s.map((e) => `p_${e}`),
-				...c.map((e) => `p_${e.parseName()}`),
-				`p_${n}`,
-				"p_svc_status"
-			];
-			l += e.join(", ") + ");\n";
-		} else {
-			l += "    -- private insert (absorbed from absent _svc/_dal)\n", o && (l += `    call ${t}_hks.p_validate('INSERT', '');\n`), l += `    insert into ${t} (`;
-			let e = [...s, ...c.map((e) => e.parseName())];
-			l += e.join(", ") + ") values (", l += e.map((e) => `p_${e}`).join(", ") + ");\n", l += `    set p_${n} = identity_val_local();\n`;
-		}
-		l += `    set p_result = json_object('${n}': p_${n});\n`, l += "end @\n\n", l += `create or replace procedure ${t}_rst.upd (\n`, l += `    in  p_${n} ${r},\n`;
-		for (let t of s) l += `    in  p_${t} ${$(this.ctx, e.fks[t])},\n`;
-		for (let e of c) l += `    in  p_${e.parseName()} ${Q(e._inferTypeFull())},\n`;
-		if (l += "    out p_result  varchar(32000),\n", l += "    out p_status  integer\n", l += ")\nlanguage sql\nbegin\n", l += "    declare p_svc_status varchar(20);\n", l += "    declare continue handler for sqlexception\n", l += "    begin\n", l += "        get diagnostics exception 1 p_result = message_text;\n", l += "        set p_result = json_object('error': p_result);\n", l += "        set p_status = 500;\n", l += "    end;\n", l += "    set p_status = 200;\n", i) {
-			l += `    call ${t}_svc.upd(p_${n}`;
-			for (let e of s) l += `, p_${e}`;
-			for (let e of c) l += `, p_${e.parseName()}`;
-			l += ", p_svc_status);\n";
-		} else {
-			l += "    -- private update (absorbed from absent _svc/_dal)\n", l += `    update ${t} set\n`;
-			let e = [...s.map((e) => `        ${e} = p_${e}`), ...c.map((e) => `        ${e.parseName()} = p_${e.parseName()}`)];
-			e.length > 0 && (l += e.join(",\n") + `\n    where ${n} = p_${n};\n`);
-		}
-		return l += `    set p_result = json_object('${n}': p_${n});\n`, l += "end @\n\n", l += `create or replace procedure ${t}_rst.del (\n`, l += `    in  p_${n} ${r},\n`, l += "    out p_result  varchar(32000),\n", l += "    out p_status  integer\n", l += ")\nlanguage sql\nbegin\n", l += "    declare p_svc_status varchar(20);\n", l += "    declare continue handler for sqlexception\n", l += "    begin\n", l += "        get diagnostics exception 1 p_result = message_text;\n", l += "        set p_result = json_object('error': p_result);\n", l += "        set p_status = 500;\n", l += "    end;\n", l += "    set p_status = 200;\n", i ? l += `    call ${t}_svc.del(p_${n}, p_svc_status);\n` : (l += "    -- private delete (absorbed from absent _svc/_dal)\n", o && (l += `    call ${t}_hks.p_before_delete(p_${n});\n`), l += `    delete from ${t} where ${n} = p_${n};\n`), l += `    set p_result = json_object('${n}': p_${n}, 'deleted': 1);\n`, l += "end @\n\n", l;
-	}
-}, ot = " not null";
-function st(e) {
-	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
-}
-var ct = class extends _e {
-	constructor(e, t) {
-		super(e), this._naming = t ?? D, this._plsql = new at(e, this._naming);
-	}
-	colType(e) {
-		return Q(e);
-	}
-	_pkColType(e) {
-		return this._ddl.optionEQvalue("pk", "seq") ? `integer not null default next value for ${e}${this._naming.seq}` : "integer not null generated always as identity (start with 1 increment by 1)";
-	}
-	_genSequence(e) {
-		return this._ddl.optionEQvalue("pk", "seq") && this._ddl.optionEQvalue("genpk", !0) ? `create sequence  ${e}${this._naming.seq} start with 1 increment by 1;\n\n` : "";
-	}
-	identityRestartSql(e, t, n) {
-		return `alter table ${e}\n    alter column ${t} restart with ${n};\n\n`;
-	}
-	_cpad(e) {
-		return O + O + " ".repeat(e.parent.maxChildNameLen());
-	}
-	_buildColumnConstraints(e, t, n) {
-		(e.isOption("unique") || e.isOption("uk")) && (t += "\n", t += this._cpad(e) + "constraint " + f(this._ddl.objPrefix(), n.parent_child, this._naming.unq) + " unique");
-		let r = "'";
-		if ((t.startsWith("integer") || t.startsWith("decimal") || t.startsWith("double") || t.startsWith("date")) && (r = ""), e.isOption("default")) {
-			let i = e.getDefaultValue() ?? "", a = [
-				"current date",
-				"current_date",
-				"current timestamp",
-				"current_timestamp"
-			];
-			if (n.isNativeBoolean) {
-				let e = i.toUpperCase() === "Y" || i.toLowerCase() === "true" ? "true" : "false";
-				t += " default " + e;
-			} else a.includes(i.toLowerCase()) ? t += " default " + i : t += " default " + r + i + r;
-		}
-		if ((e.isOption("nn") || e.indexOf("not") + 1 === e.indexOf("null")) && e.indexOf("pk") < 0 && (t += " not null"), n.isNativeBoolean || (t += e.genConstraint(r)), n.needsBoolCheck && Q(n) !== "boolean" && (t += "\n" + this._cpad(e) + "constraint " + f(this._ddl.objPrefix(), n.parent_child) + ` check (${e.parseName()} in ('Y','N'))`), e.isOption("between")) {
-			let r = e.getBetweenClause() ?? "";
-			t += " constraint " + f(n.parent_child, this._naming.bet) + "\n", t += "           check (" + e.parseName() + " between " + r + ")";
-		}
-		return e.isOption("pk") && (t += " not null\n", t += this._cpad(e) + "constraint " + f(this._ddl.objPrefix(), n.parent_child, this._naming.pk) + " primary key"), t;
-	}
-	parseType(e) {
-		if (e.children !== null && 0 < e.children.length) return "table";
-		let t = e.inferType();
-		if (t === "view") return t;
-		if (e.parent === null) return "table";
-		let n = e._inferTypeFull();
-		return this._buildColumnConstraints(e, Q(n), n);
-	}
-	_genTableHeader(e, t, n) {
-		let r = "create table " + t + " (\n", i = O + " ".repeat(e.maxChildNameLen() - 2);
-		if (n !== null && !e.isOption("pk")) {
-			r += O + n + i + this._pkColType(t) + "\n";
-			let a = f(this._ddl.objPrefix("no schema") + e.parseName(), "_", n);
-			r += O + O + " ".repeat(e.maxChildNameLen()) + "constraint " + f(a, this._naming.pk) + " primary key,\n";
-		} else {
-			let t = e.getExplicitPkName();
-			if (t !== null && t.indexOf(",") < 0) {
-				let n = O + " ".repeat(e.maxChildNameLen() - t.length), i = "integer", a = e.findChild(t);
-				a !== null && (i = this.parseType(a)), r += O + t + n + i + ",\n";
-			}
-		}
-		return r;
-	}
-	_fkColType(e) {
-		let t = e.getExplicitPkName();
-		if (t === null || t.includes(",")) return null;
-		let n = e.findChild(t);
-		return n === null ? e.getPkType() : Q(n._inferTypeFull());
-	}
-	_genFkColumns(e, t) {
-		let n = "";
-		for (let r in e.fks) {
-			let i = e.fks[r];
-			if (0 < r.indexOf(",")) {
-				let t = this._ddl.find(i), a = m(r, ", ");
-				for (let r = 0; r < a.length; r++) {
-					let i = a[r];
-					if (i === ",") continue;
-					let o = t?.findChild(i), s = O + " ".repeat(e.maxChildNameLen() - i.length);
-					n += O + i + s + (o ? Q(o._inferTypeFull()) : "integer") + ",\n";
-				}
-				continue;
-			}
-			let a = "integer", o = e.findChild(r);
-			o !== null && (a = o.inferType());
-			let s = this._ddl.find(i), c = "";
-			s === null ? (s = this._ddl.find(r), s?.isMany2One?.() && !r.endsWith("_id") && (i = r, r = l(r) ?? r, c = "_id")) : a = this._fkColType(s) ?? a;
-			let u = O + " ".repeat(e.maxChildNameLen() - r.length), d = r + c;
-			n += O + d + u + a;
-			let f = this._ddl.find(i) === null ? "" : this._ddl.objPrefix();
-			if (s !== null && (s.line < e.line || s.isMany2One())) {
-				n += O + O + " ".repeat(e.maxChildNameLen()) + "constraint " + t + "_" + d + this._naming.fk + "\n";
-				let a = "";
-				e.isOption("cascade") ? a = " on delete cascade" : e.isOption("setnull") && (a = " on delete set null");
-				let o = "";
-				for (let t in e.children) {
-					let n = e.children[t];
-					if (r === n.parseName()) {
-						(n.isOption("nn") || n.isOption("notnull")) && (o = ot), n.isOption("cascade") ? a = " on delete cascade" : n.isOption("setnull") && (a = " on delete set null");
-						break;
-					}
-				}
-				n += O + O + " ".repeat(e.maxChildNameLen()) + "references " + f + i + a + o + ",\n";
-			} else {
-				n += ",\n";
-				let a = "";
-				e.isOption("cascade") ? a = " on delete cascade" : e.isOption("setnull") && (a = " on delete set null");
-				for (let t in e.children) {
-					let n = e.children[t];
-					if (r === n.parseName()) {
-						n.isOption("cascade") ? a = " on delete cascade" : n.isOption("setnull") && (a = " on delete set null");
-						break;
-					}
-				}
-				let o = `alter table ${t} add constraint ${t}_${d}${this._naming.fk} foreign key (${d}) references ${f}${i}${a};\n`;
-				this._ddl.postponedAltersSet.has(o) || (this._ddl.postponedAlters.push(o), this._ddl.postponedAltersSet.add(o));
-			}
-		}
-		return n;
-	}
-	_genRegularColumns(e, t) {
-		let n = "";
-		for (let r = 0; r < e.children.length; r++) {
-			let i = e.children[r];
-			if (!(t !== null && i.parseName() === "id") && !(0 < i.children.length) && i.refId() === null) {
-				if (i.parseName() === e.getExplicitPkName()) continue;
-				if (n += O + this.generateTable(i) + ",\n", 0 < i.indexOf("file")) {
-					let t = i.parseName();
-					for (let r of [
-						{
-							suffix: "_filename",
-							type: "varchar(255)"
-						},
-						{
-							suffix: "_mimetype",
-							type: "varchar(255)"
-						},
-						{
-							suffix: "_charset",
-							type: "varchar(255)"
-						},
-						{
-							suffix: "_lastupd",
-							type: "timestamp"
-						}
-					]) {
-						let i = t + r.suffix, a = O + " ".repeat(e.maxChildNameLen() - i.length);
-						n += O + i + a + r.type + ",\n";
-					}
-				}
-			}
-		}
-		return n;
-	}
-	_genRowVersionColumn(e) {
-		if (!e.hasRowVersion()) return "";
-		let t = O + " ".repeat(e.maxChildNameLen() - 11);
-		return O + "row_version" + t + "integer not null,\n";
-	}
-	_genAuditColumns(e) {
-		if (!e.hasAuditCols()) return "";
-		let t = "timestamp", n = "", r = String(this._ddl.getOptionValue("createdcol") ?? "created"), i = String(this._ddl.getOptionValue("createdbycol") ?? "created_by"), a = String(this._ddl.getOptionValue("updatedcol") ?? "updated"), o = String(this._ddl.getOptionValue("updatedbycol") ?? "updated_by");
-		return n += O + r + O + " ".repeat(e.maxChildNameLen() - r.length) + t + " not null,\n", n += O + i + O + " ".repeat(e.maxChildNameLen() - i.length) + "varchar(255) not null,\n", n += O + a + O + " ".repeat(e.maxChildNameLen() - a.length) + t + " not null,\n", n += O + o + O + " ".repeat(e.maxChildNameLen() - o.length) + "varchar(255) not null,\n", n;
-	}
-	_genAdditionalColumns(e) {
-		let t = "", n = this._ddl.additionalColumns();
-		for (let r in n) {
-			let i = n[r], a = O + " ".repeat(e.maxChildNameLen() - r.length);
-			t += O + r.toUpperCase() + a + i + " not null,\n";
-		}
-		return t;
-	}
-	_genTableFooter(e, t) {
-		let n = ");\n\n";
-		return e.isOption("audit") && !e.isOption("auditcols") && (n += `-- note: configure IBM Db2 Audit Policy for ${t}\n\n`), n;
-	}
-	_genMultiColFkAlters(e, t) {
-		let n = "";
-		for (let r in e.fks) if (0 < r.indexOf(",")) {
-			let i = e.fks[r];
-			n += `alter table ${t} add constraint ${i}_${t}${this._naming.fk} foreign key (${r}) references ${i};\n\n`;
-		}
-		return n;
-	}
-	_genIndexes(e, t) {
-		let n = "", r = 1;
-		for (let i in e.fks) if (!e.isMany2One()) {
-			let a = i ?? l(e.fks[i]) + "_id";
-			r === 1 && (n += "-- table index\n"), n += `create index ${t}${this._naming.idx}${r++} on ${t} (${a});\n\n`;
-		}
-		let i = e.getOptionValue("pk");
-		i && (n += `alter table ${t} add constraint ${t}${this._naming.pk} primary key (${i});\n\n`);
-		let a = e.getOptionValue("unique") ?? e.getOptionValue("uk");
-		a !== null && (n += `alter table ${t} add constraint ${t}${this._naming.uk} unique (${a});\n\n`);
-		for (let i = 0; i < e.children.length; i++) {
-			let a = e.children[i];
-			(a.isOption("idx") || a.isOption("index")) && (r === 1 && (n += "-- table index\n"), n += `create index ${t}${this._naming.idx}${r++} on ${t} (${a.parseName()});\n`);
-		}
-		return n;
-	}
-	_genComments(e, t) {
-		let n = "", r = e.getAnnotationValue("DESCRIPTION") || e.comment;
-		r !== null && (n += `comment on table ${t} is '${r}';\n`);
-		for (let r = 0; r < e.children.length; r++) {
-			let i = e.children[r], a = i.getAnnotationValue("DESCRIPTION") || i.comment;
-			a !== null && i.children.length === 0 && (n += `comment on column ${t}.${i.parseName()} is '${a}';\n`);
-		}
-		return n;
-	}
-	generateTable(e) {
-		if (e.children.length === 0 && 0 < e.apparentDepth()) {
-			let t = O;
-			return e.parent !== void 0 && e.parent !== null && (t += " ".repeat(e.parent.maxChildNameLen() - e.parseName().length)), e.parseName() + t + this.parseType(e);
-		}
-		e.lateInitFks();
-		let t = this._ddl.objPrefix() + e.parseName(), n = e.getGenIdColName(), r = this._genSequence(t);
-		return r += this._genTableHeader(e, t, n), r += this._genFkColumns(e, t), r += this._genRegularColumns(e, n), r += this._genRowVersionColumn(e), r += this._genAuditColumns(e), r += this._genAdditionalColumns(e), r += e.genConstraint(), r = st(r), r += this._genTableFooter(e, t), r += this._genMultiColFkAlters(e, t), r += this._genIndexes(e, t), r += this._genComments(e, t), r += "\n", r;
-	}
-	generateDDL(e) {
-		if (e.inferType() === "view") return "";
-		let t = this._orderedTableNodes(e), n = "";
-		for (let e = 0; e < t.length; e++) n += this.generateTable(t[e]);
-		return n;
-	}
-	generateDrop(e) {
-		let t = this._ddl.objPrefix() + e.parseName(), n = "";
-		if (e.inferType() === "view" && (n = `drop view if exists ${t};\n`), e.inferType() === "table") {
-			n = `drop table if exists ${t};\n`, this._ddl.optionEQvalue("pk", "seq") && (n += `drop sequence if exists ${t}${this._naming.seq};\n`);
-			let r = e.trimmedContent().toLowerCase().includes("/api"), i = (e.getOptionValue("api") ?? "").trim().toLowerCase();
-			if (r && ([
-				"full+hks",
-				"full",
-				"service+hks",
-				"service",
-				"lookup+hks",
-				"lookup"
-			].includes(i) || i === "" || i === "layered")) {
-				let e = !i || i === "layered" ? "full+hks" : i, r = e === "3h" ? "full+hks" : e === "3" ? "full" : e === "2h" ? "service+hks" : e === "2" ? "service" : e === "1h" ? "lookup+hks" : e === "1" ? "lookup" : e, a = ["full", "full+hks"].includes(r), o = r.endsWith("+hks"), s = [
-					"service",
-					"service+hks",
-					"full",
-					"full+hks"
-				].includes(r), c = String(this._ddl.getOptionValue("ifc") ?? "app").toLowerCase(), l = c === "app" || c === "apex" || c === "both" || c === "", u = c === "rest" || c === "both";
-				a && (n += `drop schema ${t}_dal restrict;\n`), o && (n += `drop schema ${t}_hks restrict;\n`), s && (n += `drop schema ${t}_svc restrict;\n`), l && (n += `drop schema ${t}_app restrict;\n`), u && (n += `drop schema ${t}_rst restrict;\n`);
-			}
-		}
-		return n.toLowerCase();
-	}
-	generateFullDDL() {
-		let e = this._ddl.forest, t = this._ddl.descendants(), n = "";
-		if (this._ddl.optionEQvalue("Include Drops", "yes")) for (let e of t) {
-			let t = this.generateDrop(e);
-			t && (n += t);
-		}
-		n += "-- create tables\n\n";
-		for (let t of e) n += this.generateDDL(t) + "\n";
-		for (let e of this._ddl.postponedAlters) n += e + "\n";
-		let r = 0;
-		for (let e of t) {
-			let t = this._plsql.generateTrigger(e);
-			t && (r++ === 0 && (n += "-- triggers\n"), n += t + "\n");
-		}
-		r = 0;
-		let i = [
-			"full+hks",
-			"full",
-			"service+hks",
-			"service",
-			"lookup+hks",
-			"lookup",
-			"layered",
-			"3h",
-			"3",
-			"2h",
-			"2",
-			"1h",
-			"1"
-		];
-		for (let e of t) {
-			let t = e.trimmedContent().toLowerCase().includes("/api"), a = (e.getOptionValue("api") ?? "").trim().toLowerCase();
-			if (!(t && (i.includes(a) || a === ""))) continue;
-			let o = this._plsql.generateLayeredTAPI(e);
-			o && (r++ === 0 && (n += "-- APIs\n"), n += o + "\n");
-		}
-		r = 0;
-		for (let t of e) {
-			let e = this.generateData(t, this._ddl.data);
-			e && (r++ === 0 && (n += "-- load data\n\n"), n += e + "\n");
-		}
-		return n;
-	}
-};
-F("oracle", (e) => new Y(e)), F("db2", (e) => new ct(e)), be("oracle", (e) => new it());
-//#endregion
-export { _e as BaseGenerator, xe as createDiffGenerator, W as default, W as espresql, G as espresql_version, We as fromJSON, be as registerDiffGenerator, F as registerGenerator, Ke as toDDL, Je as toDiff, Ge as toERD, qe as toErrors };
+export { ge as BaseGenerator, be as createDiffGenerator, G as default, G as expresql, q as expresql_version, Ue as fromJSON, ye as registerDiffGenerator, _e as registerGenerator, K as toDDL, Ke as toDiff, We as toERD, Ge as toErrors };

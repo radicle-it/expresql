@@ -1,4 +1,4 @@
-# EspreSQL Interactive — UI/UX Improvement Specification
+﻿# ExpreSQL Interactive — UI/UX Improvement Specification
 
 **Version:** 1.0  
 **Date:** 2026-05-06  
@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-The current EspreSQL interactive page is functional and visually coherent (Oracle Redwood palette, dark/light themes, syntax highlighting). However, several areas reduce usability and visual clarity:
+The current ExpreSQL interactive page is functional and visually coherent (Oracle Redwood palette, dark/light themes, syntax highlighting). However, several areas reduce usability and visual clarity:
 
 - Inconsistent use of icons across toolbars and headers.
 - The Settings panel lacks a close control and requires excessive scrolling.
@@ -16,7 +16,7 @@ The current EspreSQL interactive page is functional and visually coherent (Oracl
 - The Help button uses a raw `?` character with no styling.
 - Some button labels are overly verbose for the space they occupy.
 - The resize handle between panels has no visual affordance.
-- The product identity (logo + title) is functional but lacks a distinctive EspreSQL mark.
+- The product identity (logo + title) is functional but lacks a distinctive ExpreSQL mark.
 
 This document catalogues every identified issue, proposes concrete changes (with priority), and notes implementation effort. Changes are grouped by area.
 
@@ -27,7 +27,7 @@ This document catalogues every identified issue, proposes concrete changes (with
 ### 2.1 Header
 
 ```
-[Radicle logo] | EspreSQL — write shorthand…  [spacer]  Examples▾  ⚙ Settings  ? Help  ☀  radicle.it
+[Radicle logo] | ExpreSQL — write shorthand…  [spacer]  Examples▾  ⚙ Settings  ? Help  ☀  radicle.it
 ```
 
 | Element | Issue |
@@ -94,7 +94,7 @@ This document catalogues every identified issue, proposes concrete changes (with
 
 | Issue | Detail |
 |---|---|
-| No EspreSQL-specific mark | The product is identified only via text; Radicle logo + text title lacks a dedicated icon |
+| No ExpreSQL-specific mark | The product is identified only via text; Radicle logo + text title lacks a dedicated icon |
 | Radicle logo height 34 px | The CSS has a commented-out `background: #fff` — suggests unresolved transparency |
 | Favicon | Probably inherits browser default; no `<link rel="icon">` tag present |
 
@@ -316,7 +316,7 @@ The Settings section in the Help drawer (30+ rows) duplicates the Settings panel
     <div class="hdw-content">
         <p class="hdw-note">Use the <strong>⚙ Settings</strong> panel in the header to configure options visually, or add a <code># settings = { … }</code> line to your script.</p>
         <code class="hdw-eg"># settings = { pk: seq, semantics: CHAR, db: 23c }</code>
-        <p class="hdw-note" style="margin-top:6px"><a href="doc/user/espresql-grammar.md#settings" target="_blank">→ Full settings reference (all keys and values)</a></p>
+        <p class="hdw-note" style="margin-top:6px"><a href="doc/user/expresql-grammar.md#settings" target="_blank">→ Full settings reference (all keys and values)</a></p>
     </div>
 </details>
 ```
@@ -411,12 +411,12 @@ A minimal SVG favicon:
 </svg>
 ```
 
-#### P2 — EspreSQL wordmark clarity
+#### P2 — ExpreSQL wordmark clarity
 
-The current header reads: `[Radicle logo] | EspreSQL`. The product is "Radicle EspreSQL" but the two components are visually separate. Consider one of:
+The current header reads: `[Radicle logo] | ExpreSQL`. The product is "Radicle ExpreSQL" but the two components are visually separate. Consider one of:
 
-1. **Layered title**: Keep current layout but increase "EspreSQL" from 16 px to 18 px and make the subtitle a proper second line (using flex-direction: column) rather than an inline span.
-2. **Combined mark**: Create a dedicated EspreSQL logo that incorporates both the Radicle brand and the SQL identity — e.g., the Radicle symbol + "EspreSQL" in a single SVG asset.
+1. **Layered title**: Keep current layout but increase "ExpreSQL" from 16 px to 18 px and make the subtitle a proper second line (using flex-direction: column) rather than an inline span.
+2. **Combined mark**: Create a dedicated ExpreSQL logo that incorporates both the Radicle brand and the SQL identity — e.g., the Radicle symbol + "ExpreSQL" in a single SVG asset.
 
 #### P3 — Resolve logo background inconsistency
 
@@ -444,7 +444,7 @@ The CSS has a commented-out `/*background: #fff;*/` on `.logo-img`. This suggest
 | 15 | Output | Add label to migration warnings area | P2 | Low |
 | 16 | Logo | Add favicon (SVG) | P2 | Low |
 | 17 | Footer | Reduce visual weight for idle state | P3 | Low |
-| 18 | Logo | Increase EspreSQL title size / subtitle legibility | P3 | Trivial |
+| 18 | Logo | Increase ExpreSQL title size / subtitle legibility | P3 | Trivial |
 | 19 | Settings | Increase group header font-size 9 → 10 px | P3 | Trivial |
 | 20 | Help | Add search/filter to Help drawer | P3 | Medium |
 | 21 | Logo | Audit PNG transparency in light/dark themes | P3 | Low |
@@ -471,4 +471,4 @@ The following current design decisions are **correct and should be preserved**:
 - **Full accessibility (WCAG/ARIA compliance)** — the audience is Oracle/SQL developers on desktop; the two ARIA attributes retained (`aria-label` on Help, `aria-pressed` on theme toggle) are trivial and double as test-automation hooks, not accessibility goals.
 - Changing the Oracle Redwood brand colors.
 - Theming beyond dark/light toggle.
-- Replacing the EspreSQL parsing engine or output format.
+- Replacing the ExpreSQL parsing engine or output format.

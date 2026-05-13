@@ -1,4 +1,4 @@
-import {espresql, toERD, toDDL} from '../../dist/espresql.js';
+﻿import {expresql, toERD, toDDL} from '../../dist/expresql.js';
 
 function assert( condition ) {
     if( !eval(condition) ) {
@@ -17,16 +17,16 @@ export default function compatibility_tests() {
     `
     output = JSON.stringify(toERD(input), null, 4); 
     assert( "0 < output.indexOf('dept')" );
-    output = JSON.stringify(espresql.toERD(input), null, 4); 
+    output = JSON.stringify(expresql.toERD(input), null, 4); 
     assert( "0 < output.indexOf('dept')" );
 
     output = toDDL(input); 
     assert( "0 < output.indexOf('dept')" );
-    output = espresql.toDDL(input); 
+    output = expresql.toDDL(input); 
     assert( "0 < output.indexOf('dept')" );
 
     // since 1.2.0
-    let qsql = new espresql(input); // build parse tree once only
+    let qsql = new expresql(input); // build parse tree once only
     output = qsql.getDDL(); 
     assert( "0 < output.indexOf('dept')" );
     output = JSON.stringify(qsql.getERD(), null, 4); 

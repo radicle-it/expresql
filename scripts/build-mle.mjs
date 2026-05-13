@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'fs';
+﻿import { readFileSync, writeFileSync } from 'fs';
 
 const polyfill = `if (typeof Buffer === 'undefined') {
     globalThis.Buffer = {
@@ -12,7 +12,7 @@ const polyfill = `if (typeof Buffer === 'undefined') {
 }
 `;
 
-const bundle = readFileSync('dist/espresql.js', 'utf8');
+const bundle = readFileSync('dist/expresql.js', 'utf8');
 const output = polyfill + bundle;
-writeFileSync('dist/espresql.mle.cjs', output, 'utf8');
-console.log('MLE bundle written: dist/espresql.mle.cjs (' + output.length + ' bytes)');
+writeFileSync('dist/expresql.mle.cjs', output, 'utf8');
+console.log('MLE bundle written: dist/expresql.mle.cjs (' + output.length + ' bytes)');

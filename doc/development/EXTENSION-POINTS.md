@@ -1,4 +1,4 @@
-# EspreSQL — Extension Points
+﻿# ExpreSQL — Extension Points
 
 **Status**: Active  
 **Version**: 1.2  
@@ -9,7 +9,7 @@
 
 ## Purpose
 
-This document defines the extension points for the EspreSQL platform. EX-1 is implemented and stable. EX-2 onwards are planned — titles and intent only, no implementation contract yet.
+This document defines the extension points for the ExpreSQL platform. EX-1 is implemented and stable. EX-2 onwards are planned — titles and intent only, no implementation contract yet.
 
 ---
 
@@ -81,8 +81,8 @@ function createGenerator(ctx: DdlContext): DDLGenerator;
 
 ```typescript
 // src/postgres/generator.ts
-import { BaseGenerator, registerGenerator } from '@oracle/espresql';
-import type { DdlContext, SemanticType, IDdlNode } from '@oracle/espresql';
+import { BaseGenerator, registerGenerator } from '@oracle/expresql';
+import type { DdlContext, SemanticType, IDdlNode } from '@oracle/expresql';
 
 class PostgresDDLGenerator extends BaseGenerator {
     colType(sem: SemanticType): string {

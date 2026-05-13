@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Integration tests for toDiff() — Oracle diff/migration generator (EX-10).
  * All assertions are string/structure-based; no Oracle runtime required.
  */
@@ -426,7 +426,7 @@ describe('preamble', () => {
     test('preamble present for any non-empty diff', () => {
         const newQsql = `employees\n  name vc100 /nn\n  email vc200\n  phone vc50`;
         const r = diff(BASE, newQsql);
-        expect(r.sql).toContain('EspreSQL Migration Script');
+        expect(r.sql).toContain('ExpreSQL Migration Script');
         expect(r.sql).toContain('Generated :');
     });
 

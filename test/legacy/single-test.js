@@ -1,4 +1,4 @@
-import  {espresql,fromJSON} from "../../src/ddl.js";
+﻿import  {expresql,fromJSON} from "../../src/ddl.js";
 
 import {checkNoError} from './error-msg-tests.js'
 
@@ -11,10 +11,10 @@ try {
     //var chance = new Chance(15555);
     //console.log(chance.address());
 
-    let file = '//bugs/Bug35063257.espresql';
+    let file = '//bugs/Bug35063257.expresql';
     //file = '//experimental/food_product.json';
     file = '//erd/Bug35814250/1-3.esql';
-    file = '//apex/project_management.espresql';
+    file = '//apex/project_management.expresql';
     file = '//star/sales_product_customers.esql';
 
     let args = process.argv.slice(2);
@@ -48,10 +48,10 @@ try {
     }
     let t1 = Date.now();
     if( 0 <= file.indexOf('/erd/') ) {
-        const p = new espresql(input);
+        const p = new expresql(input);
         output = JSON.stringify(p.getERD(), null, 4);
     } else {
-        const p = new espresql(input);
+        const p = new expresql(input);
         const errors =  p.getErrors(text);
         checkNoError(errors);
         output = p.getDDL();

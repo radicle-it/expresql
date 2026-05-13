@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'fs';
+﻿import { readFileSync, writeFileSync } from 'fs';
 
 const CHUNK = 2000;   // caratteri per chunk — ben sotto il limite VARCHAR2 di Oracle
 const DELIM = '$QSQL$';
@@ -67,5 +67,5 @@ PROMPT >>> ${outFile} completato.
     console.log(`Generato: ${outFile}  (${chunks.length} chunk, ${(sql.length/1024).toFixed(0)} KB)`);
 }
 
-embedSQL('mle/01_install_module.sql',     'espresql_module',     'dist/espresql.mle.cjs');
-embedSQL('mle/02_install_api_module.sql', 'espresql_api_module', 'mle/espresql-api.mjs');
+embedSQL('mle/01_install_module.sql',     'expresql_module',     'dist/expresql.mle.cjs');
+embedSQL('mle/02_install_api_module.sql', 'expresql_api_module', 'mle/expresql-api.mjs');

@@ -1,4 +1,4 @@
-import type { DdlContext, IDdlNode } from '../compiler/types.js';
+﻿import type { DdlContext, IDdlNode } from '../compiler/types.js';
 import type { DiffGenerator, DiffResult, DiffStatement, DiffStatementKind, DiffWarning, DiffSummary } from '../compiler/diff-types.js';
 import { OracleDDLGenerator } from './generator.js';
 import { OraclePlsqlBuilder } from './plsql.js';
@@ -1197,7 +1197,7 @@ export class OracleDiffGenerator implements DiffGenerator {
 
         let out = '';
         out += '-- ============================================================\n';
-        out += '-- EspreSQL Migration Script\n';
+        out += '-- ExpreSQL Migration Script\n';
         out += `-- Generated : ${new Date().toISOString()}\n`;
         out += '-- ============================================================\n';
 

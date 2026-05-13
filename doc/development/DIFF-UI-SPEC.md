@@ -1,4 +1,4 @@
-# EspreSQL — Specifiche UX per Diff / Migration
+﻿# ExpreSQL — Specifiche UX per Diff / Migration
 
 **Versione:** 2.0  
 **Data:** 2026-05-06  
@@ -95,7 +95,7 @@ Il pannello DDL **cambia automaticamente** output e label:
 ⚠ DESTRUCTIVE  [employees.email]  adding NOT NULL — manual step
 ──────────────────────────────────────────────────────────────────
 -- ============================================================
--- EspreSQL Migration Script
+-- ExpreSQL Migration Script
 -- Generated: 2026-05-06T...
 -- ============================================================
 ...
@@ -203,5 +203,5 @@ La sezione Quick Examples aggiunge un esempio cliccabile che carica un template 
 2. Implementazione in `web/app.js` — parsing del delimitatore + switch `toDDL`/`toDiff`
 3. Stile separatore in `web/highlight.js` + `web/app.css`
 4. Pulsante `⇄ Compare versions`
-5. Aggiornamento `doc/user/espresql-grammar.md` — documentare la sintassi `# ---`
+5. Aggiornamento `doc/user/expresql-grammar.md` — documentare la sintassi `# ---`
 6. Aggiornamento `doc/user/examples.md` — esempio 17 aggiornato con la nuova sintassi

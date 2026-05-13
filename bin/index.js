@@ -1,5 +1,5 @@
-#! /usr/bin/env node
-import  {espresql,fromJSON} from "../src/ddl.js";
+﻿#! /usr/bin/env node
+import  {expresql,fromJSON} from "../src/ddl.js";
 
 import fs from "fs";
 
@@ -25,7 +25,7 @@ try {
             key = key.substring(sp+1);
         output = fromJSON(input, key);
     } else {
-        output = new espresql(input).getDDL();
+        output = new expresql(input).getDDL();
     }
     console.log(output);
     process.exit(0);

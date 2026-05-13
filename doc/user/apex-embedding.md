@@ -1,6 +1,6 @@
-# EspreSQL — Oracle APEX Embedding Guide
+﻿# ExpreSQL — Oracle APEX Embedding Guide
 
-This guide describes how to embed the EspreSQL web application inside an Oracle APEX page using an iframe, with visual integration into the APEX Redwood theme.
+This guide describes how to embed the ExpreSQL web application inside an Oracle APEX page using an iframe, with visual integration into the APEX Redwood theme.
 
 ---
 
@@ -18,7 +18,7 @@ This guide describes how to embed the EspreSQL web application inside an Oracle 
 
 ## 1. Overview
 
-EspreSQL can be served as a static file and embedded inside an Oracle APEX page via a standard `<iframe>`. Two URL parameters control the embedded experience:
+ExpreSQL can be served as a static file and embedded inside an Oracle APEX page via a standard `<iframe>`. Two URL parameters control the embedded experience:
 
 | Parameter | Purpose |
 |---|---|
@@ -37,7 +37,7 @@ Deploy `index.html` and its assets as a static APEX application file. In the APE
 <iframe
     src="r/ad/100/files/static/v32/index.html?theme=apex"
     style="width:100%; height:calc(100vh - 60px); border:none; display:block;"
-    title="EspreSQL">
+    title="ExpreSQL">
 </iframe>
 ```
 
@@ -144,7 +144,7 @@ The `apex` theme retains the same syntax token colours as the `dark` theme, whic
 Recommended settings for the APEX page that hosts the iframe:
 
 - **Page template:** Standard (no side column, no actions column) — class `t-PageTemplate--standard`
-- **Navigation:** Suppress the page-level navigation bar if EspreSQL fills the full content area
+- **Navigation:** Suppress the page-level navigation bar if ExpreSQL fills the full content area
 - **Scrolling:** Set `overflow: hidden` on the APEX body or suppress the APEX footer to avoid double scroll bars
 - **iframe height:** `calc(100vh - 60px)` subtracts a typical APEX Redwood header height; adjust for your theme variant
 
@@ -154,7 +154,7 @@ Example APEX Static Content region HTML (full viewport minus APEX header):
 <iframe
     src="r/ad/100/files/static/v32/index.html?theme=apex"
     style="width:100%; height:calc(100vh - 60px); border:none; display:block;"
-    title="EspreSQL">
+    title="ExpreSQL">
 </iframe>
 ```
 
@@ -173,7 +173,7 @@ Upload the following files to your APEX application's static files (Application 
 | `web/autocomplete.js` | Yes | Autocomplete |
 | `web/erd.js` | Yes | ERD diagram rendering |
 | `web/state.js` | Yes | Shared state |
-| `dist/espresql.js` | Yes | Compiler library |
+| `dist/expresql.js` | Yes | Compiler library |
 | `dist/antv-x6.min.js` | Yes | ERD graph engine |
 | `img/radicle_01.png` | No | Logo (not shown in embedded mode) |
 | `img/favicon.svg` | No | Browser tab icon |
@@ -182,14 +182,14 @@ Upload the following files to your APEX application's static files (Application 
 
 ## 7. Cross-Origin Considerations
 
-If EspreSQL is served from a different origin than the APEX application (e.g. Oracle Object Storage), automatic iframe detection still works correctly: the `SecurityError` thrown when accessing `window.top` is caught and treated as "inside a frame". Pass `?embed=1` explicitly in the `src` URL to avoid relying on the exception path:
+If ExpreSQL is served from a different origin than the APEX application (e.g. Oracle Object Storage), automatic iframe detection still works correctly: the `SecurityError` thrown when accessing `window.top` is caught and treated as "inside a frame". Pass `?embed=1` explicitly in the `src` URL to avoid relying on the exception path:
 
 ```html
 <iframe
     src="https://objectstorage.../index.html?theme=apex&embed=1"
     style="width:100%; height:calc(100vh - 60px); border:none; display:block;"
-    title="EspreSQL">
+    title="ExpreSQL">
 </iframe>
 ```
 
-EspreSQL does not use `postMessage` or `window.parent` communication; it operates entirely within its own frame context. APEX session data is not accessible from the iframe.
+ExpreSQL does not use `postMessage` or `window.parent` communication; it operates entirely within its own frame context. APEX session data is not accessible from the iframe.

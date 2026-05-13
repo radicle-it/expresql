@@ -1,6 +1,6 @@
-# EspreSQL
+﻿# ExpreSQL
 
-EspreSQL è un fork di [Oracle Quick SQL](https://github.com/oracle/quicksql), uno strumento che traduce una sintassi shorthand indentation-based (ESQL) in DDL relazionale, metadati ERD e scaffolding PL/SQL.
+ExpreSQL è un fork di [Oracle Quick SQL](https://github.com/oracle/quicksql), uno strumento che traduce una sintassi shorthand indentation-based (ESQL) in DDL relazionale, metadati ERD e scaffolding PL/SQL.
 
 La riscrittura v2.0.0 introduce un'architettura multi-dialetto in TypeScript, sostituendo il codebase JavaScript monolitico originale.
 
@@ -12,7 +12,7 @@ La riscrittura v2.0.0 introduce un'architettura multi-dialetto in TypeScript, so
 - **`web/`** — Interfaccia browser con editor ESQL e visualizzazione ERD (AntV X6)
 - **`mle/`** — Script di installazione per Oracle MLE (esecuzione in-database)
 - **`test/`** — Test Vitest (unit + integration) e suite di regressione JS
-- **`dist/`** — Output compilato (`espresql.js`, `espresql-oracle.js`, `espresql-db2.js`)
+- **`dist/`** — Output compilato (`expresql.js`, `expresql-oracle.js`, `expresql-db2.js`)
 - **`doc/`** — Documentazione utente e di sviluppo
 
 ## License
@@ -24,5 +24,5 @@ Released under the [Universal Permissive License v1.0](./LICENSE.txt). See the l
 
 ## Contributors
 
-- **Oracle Corporation** — original EspreSQL engine and QSQL shorthand specification
+- **Oracle Corporation** — original ExpreSQL engine and QSQL shorthand specification
 - **Radicle IT** — TypeScript rewrite (v2.0.0): multi-dialect architecture, decoupled pipeline, PL/SQL builder modules

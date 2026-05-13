@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Integration test suite — mirrors regression_test.js but:
  *   - Imports from the compiled TypeScript sources (src/ddl.ts etc.)
  *   - Each test file becomes an individual named test case
@@ -9,7 +9,7 @@ import fs   from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import espresql, { toDDL, fromJSON }    from '../../src/ddl.js';
+import expresql, { toDDL, fromJSON }    from '../../src/ddl.js';
 import lexer,    { LexerToken }          from '../../src/compiler/lexer.js';
 import errorMsgs                         from '../../src/utils/error-msgs.js';
 import { resetSeed }                     from '../../src/utils/sample.js';
@@ -133,12 +133,12 @@ describe('DDL regression (TypeScript sources)', () => {
 
             let output: string;
             if (tc.isERD) {
-                output = JSON.stringify(new (espresql as any)(text).getERD(), null, 3);
+                output = JSON.stringify(new (expresql as any)(text).getERD(), null, 3);
             } else if (tc.ext === '.json') {
                 const fileName = path.basename(baseName);
                 output = fromJSON(text, fileName);
             } else {
-                const p = new (espresql as any)(text);
+                const p = new (expresql as any)(text);
                 output = p.getDDL();
                 checkNoError(p.getErrors());
             }

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Integration tests for the layered TAPI generator (api: "layered").
  * Verifies structural correctness of _dal, _hooks, and _svc package output.
  * No Oracle runtime required — all assertions are string-based.
@@ -7,10 +7,10 @@
  * Architecture:   doc/development/TAPI-LAYERED-ARCHITECTURE.md (v1.3)
  */
 import { describe, test, expect } from 'vitest';
-import espresql from '../../src/ddl.js';
+import expresql from '../../src/ddl.js';
 
 function ddl(input: string, opts?: string): string {
-    return new (espresql as any)(input, opts).getDDL();
+    return new (expresql as any)(input, opts).getDDL();
 }
 
 function segment(out: string, startMarker: string, endMarker: string): string {

@@ -1,4 +1,4 @@
-# EspreSQL — Composite / Business Primary Keys
+﻿# ExpreSQL — Composite / Business Primary Keys
 
 **Status**: Draft specification  
 **Version**: 0.1  
@@ -9,7 +9,7 @@
 
 ## 1. Purpose
 
-This document specifies how EspreSQL handles tables whose primary key is a **business key** rather than a surrogate key — i.e. one or more columns that exist in the domain (e.g. `country_code`, `order_no + line_no`) rather than a system-generated `id`.
+This document specifies how ExpreSQL handles tables whose primary key is a **business key** rather than a surrogate key — i.e. one or more columns that exist in the domain (e.g. `country_code`, `order_no + line_no`) rather than a system-generated `id`.
 
 It covers:
 1. What already works in DDL generation.
@@ -387,6 +387,6 @@ Steps within `_diffPk()` use the same `requiresManualIntervention = true` patter
 ## 8. Out of Scope for This Spec
 
 - **Partial index on PK columns** — Oracle does not support this; non-issue.
-- **Deferrable PK constraints** — not currently modelled in EspreSQL.
+- **Deferrable PK constraints** — not currently modelled in ExpreSQL.
 - **Invisible columns in PK** — Oracle 12c+ allows this; out of scope until needed.
 - **Pre-flight validation against live DB** — remains out of scope; `oldQsql` is the source of truth.

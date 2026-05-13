@@ -1,10 +1,10 @@
-# Multi-Tenant Design with EspreSQL <!-- omit in toc -->
+﻿# Multi-Tenant Design with ExpreSQL <!-- omit in toc -->
 
 ## Table of Contents <!-- omit in toc -->
 
 - [1. Patterns di multi-tenancy](#1-patterns-di-multi-tenancy)
 - [2. Scelta dell'approccio: EE/Autonomous vs Standard Edition](#2-scelta-dellapproccio-eeautonomous-vs-standard-edition)
-- [3. Il setting `tenantid` in EspreSQL](#3-il-setting-tenantid-in-espresql)
+- [3. Il setting `tenantid` in ExpreSQL](#3-il-setting-tenantid-in-expresql)
 - [4. Oggetti supra-tenant](#4-oggetti-supra-tenant)
 - [5. Strategia degli indici](#5-strategia-degli-indici)
 - [6. Integrità referenziale cross-tenant](#6-integrità-referenziale-cross-tenant)
@@ -27,9 +27,9 @@ Esistono tre pattern fondamentali di multi-tenancy, ordinati per isolamento cres
 | **Schema separato** | Un schema per tenant, stesso DB | Fisico a livello schema | Medio (centinaia) | Medio |
 | **Database separato** | Un DB (o PDB) per tenant | Fisico completo | Basso (decine) | Alto |
 
-> **Oracle CDB/PDB**: da Oracle 12c Oracle ha una propria architettura multi-tenant nativa (Container Database + Pluggable Database). Ogni PDB è un database completo isolato. È il quarto pattern, ottimale quando l'isolamento fisico completo è un requisito normativo (GDPR, SOC2), ma richiede Multitenant Option (EE) e competenze DBA avanzate. Esula dallo scope di EspreSQL.
+> **Oracle CDB/PDB**: da Oracle 12c Oracle ha una propria architettura multi-tenant nativa (Container Database + Pluggable Database). Ogni PDB è un database completo isolato. È il quarto pattern, ottimale quando l'isolamento fisico completo è un requisito normativo (GDPR, SOC2), ma richiede Multitenant Option (EE) e competenze DBA avanzate. Esula dallo scope di ExpreSQL.
 
-Questo documento si concentra sul **pattern discriminatore** con colonna `TENANT_ID`, che è lo standard de facto per applicazioni SaaS Oracle. EspreSQL supporta nativamente questo pattern tramite il setting `tenantid`.
+Questo documento si concentra sul **pattern discriminatore** con colonna `TENANT_ID`, che è lo standard de facto per applicazioni SaaS Oracle. ExpreSQL supporta nativamente questo pattern tramite il setting `tenantid`.
 
 ---
 
@@ -83,11 +83,11 @@ flowchart LR
 
 ---
 
-## 3. Il setting `tenantid` in EspreSQL
+## 3. Il setting `tenantid` in ExpreSQL
 
 ### Cosa genera
 
-```espresql
+```expresql
 # settings = { tenantid: yes, auditcols: yes, prefix: "app_" }
 
 customers
@@ -115,7 +115,7 @@ create table app_customers (
 
 ### Cosa genera: comportamento completo
 
-Con `tenantid: yes` EspreSQL genera automaticamente, per ogni tabella **tenant** (non marcata `/notenantid`):
+Con `tenantid: yes` ExpreSQL genera automaticamente, per ogni tabella **tenant** (non marcata `/notenantid`):
 
 | Elemento | DDL generato |
 |---|---|
@@ -135,7 +135,7 @@ Le tabelle marcate **`/notenantid`** (supra-tenant) non ricevono nulla di quanto
 
 Per default, la FK automatica di `tenant_id` punta a una tabella di nome `tenants`. Se la tabella master ha un nome diverso, usare il setting `tenantref`:
 
-```espresql
+```expresql
 # settings = { tenantid: yes, tenantref: "workspaces", prefix: "app_" }
 ```
 
@@ -154,7 +154,7 @@ Lo script di hardening completo è in §11.2.
 
 ### Attenzione: NOT NULL e sample data
 
-> **Trappola operativa con `/insert N`**: le tabelle che usano `/insert N` hanno `tenant_id` nullable — EspreSQL non può inserire un tenant_id valido nei dati generati perché non sa quale tenant assegnare. Dopo il deploy, aggiornare le righe e aggiungere il NOT NULL:
+> **Trappola operativa con `/insert N`**: le tabelle che usano `/insert N` hanno `tenant_id` nullable — ExpreSQL non può inserire un tenant_id valido nei dati generati perché non sa quale tenant assegnare. Dopo il deploy, aggiornare le righe e aggiungere il NOT NULL:
 
 ```sql
 -- Aggiornare tenant_id su righe generate da /insert prima del NOT NULL
@@ -174,9 +174,9 @@ Gli oggetti supra-tenant sono tabelle condivise da tutti i tenant: lookup/refere
 
 ### Direttiva `/notenantid`
 
-Con `tenantid: yes`, aggiungi `/notenantid` a ogni tabella supra-tenant nello stesso script. EspreSQL salterà il `TENANT_ID` sintetico, non genererà l'indice composito `(tenant_id, id)`, e le FK da tabelle tenant verso quella tabella rimarranno semplici.
+Con `tenantid: yes`, aggiungi `/notenantid` a ogni tabella supra-tenant nello stesso script. ExpreSQL salterà il `TENANT_ID` sintetico, non genererà l'indice composito `(tenant_id, id)`, e le FK da tabelle tenant verso quella tabella rimarranno semplici.
 
-```espresql
+```expresql
 tenants /notenantid /insert 2     -- supra-tenant: no tenant_id
   name       vc200 /nn
   plan_code  /fk subscription_plans /nn
@@ -270,7 +270,7 @@ In un sistema multi-tenant ogni query filtra sempre per `TENANT_ID`. Un indice s
 
 #### 5.1 Primary Key
 
-La PK generata da EspreSQL è `(id)` — corretta per FK lookup (Oracle ne ha bisogno per validare le FK). Non cambiare.
+La PK generata da ExpreSQL è `(id)` — corretta per FK lookup (Oracle ne ha bisogno per validare le FK). Non cambiare.
 
 #### 5.2 Indice composito `(tenant_id, id)` — "tenant surrogate key"
 
@@ -288,7 +288,7 @@ alter table app_customers
 
 #### 5.3 Unique constraint scoped per tenant
 
-Il UNIQUE globale generato da EspreSQL va sostituito con uno scoped al tenant:
+Il UNIQUE globale generato da ExpreSQL va sostituito con uno scoped al tenant:
 
 ```sql
 alter table app_customers drop constraint app_customers_email_unq;
@@ -329,11 +329,11 @@ Su SE2 o quando la compression option non è disponibile, omettere la clausola `
 Tabella tenant (tenantid: yes, senza /notenantid):
   (id)                             ← PK, non toccare (necessaria per FK lookup)
   (tenant_id, id)           UNIQUE ← solo se un'altra tabella tenant ha FK verso questa
-                                     (generato da EspreSQL on-demand: INDICE poi CONSTRAINT USING INDEX)
-  (tenant_id, <biz_key>)    UNIQUE ← solo se /unique dichiarato (generato da EspreSQL)
-  (tenant_id, <fk_col>)           ← per ogni FK verso tabella tenant (generato da EspreSQL)
+                                     (generato da ExpreSQL on-demand: INDICE poi CONSTRAINT USING INDEX)
+  (tenant_id, <biz_key>)    UNIQUE ← solo se /unique dichiarato (generato da ExpreSQL)
+  (tenant_id, <fk_col>)           ← per ogni FK verso tabella tenant (generato da ExpreSQL)
   (tenant_id, <filter_col>)       ← per colonne di filtro frequente (/idx)
-  FK composite (tenant_id, fk_col) → target(tenant_id, id)  ← generata da EspreSQL
+  FK composite (tenant_id, fk_col) → target(tenant_id, id)  ← generata da ExpreSQL
 
 Tabella supra-tenant (/notenantid):
   indici standard, nessuna modifica, FK verso di essa rimangono semplici
@@ -347,12 +347,12 @@ Tabella supra-tenant (/notenantid):
 
 Una FK semplice `(customer_id) → customers(id)` non impedisce che un ordine del tenant A referenzi un cliente del tenant B. Oracle verifica solo l'esistenza del valore, non la coerenza del tenant.
 
-### Soluzione: FK composite — generata automaticamente da EspreSQL
+### Soluzione: FK composite — generata automaticamente da ExpreSQL
 
-Con `tenantid: yes`, EspreSQL genera automaticamente FK composite tra tabelle tenant:
+Con `tenantid: yes`, ExpreSQL genera automaticamente FK composite tra tabelle tenant:
 
 ```sql
--- Generato da EspreSQL per ogni FK tra tabelle tenant:
+-- Generato da ExpreSQL per ogni FK tra tabelle tenant:
 -- Oracle verifica che (orders.tenant_id, orders.customer_id)
 -- esista come coppia in (customers.tenant_id, customers.id)
 alter table app_orders add constraint app_orders_customer_id_fk
@@ -360,9 +360,9 @@ alter table app_orders add constraint app_orders_customer_id_fk
     references app_customers (tenant_id, id);
 ```
 
-Il prerequisito `UNIQUE (tenant_id, id)` su `app_customers` è anch'esso generato automaticamente da EspreSQL (§5.2).
+Il prerequisito `UNIQUE (tenant_id, id)` su `app_customers` è anch'esso generato automaticamente da ExpreSQL (§5.2).
 
-> **ON DELETE**: EspreSQL genera la FK senza clausola `ON DELETE` (default `RESTRICT`). Se vuoi `CASCADE` o `SET NULL`, aggiungi `/cascade` o `/setnull` sulla riga del FK nel QSQL, oppure modifica il DDL generato prima di eseguirlo.
+> **ON DELETE**: ExpreSQL genera la FK senza clausola `ON DELETE` (default `RESTRICT`). Se vuoi `CASCADE` o `SET NULL`, aggiungi `/cascade` o `/setnull` sulla riga del FK nel QSQL, oppure modifica il DDL generato prima di eseguirlo.
 >
 > `RESTRICT` blocca la cancellazione di un customer finché ha ordini. `CASCADE` cancella automaticamente tutti gli ordini — usare con cautela. Documentare la scelta nel design del sistema.
 
@@ -371,7 +371,7 @@ Il prerequisito `UNIQUE (tenant_id, id)` su `app_customers` è anch'esso generat
 Le FK verso tabelle marcate `/notenantid` rimangono semplici — la ref data è globale e non ha `tenant_id`:
 
 ```sql
--- Generata da EspreSQL: subscription_plans è /notenantid, FK semplice
+-- Generata da ExpreSQL: subscription_plans è /notenantid, FK semplice
 alter table app_customers add constraint app_customers_plan_id_fk
     foreign key (plan_id)
     references app_subscription_plans;
@@ -795,7 +795,7 @@ Il global index deve essere ricostruito dopo ogni operazione di partition (ADD, 
 -- PK composite: locale, efficiente, nessun rebuild
 constraint app_orders_pk primary key (tenant_id, id)
 -- MA: tutte le FK che referenziano questa tabella devono diventare composite (§6)
--- EspreSQL genera FK verso (id), non verso (tenant_id, id) — hardening obbligatorio
+-- ExpreSQL genera FK verso (id), non verso (tenant_id, id) — hardening obbligatorio
 ```
 
 ### 10.3 List partitioning per tenant
@@ -915,7 +915,7 @@ Vedere §4 per i due script QSQL (`shared.esql` e `tenant.esql`).
 
 ### 11.2 Script di hardening
 
-> **Nota**: EspreSQL con `tenantid: yes` genera automaticamente le seguenti strutture, che **non è più necessario** aggiungere manualmente:
+> **Nota**: ExpreSQL con `tenantid: yes` genera automaticamente le seguenti strutture, che **non è più necessario** aggiungere manualmente:
 > - Indice + constraint `UNIQUE (tenant_id, id)` — on-demand, per le tabelle che sono target di FK composite
 > - FK composite `(tenant_id, fk_col) → target(tenant_id, id)` tra tabelle tenant
 > - Indici `(tenant_id, fk_col)` per ogni FK verso tabella tenant
@@ -930,7 +930,7 @@ Vedere §4 per i due script QSQL (`shared.esql` e `tenant.esql`).
 ```sql
 -- ============================================================
 -- mt_hardening.sql
--- Eseguire DOPO il DDL generato da EspreSQL
+-- Eseguire DOPO il DDL generato da ExpreSQL
 -- ============================================================
 -- Solo per le tabelle che usano /insert N (tenant_id è nullable):
 
@@ -948,7 +948,7 @@ alter table app_orders      modify tenant_id not null;
 alter table app_order_lines modify tenant_id not null;
 
 -- ── 2. FK di tenant_id verso app_tenants ─────────────────────
--- Solo se app_tenants è in uno script separato (EspreSQL genera auto-FK
+-- Solo se app_tenants è in uno script separato (ExpreSQL genera auto-FK
 -- solo quando la tabella tenants è presente nello stesso script QSQL)
 alter table app_users add constraint app_users_tenant_id_fk
     foreign key (tenant_id) references app_tenants (id);
@@ -1032,22 +1032,22 @@ create or replace context APP_CTX using myapp.pkg_app_context;
 
 - [ ] Tabelle supra-tenant (`ref_*`, `app_tenants`) marcate `/notenantid` nello stesso script QSQL
 - [ ] Tabella `app_tenants` esclusa dalla VPD / non inclusa nelle view filtrate
-- [x] `TENANT_ID NOT NULL` su tabelle senza `/insert` — **generato da EspreSQL**
+- [x] `TENANT_ID NOT NULL` su tabelle senza `/insert` — **generato da ExpreSQL**
 - [ ] Tabelle con `/insert N`: aggiornare sample data con `tenant_id` valido, poi `MODIFY tenant_id NOT NULL` (§11.2 passi 0–1)
 
 ### Integrità referenziale
 
-- [x] Indice creato PRIMA del constraint UNIQUE `(tenant_id, id)` — **generato da EspreSQL** on-demand con pattern `USING INDEX`
-- [x] FK composite `(tenant_id, fk_col) → (tenant_id, id)` per ogni FK inter-tenant — **generata da EspreSQL**
+- [x] Indice creato PRIMA del constraint UNIQUE `(tenant_id, id)` — **generato da ExpreSQL** on-demand con pattern `USING INDEX`
+- [x] FK composite `(tenant_id, fk_col) → (tenant_id, id)` per ogni FK inter-tenant — **generata da ExpreSQL**
 - [x] FK semplici verso tabelle supra-tenant — **garantito da `/notenantid`**
-- [x] UNIQUE `(tenant_id, col)` per business key (`/unique`) — **generato da EspreSQL** al posto del constraint inline globale
+- [x] UNIQUE `(tenant_id, col)` per business key (`/unique`) — **generato da ExpreSQL** al posto del constraint inline globale
 - [ ] ON DELETE scelto consapevolmente su ogni FK — documentare la scelta (`/cascade` o `/setnull` nel QSQL, oppure modifica manuale del DDL)
 - [ ] FK di `tenant_id` verso `app_tenants` — generata solo se dichiarata con `/fk tenants` nel QSQL; altrimenti aggiungere manualmente (§11.2 passo 2)
 
 ### Indici
 
-- [x] `(tenant_id, id)` unique — **generato da EspreSQL** on-demand per le tabelle referenziate da FK composite; indice creato prima del constraint (`ORA-01408` evitato)
-- [x] `(tenant_id, <fk_col>)` per ogni FK verso tabella tenant — **generato da EspreSQL**
+- [x] `(tenant_id, id)` unique — **generato da ExpreSQL** on-demand per le tabelle referenziate da FK composite; indice creato prima del constraint (`ORA-01408` evitato)
+- [x] `(tenant_id, <fk_col>)` per ogni FK verso tabella tenant — **generato da ExpreSQL**
 - [ ] `(tenant_id, <filter_col>)` per colonne di filtro frequente — aggiungere `/idx` nel QSQL o manualmente (§11.2 passo 3)
 - [ ] Index compression `COMPRESS 1` valutata per indici con tenant_id leading (EE)
 
@@ -1108,4 +1108,4 @@ create or replace context APP_CTX using myapp.pkg_app_context;
 
 ---
 
-*Documento complementare a [espresql-grammar.md](espresql-grammar.md) e [examples.md](examples.md).*
+*Documento complementare a [expresql-grammar.md](expresql-grammar.md) e [examples.md](examples.md).*

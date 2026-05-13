@@ -1,4 +1,4 @@
-# Specifica della Documentazione EspreSQL <!-- omit in toc -->
+﻿# Specifica della Documentazione ExpreSQL <!-- omit in toc -->
 
 **Versione:** 1.0  
 **Data:** 2026-04-28  
@@ -25,7 +25,7 @@
   - [4.10 Integrazione Oracle MLE](#410-integrazione-oracle-mle)
 - [5. Gap analysis — cosa manca nella documentazione attuale](#5-gap-analysis--cosa-manca-nella-documentazione-attuale)
   - [5.1 Gap nell'help drawer (index.html)](#51-gap-nellhelp-drawer-indexhtml)
-  - [5.2 Gap in espresql-grammar.md](#52-gap-in-espresql-grammarmd)
+  - [5.2 Gap in expresql-grammar.md](#52-gap-in-expresql-grammarmd)
   - [5.3 Gap nell'interfaccia impostazioni (Settings panel)](#53-gap-nellinterfaccia-impostazioni-settings-panel)
 - [6. Struttura proposta degli artefatti](#6-struttura-proposta-degli-artefatti)
   - [6.1 Help Drawer (in-app)](#61-help-drawer-in-app)
@@ -38,12 +38,12 @@
 
 ## 1. Obiettivi
 
-EspreSQL è uno strumento maturo con un numero significativo di funzionalità implementate che non sono documentate o sono documentate parzialmente. Questo documento specifica **cosa** documentare, **per chi**, **in quale forma** e **in quale ordine di priorità**, prima di avviare la scrittura effettiva della documentazione.
+ExpreSQL è uno strumento maturo con un numero significativo di funzionalità implementate che non sono documentate o sono documentate parzialmente. Questo documento specifica **cosa** documentare, **per chi**, **in quale forma** e **in quale ordine di priorità**, prima di avviare la scrittura effettiva della documentazione.
 
 Gli obiettivi della documentazione sono:
 
 1. **Completezza:** ogni funzionalità implementata deve avere una voce in almeno uno degli artefatti documentali.
-2. **Scopribilità:** l'utente deve poter trovare rapidamente la risposta alla domanda "come si fa X in EspreSQL?".
+2. **Scopribilità:** l'utente deve poter trovare rapidamente la risposta alla domanda "come si fa X in ExpreSQL?".
 3. **Progressività:** un principiante deve poter iniziare con i concetti base; un utente avanzato deve trovare i dettagli tecnici senza essere rallentato dall'introduzione.
 4. **Manutenibilità:** la struttura della documentazione deve rendere semplice aggiungere sezioni per nuove funzionalità senza riscrivere tutto.
 
@@ -51,12 +51,12 @@ Gli obiettivi della documentazione sono:
 
 ## 2. Audience e casi d'uso
 
-| Audience | Livello EspreSQL | Bisogno principale | Artefatto primario |
+| Audience | Livello ExpreSQL | Bisogno principale | Artefatto primario |
 |---|---|---|---|
 | **Sviluppatore applicativo** | Principiante–Intermedio | "Come definisco questo schema?" | Help drawer + esempi |
-| **DBA Oracle** | Principiante EspreSQL | "Che DDL viene generato?" | Grammar reference + esempi avanzati |
+| **DBA Oracle** | Principiante ExpreSQL | "Che DDL viene generato?" | Grammar reference + esempi avanzati |
 | **Architetto dati** | Intermedio–Avanzato | "Posso modellare schemi star/duality?" | Grammar reference §viste |
-| **Sviluppatore di integrazione** | Avanzato | "Come uso l'API JS/MLE?" | doc/user/espresql-grammar.md + ORACLE_MLE_INTEGRATION.md |
+| **Sviluppatore di integrazione** | Avanzato | "Come uso l'API JS/MLE?" | doc/user/expresql-grammar.md + ORACLE_MLE_INTEGRATION.md |
 | **Utente Oracle APEX** | Principiante | "Come configuro per APEX?" | Help drawer §impostazioni |
 
 ---
@@ -71,7 +71,7 @@ Aggiornamento dell'help drawer esistente. Attualmente incompleto: mancano dirett
 - **Lingua:** Inglese (coerente con l'attuale contenuto)
 - **Sezioni proposte:** vedere §6.1
 
-### Artefatto B — Grammar Reference completo (`doc/user/espresql-grammar.md`)
+### Artefatto B — Grammar Reference completo (`doc/user/expresql-grammar.md`)
 
 Aggiornamento del documento esistente per colmare i gap elencati in §5.2. Deve essere il documento di riferimento tecnico definitivo.
 
@@ -299,7 +299,7 @@ Esempio: `test/DV/car_racing/1.esql`.
 
 ### 4.9 API pubblica JavaScript
 
-Documentata in `doc/user/espresql-grammar.md` solo indirettamente. Deve avere una sezione dedicata.
+Documentata in `doc/user/expresql-grammar.md` solo indirettamente. Deve avere una sezione dedicata.
 
 | Funzione | Firma | Ritorna | Note |
 |---|---|---|---|
@@ -319,13 +319,13 @@ La struttura di `toErrors` (con `from.line`, `to.line`, `severity`) non è docum
 
 Documentata in `ORACLE_MLE_INTEGRATION.md` (v1.1, aggiornato nella sessione corrente). Copre:
 
-- Architettura dei moduli MLE (`espresql_module`, `espresql_api_module`)
-- Package PL/SQL `espresql_pkg` con 4 funzioni (`to_ddl`, `validate`, `to_erd`, `version`)
+- Architettura dei moduli MLE (`expresql_module`, `expresql_api_module`)
+- Package PL/SQL `expresql_pkg` con 4 funzioni (`to_ddl`, `validate`, `to_erd`, `version`)
 - Script di installazione (`mle/01_` → `mle/05_`)
 - Workflow di aggiornamento (§10.4)
 - Polyfill Buffer per GraalVM
 
-Nessun gap critico identificato. Può essere referenziato da `espresql-grammar.md` ma non fa parte della documentazione utente standard.
+Nessun gap critico identificato. Può essere referenziato da `expresql-grammar.md` ma non fa parte della documentazione utente standard.
 
 ---
 
@@ -375,7 +375,7 @@ L'help drawer attuale è organizzato in sezioni. Lacune identificate:
 
 ---
 
-### 5.2 Gap in espresql-grammar.md
+### 5.2 Gap in expresql-grammar.md
 
 **Tabella tipi di dato:**
 - [ ] `vector`, `vectNNN` non presenti
@@ -443,7 +443,7 @@ Struttura proposta per l'help drawer aggiornato (in-app, `index.html`), con sezi
 7. Comments              — --, /* */, [...]
 8. Settings              — tutte le impostazioni, raggruppate per categoria
 9. Keyboard Shortcuts    — Tab, Enter, Esc, ecc.
-10. API Reference (link) — link a doc/user/espresql-grammar.md
+10. API Reference (link) — link a doc/user/expresql-grammar.md
 ```
 
 Ogni voce nelle tabelle deve avere: shorthand/sintassi, effetto in 5–8 parole, esempio minimo (1 riga), versione DB minima dove rilevante.
@@ -452,10 +452,10 @@ Ogni voce nelle tabelle deve avere: shorthand/sintassi, effetto in 5–8 parole,
 
 ### 6.2 Documento di riferimento completo
 
-Struttura proposta per `doc/user/espresql-grammar.md` aggiornato:
+Struttura proposta per `doc/user/expresql-grammar.md` aggiornato:
 
 ```
-# EspreSQL Grammar Reference
+# ExpreSQL Grammar Reference
 
 ## 1. Overview
    1.1 Struttura di uno script QSQL (indentazione, relazioni)
@@ -511,7 +511,7 @@ Struttura proposta per `doc/user/espresql-grammar.md` aggiornato:
 Struttura proposta per `doc/user/examples.md`:
 
 ```
-# EspreSQL — Esempi pratici
+# ExpreSQL — Esempi pratici
 
 ## 1. Schema base con relazione padre-figlio
 ## 2. Audit columns e APEX
@@ -544,8 +544,8 @@ Ogni esempio deve includere: input QSQL, DDL output (o porzione rilevante), spie
    - "Table directive" (non "table option" o "table flag")
    - "Column directive" (non "column modifier")
    - "Setting" (non "parameter" o "option") per le impostazioni `#`
-   - "EspreSQL shorthand" o semplicemente "QSQL" per il linguaggio input
-6. **Formattazione codice:** usare ` ```espresql ` per il codice input, ` ```sql ` per il DDL output.
+   - "ExpreSQL shorthand" o semplicemente "QSQL" per il linguaggio input
+6. **Formattazione codice:** usare ` ```expresql ` per il codice input, ` ```sql ` per il DDL output.
 7. **Tabelle:** usare tabelle Markdown per le reference veloci. Non superare 5 colonne per leggibilità.
 8. **Note di versione:** usare badge inline `(23ai+)`, `(21c+)`, `(12c+)` immediatamente dopo il nome della feature.
 
@@ -573,7 +573,7 @@ Questi gap causano errori o confusione immediata:
 ### Fase 3 — Nuovi artefatti
 
 1. `doc/user/examples.md` — raccolta esempi pratici
-2. Sezione API JavaScript in `espresql-grammar.md`
+2. Sezione API JavaScript in `expresql-grammar.md`
 3. Sezione "Quick Start" nell'help drawer
 4. Aggiornamento Settings panel UI per esporre le impostazioni solo-inline
 
