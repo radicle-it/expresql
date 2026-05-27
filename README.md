@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="./img/expresql_logo_square_transparent.png" alt="ExpreSQL logo" width="200">
-</p>
+![ExpreSQL logo](./img/expresql_logo_horizontal.png)
 
 # ExpreSQL
 
