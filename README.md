@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./img/expresql_logo_square_transparent.png" alt="ExpreSQL logo" width="200">
+</p>
+
 # ExpreSQL
 
 ExpreSQL is a fork of [Oracle Quick SQL](https://github.com/oracle/quicksql), a tool that translates an indentation-based shorthand syntax (QSQL) into relational DDL, ERD metadata, and PL/SQL scaffolding.
