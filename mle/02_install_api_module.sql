@@ -1,5 +1,5 @@
 -- Auto-generato da scripts/generate-mle-sql.mjs — non modificare manualmente
--- Sorgente: mle/quicksql-api.mjs  (799 byte, 1 chunk da 2000 char)
+-- Sorgente: mle/quicksql-api.mjs  (776 byte, 1 chunk da 2000 char)
 PROMPT >>> Caricamento quicksql_api_module (1 chunk)...
 
 -- Disabilita sostituzione variabili (&/&&) per non interferire con il codice JavaScript
