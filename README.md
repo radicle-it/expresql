@@ -15,7 +15,7 @@ The v2.0.0 rewrite introduces a multi-dialect architecture in TypeScript, replac
 - **`mle/`** — Script di installazione per Oracle MLE (esecuzione in-database)
 - **`test/`** — Test Vitest (unit + integration) e suite di regressione legacy JS
 - **`dist/`** — Output compilato (`quick-sql.js`, `quick-erd.js`, `quick-sql.mle.cjs`)
-- **`doc/`** — Documentazione utente e di sviluppo
+- **`doc/`** — Documentazione utente e di sviluppo (see [examples](doc/user/examples.md))
 
 ## License
 
