@@ -8,14 +8,14 @@ The v2.0.0 rewrite introduces a multi-dialect architecture in TypeScript, replac
 
 ## Repository structure
 
-- **`src/`** — Compilatore QSQL: lexer, parser, analisi semantica e generatore astratto multi-dialetto
-- **`src/oracle/`** — Dialetto Oracle: generatore DDL, viste, PL/SQL, TAPI e diff/migration
-- **`src/quick-erd/`** — Visualizzazione ERD con renderer AntV X6 e Mermaid
-- **`web/`** — Interfaccia browser con editor QSQL e visualizzazione ERD
-- **`mle/`** — Script di installazione per Oracle MLE (esecuzione in-database)
-- **`test/`** — Test Vitest (unit + integration) e suite di regressione legacy JS
-- **`dist/`** — Output compilato (`quick-sql.js`, `quick-erd.js`, `quick-sql.mle.cjs`)
-- **`doc/`** — Documentazione utente e di sviluppo (see [examples](doc/user/examples.md))
+- **`src/`** — QSQL compiler: lexer, parser, semantic analysis, and abstract multi-dialect generator
+- **`src/oracle/`** — Oracle dialect: DDL generator, views, PL/SQL, TAPI, and diff/migration
+- **`src/quick-erd/`** — ERD visualisation with AntV X6 and Mermaid renderers
+- **`web/`** — Browser UI with QSQL editor and ERD visualisation
+- **`mle/`** — Oracle MLE (Multilingual Engine) installation scripts for in-database execution
+- **`test/`** — Vitest suite (unit + integration) and legacy JS regression tests
+- **`dist/`** — Compiled output (`quick-sql.js`, `quick-erd.js`, `quick-sql.mle.cjs`)
+- **`doc/`** — User and developer documentation (see [examples](doc/user/examples.md))
 
 ## License
 
