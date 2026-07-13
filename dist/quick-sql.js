@@ -629,9 +629,9 @@ var M = class {
 			let n = f(e, this.parseName()), r = O;
 			this.parent !== null && (r = " ".repeat(this.parent.maxChildNameLen()));
 			let i = this.getGeneralConstraint();
-			if (i !== null) return this.children !== null && 0 < this.children.length ? (t += O + "constraint " + f(this._ctx.objPrefix(), n, D.ck), t += "  check " + i + ",\n") : (t += " constraint " + f(this._ctx.objPrefix(), n, D.ck) + "\n", t += O + O + r + "check " + i), t;
+			if (i !== null) return this.children !== null && 0 < this.children.length ? (t += "    constraint " + f(this._ctx.objPrefix(), n, D.ck), t += "  check " + i + ",\n") : (t += " constraint " + f(this._ctx.objPrefix(), n, D.ck) + "\n", t += "        " + r + "check " + i), t;
 			let a = this.getValues("check");
-			t += " constraint " + f(this._ctx.objPrefix(), n, D.ck) + "\n", t += O + O + r + "check (" + this.parseName() + " in (" + a + "))";
+			t += " constraint " + f(this._ctx.objPrefix(), n, D.ck) + "\n", t += "        " + r + "check (" + this.parseName() + " in (" + a + "))";
 		}
 		return t;
 	}
@@ -1217,7 +1217,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				a === t.length - 1 && (l = c);
 			}
 			var u = e[l];
-			return n = n === void 0 ? !1 : n, n && (e.splice(l, 1), t.splice(l, 1)), u;
+			return n = n !== void 0 && n, n && (e.splice(l, 1), t.splice(l, 1)), u;
 		}, u.prototype.paragraph = function(e) {
 			e = d(e);
 			var t = e.sentences || this.natural({
