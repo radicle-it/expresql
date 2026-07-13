@@ -970,12 +970,13 @@ describe('audit logging — /auditlog directive', () => {
         expect(audSpec).toContain('procedure log_delete');
     });
 
-    test('audit spec g_enabled flag is declared in spec', () => {
+    test('audit spec exposes set_enabled procedure (g_enabled is private to body)', () => {
         const out = ddl(DOCTORS_AUDITLOG_QSQL);
         const audSpec = segment(out,
             'create or replace package doctors_aud as',
             'end doctors_aud;');
-        expect(audSpec).toContain('g_enabled boolean := true');
+        expect(audSpec).toContain('procedure set_enabled (p_enabled in boolean)');
+        expect(audSpec).not.toContain('g_enabled');
     });
 
     test('audit spec log_insert takes p_row IN %ROWTYPE', () => {

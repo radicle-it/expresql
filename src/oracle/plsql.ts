@@ -320,12 +320,15 @@ export class OraclePlsqlBuilder {
         r += `${tab}resource_busy exception;\n`;
         r += `${tab}pragma exception_init(resource_busy, -54);\n\n`;
 
-        // get_by_id — NO_DATA_FOUND propagates to the caller
+        // get_by_id — NO_DATA_FOUND raises c_err_not_found
         r += `${tab}function get_by_id (p_id in t_id) return ${tbl}%rowtype is\n`;
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
         r += `${tab}begin\n`;
         r += `${tab}${tab}select * into l_row from ${tbl} where ${pkName} = p_id;\n`;
         r += `${tab}${tab}return l_row;\n`;
+        r += `${tab}exception\n`;
+        r += `${tab}${tab}when no_data_found then\n`;
+        r += `${tab}${tab}${tab}raise_application_error(c_err_not_found, '${tbl}: record not found (id=' || p_id || ')');\n`;
         r += `${tab}end get_by_id;\n\n`;
 
         // lock_by_id — SELECT FOR UPDATE NOWAIT for check-then-act SVC procedures
@@ -407,6 +410,15 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}${tab}` + setCols.join(`,\n${tab}${tab}${tab}`) + '\n';
         r += `${tab}${tab}where ${pkName} = l_id`;
         if (hasVer) r += `\n${tab}${tab}  and row_version = p_row.row_version`;
+        if (hasVer) {
+            const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
+            const updatedByCol = String(this.ctx.getOptionValue('updatedbycol') ?? 'updated_by');
+            const retCols  = ['row_version'];
+            const intoCols = ['p_row.row_version'];
+            if (hasAudit) { retCols.push(updatedCol, updatedByCol); intoCols.push(`p_row.${updatedCol}`, `p_row.${updatedByCol}`); }
+            r += `\n${tab}${tab}returning ${retCols.join(', ')}\n`;
+            r += `${tab}${tab}     into ${intoCols.join(', ')}`;
+        }
         r += `;\n`;
         if (hasVer) {
             r += `${tab}${tab}if sql%rowcount = 0 then\n`;
@@ -510,7 +522,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}procedure update_rec (\n`;
         r += `${tab}${tab}p_id  in ${tbl}.${pkNm}%type,\n`;
         r += `${tab}${tab}p_rec in t_rec`;
-        if (hasVer) r += `,\n${tab}${tab}p_row_version in ${tbl}.row_version%type`;
+        if (hasVer) r += `,\n${tab}${tab}p_row_version in out ${tbl}.row_version%type`;
         r += `\n${tab});\n\n`;
 
         r += `${tab}procedure delete_rec (p_id in ${tbl}.${pkNm}%type);\n\n`;
@@ -575,7 +587,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}procedure update_rec (\n`;
         r += `${tab}${tab}p_id  in ${tbl}.${pkNm}%type,\n`;
         r += `${tab}${tab}p_rec in t_rec`;
-        if (hasVer) r += `,\n${tab}${tab}p_row_version in ${tbl}.row_version%type`;
+        if (hasVer) r += `,\n${tab}${tab}p_row_version in out ${tbl}.row_version%type`;
         r += `\n${tab}) is\n`;
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
         if (hasAuditLog) r += `${tab}${tab}l_old_row ${tbl}%rowtype;\n`;
@@ -590,6 +602,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}${dal}.update_row(p_row => l_row);\n`;
         r += `${tab}${tab}${hk}.after_update(p_row => l_row);\n`;
         if (hasAuditLog) r += `${tab}${tab}${aud}.log_update(p_old_row => l_old_row, p_new_row => l_row);\n`;
+        if (hasVer) r += `${tab}${tab}p_row_version := l_row.row_version;\n`;
         r += `${tab}end update_rec;\n\n`;
 
         // delete_rec
@@ -650,7 +663,7 @@ export class OraclePlsqlBuilder {
         updLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
         for (const { name, nullable } of paramCols)
             updLines.push(`${tab}${tab}p_${name.padEnd(13)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
-        if (hasVer) updLines.push(`${tab}${tab}p_row_version  in  ${tbl}.row_version%type`);
+        if (hasVer) updLines.push(`${tab}${tab}p_row_version  in out ${tbl}.row_version%type`);
         r += updLines.join(',\n') + `\n${tab});\n\n`;
 
         r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type);\n\n`;
@@ -722,7 +735,7 @@ export class OraclePlsqlBuilder {
         updLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
         for (const { name, nullable } of paramCols)
             updLines.push(`${tab}${tab}p_${name.padEnd(13)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
-        if (hasVer) updLines.push(`${tab}${tab}p_row_version  in  ${tbl}.row_version%type`);
+        if (hasVer) updLines.push(`${tab}${tab}p_row_version  in out ${tbl}.row_version%type`);
         r += updLines.join(',\n') + `\n${tab}) is\n`;
         r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
         r += `${tab}begin\n`;
@@ -749,7 +762,7 @@ export class OraclePlsqlBuilder {
         const tbl = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
         const aud = tbl + '_aud';
         let r = `create or replace package ${aud} as\n\n`;
-        r += `${tab}g_enabled boolean := true;\n\n`;
+        r += `${tab}procedure set_enabled (p_enabled in boolean);\n\n`;
         r += `${tab}procedure log_insert (p_row     in ${tbl}%rowtype);\n`;
         r += `${tab}procedure log_update (p_old_row in ${tbl}%rowtype, p_new_row in ${tbl}%rowtype);\n`;
         r += `${tab}procedure log_delete (p_old_row in ${tbl}%rowtype);\n\n`;
@@ -782,6 +795,12 @@ export class OraclePlsqlBuilder {
         if (hasVer) jsonCols.push('row_version');
 
         let r = `create or replace package body ${aud} as\n\n`;
+
+        r += `${tab}g_enabled boolean := true;\n\n`;
+        r += `${tab}procedure set_enabled (p_enabled in boolean) is\n`;
+        r += `${tab}begin\n`;
+        r += `${tab}${tab}g_enabled := p_enabled;\n`;
+        r += `${tab}end set_enabled;\n\n`;
 
         if (hasCdcCols) {
             // f_to_json — private; serialises a %rowtype snapshot to JSON for CDC logging
