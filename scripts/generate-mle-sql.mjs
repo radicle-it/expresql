@@ -67,5 +67,5 @@ PROMPT >>> ${outFile} completato.
     console.log(`Generato: ${outFile}  (${chunks.length} chunk, ${(sql.length/1024).toFixed(0)} KB)`);
 }
 
-embedSQL('mle/01_install_module.sql',     'quicksql_module',     'dist/quick-sql.mle.cjs');
+embedSQL('mle/01_install_module.sql',     'expresql_module',     'dist/expresql.mle.cjs');
 embedSQL('mle/02_install_api_module.sql', 'quicksql_api_module', 'mle/quicksql-api.mjs');

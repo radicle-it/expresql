@@ -1,6 +1,6 @@
 -- Auto-generato da scripts/generate-mle-sql.mjs — non modificare manualmente
--- Sorgente: dist/quick-sql.mle.cjs  (442357 byte, 222 chunk da 2000 char)
-PROMPT >>> Caricamento quicksql_module (222 chunk)...
+-- Sorgente: dist/expresql.mle.cjs  (442357 byte, 222 chunk da 2000 char)
+PROMPT >>> Caricamento expresql_module (222 chunk)...
 
 -- Disabilita sostituzione variabili (&/&&) per non interferire con il codice JavaScript
 SET DEFINE OFF
@@ -12413,11 +12413,11 @@ Q.toDDL = et, Q.toERD = $e, Q.toErrors = tt, Q.toDiff = nt, Q.fromJSON = Qe, Q.v
 export { ge as BaseGenerator, Ae as createDiffGenerator, Q as default, Q as quicksql, Qe as fromJSON, $ as qsql_version, ke as registerDiffGenerator, De as registerGenerator, et as toDDL, nt as toDiff, $e as toERD, tt as toErrors };
 '));
   EXECUTE IMMEDIATE
-    'CREATE OR REPLACE MLE MODULE quicksql_module LANGUAGE JAVASCRIPT AS $QSQL$' ||
+    'CREATE OR REPLACE MLE MODULE expresql_module LANGUAGE JAVASCRIPT AS $QSQL$' ||
     l_src ||
     '$QSQL$';
   DBMS_LOB.FREETEMPORARY(l_src);
-  DBMS_OUTPUT.PUT_LINE('OK  quicksql_module caricato.');
+  DBMS_OUTPUT.PUT_LINE('OK  expresql_module caricato.');
 EXCEPTION
   WHEN OTHERS THEN
     DBMS_LOB.FREETEMPORARY(l_src);
@@ -12432,11 +12432,11 @@ SELECT module_name,
        status,
        ROUND(LENGTH(module_source) / 1024, 1) AS size_kb
 FROM   user_mle_modules
-WHERE  module_name = 'QUICKSQL_MODULE';
+WHERE  module_name = 'EXPRESQL_MODULE';
 
 SELECT name, line, text
 FROM   user_errors
-WHERE  name = 'QUICKSQL_MODULE'
+WHERE  name = 'EXPRESQL_MODULE'
 ORDER  BY line;
 
 PROMPT >>> mle/01_install_module.sql completato.

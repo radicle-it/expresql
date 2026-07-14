@@ -1,4 +1,4 @@
-import { toDDL, toDiff, qsql_version }                             from '../dist/quick-sql.js';
+import { toDDL, toDiff, qsql_version }                             from '../dist/expresql.js';
 import { state, LS_ERD_POS, LS_ERD_COL }                          from './state.js';
 import { highlightQuickSQL, highlightSQL }                          from './highlight.js';
 import { capturePositions, updateDiagram, renderERD, applyErdTheme } from './erd.js';

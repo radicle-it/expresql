@@ -1,4 +1,4 @@
-import { toERD }                     from '../dist/quick-sql.js';
+import { toERD }                     from '../dist/expresql.js';
 import { state, LS_ERD_POS, LS_ERD_COL } from './state.js';
 
 // ── Layout constants ──────────────────────────────────────────────

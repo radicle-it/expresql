@@ -2,11 +2,11 @@
   "name": "@radicle-it/expresql",
   "version": "2.0.0",
   "description": "ExpreSQL — Quick SQL to DDL and ERD translator (fork of @oracle/quicksql)",
-  "main": "./dist/quick-sql.js",
+  "main": "./dist/expresql.js",
   "type": "module",
   "exports": {
-    ".": "./dist/quick-sql.js",
-    "./erd": "./dist/quick-erd.js"
+    ".": "./dist/expresql.js",
+    "./erd": "./dist/expresql-erd.js"
   },
   "engines": {
     "node": ">=16"
@@ -15,10 +15,10 @@
     "quicksql": "bin/index.js"
   },
   "config": {
-    "ddlLibraryName": "quickSQL",
-    "ddlLibraryFileName": "quick-sql",
-    "erdLibraryName": "quickERD",
-    "erdLibraryFileName": "quick-erd"
+    "ddlLibraryName": "expresql",
+    "ddlLibraryFileName": "expresql",
+    "erdLibraryName": "expresqlERD",
+    "erdLibraryFileName": "expresql-erd"
   },
   "scripts": {
     "build": "run-p build:ddl build:erd && npm run build:mle",
