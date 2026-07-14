@@ -301,20 +301,14 @@ export class OraclePlsqlBuilder {
         r += `${tab}function lock_by_id (p_id in t_id) return ${tbl}%rowtype;\n\n`;
         for (const col of uniqueCols) {
             const cn = col.parseName().toLowerCase();
-            if (synTenantId) {
-                r += `${tab}function get_by_${cn} (p_${cn} in ${tbl}.${cn}%type, p_tenant_id in number) return ${tbl}%rowtype;\n\n`;
-            } else {
-                r += `${tab}function get_by_${cn} (p_${cn} in ${tbl}.${cn}%type) return ${tbl}%rowtype;\n\n`;
-            }
+            r += `${tab}function get_by_${cn} (p_${cn} in ${tbl}.${cn}%type) return ${tbl}%rowtype;\n\n`;
         }
         r += `${tab}type t_cursor is ref cursor return ${tbl}%rowtype;\n`;
         r += `${tab}function get_all return t_cursor;\n\n`;
         r += `${tab}procedure insert_row (p_row in out nocopy ${tbl}%rowtype);\n\n`;
         if (!isAuditTarget) {
             r += `${tab}procedure update_row (p_row in out nocopy ${tbl}%rowtype);\n\n`;
-            r += synTenantId
-                ? `${tab}procedure delete_row (p_id in t_id, p_tenant_id in number);\n\n`
-                : `${tab}procedure delete_row (p_id in t_id);\n\n`;
+            r += `${tab}procedure delete_row (p_id in t_id);\n\n`;
         }
         r += `${tab}c_err_stale_data constant pls_integer := -20001;\n`;
         r += `${tab}c_err_not_found  constant pls_integer := -20002;\n`;
@@ -341,11 +335,28 @@ export class OraclePlsqlBuilder {
         r += `${tab}resource_busy exception;\n`;
         r += `${tab}pragma exception_init(resource_busy, -54);\n\n`;
 
-        // get_by_id — NO_DATA_FOUND raises c_err_not_found
+        if (synTenantId) {
+            // f_tenant_id — private seam for the server-side tenant context.
+            // Replace the body with the mechanism used in your environment, e.g.:
+            //   return to_number(sys_context('myapp_ctx', 'tenant_id'));
+            //   return to_number(apex_util.get_session_state('APP_TENANT_ID'));
+            r += `${tab}function f_tenant_id return number is\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}-- TODO: return the trusted server-side tenant identifier.\n`;
+            r += `${tab}${tab}-- Example: return to_number(sys_context('myapp_ctx', 'tenant_id'));\n`;
+            r += `${tab}${tab}raise_application_error(-20099, 'tenant context not configured — implement f_tenant_id in ' || $$PLSQL_UNIT);\n`;
+            r += `${tab}end f_tenant_id;\n\n`;
+        }
+
+        // get_by_id — NO_DATA_FOUND raises c_err_not_found; tenant-scoped when tenantid is active
         r += `${tab}function get_by_id (p_id in t_id) return ${tbl}%rowtype is\n`;
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
         r += `${tab}begin\n`;
-        r += `${tab}${tab}select * into l_row from ${tbl} where ${pkName} = p_id;\n`;
+        if (synTenantId) {
+            r += `${tab}${tab}select * into l_row from ${tbl} where ${pkName} = p_id and tenant_id = f_tenant_id;\n`;
+        } else {
+            r += `${tab}${tab}select * into l_row from ${tbl} where ${pkName} = p_id;\n`;
+        }
         r += `${tab}${tab}return l_row;\n`;
         r += `${tab}exception\n`;
         r += `${tab}${tab}when no_data_found then\n`;
@@ -358,7 +369,12 @@ export class OraclePlsqlBuilder {
         r += `${tab}begin\n`;
         r += `${tab}${tab}select * into l_row\n`;
         r += `${tab}${tab}from   ${tbl}\n`;
-        r += `${tab}${tab}where  ${pkName} = p_id\n`;
+        if (synTenantId) {
+            r += `${tab}${tab}where  ${pkName} = p_id\n`;
+            r += `${tab}${tab}  and  tenant_id = f_tenant_id\n`;
+        } else {
+            r += `${tab}${tab}where  ${pkName} = p_id\n`;
+        }
         r += `${tab}${tab}for update nowait;\n`;
         r += `${tab}${tab}return l_row;\n`;
         r += `${tab}exception\n`;
@@ -369,12 +385,12 @@ export class OraclePlsqlBuilder {
         r += `${tab}end lock_by_id;\n\n`;
 
         // get_by_<unique_col> — one function per /unique column; NO_DATA_FOUND propagates.
-        // When tenantid is active, p_tenant_id is required to enforce the composite unique index scope.
+        // When tenantid is active, f_tenant_id scopes the lookup to the current tenant,
+        // matching the composite unique index (tenant_id, <col>).
         for (const col of uniqueCols) {
             const cn = col.parseName().toLowerCase();
-            const extraParam = synTenantId ? `, p_tenant_id in number` : '';
-            const extraWhere = synTenantId ? ` and tenant_id = p_tenant_id` : '';
-            r += `${tab}function get_by_${cn} (p_${cn} in ${tbl}.${cn}%type${extraParam}) return ${tbl}%rowtype is\n`;
+            const extraWhere = synTenantId ? ` and tenant_id = f_tenant_id` : '';
+            r += `${tab}function get_by_${cn} (p_${cn} in ${tbl}.${cn}%type) return ${tbl}%rowtype is\n`;
             r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
             r += `${tab}begin\n`;
             r += `${tab}${tab}select * into l_row from ${tbl} where ${cn} = p_${cn}${extraWhere};\n`;
@@ -386,7 +402,11 @@ export class OraclePlsqlBuilder {
         r += `${tab}function get_all return t_cursor is\n`;
         r += `${tab}${tab}l_cur t_cursor;\n`;
         r += `${tab}begin\n`;
-        r += `${tab}${tab}open l_cur for select * from ${tbl};\n`;
+        if (synTenantId) {
+            r += `${tab}${tab}open l_cur for select * from ${tbl} where tenant_id = f_tenant_id;\n`;
+        } else {
+            r += `${tab}${tab}open l_cur for select * from ${tbl};\n`;
+        }
         r += `${tab}${tab}return l_cur;\n`;
         r += `${tab}end get_all;\n\n`;
 
@@ -400,6 +420,8 @@ export class OraclePlsqlBuilder {
                          ...svcCols.map(c => `p_row.${c.parseName().toLowerCase()}`)];
         r += `${tab}procedure insert_row (p_row in out nocopy ${tbl}%rowtype) is\n`;
         r += `${tab}begin\n`;
+        // Overwrite caller-supplied tenant_id with the trusted context value.
+        if (synTenantId) r += `${tab}${tab}p_row.tenant_id := f_tenant_id;\n`;
         r += `${tab}${tab}insert into ${tbl} (\n`;
         r += `${tab}${tab}${tab}` + insCols.join(`,\n${tab}${tab}${tab}`) + '\n';
         r += `${tab}${tab}) values (\n`;
@@ -421,8 +443,9 @@ export class OraclePlsqlBuilder {
         r += `${tab}end insert_row;\n\n`;
 
         // update_row and delete_row are omitted for audit-log targets (append-only integrity).
-        // For multi-tenant tables, update_row adds tenant_id to the WHERE for defence-in-depth,
-        // and delete_row carries p_tenant_id so the DAL enforces cross-tenant safety.
+        // When tenantid is active, both operations use f_tenant_id in the WHERE clause so they
+        // can only affect rows belonging to the current session tenant — cross-tenant mutations
+        // silently affect 0 rows (update triggers c_err_stale_data; delete is a no-op).
         const setCols = [...fkCols.map(f => `${f.toLowerCase()} = p_row.${f.toLowerCase()}`),
                          ...svcCols.map(c => `${c.parseName().toLowerCase()} = p_row.${c.parseName().toLowerCase()}`)];
         if (!isAuditTarget) {
@@ -433,7 +456,7 @@ export class OraclePlsqlBuilder {
             r += `${tab}${tab}update ${tbl} set\n`;
             r += `${tab}${tab}${tab}` + setCols.join(`,\n${tab}${tab}${tab}`) + '\n';
             r += `${tab}${tab}where ${pkName} = l_id`;
-            if (synTenantId) r += `\n${tab}${tab}  and tenant_id = p_row.tenant_id`;
+            if (synTenantId) r += `\n${tab}${tab}  and tenant_id = f_tenant_id`;
             if (hasVer) r += `\n${tab}${tab}  and row_version = p_row.row_version`;
             if (hasVer) {
                 const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
@@ -449,7 +472,12 @@ export class OraclePlsqlBuilder {
                 r += `${tab}${tab}if sql%rowcount = 0 then\n`;
                 r += `${tab}${tab}${tab}declare l_dummy pls_integer;\n`;
                 r += `${tab}${tab}${tab}begin\n`;
-                r += `${tab}${tab}${tab}${tab}select 1 into l_dummy from ${tbl} where ${pkName} = l_id;\n`;
+                // Stale data check includes tenant_id so we never reveal existence of other-tenant records.
+                if (synTenantId) {
+                    r += `${tab}${tab}${tab}${tab}select 1 into l_dummy from ${tbl} where ${pkName} = l_id and tenant_id = f_tenant_id;\n`;
+                } else {
+                    r += `${tab}${tab}${tab}${tab}select 1 into l_dummy from ${tbl} where ${pkName} = l_id;\n`;
+                }
                 r += `${tab}${tab}${tab}${tab}raise_application_error(c_err_stale_data, 'row modified by another session. reload and retry.');\n`;
                 r += `${tab}${tab}${tab}exception\n`;
                 r += `${tab}${tab}${tab}${tab}when no_data_found then\n`;
@@ -459,18 +487,15 @@ export class OraclePlsqlBuilder {
             }
             r += `${tab}end update_row;\n\n`;
 
-            // delete_row
+            // delete_row — scoped to current tenant when tenantid is active
+            r += `${tab}procedure delete_row (p_id in t_id) is\n`;
+            r += `${tab}begin\n`;
             if (synTenantId) {
-                r += `${tab}procedure delete_row (p_id in t_id, p_tenant_id in number) is\n`;
-                r += `${tab}begin\n`;
-                r += `${tab}${tab}delete from ${tbl} where ${pkName} = p_id and tenant_id = p_tenant_id;\n`;
-                r += `${tab}end delete_row;\n\n`;
+                r += `${tab}${tab}delete from ${tbl} where ${pkName} = p_id and tenant_id = f_tenant_id;\n`;
             } else {
-                r += `${tab}procedure delete_row (p_id in t_id) is\n`;
-                r += `${tab}begin\n`;
                 r += `${tab}${tab}delete from ${tbl} where ${pkName} = p_id;\n`;
-                r += `${tab}end delete_row;\n\n`;
             }
+            r += `${tab}end delete_row;\n\n`;
         }
 
         r += `end ${dal};\n/\n`;
@@ -517,15 +542,14 @@ export class OraclePlsqlBuilder {
     }
 
     /**
-     * Ordered list of t_rec / APX parameter descriptors: FK cols → tenant_id → regular cols.
+     * Ordered list of t_rec / APX parameter descriptors: FK cols → regular cols.
      * Single source of truth for SVC t_rec fields and APX parameter lists.
+     * tenant_id is intentionally excluded: the DAL enforces it via f_tenant_id (server-side context).
      */
     private _svcParamCols(node: IDdlNode): Array<{ name: string; nullable: boolean }> {
         const out: Array<{ name: string; nullable: boolean }> = [];
         for (const fk of Object.keys(node.fks ?? {}))
             out.push({ name: fk.toLowerCase(), nullable: true });
-        if (this._hasSyntheticTenantId(node))
-            out.push({ name: 'tenant_id', nullable: false });
         for (const col of this._svcCols(node))
             out.push({ name: col.parseName().toLowerCase(), nullable: !col.isOption('nn') });
         return out;
@@ -559,11 +583,7 @@ export class OraclePlsqlBuilder {
         if (hasVer) r += `,\n${tab}${tab}p_row_version in out ${tbl}.row_version%type`;
         r += `\n${tab});\n\n`;
 
-        if (synTenantId) {
-            r += `${tab}procedure delete_rec (p_id in ${tbl}.${pkNm}%type, p_tenant_id in number);\n\n`;
-        } else {
-            r += `${tab}procedure delete_rec (p_id in ${tbl}.${pkNm}%type);\n\n`;
-        }
+        r += `${tab}procedure delete_rec (p_id in ${tbl}.${pkNm}%type);\n\n`;
         r += `end ${svc};\n/\n`;
         return r;
     }
@@ -644,26 +664,14 @@ export class OraclePlsqlBuilder {
         if (hasVer) r += `${tab}${tab}p_row_version := l_row.row_version;\n`;
         r += `${tab}end update_rec;\n\n`;
 
-        // delete_rec
-        // When synTenantId: requires p_tenant_id from caller; verifies the loaded row belongs to
-        // that tenant before delegating to dal.delete_row (which also enforces the filter).
-        const needsOldRow     = hasAuditLog || synTenantId;
-        const delTenantParam  = synTenantId ? `, p_tenant_id in number` : '';
-        r += `${tab}procedure delete_rec (p_id in ${tbl}.${pkNm}%type${delTenantParam}) is\n`;
-        if (needsOldRow) r += `${tab}${tab}l_old_row ${tbl}%rowtype;\n`;
+        // delete_rec — tenant isolation is enforced by dal.delete_row (via f_tenant_id),
+        // which silently affects 0 rows when the record belongs to a different tenant.
+        r += `${tab}procedure delete_rec (p_id in ${tbl}.${pkNm}%type) is\n`;
+        if (hasAuditLog) r += `${tab}${tab}l_old_row ${tbl}%rowtype;\n`;
         r += `${tab}begin\n`;
-        if (needsOldRow) r += `${tab}${tab}l_old_row := ${dal}.get_by_id(p_id => p_id);\n`;
-        if (synTenantId) {
-            r += `${tab}${tab}if l_old_row.tenant_id != p_tenant_id then\n`;
-            r += `${tab}${tab}${tab}raise_application_error(${dal}.c_err_not_found, '${tbl}: record not found (id=' || p_id || ')');\n`;
-            r += `${tab}${tab}end if;\n`;
-        }
+        if (hasAuditLog) r += `${tab}${tab}l_old_row := ${dal}.get_by_id(p_id => p_id);\n`;
         r += `${tab}${tab}${hk}.before_delete(p_id => p_id);\n`;
-        if (synTenantId) {
-            r += `${tab}${tab}${dal}.delete_row(p_id => p_id, p_tenant_id => p_tenant_id);\n`;
-        } else {
-            r += `${tab}${tab}${dal}.delete_row(p_id => p_id);\n`;
-        }
+        r += `${tab}${tab}${dal}.delete_row(p_id => p_id);\n`;
         r += `${tab}${tab}${hk}.after_delete(p_id => p_id);\n`;
         if (hasAuditLog) r += `${tab}${tab}${aud}.log_delete(p_old_row => l_old_row);\n`;
         r += `${tab}end delete_rec;\n\n`;
@@ -719,11 +727,7 @@ export class OraclePlsqlBuilder {
         if (hasVer) updLines.push(`${tab}${tab}p_row_version  in out ${tbl}.row_version%type`);
         r += updLines.join(',\n') + `\n${tab});\n\n`;
 
-        if (synTenantId) {
-            r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type, p_tenant_id in number);\n\n`;
-        } else {
-            r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type);\n\n`;
-        }
+        r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type);\n\n`;
         r += `end ${apx};\n/\n`;
         return r;
     }
@@ -807,17 +811,10 @@ export class OraclePlsqlBuilder {
         r += `${tab}end upd;\n\n`;
 
         // del
-        if (synTenantId) {
-            r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type, p_tenant_id in number) is\n`;
-            r += `${tab}begin\n`;
-            r += `${tab}${tab}${svc}.delete_rec(p_id => p_id, p_tenant_id => p_tenant_id);\n`;
-            r += `${tab}end del;\n\n`;
-        } else {
-            r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type) is\n`;
-            r += `${tab}begin\n`;
-            r += `${tab}${tab}${svc}.delete_rec(p_id => p_id);\n`;
-            r += `${tab}end del;\n\n`;
-        }
+        r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type) is\n`;
+        r += `${tab}begin\n`;
+        r += `${tab}${tab}${svc}.delete_rec(p_id => p_id);\n`;
+        r += `${tab}end del;\n\n`;
 
         r += `end ${apx};\n/\n`;
         return r;
@@ -856,10 +853,6 @@ export class OraclePlsqlBuilder {
         // Build the column list for f_to_json: pk + tenant_id + fks + business cols + row_version.
         // Audit metadata cols (created/updated) are excluded — they are DATE and not business state.
         const synTenantId       = this._hasSyntheticTenantId(node);
-        // Propagate tenant_id to p_log when both the business table and the audit log table
-        // carry a synthetic tenant_id (i.e. auditlog table also has tenantid:yes active).
-        const auditLogHasTenant = auditLogNode != null && this._hasSyntheticTenantId(auditLogNode);
-        const propagateTenant   = synTenantId && auditLogHasTenant;
         const jsonCols = [pkName, ...(synTenantId ? ['tenant_id'] : []), ...fkCols, ...svcCols];
         if (hasVer) jsonCols.push('row_version');
 
@@ -885,11 +878,11 @@ export class OraclePlsqlBuilder {
             r += `${tab}end f_to_json;\n\n`;
         }
 
-        // p_log — private; autonomous transaction so audit survives caller rollback
+        // p_log — private; autonomous transaction so audit survives caller rollback.
+        // tenant_id on the audit log row is set by insert_row via the audit log DAL's f_tenant_id.
         r += `${tab}procedure p_log (\n`;
         r += `${tab}${tab}p_operation  in varchar2,\n`;
         r += `${tab}${tab}p_id         in ${dal}.t_id`;
-        if (propagateTenant) r += `,\n${tab}${tab}p_tenant_id  in number`;
         if (hasCdcCols) {
             r += `,\n${tab}${tab}p_old_values in clob default null,\n`;
             r += `${tab}${tab}p_new_values in clob default null\n`;
@@ -905,7 +898,6 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}l_rec.entity    := '${tbl}';\n`;
         r += `${tab}${tab}l_rec.entity_id := p_id;\n`;
         r += `${tab}${tab}l_rec.operation := p_operation;\n`;
-        if (propagateTenant) r += `${tab}${tab}l_rec.tenant_id := p_tenant_id;\n`;
         if (hasCdcCols) {
             r += `${tab}${tab}l_rec.old_values := p_old_values;\n`;
             r += `${tab}${tab}l_rec.new_values := p_new_values;\n`;
@@ -917,34 +909,30 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}commit;\n`;
         r += `${tab}end p_log;\n\n`;
 
-        const tenantArgRow    = propagateTenant ? `, p_tenant_id => p_row.tenant_id`     : '';
-        const tenantArgNewRow = propagateTenant ? `, p_tenant_id => p_new_row.tenant_id` : '';
-        const tenantArgOldRow = propagateTenant ? `, p_tenant_id => p_old_row.tenant_id` : '';
-
         r += `${tab}procedure log_insert (p_row in ${tbl}%rowtype) is\n`;
         r += `${tab}begin\n`;
         if (hasCdcCols) {
-            r += `${tab}${tab}p_log(p_operation => 'INSERT', p_id => p_row.${pkName}${tenantArgRow}, p_new_values => f_to_json(p_row));\n`;
+            r += `${tab}${tab}p_log(p_operation => 'INSERT', p_id => p_row.${pkName}, p_new_values => f_to_json(p_row));\n`;
         } else {
-            r += `${tab}${tab}p_log(p_operation => 'INSERT', p_id => p_row.${pkName}${tenantArgRow});\n`;
+            r += `${tab}${tab}p_log(p_operation => 'INSERT', p_id => p_row.${pkName});\n`;
         }
         r += `${tab}end log_insert;\n\n`;
 
         r += `${tab}procedure log_update (p_old_row in ${tbl}%rowtype, p_new_row in ${tbl}%rowtype) is\n`;
         r += `${tab}begin\n`;
         if (hasCdcCols) {
-            r += `${tab}${tab}p_log(p_operation => 'UPDATE', p_id => p_new_row.${pkName}${tenantArgNewRow}, p_old_values => f_to_json(p_old_row), p_new_values => f_to_json(p_new_row));\n`;
+            r += `${tab}${tab}p_log(p_operation => 'UPDATE', p_id => p_new_row.${pkName}, p_old_values => f_to_json(p_old_row), p_new_values => f_to_json(p_new_row));\n`;
         } else {
-            r += `${tab}${tab}p_log(p_operation => 'UPDATE', p_id => p_new_row.${pkName}${tenantArgNewRow});\n`;
+            r += `${tab}${tab}p_log(p_operation => 'UPDATE', p_id => p_new_row.${pkName});\n`;
         }
         r += `${tab}end log_update;\n\n`;
 
         r += `${tab}procedure log_delete (p_old_row in ${tbl}%rowtype) is\n`;
         r += `${tab}begin\n`;
         if (hasCdcCols) {
-            r += `${tab}${tab}p_log(p_operation => 'DELETE', p_id => p_old_row.${pkName}${tenantArgOldRow}, p_old_values => f_to_json(p_old_row));\n`;
+            r += `${tab}${tab}p_log(p_operation => 'DELETE', p_id => p_old_row.${pkName}, p_old_values => f_to_json(p_old_row));\n`;
         } else {
-            r += `${tab}${tab}p_log(p_operation => 'DELETE', p_id => p_old_row.${pkName}${tenantArgOldRow});\n`;
+            r += `${tab}${tab}p_log(p_operation => 'DELETE', p_id => p_old_row.${pkName});\n`;
         }
         r += `${tab}end log_delete;\n\n`;
 

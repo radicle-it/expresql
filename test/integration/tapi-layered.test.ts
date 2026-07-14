@@ -1326,11 +1326,12 @@ customers /api
 
 describe('layered TAPI — tenantid:yes', () => {
 
-    test('SVC spec t_rec type includes tenant_id field', () => {
+    test('SVC spec t_rec type does NOT include tenant_id (managed by DAL context)', () => {
         const out = ddl(CUSTOMERS_TENANT_QSQL);
         const spec = segment(out, 'create or replace package customers_svc as', 'end customers_svc;');
         expect(spec).toContain('type t_rec is record');
-        expect(spec).toContain('tenant_id');
+        // tenant_id is intentionally absent from t_rec: the DAL enforces it via f_tenant_id
+        expect(spec).not.toContain('tenant_id');
     });
 
     test('SVC spec t_rec type includes FK field (tenant_ref)', () => {
@@ -1348,11 +1349,13 @@ describe('layered TAPI — tenantid:yes', () => {
         expect(updateRec).toContain('t_rec');
     });
 
-    test('SVC body p_do_create assigns tenant_id from p_rec to l_row', () => {
+    test('SVC body p_do_create does NOT assign tenant_id from p_rec (DAL sets it via f_tenant_id)', () => {
         const out = ddl(CUSTOMERS_TENANT_QSQL);
         const body = segment(out, 'create or replace package body customers_svc', 'end customers_svc;');
         const doCreate = segment(body, 'procedure p_do_create', 'end p_do_create;');
-        expect(doCreate).toContain('l_row.tenant_id := p_rec.tenant_id');
+        // tenant_id is no longer in t_rec; insert_row overwrites p_row.tenant_id with f_tenant_id
+        expect(doCreate).not.toContain('l_row.tenant_id := p_rec.tenant_id');
+        expect(doCreate).toContain('dal.insert_row');
     });
 
     test('SVC body create_rec passes p_rec record to p_do_create', () => {
@@ -1362,11 +1365,13 @@ describe('layered TAPI — tenantid:yes', () => {
         expect(createRec).toContain('p_do_create(p_rec => p_rec');
     });
 
-    test('SVC body update_rec assigns tenant_id from p_rec to l_row', () => {
+    test('SVC body update_rec does NOT assign tenant_id from p_rec (DAL WHERE uses f_tenant_id)', () => {
         const out = ddl(CUSTOMERS_TENANT_QSQL);
         const body = segment(out, 'create or replace package body customers_svc', 'end customers_svc;');
         const updateRec = segment(body, 'procedure update_rec', 'end update_rec;');
-        expect(updateRec).toContain('l_row.tenant_id := p_rec.tenant_id');
+        // tenant_id is no longer in t_rec; update_row adds "and tenant_id = f_tenant_id" to WHERE
+        expect(updateRec).not.toContain('l_row.tenant_id := p_rec.tenant_id');
+        expect(updateRec).toContain('dal.update_row');
     });
 
     test('DAL body insert_row includes tenant_id in column list', () => {
