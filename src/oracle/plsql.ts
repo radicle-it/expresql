@@ -271,6 +271,15 @@ export class OraclePlsqlBuilder {
         return node.children.some(c => c.isOption('unique'));
     }
 
+    // Returns true when any other node designates this table as its audit log target via /auditlog.
+    private _isAuditLogTarget(node: IDdlNode): boolean {
+        const myName = node.parseName().toLowerCase();
+        return this.ctx.descendants().some(n => {
+            const logName = String(n.getOptionValue('auditlog') || '').trim().toLowerCase();
+            return logName !== '' && logName === myName;
+        });
+    }
+
     // Non-PK, non-version regular columns used as SVC scalar parameters.
     private _svcCols(node: IDdlNode): IDdlNode[] {
         return node.children.filter(
@@ -281,22 +290,32 @@ export class OraclePlsqlBuilder {
     }
 
     private _generateDalSpec(node: IDdlNode): string {
-        const tbl        = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const dal        = tbl + '_dal';
-        const uniqueCols = node.children.filter(c => c.isOption('unique'));
+        const tbl           = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
+        const dal           = tbl + '_dal';
+        const uniqueCols    = node.children.filter(c => c.isOption('unique'));
+        const synTenantId   = this._hasSyntheticTenantId(node);
+        const isAuditTarget = this._isAuditLogTarget(node);
         let r = `create or replace package ${dal} as\n\n`;
         r += `${tab}subtype t_id is ${tbl}.id%type;\n\n`;
         r += `${tab}function get_by_id  (p_id in t_id) return ${tbl}%rowtype;\n`;
         r += `${tab}function lock_by_id (p_id in t_id) return ${tbl}%rowtype;\n\n`;
         for (const col of uniqueCols) {
             const cn = col.parseName().toLowerCase();
-            r += `${tab}function get_by_${cn} (p_${cn} in ${tbl}.${cn}%type) return ${tbl}%rowtype;\n\n`;
+            if (synTenantId) {
+                r += `${tab}function get_by_${cn} (p_${cn} in ${tbl}.${cn}%type, p_tenant_id in number) return ${tbl}%rowtype;\n\n`;
+            } else {
+                r += `${tab}function get_by_${cn} (p_${cn} in ${tbl}.${cn}%type) return ${tbl}%rowtype;\n\n`;
+            }
         }
         r += `${tab}type t_cursor is ref cursor return ${tbl}%rowtype;\n`;
         r += `${tab}function get_all return t_cursor;\n\n`;
         r += `${tab}procedure insert_row (p_row in out nocopy ${tbl}%rowtype);\n\n`;
-        r += `${tab}procedure update_row (p_row in out nocopy ${tbl}%rowtype);\n\n`;
-        r += `${tab}procedure delete_row (p_id in t_id);\n\n`;
+        if (!isAuditTarget) {
+            r += `${tab}procedure update_row (p_row in out nocopy ${tbl}%rowtype);\n\n`;
+            r += synTenantId
+                ? `${tab}procedure delete_row (p_id in t_id, p_tenant_id in number);\n\n`
+                : `${tab}procedure delete_row (p_id in t_id);\n\n`;
+        }
         r += `${tab}c_err_stale_data constant pls_integer := -20001;\n`;
         r += `${tab}c_err_not_found  constant pls_integer := -20002;\n`;
         r += `${tab}c_err_locked     constant pls_integer := -20003;\n\n`;
@@ -312,7 +331,9 @@ export class OraclePlsqlBuilder {
         const hasAudit   = node.hasAuditCols();
         const svcCols    = this._svcCols(node);
         const fkCols     = Object.keys(node.fks ?? {});
-        const uniqueCols = node.children.filter(c => c.isOption('unique'));
+        const uniqueCols    = node.children.filter(c => c.isOption('unique'));
+        const isAuditTarget = this._isAuditLogTarget(node);
+        const synTenantId   = this._hasSyntheticTenantId(node);
 
         let r = `create or replace package body ${dal} as\n\n`;
 
@@ -348,12 +369,15 @@ export class OraclePlsqlBuilder {
         r += `${tab}end lock_by_id;\n\n`;
 
         // get_by_<unique_col> — one function per /unique column; NO_DATA_FOUND propagates.
+        // When tenantid is active, p_tenant_id is required to enforce the composite unique index scope.
         for (const col of uniqueCols) {
             const cn = col.parseName().toLowerCase();
-            r += `${tab}function get_by_${cn} (p_${cn} in ${tbl}.${cn}%type) return ${tbl}%rowtype is\n`;
+            const extraParam = synTenantId ? `, p_tenant_id in number` : '';
+            const extraWhere = synTenantId ? ` and tenant_id = p_tenant_id` : '';
+            r += `${tab}function get_by_${cn} (p_${cn} in ${tbl}.${cn}%type${extraParam}) return ${tbl}%rowtype is\n`;
             r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
             r += `${tab}begin\n`;
-            r += `${tab}${tab}select * into l_row from ${tbl} where ${cn} = p_${cn};\n`;
+            r += `${tab}${tab}select * into l_row from ${tbl} where ${cn} = p_${cn}${extraWhere};\n`;
             r += `${tab}${tab}return l_row;\n`;
             r += `${tab}end get_by_${cn};\n\n`;
         }
@@ -368,7 +392,6 @@ export class OraclePlsqlBuilder {
 
         // insert_row — no PK in INSERT column list; RETURNING populates p_row.id
         // and, when row_version and audit columns are present, those fields too.
-        const synTenantId = this._hasSyntheticTenantId(node);
         const insCols = [...(synTenantId ? ['tenant_id'] : []),
                          ...fkCols.map(f => f.toLowerCase()),
                          ...svcCols.map(c => c.parseName().toLowerCase())];
@@ -397,48 +420,58 @@ export class OraclePlsqlBuilder {
         r += `;\n`;
         r += `${tab}end insert_row;\n\n`;
 
-        // update_row — PK excluded from SET; optimistic locking when row_version present.
-        // l_id is extracted before the UPDATE to avoid 'id = p_row.id' after the SET keyword,
-        // which would incorrectly look like the flat-TAPI defect (arch spec §1.1).
+        // update_row and delete_row are omitted for audit-log targets (append-only integrity).
+        // For multi-tenant tables, update_row adds tenant_id to the WHERE for defence-in-depth,
+        // and delete_row carries p_tenant_id so the DAL enforces cross-tenant safety.
         const setCols = [...fkCols.map(f => `${f.toLowerCase()} = p_row.${f.toLowerCase()}`),
                          ...svcCols.map(c => `${c.parseName().toLowerCase()} = p_row.${c.parseName().toLowerCase()}`)];
-        r += `${tab}procedure update_row (p_row in out nocopy ${tbl}%rowtype) is\n`;
-        r += `${tab}${tab}l_id t_id;\n`;
-        r += `${tab}begin\n`;
-        r += `${tab}${tab}l_id := p_row.${pkName};\n`;
-        r += `${tab}${tab}update ${tbl} set\n`;
-        r += `${tab}${tab}${tab}` + setCols.join(`,\n${tab}${tab}${tab}`) + '\n';
-        r += `${tab}${tab}where ${pkName} = l_id`;
-        if (hasVer) r += `\n${tab}${tab}  and row_version = p_row.row_version`;
-        if (hasVer) {
-            const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
-            const updatedByCol = String(this.ctx.getOptionValue('updatedbycol') ?? 'updated_by');
-            const retCols  = ['row_version'];
-            const intoCols = ['p_row.row_version'];
-            if (hasAudit) { retCols.push(updatedCol, updatedByCol); intoCols.push(`p_row.${updatedCol}`, `p_row.${updatedByCol}`); }
-            r += `\n${tab}${tab}returning ${retCols.join(', ')}\n`;
-            r += `${tab}${tab}     into ${intoCols.join(', ')}`;
-        }
-        r += `;\n`;
-        if (hasVer) {
-            r += `${tab}${tab}if sql%rowcount = 0 then\n`;
-            r += `${tab}${tab}${tab}declare l_dummy pls_integer;\n`;
-            r += `${tab}${tab}${tab}begin\n`;
-            r += `${tab}${tab}${tab}${tab}select 1 into l_dummy from ${tbl} where ${pkName} = l_id;\n`;
-            r += `${tab}${tab}${tab}${tab}raise_application_error(c_err_stale_data, 'row modified by another session. reload and retry.');\n`;
-            r += `${tab}${tab}${tab}exception\n`;
-            r += `${tab}${tab}${tab}${tab}when no_data_found then\n`;
-            r += `${tab}${tab}${tab}${tab}${tab}raise_application_error(c_err_not_found, 'record ' || l_id || ' does not exist.');\n`;
-            r += `${tab}${tab}${tab}end;\n`;
-            r += `${tab}${tab}end if;\n`;
-        }
-        r += `${tab}end update_row;\n\n`;
+        if (!isAuditTarget) {
+            r += `${tab}procedure update_row (p_row in out nocopy ${tbl}%rowtype) is\n`;
+            r += `${tab}${tab}l_id t_id;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}l_id := p_row.${pkName};\n`;
+            r += `${tab}${tab}update ${tbl} set\n`;
+            r += `${tab}${tab}${tab}` + setCols.join(`,\n${tab}${tab}${tab}`) + '\n';
+            r += `${tab}${tab}where ${pkName} = l_id`;
+            if (synTenantId) r += `\n${tab}${tab}  and tenant_id = p_row.tenant_id`;
+            if (hasVer) r += `\n${tab}${tab}  and row_version = p_row.row_version`;
+            if (hasVer) {
+                const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
+                const updatedByCol = String(this.ctx.getOptionValue('updatedbycol') ?? 'updated_by');
+                const retCols  = ['row_version'];
+                const intoCols = ['p_row.row_version'];
+                if (hasAudit) { retCols.push(updatedCol, updatedByCol); intoCols.push(`p_row.${updatedCol}`, `p_row.${updatedByCol}`); }
+                r += `\n${tab}${tab}returning ${retCols.join(', ')}\n`;
+                r += `${tab}${tab}     into ${intoCols.join(', ')}`;
+            }
+            r += `;\n`;
+            if (hasVer) {
+                r += `${tab}${tab}if sql%rowcount = 0 then\n`;
+                r += `${tab}${tab}${tab}declare l_dummy pls_integer;\n`;
+                r += `${tab}${tab}${tab}begin\n`;
+                r += `${tab}${tab}${tab}${tab}select 1 into l_dummy from ${tbl} where ${pkName} = l_id;\n`;
+                r += `${tab}${tab}${tab}${tab}raise_application_error(c_err_stale_data, 'row modified by another session. reload and retry.');\n`;
+                r += `${tab}${tab}${tab}exception\n`;
+                r += `${tab}${tab}${tab}${tab}when no_data_found then\n`;
+                r += `${tab}${tab}${tab}${tab}${tab}raise_application_error(c_err_not_found, 'record ' || l_id || ' does not exist.');\n`;
+                r += `${tab}${tab}${tab}end;\n`;
+                r += `${tab}${tab}end if;\n`;
+            }
+            r += `${tab}end update_row;\n\n`;
 
-        // delete_row
-        r += `${tab}procedure delete_row (p_id in t_id) is\n`;
-        r += `${tab}begin\n`;
-        r += `${tab}${tab}delete from ${tbl} where ${pkName} = p_id;\n`;
-        r += `${tab}end delete_row;\n\n`;
+            // delete_row
+            if (synTenantId) {
+                r += `${tab}procedure delete_row (p_id in t_id, p_tenant_id in number) is\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}delete from ${tbl} where ${pkName} = p_id and tenant_id = p_tenant_id;\n`;
+                r += `${tab}end delete_row;\n\n`;
+            } else {
+                r += `${tab}procedure delete_row (p_id in t_id) is\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}delete from ${tbl} where ${pkName} = p_id;\n`;
+                r += `${tab}end delete_row;\n\n`;
+            }
+        }
 
         r += `end ${dal};\n/\n`;
         return r;
@@ -499,11 +532,12 @@ export class OraclePlsqlBuilder {
     }
 
     private _generateSvcSpec(node: IDdlNode): string {
-        const tbl       = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const svc       = tbl + '_svc';
-        const pkNm      = (node.getPkName() ?? 'id').toLowerCase();
-        const hasVer    = this._hasVersionCol(node);
-        const paramCols = this._svcParamCols(node);
+        const tbl         = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
+        const svc         = tbl + '_svc';
+        const pkNm        = (node.getPkName() ?? 'id').toLowerCase();
+        const hasVer      = this._hasVersionCol(node);
+        const synTenantId = this._hasSyntheticTenantId(node);
+        const paramCols   = this._svcParamCols(node);
 
         let r = `create or replace package ${svc} as\n\n`;
 
@@ -525,7 +559,11 @@ export class OraclePlsqlBuilder {
         if (hasVer) r += `,\n${tab}${tab}p_row_version in out ${tbl}.row_version%type`;
         r += `\n${tab});\n\n`;
 
-        r += `${tab}procedure delete_rec (p_id in ${tbl}.${pkNm}%type);\n\n`;
+        if (synTenantId) {
+            r += `${tab}procedure delete_rec (p_id in ${tbl}.${pkNm}%type, p_tenant_id in number);\n\n`;
+        } else {
+            r += `${tab}procedure delete_rec (p_id in ${tbl}.${pkNm}%type);\n\n`;
+        }
         r += `end ${svc};\n/\n`;
         return r;
     }
@@ -540,6 +578,7 @@ export class OraclePlsqlBuilder {
         const hasVer      = this._hasVersionCol(node);
         const hasUniq     = this._hasUniqueCol(node);
         const hasAuditLog = this._hasAuditLog(node);
+        const synTenantId = this._hasSyntheticTenantId(node);
         const paramCols   = this._svcParamCols(node);
 
         let r = `create or replace package body ${svc} as\n\n`;
@@ -606,12 +645,25 @@ export class OraclePlsqlBuilder {
         r += `${tab}end update_rec;\n\n`;
 
         // delete_rec
-        r += `${tab}procedure delete_rec (p_id in ${tbl}.${pkNm}%type) is\n`;
-        if (hasAuditLog) r += `${tab}${tab}l_old_row ${tbl}%rowtype;\n`;
+        // When synTenantId: requires p_tenant_id from caller; verifies the loaded row belongs to
+        // that tenant before delegating to dal.delete_row (which also enforces the filter).
+        const needsOldRow     = hasAuditLog || synTenantId;
+        const delTenantParam  = synTenantId ? `, p_tenant_id in number` : '';
+        r += `${tab}procedure delete_rec (p_id in ${tbl}.${pkNm}%type${delTenantParam}) is\n`;
+        if (needsOldRow) r += `${tab}${tab}l_old_row ${tbl}%rowtype;\n`;
         r += `${tab}begin\n`;
-        if (hasAuditLog) r += `${tab}${tab}l_old_row := ${dal}.get_by_id(p_id => p_id);\n`;
+        if (needsOldRow) r += `${tab}${tab}l_old_row := ${dal}.get_by_id(p_id => p_id);\n`;
+        if (synTenantId) {
+            r += `${tab}${tab}if l_old_row.tenant_id != p_tenant_id then\n`;
+            r += `${tab}${tab}${tab}raise_application_error(${dal}.c_err_not_found, '${tbl}: record not found (id=' || p_id || ')');\n`;
+            r += `${tab}${tab}end if;\n`;
+        }
         r += `${tab}${tab}${hk}.before_delete(p_id => p_id);\n`;
-        r += `${tab}${tab}${dal}.delete_row(p_id => p_id);\n`;
+        if (synTenantId) {
+            r += `${tab}${tab}${dal}.delete_row(p_id => p_id, p_tenant_id => p_tenant_id);\n`;
+        } else {
+            r += `${tab}${tab}${dal}.delete_row(p_id => p_id);\n`;
+        }
         r += `${tab}${tab}${hk}.after_delete(p_id => p_id);\n`;
         if (hasAuditLog) r += `${tab}${tab}${aud}.log_delete(p_old_row => l_old_row);\n`;
         r += `${tab}end delete_rec;\n\n`;
@@ -621,12 +673,13 @@ export class OraclePlsqlBuilder {
     }
 
     private _generateApxSpec(node: IDdlNode): string {
-        const tbl       = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const apx       = tbl + '_apx';
-        const pkNm      = (node.getPkName() ?? 'id').toLowerCase();
-        const hasVer    = this._hasVersionCol(node);
-        const hasAudit  = node.hasAuditCols();
-        const paramCols = this._svcParamCols(node);
+        const tbl         = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
+        const apx         = tbl + '_apx';
+        const pkNm        = (node.getPkName() ?? 'id').toLowerCase();
+        const hasVer      = this._hasVersionCol(node);
+        const hasAudit    = node.hasAuditCols();
+        const synTenantId = this._hasSyntheticTenantId(node);
+        const paramCols   = this._svcParamCols(node);
         const createdCol   = String(this.ctx.getOptionValue('createdcol')   ?? 'created');
         const createdByCol = String(this.ctx.getOptionValue('createdbycol') ?? 'created_by');
         const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
@@ -666,19 +719,24 @@ export class OraclePlsqlBuilder {
         if (hasVer) updLines.push(`${tab}${tab}p_row_version  in out ${tbl}.row_version%type`);
         r += updLines.join(',\n') + `\n${tab});\n\n`;
 
-        r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type);\n\n`;
+        if (synTenantId) {
+            r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type, p_tenant_id in number);\n\n`;
+        } else {
+            r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type);\n\n`;
+        }
         r += `end ${apx};\n/\n`;
         return r;
     }
 
     private _generateApxBody(node: IDdlNode): string {
-        const tbl       = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const svc       = tbl + '_svc';
-        const apx       = tbl + '_apx';
-        const pkNm      = (node.getPkName() ?? 'id').toLowerCase();
-        const hasVer    = this._hasVersionCol(node);
-        const hasAudit  = node.hasAuditCols();
-        const paramCols = this._svcParamCols(node);
+        const tbl         = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
+        const svc         = tbl + '_svc';
+        const apx         = tbl + '_apx';
+        const pkNm        = (node.getPkName() ?? 'id').toLowerCase();
+        const hasVer      = this._hasVersionCol(node);
+        const hasAudit    = node.hasAuditCols();
+        const synTenantId = this._hasSyntheticTenantId(node);
+        const paramCols   = this._svcParamCols(node);
         const createdCol   = String(this.ctx.getOptionValue('createdcol')   ?? 'created');
         const createdByCol = String(this.ctx.getOptionValue('createdbycol') ?? 'created_by');
         const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
@@ -749,10 +807,17 @@ export class OraclePlsqlBuilder {
         r += `${tab}end upd;\n\n`;
 
         // del
-        r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type) is\n`;
-        r += `${tab}begin\n`;
-        r += `${tab}${tab}${svc}.delete_rec(p_id => p_id);\n`;
-        r += `${tab}end del;\n\n`;
+        if (synTenantId) {
+            r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type, p_tenant_id in number) is\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}${svc}.delete_rec(p_id => p_id, p_tenant_id => p_tenant_id);\n`;
+            r += `${tab}end del;\n\n`;
+        } else {
+            r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type) is\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}${svc}.delete_rec(p_id => p_id);\n`;
+            r += `${tab}end del;\n\n`;
+        }
 
         r += `end ${apx};\n/\n`;
         return r;
@@ -785,12 +850,16 @@ export class OraclePlsqlBuilder {
         // Detect whether the log table has old_values/new_values columns (Level 2 CDC).
         // Audit cols (DATE type: created/updated) are deliberately excluded from f_to_json
         // to avoid PLS-00684 — json_object does not handle DATE natively on all 19c versions.
-        const auditLogNode = this.ctx.find(auditLogName);
-        const hasCdcCols   = (auditLogNode?.children ?? [])
+        const auditLogNode      = this.ctx.find(auditLogName);
+        const hasCdcCols        = (auditLogNode?.children ?? [])
             .some(c => c.parseName().toLowerCase() === 'old_values');
         // Build the column list for f_to_json: pk + tenant_id + fks + business cols + row_version.
         // Audit metadata cols (created/updated) are excluded — they are DATE and not business state.
-        const synTenantId = this._hasSyntheticTenantId(node);
+        const synTenantId       = this._hasSyntheticTenantId(node);
+        // Propagate tenant_id to p_log when both the business table and the audit log table
+        // carry a synthetic tenant_id (i.e. auditlog table also has tenantid:yes active).
+        const auditLogHasTenant = auditLogNode != null && this._hasSyntheticTenantId(auditLogNode);
+        const propagateTenant   = synTenantId && auditLogHasTenant;
         const jsonCols = [pkName, ...(synTenantId ? ['tenant_id'] : []), ...fkCols, ...svcCols];
         if (hasVer) jsonCols.push('row_version');
 
@@ -820,6 +889,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}procedure p_log (\n`;
         r += `${tab}${tab}p_operation  in varchar2,\n`;
         r += `${tab}${tab}p_id         in ${dal}.t_id`;
+        if (propagateTenant) r += `,\n${tab}${tab}p_tenant_id  in number`;
         if (hasCdcCols) {
             r += `,\n${tab}${tab}p_old_values in clob default null,\n`;
             r += `${tab}${tab}p_new_values in clob default null\n`;
@@ -835,6 +905,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}l_rec.entity    := '${tbl}';\n`;
         r += `${tab}${tab}l_rec.entity_id := p_id;\n`;
         r += `${tab}${tab}l_rec.operation := p_operation;\n`;
+        if (propagateTenant) r += `${tab}${tab}l_rec.tenant_id := p_tenant_id;\n`;
         if (hasCdcCols) {
             r += `${tab}${tab}l_rec.old_values := p_old_values;\n`;
             r += `${tab}${tab}l_rec.new_values := p_new_values;\n`;
@@ -846,30 +917,34 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}commit;\n`;
         r += `${tab}end p_log;\n\n`;
 
+        const tenantArgRow    = propagateTenant ? `, p_tenant_id => p_row.tenant_id`     : '';
+        const tenantArgNewRow = propagateTenant ? `, p_tenant_id => p_new_row.tenant_id` : '';
+        const tenantArgOldRow = propagateTenant ? `, p_tenant_id => p_old_row.tenant_id` : '';
+
         r += `${tab}procedure log_insert (p_row in ${tbl}%rowtype) is\n`;
         r += `${tab}begin\n`;
         if (hasCdcCols) {
-            r += `${tab}${tab}p_log(p_operation => 'INSERT', p_id => p_row.${pkName}, p_new_values => f_to_json(p_row));\n`;
+            r += `${tab}${tab}p_log(p_operation => 'INSERT', p_id => p_row.${pkName}${tenantArgRow}, p_new_values => f_to_json(p_row));\n`;
         } else {
-            r += `${tab}${tab}p_log(p_operation => 'INSERT', p_id => p_row.${pkName});\n`;
+            r += `${tab}${tab}p_log(p_operation => 'INSERT', p_id => p_row.${pkName}${tenantArgRow});\n`;
         }
         r += `${tab}end log_insert;\n\n`;
 
         r += `${tab}procedure log_update (p_old_row in ${tbl}%rowtype, p_new_row in ${tbl}%rowtype) is\n`;
         r += `${tab}begin\n`;
         if (hasCdcCols) {
-            r += `${tab}${tab}p_log(p_operation => 'UPDATE', p_id => p_new_row.${pkName}, p_old_values => f_to_json(p_old_row), p_new_values => f_to_json(p_new_row));\n`;
+            r += `${tab}${tab}p_log(p_operation => 'UPDATE', p_id => p_new_row.${pkName}${tenantArgNewRow}, p_old_values => f_to_json(p_old_row), p_new_values => f_to_json(p_new_row));\n`;
         } else {
-            r += `${tab}${tab}p_log(p_operation => 'UPDATE', p_id => p_new_row.${pkName});\n`;
+            r += `${tab}${tab}p_log(p_operation => 'UPDATE', p_id => p_new_row.${pkName}${tenantArgNewRow});\n`;
         }
         r += `${tab}end log_update;\n\n`;
 
         r += `${tab}procedure log_delete (p_old_row in ${tbl}%rowtype) is\n`;
         r += `${tab}begin\n`;
         if (hasCdcCols) {
-            r += `${tab}${tab}p_log(p_operation => 'DELETE', p_id => p_old_row.${pkName}, p_old_values => f_to_json(p_old_row));\n`;
+            r += `${tab}${tab}p_log(p_operation => 'DELETE', p_id => p_old_row.${pkName}${tenantArgOldRow}, p_old_values => f_to_json(p_old_row));\n`;
         } else {
-            r += `${tab}${tab}p_log(p_operation => 'DELETE', p_id => p_old_row.${pkName});\n`;
+            r += `${tab}${tab}p_log(p_operation => 'DELETE', p_id => p_old_row.${pkName}${tenantArgOldRow});\n`;
         }
         r += `${tab}end log_delete;\n\n`;
 

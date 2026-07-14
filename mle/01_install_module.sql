@@ -1,6 +1,6 @@
 -- Auto-generato da scripts/generate-mle-sql.mjs — non modificare manualmente
--- Sorgente: dist/expresql.mle.cjs  (442357 byte, 222 chunk da 2000 char)
-PROMPT >>> Caricamento expresql_module (222 chunk)...
+-- Sorgente: dist/expresql.mle.cjs  (444869 byte, 223 chunk da 2000 char)
+PROMPT >>> Caricamento expresql_module (223 chunk)...
 
 -- Disabilita sostituzione variabili (&/&&) per non interferire con il codice JavaScript
 SET DEFINE OFF
@@ -10267,7 +10267,14 @@ var be = class {
 		let i = "create or replace view " + t;
 		e.annotations !== null && (i += "\nannotations (" + e.annotations + ")"), i += " as\n", i += "select\n", i += this._buildViewColList(e, n, r.aliasMap, r.tblCache, r.colCnts, r.tblTransCols, r.maxLen), i = ye(i);
 		let { sortedTables: a, joinConditions: o } = this._sortViewTables(e, n, r.tblCache);
-		return i += "from\n", i += this._buildViewFromClause(e, a, r.aliasMap, o, r.tblTransCols, r.tblCache), i = i.toLowerCase(), i.endsWith("\n") && (i = i.trimEnd()), i.endsWith("\n") || (i += "\n"), i += "/\n", i.toLowerCase();
+		if (i += "from\n", i += this._buildViewFromClause(e, a, r.aliasMap, o, r.tblTransCols, r.tblCache), this.ctx.optionEQvalue("tenantid", !0) && a.length > 0) {
+			let e = r.tblCache[a[0]];
+			if (e !== null && !e.children.some((e) => e.parseName().toLowerCase() === "tenant_id")) {
+				let e = r.aliasMap[a[0]];
+				i += "where " + e + ".tenant_id = ", i += "sys_context(''clientcontext'', ''tenant_id'') -- TODO: replace with your tenant context\n";
+			}
+		}
+		return i = i.toLowerCase(), i.endsWith("\n") && (i = i.trimEnd()), i.endsWith("\n") || (i += "\n"), i += "/\n", i.toLowerCase();
 	}
 	_buildViewSetup(e, t) {
 		let n = {}, r = {};
@@ -10304,7 +10311,8 @@ var be = class {
 		return {
 			aliasMap: n,
 			tblCache: r,
-			maxLen: i,
+			maxLe'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('n: i,
 			colCnts: a,
 			tblTransCols: o
 		};
@@ -10316,8 +10324,7 @@ var be = class {
 			if (c === null) continue;
 			let u = t[e].value, d = n[u], f = a[u] ?? {}, p = " ".repeat(o - (d.length + 1 + 2));
 			s += O + d + ".id" + O + p + (l(u) ?? u) + "_id,\n";
-			for (let e of c.ch'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ildren) if (e.children.length === 0) {
+			for (let e of c.children) if (e.children.length === 0) {
 				let t = e.parseName(), n = "";
 				if (1 < (i[t] ?? 0) && (n = (l(u) ?? u) + "_"), f[t]) {
 					let e = `coalesce(${"t_" + u}.trans_${t}, ${d}.${t})`;
@@ -10370,7 +10377,8 @@ var be = class {
 		for (let e = 2; e < t.length; e++) i[t[e].value] && s.push(t[e].value);
 		for (; s.length > 0;) {
 			let e = !1, t = [];
-			for (let n of s) i[n].every((e) => a[e.parentTable]) ? (o.push(n), a[n] = !0, e = !0) : t.push(n);
+			for (let n of s) i[n].every((e) ='));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('> a[e.parentTable]) ? (o.push(n), a[n] = !0, e = !0) : t.push(n);
 			if (s = t, !e) {
 				for (let e of s) o.push(e), a[e] = !0;
 				break;
@@ -10384,8 +10392,7 @@ var be = class {
 	_buildViewFromClause(e, t, n, r, i, a) {
 		let o = "", s = this.ctx.getOptionValue("transcontext");
 		for (let e = 0; e < t.length; e++) {
-			let c = t[e]'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(', u = n[c], d = u;
+			let c = t[e], u = n[c], d = u;
 			if (this.ctx.objPrefix() && (d = this.ctx.objPrefix() + c + " " + u), e === 0) o += O + d + "\n";
 			else if (r[c]) {
 				let e = r[c];
@@ -10421,7 +10428,8 @@ var be = class {
 			n > s && (s = n);
 		}
 		a += O + "_id" + " ".repeat(s - 3) + " : " + o + ",\n";
-		let c = {};
+		'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('let c = {};
 		if (i.fks !== null) for (let e in i.fks) c[e] = !0;
 		for (let e of i.regularColumns()) {
 			let t = e.parseName();
@@ -10431,8 +10439,7 @@ var be = class {
 			let n = t[e].value, r = this.ctx.find(n);
 			if (r === null) continue;
 			r.lateInitFks();
-			let o = !1;'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('
+			let o = !1;
 			if (r.fks !== null) {
 				for (let e in r.fks) if (r.fks[e] === i.parseName()) {
 					o = !0;
@@ -10469,15 +10476,15 @@ var be = class {
 		}
 		2 > o && (o = 2);
 		let c = "create table " + r + " (\n", u = O + " ".repeat(o - 2);
-		c += O + "id" + u + "number " + ve(r, this.ctx, this.naming) + "\n", c += O + O + " ".repeat(o) + "constraint " + r + "_id" + this.naming.pk + " primary key,\n", u = O + " ".repeat(o - s.length), c += O + s + u + "number not null,\n", u = O + " ".repeat(o - 13), c += O + "language_code" + u + `varchar2(5${i}) not null,\n`;
+		c += O + "id" + u + "number " + ve(r, this.ctx, this.naming) + "\n", c += O + O + " ".repeat(o) + "constraint " + r + "_id" + this.naming.pk + " primary key,\n", u = O '));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('+ " ".repeat(o - s.length), c += O + s + u + "number not null,\n", u = O + " ".repeat(o - 13), c += O + "language_code" + u + `varchar2(5${i}) not null,\n`;
 		for (let e of t) {
 			let t = "trans_" + e.parseName();
 			u = O + " ".repeat(o - t.length);
 			let n = F(e._inferTypeFull(), i, a);
 			c += O + t + u + n + ",\n";
 		}
-		c += O + "constraint " + r + this.n'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('aming.uk + " unique (" + s + ", language_code)\n", c += ");\n\n";
+		c += O + "constraint " + r + this.naming.uk + " unique (" + s + ", language_code)\n", c += ");\n\n";
 		let d = e.parseName();
 		return d.length > 2 && (d = d.substring(0, 2)), c += "alter table " + r + " add constraint " + r + "_" + d + "_id" + this.naming.fk + "\n", c += O + "foreign key (" + s + ") references " + n + ";\n\n", c += "alter table " + r + " add constraint " + r + "_lang" + this.naming.fk + "\n", c += O + "foreign key (language_code) references " + this.ctx.objPrefix() + "language (code);\n\n", c += "create index " + r + this.naming.idx + "1 on " + r + " (" + s + ");\n", c += "create index " + r + this.naming.idx + "2 on " + r + " (language_code);\n\n", c;
 	}
@@ -10499,15 +10506,15 @@ var be = class {
 			u !== null && n === "id" || n !== e.getExplicitPkName() && (d[n] ? c.push("coalesce(t.trans_" + n + ", k." + n + ") as " + n) : c.push("k." + n));
 		}
 		s += c[0] + ",\n";
-		for (let e = 1; e < c.length; e++) s += O + O + " " + c[e], e < c.length - 1 && (s += ","), s += "\n";
+		for (let e = 1; e < c.'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('length; e++) s += O + O + " " + c[e], e < c.length - 1 && (s += ","), s += "\n";
 		return s += "from " + n + " k\n", s += "left join " + r + " t\n", s += O + "on t." + a + " = k." + (u ?? e.getExplicitPkName()) + "\n", s += O + "and t.language_code = " + o + ";\n\n", s;
 	}
 };
 //#endregion
 //#region src/oracle/plsql.ts
 function xe(e) {
-	return e.isOption("lower")'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' ? "lower" : e.isOption("upper") ? "upper" : "";
+	return e.isOption("lower") ? "lower" : e.isOption("upper") ? "upper" : "";
 }
 function Se(e) {
 	let t = e.getExplicitPkName();
@@ -10529,9 +10536,9 @@ var L = class {
 	}
 	_generateBITrigger(e) {
 		let t = this.ctx.optionEQvalue("editionable", "yes") ? " editionable" : "", n = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), r = `create or replace${t} trigger ${n}${this.naming.bi}\n`;
-		r += "    before insert\n", r += "    on " + n + "\n", r += "    for each row\n", e.hasRowKey() && (r += "declare\n    function compress_int (n in integer ) return varchar2\n    as\n        ret       varchar2(30);\n        quotient  integer;\n        remainder integer;\n        digit     char(1);\n    begin\n        ret := null; quotient := n;\n        <<compress_loop>>\n        while quotient > 0\n        loop\n            remainder := mod(quotient, 10 + 26);\n            quotient := floor(quotient  / (10 + 26));\n            if remainder < 26 then\n                digit := chr(ascii(''A'') + remainder);\n            else\n                digit := chr(ascii(''0'') + remainder - 26);\n            end if;\n            ret := digit || ret;\n        end loop compress_loop;\n        if length(ret) < 5 then ret := lpad(ret, 4, ''A''); end if ;\n        return upper(ret);\n    end compress_int;\n"), r += "begin\n";
-		let i = !1, a = e.apexUser();'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('
+		r += "    before insert\n", r += "    on " + n + "\n", r += "    for each row\n", e.hasRowKey() && (r += "declare\n    function compress_int (n in integer ) return varchar2\n    as\n        ret       varchar2(30);\n        quotient  integer;\n        remainder integer;\n        digit     char(1);\n    begin\n        ret := null; quotient := n;\n        <<compress_loop>>\n        while quotient > 0\n        loop\n            remainder := mod(quotient, 10 + 26);\n            quotient := floor(quotient  / (10 + 26));\n            if remainder < 26 then\n                digit := chr(asci'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('i(''A'') + remainder);\n            else\n                digit := chr(ascii(''0'') + remainder - 26);\n            end if;\n            ret := digit || ret;\n        end loop compress_loop;\n        if length(ret) < 5 then ret := lpad(ret, 4, ''A''); end if ;\n        return upper(ret);\n    end compress_int;\n"), r += "begin\n";
+		let i = !1, a = e.apexUser();
 		e.hasRowKey() && (r += "    :new.row_key := compress_int(row_key_seq.nextval);\n", i = !0);
 		for (let t of e.children) {
 			let e = xe(t);
@@ -10560,14 +10567,14 @@ var L = class {
 		let i = this.ctx.optionEQvalue("editionable", "yes") ? " editionable" : "", a = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), o = `create or replace${i} trigger ${a}${this.naming.bu}\n`;
 		o += "    before update\n    on " + a + "\n    for each row\nbegin\n";
 		let s = e.apexUser();
-		for (let t of e.children) {
+	'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('	for (let t of e.children) {
 			let e = xe(t);
 			e !== "" && (o += "    :new." + t.parseName().toLowerCase() + " := " + e + "(:new." + t.parseName().toLowerCase() + ");\n");
 		}
 		if (n && (o += "    :new.row_version := nvl(:old.row_version, 0) + 1;\n"), r) {
 			let t = e.auditSysDateFn();
-			o += "    :new." + this.ctx.getOptionValue("updatedcol") + " := " + t'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' + ";\n", o += "    :new." + this.ctx.getOptionValue("updatedbycol") + " := " + s + ";\n";
+			o += "    :new." + this.ctx.getOptionValue("updatedcol") + " := " + t + ";\n", o += "    :new." + this.ctx.getOptionValue("updatedbycol") + " := " + s + ";\n";
 		}
 		return o += "end " + a + this.naming.bu + ";\n/\n\n", o;
 	}
@@ -10586,14 +10593,14 @@ var L = class {
 		i += O + O + "p_" + a + "        in  " + s + n, this._hasSyntheticTenantId(e) && (i += ",\n" + O + O + "p_tenant_id   " + r + "  integer" + n);
 		for (let t in e.fks ?? {}) {
 			let a = e.fks[t], o = "integer", s = this.ctx.find(a);
-			s !== null && (o = Se(s) ?? o), i += ",\n" + O + O + "P_" + t + "   " + r + "  " + o + n;
+			s !== null && (o = Se('));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('s) ?? o), i += ",\n" + O + O + "P_" + t + "   " + r + "  " + o + n;
 		}
 		for (let t of e.regularColumns()) i += ",\n" + O + O + "P_" + t.parseName() + "   " + r + "  " + t.getPlsqlType() + n;
 		return i += "\n    )", i;
 	}
 	_getRowBody(e) {
-		let t = e.getPkName(), n = this.ctx.objPrefix() + e.parseName(), r = this._hasSyntheticTenantId(e), i = O + "is \n" + O '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('+ "begin \n", a = [], o = [];
+		let t = e.getPkName(), n = this.ctx.objPrefix() + e.parseName(), r = this._hasSyntheticTenantId(e), i = O + "is \n" + O + "begin \n", a = [], o = [];
 		r && (a.push("tenant_id"), o.push("p_tenant_id"));
 		for (let t in e.fks ?? {}) a.push(t), o.push("p_" + t);
 		for (let t of e.regularColumns()) {
@@ -10618,11 +10625,11 @@ var L = class {
 	}
 	_updateRowBody(e) {
 		let t = e.getPkName(), n = this.ctx.objPrefix() + e.parseName(), r = this._hasSyntheticTenantId(e), i = O + "is \n" + O + "begin \n";
-		i += O + O + "update  " + n + " set \n" + O + O + O + t + " = p_" + t;
+		i += O + O + "update  " + n + '));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('" set \n" + O + O + O + t + " = p_" + t;
 		for (let t in e.fks ?? {}) i += ",\n" + O + O + O + t + " = P_" + t;
 		for (let t of e.regularColumns()) i += ",\n" + O + O + O + t.parseName().toLowerCase() + " = P_" + t.parseName().toLowerCase();
-		return i += "\n" + O + O + "where " + t + " = p_" + t, r && (i += "\n" + O + O + "  and tenant_id = p_tenant_id"), i += '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('";", i += "\n" + O + "end update_row;\n \n \n", i;
+		return i += "\n" + O + O + "where " + t + " = p_" + t, r && (i += "\n" + O + O + "  and tenant_id = p_tenant_id"), i += ";", i += "\n" + O + "end update_row;\n \n \n", i;
 	}
 	_hasAuditLog(e) {
 		return e.isOption("auditlog");
@@ -10633,58 +10640,68 @@ var L = class {
 	_hasUniqueCol(e) {
 		return e.children.some((e) => e.isOption("unique"));
 	}
+	_isAuditLogTarget(e) {
+		let t = e.parseName().toLowerCase();
+		return this.ctx.descendants().some((e) => {
+			let n = String(e.getOptionValue("auditlog") || "").trim().toLowerCase();
+			return n !== "" && n === t;
+		});
+	}
 	_svcCols(e) {
 		return e.children.filter((e) => e.children.length === 0 && e.refId() === null && e.parseName().toLowerCase() !== "row_version");
 	}
 	_generateDalSpec(e) {
-		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_dal", r = e.children.filter((e) => e.isOption("unique")), i = `create or replace package ${n} as\n\n`;
-		i += `${O}subtype t_id is ${t}.id%type;\n\n`, i += `${O}function get_by_id  (p_id in t_id) return ${t}%rowtype;\n`, i += `${O}function lock_by_id (p_id in t_id) return ${t}%rowtype;\n\n`;
+		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_dal", r = e.children.filter((e) => e.isOption("unique")), i = this._hasSyntheticTenantId(e), a = this._isAuditLogTarget(e), o = `create or replace package ${n} as\n\n`;
+		o += `${O}subtype t_id is ${t}.id%type;\n\n`, o += `${O}function get_by_id  (p_id in t_id) return ${t}%rowtype;\n`, o += `${O}function lock_by_id (p_id in t_id) return ${t}%rowtype;\n\n`;
 		for (let e of r) {
 			let n = e.parseName().toLowerCase();
-			i += `${O}function get_by_${n} (p_${n} in ${t}.${n}%type) return ${t}%rowtype;\n\n`;
+			i ? o += `${O}function get_by_${n} (p_${n} in ${t}.${n}%type, p_tenant_id in number) return ${t}%rowtype;\n\n` : o += `${O}function get_by_${n} (p_${n} in ${t}.${n}%type) return ${t}%rowtype;\n\n`;
 		}
-		return i += `${O}type t_cursor is ref cursor return ${t}%rowtype;\n`, i += `${O}function get_all return t_cursor;\n\n`, i += `${O}procedure insert_row (p_row in out nocopy ${t}%rowtype);\n\n`, i += `${O}procedure update_row (p_row in out nocopy ${t}%rowtype);\n\n`, i += `${O}procedure delete_row (p_id in t_id);\n\n`, i += `${O}c_err_stale_data constant pls_integer := -20001;\n`, i += `${O}c_err_not_found  constant pls_integer := -20002;\n`, i += `${O}c_err_locked     constant pls_integer := -20003;\n\n`, i += `end ${n};\n/\n`, i;
+		return o += `${O}type t_cursor is ref cursor return ${t}%rowtype;\n`, o += `${O}function get_all return t_cursor;\n\n`, o += `${O}procedure insert_row (p_row in out nocopy ${t}%rowtype);\n\n`, a || ('));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('o += `${O}procedure update_row (p_row in out nocopy ${t}%rowtype);\n\n`, o += i ? `${O}procedure delete_row (p_id in t_id, p_tenant_id in number);\n\n` : `${O}procedure delete_row (p_id in t_id);\n\n`), o += `${O}c_err_stale_data constant pls_integer := -20001;\n`, o += `${O}c_err_not_found  constant pls_integer := -20002;\n`, o += `${O}c_err_locked     constant pls_integer := -20003;\n\n`, o += `end ${n};\n/\n`, o;
 	}
 	_generateDalBody(e) {
-		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_dal", r = (e.getPkName() ?? "id").toLowerCase(), i = this._hasVersionCol(e), a = e.hasAuditCols(), o = this._svcCols(e), s = Object.keys(e.fks ?? {}), c = e.children.filter((e) => e.isOption("unique")), l = `create or replace package body ${n} as\n\n`;
-		l += `${O}resource_busy exception;\n`, l += `${O}pragma exception_init(resou'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('rce_busy, -54);\n\n`, l += `${O}function get_by_id (p_id in t_id) return ${t}%rowtype is\n`, l += `${O}${O}l_row ${t}%rowtype;\n`, l += `${O}begin\n`, l += `${O}${O}select * into l_row from ${t} where ${r} = p_id;\n`, l += `${O}${O}return l_row;\n`, l += `${O}exception\n`, l += `${O}${O}when no_data_found then\n`, l += `${O}${O}${O}raise_application_error(c_err_not_found, ''${t}: record not found (id='' || p_id || '')'');\n`, l += `${O}end get_by_id;\n\n`, l += `${O}function lock_by_id (p_id in t_id) return ${t}%rowtype is\n`, l += `${O}${O}l_row ${t}%rowtype;\n`, l += `${O}begin\n`, l += `${O}${O}select * into l_row\n`, l += `${O}${O}from   ${t}\n`, l += `${O}${O}where  ${r} = p_id\n`, l += `${O}${O}for update nowait;\n`, l += `${O}${O}return l_row;\n`, l += `${O}exception\n`, l += `${O}${O}when no_data_found then\n`, l += `${O}${O}${O}raise_application_error(c_err_not_found, ''${t}: record not found (id='' || p_id || '')'');\n`, l += `${O}${O}when resource_busy then\n`, l += `${O}${O}${O}raise_application_error(c_err_locked, ''${t}: record locked by another session'');\n`, l += `${O}end lock_by_id;\n\n`;
+		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_dal", r = (e.getPkName() ?? "id").toLowerCase(), i = this._hasVersionCol(e), a = e.hasAuditCols(), o = this._svcCols(e), s = Object.keys(e.fks ?? {}), c = e.children.filter((e) => e.isOption("unique")), l = this._isAuditLogTarget(e), u = `create or replace package body ${n} as\n\n`;
+		u += `${O}resource_busy exception;\n`, u += `${O}pragma exception_init(resource_busy, -54);\n\n`, u += `${O}function get_by_id (p_id in t_id) return ${t}%rowtype is\n`, u += `${O}${O}l_row ${t}%rowtype;\n`, u += `${O}begin\n`, u += `${O}${O}select * into l_row from ${t} where ${r} = p_id;\n`, u += `${O}${O}return l_row;\n`, u += `${O}exception\n`, u += `${O}${O}when no_data_found then\n`, u += `${O}${O}${O}raise_application_error(c_err_not_found, ''${t}: record not found (id='' || p_id || '')'');\n`, u += `${O}end get_by_id;\n\n`, u += `${O}function lock_by_id (p_id in t_id) return ${t}%rowtype is\n`, u += `${O}${O}l_row ${t}%rowtype;\n`, u += `${O}begin\n`, u += `${O}${O}select * into l_row\n`, u += `${O}${O}from   ${t}\n`, u += `${O}${O}where  ${r} = p_id\n`, u += `${O}${O}for update nowait;\n`, u += `${O}${O}return l_row;\n`, u += `${O}exception\n`, u += `${O}${O}when no_data_found then\n`, u += `${O}${O}${O}raise_application_error(c_err_not_found, ''${t}: record not found (id='' || p_id || '')'');\n`, u += `${O}${O}when resource_busy then\n`, u += `${O}${O}${O}raise_application_error(c_err_locked, ''${t}: record locked by another session'');\n`, u += `${O}end lock_by_id;\'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('n\n`;
 		for (let e of c) {
-			let n = e.parseName().toLowerCase();
-			l += `${O}function get_by_${n} (p_${n} in ${t}.${n}%type) return ${t}%rowtype is\n`, l += `${O}${O}l_row ${t}%rowtype;\n`, l += `${O}begin\n`, l += `${O}${O}select * into l_row from ${t} where ${n} = p_${n};\n`, l += `${O}${O}return l_row;\n`, l += `${O}end get_by_${n};\n\n`;
+			let n = e.parseName().toLowerCase(), r = d ? ", p_tenant_id in number" : "", i = d ? " and tenant_id = p_tenant_id" : "";
+			u += `${O}function get_by_${n} (p_${n} in ${t}.${n}%type${r}) return ${t}%rowtype is\n`, u += `${O}${O}l_row ${t}%rowtype;\n`, u += `${O}begin\n`, u += `${O}${O}select * into l_row from ${t} where ${n} = p_${n}${i};\n`, u += `${O}${O}return l_row;\n`, u += `${O}end get_by_${n};\n\n`;
 		}
-		l += `${O}function get_all return t_cursor is\n`, l += `${O}${O}l_cur t_cursor;\n`, l += `${O}begin\n`, l += `${O}${O}open l_cur for select * from ${t};\n`, l += `${O}${O}return l_cur;\n`, l += `${O}end get_all;\n\n`;
-		let u = this._hasSyntheticTenantId(e), d = [
-			...u ? ["tenant_id"] : [],
+		u += `${O}function get_all return t_cursor is\n`, u += `${O}${O}l_cur t_cursor;\n`, u += `${O}begin\n`, u += `${O}${O}open l_cur for select * from ${t};\n`, u += `${O}${O}return l_cur;\n`, u += `${O}end get_all;\n\n`;
+		let d = this._hasSyntheticTenantId(e), f = [
+			...d ? ["tenant_id"] : [],
 			...s.map((e) => e.toLowerCase()),
 			...o.map((e) => e.parseName().toLowerCase())
-		], f = [
-			...u ? ["p_row.tenant_id"] : [],
+		], p = [
+			...d ? ["p_row.tenant_id"] : [],
 			...s.map((e) => `p_row.${e.toLowerCase()}`),
-			...o.map((e) => `p_row.${e.parseName().toLowerCase('));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(')}`)
+			...o.map((e) => `p_row.${e.parseName().toLowerCase()}`)
 		];
-		if (l += `${O}procedure insert_row (p_row in out nocopy ${t}%rowtype) is\n`, l += `${O}begin\n`, l += `${O}${O}insert into ${t} (\n`, l += `${O}${O}${O}` + d.join(`,\n${O}${O}${O}`) + "\n", l += `${O}${O}) values (\n`, l += `${O}${O}${O}` + f.join(`,\n${O}${O}${O}`) + "\n", l += `${O}${O})`, i) {
+		if (u += `${O}procedure insert_row (p_row in out nocopy ${t}%rowtype) is\n`, u += `${O}begin\n`, u += `${O}${O}insert into ${t} (\n`, u += `${O}${O}${O}` + f.join(`,\n${O}${O}${O}`) + "\n", u += `${O}${O}) values (\n`, u += `${O}${O}${O}` + p.join(`,\n${O}${O}${O}`) + "\n", u += `${O}${O})`, i) {
 			let e = String(this.ctx.getOptionValue("createdcol") ?? "created"), t = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), n = [`${r}`, "row_version"], i = [`p_row.${r}`, "p_row.row_version"];
-			a && (n.push(e, t), i.push(`p_row.${e}`, `p_row.${t}`)), l += `\n${O}${O}returning ${n.join(", ")}\n`, l += `${O}${O}     into ${i.join(", ")}`;
-		} else l += `\n${O}${O}returning ${r}\n`, l += `${O}${O}     into p_row.${r}`;
-		l += ";\n", l += `${O}end insert_row;\n\n`;
-		let p = [...s.map((e) => `${e.toLowerCase()} = p_row.${e.toLowerCase()}`), ...o.map((e) => `${e.parseName().toLowerCase()} = p_row.${e.parseName().toLowerCase()}`)];
-		if (l += `${O}procedure update_row (p_row in out nocopy ${t}%rowtype) is\n`, l += `${O}${O}l_id t_id;\n`, l += `${O}begin\n`, l += `${O}${O}l_id := p_row.${r};\n`, l += `${O}${O}update ${t} set\n`, l += `${O}${O}${O}` + p.join(`,\n${O}${O}${O}`) + "\n", l += `${O}${O}where ${r} = l_id`, i && (l += `\n${O}${O}  and row_version = p_row.row_version`), i) {
-			let e = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), t = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), n = ["row_version"], r = ["p_row.row_version"];
-			a && (n.push(e, t), r.push(`p_row.${e}`, `p_row.${t}`)), l += `\n${O}${O}returning ${n.join(", ")}\n`, l += `${O}${O}     into ${r.join(", ")}`;
+			a && (n.push(e, t), i.push(`p_row.${e}`, `p_row.${t}`)), u += `\n${O}${O}returning ${n.join(", ")}\n`, u += `${O}${O}     into ${i.join(", ")}`;
+		} else u += `\n${O}${O}returning ${r}\n`, u += `${O}${O}     into p_row.${r}`;
+		u += ";\n", u += `${O}end insert_row;\n\n`;
+		let m = [...s.map((e) => `${e.toLowerCase()} = p_row.${e.toLowerCase()}`), ...o.map((e) => `${e.parseName().toLowerCase()} = p_row.${e.parseName().toLowerCase()}`)];
+		if (!l) {
+			if (u += `${O}procedure update_row (p_row in ou'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('t nocopy ${t}%rowtype) is\n`, u += `${O}${O}l_id t_id;\n`, u += `${O}begin\n`, u += `${O}${O}l_id := p_row.${r};\n`, u += `${O}${O}update ${t} set\n`, u += `${O}${O}${O}` + m.join(`,\n${O}${O}${O}`) + "\n", u += `${O}${O}where ${r} = l_id`, d && (u += `\n${O}${O}  and tenant_id = p_row.tenant_id`), i && (u += `\n${O}${O}  and row_version = p_row.row_version`), i) {
+				let e = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), t = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), n = ["row_version"], r = ["p_row.row_version"];
+				a && (n.push(e, t), r.push(`p_row.${e}`, `p_row.${t}`)), u += `\n${O}${O}returning ${n.join(", ")}\n`, u += `${O}${O}     into ${r.join(", ")}`;
+			}
+			u += ";\n", i && (u += `${O}${O}if sql%rowcount = 0 then\n`, u += `${O}${O}${O}declare l_dummy pls_integer;\n`, u += `${O}${O}${O}begin\n`, u += `${O}${O}${O}${O}select 1 into l_dummy from ${t} where ${r} = l_id;\n`, u += `${O}${O}${O}${O}raise_application_error(c_err_stale_data, ''row modified by another session. reload and retry.'');\n`, u += `${O}${O}${O}exception\n`, u += `${O}${O}${O}${O}when no_data_found then\n`, u += `${O}${O}${O}${O}${O}raise_application_error(c_err_not_found, ''record '' || l_id || '' does not exist.'');\n`, u += `${O}${O}${O}end;\n`, u += `${O}${O}end if;\n`), u += `${O}end update_row;\n\n`, d ? (u += `${O}procedure delete_row (p_id in t_id, p_tenant_id in number) is\n`, u += `${O}begin\n`, u += `${O}${O}delete from ${t} where ${r} = p_id and tenant_id = p_tenant_id;\n`, u += `${O}end delete_row;\n\n`) : (u += `${O}procedure delete_row (p_id in t_id) is\n`, u += `${O}begin\n`, u += `${O}${O}delete from ${t} where ${r} = p_id;\n`, u += `${O}end delete_row;\n\n`);
 		}
-		return l += ";\n", i && (l += `${O}${O}if sql%rowcount = 0 then\n`, l += `${O}${O}${O}declare l_dummy pls_integer;\n`, l += `${O}${O}${O}begin\n`, l += `${O}${O}${O}${O}select 1 into l_dummy from ${t} where ${r} = l_id;\n`, l += `${O}${O}${O}${O}raise_application_error(c_err_stale_data, ''row modified by another session. reload and ret'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ry.'');\n`, l += `${O}${O}${O}exception\n`, l += `${O}${O}${O}${O}when no_data_found then\n`, l += `${O}${O}${O}${O}${O}raise_application_error(c_err_not_found, ''record '' || l_id || '' does not exist.'');\n`, l += `${O}${O}${O}end;\n`, l += `${O}${O}end if;\n`), l += `${O}end update_row;\n\n`, l += `${O}procedure delete_row (p_id in t_id) is\n`, l += `${O}begin\n`, l += `${O}${O}delete from ${t} where ${r} = p_id;\n`, l += `${O}end delete_row;\n\n`, l += `end ${n};\n/\n`, l;
+		return u += `end ${n};\n/\n`, u;
 	}
 	_generateHksSpec(e) {
 		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_dal", r = t + "_hks", i = `create or replace package ${r} as\n\n`;
-		return i += `${O}procedure validate (\n`, i += `${O}${O}p_operation in varchar2,\n`, i += `${O}${O}p_row       in out nocopy ${t}%rowtype\n`, i += `${O});\n\n`, i += `${O}procedure before_insert (p_row in out nocopy ${t}%rowtype);\n`, i += `${O}procedure before_update (p_row in out nocopy ${t}%rowtype);\n`, i += `${O}procedure before_delete (p_id in ${n}.t_id);\n\n`, i += `${O}procedure after_insert (p_row in ${t}%rowtype);\n`, i += `${O}procedure after_update (p_row in ${t}%rowtype);\n`, i += `${O}procedure after_delete (p_id in ${n}.t_id);\n\n`, i += `end ${r};\n/\n`, i;
+		return i += `${O}procedure validate (\n`, i += `${O}${O}p_operation in va'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('rchar2,\n`, i += `${O}${O}p_row       in out nocopy ${t}%rowtype\n`, i += `${O});\n\n`, i += `${O}procedure before_insert (p_row in out nocopy ${t}%rowtype);\n`, i += `${O}procedure before_update (p_row in out nocopy ${t}%rowtype);\n`, i += `${O}procedure before_delete (p_id in ${n}.t_id);\n\n`, i += `${O}procedure after_insert (p_row in ${t}%rowtype);\n`, i += `${O}procedure after_update (p_row in ${t}%rowtype);\n`, i += `${O}procedure after_delete (p_id in ${n}.t_id);\n\n`, i += `end ${r};\n/\n`, i;
 	}
 	_generateHksBody(e) {
 		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_dal", r = t + "_hks", i = `create or replace package body ${r} as\n`;
-		return i += "-- warning: this file is generated once and must not be overwritten\n\n", i += `${O}procedure validate (\n`, i += `${O}${O}p_operation in varchar2,\n`, i += `${O}${O}p_row       in out nocopy ${t}%rowtype\n`, i += `${O}) is begin null; end validate;\n\n`, i += `${O}procedure before_insert (p_row in out nocopy ${t}%rowtype) is begin null; end;\n`, i += `${O}procedure before_update (p_row in out nocopy ${t}%rowtype) is begin null; end;\n`, i += `${O}procedure before_delete (p_id in ${n}.t_id) is begin null; end;\n\n`, i += `${O}procedure after_insert  (p_row in ${t}%rowtype) is b'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('egin null; end;\n`, i += `${O}procedure after_update  (p_row in ${t}%rowtype) is begin null; end;\n`, i += `${O}procedure after_delete  (p_id in ${n}.t_id)     is begin null; end;\n\n`, i += `end ${r};\n/\n`, i;
+		return i += "-- warning: this file is generated once and must not be overwritten\n\n", i += `${O}procedure validate (\n`, i += `${O}${O}p_operation in varchar2,\n`, i += `${O}${O}p_row       in out nocopy ${t}%rowtype\n`, i += `${O}) is begin null; end validate;\n\n`, i += `${O}procedure before_insert (p_row in out nocopy ${t}%rowtype) is begin null; end;\n`, i += `${O}procedure before_update (p_row in out nocopy ${t}%rowtype) is begin null; end;\n`, i += `${O}procedure before_delete (p_id in ${n}.t_id) is begin null; end;\n\n`, i += `${O}procedure after_insert  (p_row in ${t}%rowtype) is begin null; end;\n`, i += `${O}procedure after_update  (p_row in ${t}%rowtype) is begin null; end;\n`, i += `${O}procedure after_delete  (p_id in ${n}.t_id)     is begin null; end;\n\n`, i += `end ${r};\n/\n`, i;
 	}
 	_svcParamCols(e) {
 		let t = [];
@@ -10703,83 +10720,88 @@ var L = class {
 		return t;
 	}
 	_generateSvcSpec(e) {
-		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_svc", r = (e.getPkName() ?? "id").toLowerCase(), i = this._hasVersionCol(e), a = this._svcParamCols(e), o = `create or replace package ${n} as\n\n`;
-		return o += `${O}type t_rec is record (\n`, o += a.map(({ name: e }) => `${O}${O}${e.padEnd(20)}${t}.${e}%type`).join(",\n") + "\n", o += `${O});\n\n`, o += `${O}function get (p_id in ${t}.${r}%type) return ${t}%rowtype;\n\n`, o += `${O}procedure create_rec (\n`, o += `${O}${O}p_rec in  t_rec,\n`, o += `${O}${O}x_id  out ${t}.${r}%type\n`, o += `${O});\n\n`, o += `${O}procedure update_rec (\n`, o += `${O}${O}p_id  in ${t}.${r}%type,\n`, o += `${O}${O}p_rec in t_rec`, i && (o += `,\n${O}${O}p_row_version in out ${t}.row_version%type`), o += `\n${O});\n\n`, o += `${O}procedure delete_rec (p_id in ${t}.${r}%type);\n\n`, o += `end ${n};\n/\n`, o;
+		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_svc", r = (e.getPkName() ?? "id").toLowerCase(), i = this.'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('_hasVersionCol(e), a = this._hasSyntheticTenantId(e), o = this._svcParamCols(e), s = `create or replace package ${n} as\n\n`;
+		return s += `${O}type t_rec is record (\n`, s += o.map(({ name: e }) => `${O}${O}${e.padEnd(20)}${t}.${e}%type`).join(",\n") + "\n", s += `${O});\n\n`, s += `${O}function get (p_id in ${t}.${r}%type) return ${t}%rowtype;\n\n`, s += `${O}procedure create_rec (\n`, s += `${O}${O}p_rec in  t_rec,\n`, s += `${O}${O}x_id  out ${t}.${r}%type\n`, s += `${O});\n\n`, s += `${O}procedure update_rec (\n`, s += `${O}${O}p_id  in ${t}.${r}%type,\n`, s += `${O}${O}p_rec in t_rec`, i && (s += `,\n${O}${O}p_row_version in out ${t}.row_version%type`), s += `\n${O});\n\n`, a ? s += `${O}procedure delete_rec (p_id in ${t}.${r}%type, p_tenant_id in number);\n\n` : s += `${O}procedure delete_rec (p_id in ${t}.${r}%type);\n\n`, s += `end ${n};\n/\n`, s;
 	}
 	_generateSvcBody(e) {
-		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_dal", r = t + "_hks", i = t + "_svc", a = t + "_aud", o = (e.getPkName() ?? "id").toLowerCase(), s = this._hasVersionCol(e), c = this._hasUniqueCol(e), l = this._hasAuditLog(e), u = this._svcParamCols(e), d = `create or replace package body ${i} as\n\n`;
-		d += `${O}function get (p_id in ${t}.${o}%type) return ${t}%rowtype is\n`, d += `${O}begin\n`, d += `${O}${O}return ${n}.get_by_id(p_id => p_id);\n`, d += `${O}end get;\n\n`, '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('d += `${O}procedure p_do_create (\n`, d += `${O}${O}p_rec in  t_rec,\n`, d += `${O}${O}l_row in out nocopy ${t}%rowtype\n`, d += `${O}) is\n`, d += `${O}begin\n`;
-		for (let { name: e } of u) d += `${O}${O}l_row.${e} := p_rec.${e};\n`;
-		d += `${O}${O}${r}.validate(p_operation => ''insert'', p_row => l_row);\n`, d += `${O}${O}${r}.before_insert(p_row => l_row);\n`, d += `${O}${O}${n}.insert_row(p_row => l_row);\n`, d += `${O}${O}${r}.after_insert(p_row => l_row);\n`, l && (d += `${O}${O}${a}.log_insert(p_row => l_row);\n`), d += `${O}end p_do_create;\n\n`, d += `${O}procedure create_rec (\n`, d += `${O}${O}p_rec in  t_rec,\n`, d += `${O}${O}x_id  out ${t}.${o}%type\n`, d += `${O}) is\n`, d += `${O}${O}l_row ${t}%rowtype;\n`, d += `${O}begin\n`, d += `${O}${O}p_do_create(p_rec => p_rec, l_row => l_row);\n`, d += `${O}${O}x_id := l_row.${o};\n`, c && (d += `${O}exception\n`, d += `${O}${O}when dup_val_on_index then\n`, d += `${O}${O}${O}raise_application_error(-20010, ''duplicate value on unique constraint.'');\n`), d += `${O}end create_rec;\n\n`, d += `${O}procedure update_rec (\n`, d += `${O}${O}p_id  in ${t}.${o}%type,\n`, d += `${O}${O}p_rec in t_rec`, s && (d += `,\n${O}${O}p_row_version in out ${t}.row_version%type`), d += `\n${O}) is\n`, d += `${O}${O}l_row ${t}%rowtype;\n`, l && (d += `${O}${O}l_old_row ${t}%rowtype;\n`), d += `${O}begin\n`, d += `${O}${O}l_row := ${n}.get_by_id(p_id => p_id);\n`, l && (d += `${O}${O}l_old_row := l_row;\n`);
-		for (let { name: e } of u) d += `${O}${O}l_row.${e} := p_rec.${e};\n`;
-		return s && (d += `${O}${O}l_row.row_version := p_row_version;\n`), d += `${O}${O}${r}.validate(p_operation => ''update'', p_row => l_row);\n`, d += `${O}${O}${r}.before_update(p_row => l_row);\n`, d += `${O}${O}${n}.update_row(p_row => l_row);\n`, d += `${O}${O}${r}.after_update(p_row => l_row);\n`, l && (d += `${O}${O}${a}.log_update(p_old_row => l_old_row, p_new_row => l_row);\n`), s && (d += `${O}${O}p_row_version := l_row.row_version;\n`), d +='));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' `${O}end update_rec;\n\n`, d += `${O}procedure delete_rec (p_id in ${t}.${o}%type) is\n`, l && (d += `${O}${O}l_old_row ${t}%rowtype;\n`), d += `${O}begin\n`, l && (d += `${O}${O}l_old_row := ${n}.get_by_id(p_id => p_id);\n`), d += `${O}${O}${r}.before_delete(p_id => p_id);\n`, d += `${O}${O}${n}.delete_row(p_id => p_id);\n`, d += `${O}${O}${r}.after_delete(p_id => p_id);\n`, l && (d += `${O}${O}${a}.log_delete(p_old_row => l_old_row);\n`), d += `${O}end delete_rec;\n\n`, d += `end ${i};\n/\n`, d;
+		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_dal", r = t + "_hks", i = t + "_svc", a = t + "_aud", o = (e.getPkName() ?? "id").toLowerCase(), s = this._hasVersionCol(e), c = this._hasUniqueCol(e), l = this._hasAuditLog(e), u = this._hasSyntheticTenantId(e), d = this._svcParamCols(e), f = `create or replace package body ${i} as\n\n`;
+		f += `${O}function get (p_id in ${t}.${o}%type) return ${t}%rowtype is\n`, f += `${O}begin\n`, f += `${O}${O}return ${n}.get_by_id(p_id => p_id);\n`, f += `${O}end get;\n\n`, f += `${O}procedure p_do_create (\n`, f += `${O}${O}p_rec in  t_rec,\n`, f += `${O}${O}l_row in out nocopy ${t}%rowtype\n`, f += `${O}) is\n`, f += `${O}begin\n`;
+		for (let { name: e } of d) f += `${O}${O}l_row.${e} := p_rec.${e};\n`;
+		f += `${O}${O}${r}.validate(p_operation => ''insert'', p_row => l_row);\n`, f += `${O}${O}${r}.before_insert(p_row => l_row);\n`, f += `${O}${O}${n}.insert_row(p_row => l_row);\n`, f += `${O}${O}${r}.after_insert(p_row => l_row);\n`, l && (f += `${O}${O}${a}.log_insert(p_row => l_row);\n`), f += `${O}end p_do_create;\n\n`, '));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('f += `${O}procedure create_rec (\n`, f += `${O}${O}p_rec in  t_rec,\n`, f += `${O}${O}x_id  out ${t}.${o}%type\n`, f += `${O}) is\n`, f += `${O}${O}l_row ${t}%rowtype;\n`, f += `${O}begin\n`, f += `${O}${O}p_do_create(p_rec => p_rec, l_row => l_row);\n`, f += `${O}${O}x_id := l_row.${o};\n`, c && (f += `${O}exception\n`, f += `${O}${O}when dup_val_on_index then\n`, f += `${O}${O}${O}raise_application_error(-20010, ''duplicate value on unique constraint.'');\n`), f += `${O}end create_rec;\n\n`, f += `${O}procedure update_rec (\n`, f += `${O}${O}p_id  in ${t}.${o}%type,\n`, f += `${O}${O}p_rec in t_rec`, s && (f += `,\n${O}${O}p_row_version in out ${t}.row_version%type`), f += `\n${O}) is\n`, f += `${O}${O}l_row ${t}%rowtype;\n`, l && (f += `${O}${O}l_old_row ${t}%rowtype;\n`), f += `${O}begin\n`, f += `${O}${O}l_row := ${n}.get_by_id(p_id => p_id);\n`, l && (f += `${O}${O}l_old_row := l_row;\n`);
+		for (let { name: e } of d) f += `${O}${O}l_row.${e} := p_rec.${e};\n`;
+		s && (f += `${O}${O}l_row.row_version := p_row_version;\n`), f += `${O}${O}${r}.validate(p_operation => ''update'', p_row => l_row);\n`, f += `${O}${O}${r}.before_update(p_row => l_row);\n`, f += `${O}${O}${n}.update_row(p_row => l_row);\n`, f += `${O}${O}${r}.after_update(p_row => l_row);\n`, l && (f += `${O}${O}${a}.log_update(p_old_row => l_old_row, p_new_row => l_row);\n`), s && (f += `${O}${O}p_row_version := l_row.row_version;\n`), f += `${O}end update_rec;\n\n`;
+		let p = l || u;
+		return f += `${O}procedure delete_rec (p_id in ${t}.${o}%type${u ? ", p_tenant_id in number" : ""}) is\n`, p && (f += `${O}${O}l_old_row ${t}%rowtype;\n`), f += `${O}begin\n`, p && (f += `${O}${O}l_old_row := ${n}.get_by_id(p_id => p_id);\n`), u && (f += `${O}${O}if l_old_row.tenant_id != p_tenant_id then\n`, f += `${O}${O}${O}raise_application_error(${n}.c_err_not_found, ''${t}: record not found (id='' || p_id || '')'');\n`, f += `${O}${O}end if;\n`), f += `${O}${O}${r}.before_delete(p_id => p_id);\n`, u ? f += `${O'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('}${O}${n}.delete_row(p_id => p_id, p_tenant_id => p_tenant_id);\n` : f += `${O}${O}${n}.delete_row(p_id => p_id);\n`, f += `${O}${O}${r}.after_delete(p_id => p_id);\n`, l && (f += `${O}${O}${a}.log_delete(p_old_row => l_old_row);\n`), f += `${O}end delete_rec;\n\n`, f += `end ${i};\n/\n`, f;
 	}
 	_generateApxSpec(e) {
-		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_apx", r = (e.getPkName() ?? "id").toLowerCase(), i = this._hasVersionCol(e), a = e.hasAuditCols(), o = this._svcParamCols(e), s = String(this.ctx.getOptionValue("createdcol") ?? "created"), c = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), l = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), u = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), d = `create or replace package ${n} as\n\n`;
-		d += `${O}procedure get (\n`, d += `${O}${O}p_id          in  ${t}.${r}%type`;
-		for (let { name: e } of o) d += `,\n${O}${O}p_${e.padEnd(13)} out ${t}.${e}%type`;
-		i && (d += `,\n${O}${O}p_row_version  out ${t}.row_version%type`), a && (d += `,\n${O}${O}p_${s.padEnd(13)} out ${t}.${s}%type`, d += `,\n${O}${O}p_${c.padEnd(13)} out ${t}.${c}%type`, d += `,\n${O}${O}p_${l.padEnd(13)} out ${t}.${l}%type`, d += `,\n${O}${O}p_${u.padEnd(13)} out ${t}.${u}%type`), d += `\n${O});\n\n`, d += `${O}procedure ins (\n`;
-		let f = [];
-		for (let { name: e, nullable: n } of o) f.push(`${O}${O}p_${e.padEnd(13)} in  ${t}.${e}%type${n ? " default null" : ""}`);
-		f.push(`${O}${O}p_id           out ${t}.${r}%type`), d += f.join(",\n") + `\n${O});\n\n`, d += `${O}procedure upd (\n`;
-		let p = [];
-		p.push(`${O}${O}p_id           in  ${t}.${r}%type`);
-		for (let { name: e, nullable: n } of o) p.push(`${O}${O}p_${e.padEnd(13)} in  ${t}.${e}%type${n ? " default nu'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('ll" : ""}`);
-		return i && p.push(`${O}${O}p_row_version  in out ${t}.row_version%type`), d += p.join(",\n") + `\n${O});\n\n`, d += `${O}procedure del (p_id in ${t}.${r}%type);\n\n`, d += `end ${n};\n/\n`, d;
-	}
-	_generateApxBody(e) {
-		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_svc", r = t + "_apx", i = (e.getPkName() ?? "id").toLowerCase(), a = this._hasVersionCol(e), o = e.hasAuditCols(), s = this._svcParamCols(e), c = String(this.ctx.getOptionValue("createdcol") ?? "created"), l = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), u = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), d = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), f = `create or replace package body ${r} as\n\n`;
-		f += `${O}procedure get (\n`, f += `${O}${O}p_id          in  ${t}.${i}%type`;
+		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_apx", r = (e.getPkName() ?? "id").toLowerCase(), i = this._hasVersionCol(e), a = e.hasAuditCols(), o = this._hasSyntheticTenantId(e), s = this._svcParamCols(e), c = String(this.ctx.getOptionValue("createdcol") ?? "created"), l = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), u = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), d = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), f = `create or replace package ${n} as\n\n`;
+		f += `${O}procedure get (\n`, f += `${O}${O}p_id          in  ${t}.${r}%type`;
 		for (let { name: e } of s) f += `,\n${O}${O}p_${e.padEnd(13)} out ${t}.${e}%type`;
-		a && (f += `,\n${O}${O}p_row_version  out ${t}.row_version%type`), o && (f += `,\n${O}${O}p_${c.padEnd(13)} out ${t}.${c}%type`, f += `,\n${O}${O}p_${l.padEnd(13)} out ${t}.${l}%type`, f += `,\n${O}${O}p_${u.padEnd(13)} out ${t}.${u}%type`, f += `,\n${O}${O}p_${d.padEnd(13)} out ${t}.${d}%type`), f += `\n${O}) is\n`, f += `${O}${O}l_row ${t}%rowtype;\n`, f += `${O}begin\n`, f += `${O}${O}if p_id is null then return; end if;  -- INSERT mode: leave OUT params null\n`, f += `${O}${O}l_row := ${n}.get(p_id => p_id);\n`;
-		for (let { name: e } of s) f += `${O}${O}p_${e} := l_row.${e};\n`;
-		a && (f += `${O}${O}p_row_version := l_row.row_version;\n`), o && (f += `${O}${O}p_${c} := l_row.${c};\n`, f += `${O}${O}p_${l} := l_row.${l};\n`, f += `${O}${O}p_${u} := l_row.${u};\n`, f += `${O}${O}p_${d} := l_row.${d};\n`), f += `${O}end get;\n\n`, f += `${O}procedure ins (\n`;
+		i && (f += `,\n${O}${O}p_row_version  out ${t}.row_version%type`), a && (f += `,\n${O}${O}p_${c.padEnd(13)} out ${t}.${c}%type`, f += `,\n${O}${O}p_${l.padEnd(13)} out ${t}.${l}%type`, f += `,\n${O}${O}p_${u.padEnd(13)} out ${t}.${u}%type`, f += `,\n${O}${O}p_${d.padEnd(13)} out ${t}.${d}%type`), f += `\n${O});\n\n`, f += `${O}procedure ins (\n`;
 		let p = [];
 		for (let { name: e, nullable: n } of s) p.push(`${O}${O}p_${e.padEnd(13)} in  ${t}.${e}%type${n ? " default null" : ""}`);
-		p.push(`${O}${O}p_id           out ${t}.${i}%typ'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('e`), f += p.join(",\n") + `\n${O}) is\n`, f += `${O}${O}l_rec ${n}.t_rec;\n`, f += `${O}begin\n`;
-		for (let { name: e } of s) f += `${O}${O}l_rec.${e} := p_${e};\n`;
-		f += `${O}${O}${n}.create_rec(p_rec => l_rec, x_id => p_id);\n`, f += `${O}end ins;\n\n`, f += `${O}procedure upd (\n`;
+		p.push(`${O}${O}p_id           out ${t}.${r}%type`), f += p.join(",\n") + `\n${O});\n\n`, f += `${O}procedure upd (\n`;
 		let m = [];
-		m.push(`${O}${O}p_id           in  ${t}.${i}%type`);
+		m.push(`${O}${O}p_id           in  ${t}.${r}%type`);
 		for (let { name: e, nullable: n } of s) m.push(`${O}${O}p_${e.padEnd(13)} in  ${t}.${e}%type${n ? " default null" : ""}`);
-		a && m.push(`${O}${O}p_row_version  in out ${t}.row_version%type`), f += m.join(",\n") + `\n${O}) is\n`, f += `${O}${O}l_rec ${n}.t_rec;\n`, f += `${O}begin\n`;
-		for (let { name: e } of s) f += `${O}${O}l_rec.${e} := p_${e};\n`;
-		return f += `${O}${O}${n}.update_rec(\n`, f += `${O}${O}${O}p_id  => p_id,\n`, f += `${O}${O}${O}p_rec => l_rec`, a && (f += `,\n${O}${O}${O}p_row_version => p_row_version`), f += `\n${O}${O});\n`, f += `${O}end upd;\n\n`, f += `${O}procedure del (p_id in ${t}.${i}%type) is\n`, f += `${O}begin\n`, f += `${O}${O}${n}.delete_rec(p_id => p_id);\n`, f += `${O}end del;\n\n`, f += `end ${r};\n/\n`, f;
+		return i && m.push(`${O}${O}p_row_version  in out ${t}.row_version%type`), f += m.join(",\n") + `\n${O});\n\n`, o ? f += `${O}procedure del (p_id in ${t}.${r}%ty'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('pe, p_tenant_id in number);\n\n` : f += `${O}procedure del (p_id in ${t}.${r}%type);\n\n`, f += `end ${n};\n/\n`, f;
+	}
+	_generateApxBody(e) {
+		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_svc", r = t + "_apx", i = (e.getPkName() ?? "id").toLowerCase(), a = this._hasVersionCol(e), o = e.hasAuditCols(), s = this._hasSyntheticTenantId(e), c = this._svcParamCols(e), l = String(this.ctx.getOptionValue("createdcol") ?? "created"), u = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), d = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), f = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), p = `create or replace package body ${r} as\n\n`;
+		p += `${O}procedure get (\n`, p += `${O}${O}p_id          in  ${t}.${i}%type`;
+		for (let { name: e } of c) p += `,\n${O}${O}p_${e.padEnd(13)} out ${t}.${e}%type`;
+		a && (p += `,\n${O}${O}p_row_version  out ${t}.row_version%type`), o && (p += `,\n${O}${O}p_${l.padEnd(13)} out ${t}.${l}%type`, p += `,\n${O}${O}p_${u.padEnd(13)} out ${t}.${u}%type`, p += `,\n${O}${O}p_${d.padEnd(13)} out ${t}.${d}%type`, p += `,\n${O}${O}p_${f.padEnd(13)} out ${t}.${f}%type`), p += `\n${O}) is\n`, p += `${O}${O}l_row ${t}%rowtype;\n`, p += `${O}begin\n`, p += `${O}${O}if p_id is null then return; end if;  -- INSERT mode: leave OUT params null\n`, p += `${O}${O}l_row := ${n}.get(p_id => p_id);\n`;
+		for (let { name: e } of c) p += `${O}${O}p_${e} := l_row.${e};\n`;
+		a && (p += `${O}${O}p_row_version := l_row.row_version;\n`), o && (p += `${O}${O}p_${l} := l_row.${l};\n`, p += `${O}${O}p_${u} := l_row.${u};\n`, p += `${O}${O}p_${d} := l_row.${d};\n`, p += `${O}${O}p_${f} := l_row.${f};\n`), p += `${O}end get;\n\n`, p += `${O}procedure ins (\n`;
+		let m = [];
+		for (let { name: e, nullable: n } of c) m.push(`${O}${O}p_${e.padEnd(13)} in  ${t}.${e}%type${n ? " default null" : ""}`);
+		m.push(`${O}${O}p_id           out ${t}.${i}%type`), p += m.join(",\n") + `\n${O}) is\n`, p += `${O}${O}l'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('_rec ${n}.t_rec;\n`, p += `${O}begin\n`;
+		for (let { name: e } of c) p += `${O}${O}l_rec.${e} := p_${e};\n`;
+		p += `${O}${O}${n}.create_rec(p_rec => l_rec, x_id => p_id);\n`, p += `${O}end ins;\n\n`, p += `${O}procedure upd (\n`;
+		let h = [];
+		h.push(`${O}${O}p_id           in  ${t}.${i}%type`);
+		for (let { name: e, nullable: n } of c) h.push(`${O}${O}p_${e.padEnd(13)} in  ${t}.${e}%type${n ? " default null" : ""}`);
+		a && h.push(`${O}${O}p_row_version  in out ${t}.row_version%type`), p += h.join(",\n") + `\n${O}) is\n`, p += `${O}${O}l_rec ${n}.t_rec;\n`, p += `${O}begin\n`;
+		for (let { name: e } of c) p += `${O}${O}l_rec.${e} := p_${e};\n`;
+		return p += `${O}${O}${n}.update_rec(\n`, p += `${O}${O}${O}p_id  => p_id,\n`, p += `${O}${O}${O}p_rec => l_rec`, a && (p += `,\n${O}${O}${O}p_row_version => p_row_version`), p += `\n${O}${O});\n`, p += `${O}end upd;\n\n`, s ? (p += `${O}procedure del (p_id in ${t}.${i}%type, p_tenant_id in number) is\n`, p += `${O}begin\n`, p += `${O}${O}${n}.delete_rec(p_id => p_id, p_tenant_id => p_tenant_id);\n`, p += `${O}end del;\n\n`) : (p += `${O}procedure del (p_id in ${t}.${i}%type) is\n`, p += `${O}begin\n`, p += `${O}${O}${n}.delete_rec(p_id => p_id);\n`, p += `${O}end del;\n\n`), p += `end ${r};\n/\n`, p;
 	}
 	_generateAuditSpec(e) {
 		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_aud", r = `create or replace package ${n} as\n\n`;
 		return r += `${O}procedure set_enabled (p_enabled in boolean);\n\n`, r += `${O}procedure log_insert (p_row     in ${t}%rowtype);\n`, r += `${O}procedure log_update (p_old_row in ${t}%rowtype, p_new_row in ${t}%rowtype);\n`, r += `${O}procedure log_delete (p_old_row in ${t}%rowtype);\n\n`, r += `end ${n};\n/\n`, r;
 	}
 	_generateAuditBody(e) {
-		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_dal", r = t + "_aud", i = (e.getPkName() ?? "id").toLowerCase(), a = String(e.getOptionValue("auditlog") || "").trim() || "app_audit_log", o = (this.ctx.objPrefix() + a).toLowerCase(), s = o + "_svc", c = this._hasVersionCol(e), l = Object.keys(e.fks ?? {}).map((e) => e.toLowerCase()), u = this._svcCols(e).map'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('((e) => e.parseName().toLowerCase()), d = (this.ctx.find(a)?.children ?? []).some((e) => e.parseName().toLowerCase() === "old_values"), f = [
+		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_dal", r = t + "_aud", i = (e.getPkName() ?? "id").toLowerCase(), a = String(e.getOptionValue("auditlog") || "").trim() || "app_audit_log", o = (this.ctx.objPr'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('efix() + a).toLowerCase(), s = o + "_svc", c = this._hasVersionCol(e), l = Object.keys(e.fks ?? {}).map((e) => e.toLowerCase()), u = this._svcCols(e).map((e) => e.parseName().toLowerCase()), d = this.ctx.find(a), f = (d?.children ?? []).some((e) => e.parseName().toLowerCase() === "old_values"), p = this._hasSyntheticTenantId(e), m = d != null && this._hasSyntheticTenantId(d), h = p && m, g = [
 			i,
-			...this._hasSyntheticTenantId(e) ? ["tenant_id"] : [],
+			...p ? ["tenant_id"] : [],
 			...l,
 			...u
 		];
-		c && f.push("row_version");
-		let p = `create or replace package body ${r} as\n\n`;
-		if (p += `${O}g_enabled boolean := true;\n\n`, p += `${O}procedure set_enabled (p_enabled in boolean) is\n`, p += `${O}begin\n`, p += `${O}${O}g_enabled := p_enabled;\n`, p += `${O}end set_enabled;\n\n`, d) {
-			let e = f.map((e) => `${O}${O}${O}''${e}'' value p_row.${e}`);
-			p += `${O}function f_to_json (p_row in ${t}%rowtype) return clob is\n`, p += `${O}${O}l_result clob;\n`, p += `${O}begin\n`, p += `${O}${O}select json_object(\n`, p += e.join(",\n") + "\n", p += `${O}${O}${O}returning clob\n`, p += `${O}${O}) into l_result from dual;\n`, p += `${O}${O}return l_result;\n`, p += `${O}end f_to_json;\n\n`;
+		c && g.push("row_version");
+		let _ = `create or replace package body ${r} as\n\n`;
+		if (_ += `${O}g_enabled boolean := true;\n\n`, _ += `${O}procedure set_enabled (p_enabled in boolean) is\n`, _ += `${O}begin\n`, _ += `${O}${O}g_enabled := p_enabled;\n`, _ += `${O}end set_enabled;\n\n`, f) {
+			let e = g.map((e) => `${O}${O}${O}''${e}'' value p_row.${e}`);
+			_ += `${O}function f_to_json (p_row in ${t}%rowtype) return clob is\n`, _ += `${O}${O}l_result clob;\n`, _ += `${O}begin\n`, _ += `${O}${O}select json_object(\n`, _ += e.join(",\n") + "\n", _ += `${O}${O}${O}returning clob\n`, _ += `${O}${O}) into l_result from dual;\n`, _ += `${O}${O}return l_result;\n`, _ += `${O}end f_to_json;\n\n`;
 		}
-		return p += `${O}procedure p_log (\n`, p += `${O}${O}p_operation  in varchar2,\n`, p += `${O}${O}p_id         in ${n}.t_id`, d ? (p += `,\n${O}${O}p_old_values in clob default null,\n`, p += `${O}${O}p_new_values in clob default null\n`) : p += "\n", p += `${O}) is\n`, p += `${O}${O}pragma autonomous_transaction;\n`, p += `${O}${O}l_rec ${s}.t_rec;\n`, p += `${O}${O}l_id ${o}.id%type;\n`, p += `${O}begin\n`, p += `${O}${O}if not g_enabled then return; end if;\n`, p += `${O}${O}l_rec.entity    := ''${t}'';\n`, p += `${O}${O}l_rec.entity_id := p_id;\n`, p += `${O}${O}l_rec.operation := p_operation;\n`, d && (p += `${O}${O}l_rec.old_values := p_old_values;\n`, p += `${O}${O}l_rec.new_values := p_new_values;\n`), p += `${O}${O}${s}.create_rec(p_rec => l_rec, x_id => l_id);\n`, p += `${O}${O}-- l_id holds the generated audit record id.\n`, p += `${O}${O}-- use it here if needed, e.g. to notify, correlate, or route downstream:\n`, p += `${O}${O}-- your_pkg.on_audit(p_audit_id => l_id, p_entity => ''${t}'', p_operation => p_operation);\n`, p += `${O}${O'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('}commit;\n`, p += `${O}end p_log;\n\n`, p += `${O}procedure log_insert (p_row in ${t}%rowtype) is\n`, p += `${O}begin\n`, d ? p += `${O}${O}p_log(p_operation => ''INSERT'', p_id => p_row.${i}, p_new_values => f_to_json(p_row));\n` : p += `${O}${O}p_log(p_operation => ''INSERT'', p_id => p_row.${i});\n`, p += `${O}end log_insert;\n\n`, p += `${O}procedure log_update (p_old_row in ${t}%rowtype, p_new_row in ${t}%rowtype) is\n`, p += `${O}begin\n`, d ? p += `${O}${O}p_log(p_operation => ''UPDATE'', p_id => p_new_row.${i}, p_old_values => f_to_json(p_old_row), p_new_values => f_to_json(p_new_row));\n` : p += `${O}${O}p_log(p_operation => ''UPDATE'', p_id => p_new_row.${i});\n`, p += `${O}end log_update;\n\n`, p += `${O}procedure log_delete (p_old_row in ${t}%rowtype) is\n`, p += `${O}begin\n`, d ? p += `${O}${O}p_log(p_operation => ''DELETE'', p_id => p_old_row.${i}, p_old_values => f_to_json(p_old_row));\n` : p += `${O}${O}p_log(p_operation => ''DELETE'', p_id => p_old_row.${i});\n`, p += `${O}end log_delete;\n\n`, p += `end ${r};\n/\n`, p;
+		_ += `${O}procedure p_log (\n`, _ += `${O}${O}p_operation  in varchar2,\n`, _ += `${O}${O}p_id         in ${n}.t_id`, h && (_ += `,\n${O}${O}p_tenant_id  in number`), f ? (_ += `,\n${O}${O}p_old_values in clob default null,\n`, _ += `${O}${O}p_new_values in clob default null\n`) : _ += "\n", _ += `${O}) is\n`, _ += `${O}${O}pragma autonomous_transaction;\n`, _ += `${O}${O}l_rec ${s}.t_rec;\n`, _ += `${O}${O}l_id ${o}.id%type;\n`, _ += `${O}begin\n`, _ += `${O}${O}if not g_enabled then return; end if;\n`, _ += `${O}${O}l_rec.entity    := ''${t}'';\n`, _ += `${O}${O}l_rec.entity_id := p_id;\n`, _ += `${O}${O}l_rec.operation := p_operation;\n`, h && (_ += `${O}${O}l_rec.tenant_id := p_tenant_id;\n`), f && (_ += `${O}${O}l_rec.old_values := p_old_values;\n`, _ += `${O}${O}l_rec.new_values := p_new_values;\n`), _ += `${O}${O}${s'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('}.create_rec(p_rec => l_rec, x_id => l_id);\n`, _ += `${O}${O}-- l_id holds the generated audit record id.\n`, _ += `${O}${O}-- use it here if needed, e.g. to notify, correlate, or route downstream:\n`, _ += `${O}${O}-- your_pkg.on_audit(p_audit_id => l_id, p_entity => ''${t}'', p_operation => p_operation);\n`, _ += `${O}${O}commit;\n`, _ += `${O}end p_log;\n\n`;
+		let v = h ? ", p_tenant_id => p_row.tenant_id" : "", y = h ? ", p_tenant_id => p_new_row.tenant_id" : "", b = h ? ", p_tenant_id => p_old_row.tenant_id" : "";
+		return _ += `${O}procedure log_insert (p_row in ${t}%rowtype) is\n`, _ += `${O}begin\n`, f ? _ += `${O}${O}p_log(p_operation => ''INSERT'', p_id => p_row.${i}${v}, p_new_values => f_to_json(p_row));\n` : _ += `${O}${O}p_log(p_operation => ''INSERT'', p_id => p_row.${i}${v});\n`, _ += `${O}end log_insert;\n\n`, _ += `${O}procedure log_update (p_old_row in ${t}%rowtype, p_new_row in ${t}%rowtype) is\n`, _ += `${O}begin\n`, f ? _ += `${O}${O}p_log(p_operation => ''UPDATE'', p_id => p_new_row.${i}${y}, p_old_values => f_to_json(p_old_row), p_new_values => f_to_json(p_new_row));\n` : _ += `${O}${O}p_log(p_operation => ''UPDATE'', p_id => p_new_row.${i}${y});\n`, _ += `${O}end log_update;\n\n`, _ += `${O}procedure log_delete (p_old_row in ${t}%rowtype) is\n`, _ += `${O}begin\n`, f ? _ += `${O}${O}p_log(p_operation => ''DELETE'', p_id => p_old_row.${i}${b}, p_old_values => f_to_json(p_old_row));\n` : _ += `${O}${O}p_log(p_operation => ''DELETE'', p_id => p_old_row.${i}${b});\n`, _ += `${O}end log_delete;\n\n`, _ += `end ${r};\n/\n`, _;
 	}
 	generateLayeredTAPI(e) {
 		if (e.inferType() !== "table" || e.children.length === 0) return "";
 		let t = this._hasAuditLog(e), n = String(this.ctx.getOptionValue("ifc") ?? "apex").toLowerCase(), r = this._generateDalSpec(e) + "\n" + this._generateDalBody(e) + "\n" + this._generateHksSpec(e) + "\n" + this._generateHksBody(e) + "\n" + this._generateSvcSpec(e) + "\n";
-		return t && (r += this._generateAuditSpec(e) + "\n"), r += this._generateSvcBody(e), t && (r += "\n" + this._generateAuditBody(e)), (n === "apex" || n === "") && (r += "\n" + this._generateApxSpec(e) + "\n" + this._generateApxBody(e)), r;
+		return t && (r += this._generateAuditSpec(e) + "\n"'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('), r += this._generateSvcBody(e), t && (r += "\n" + this._generateAuditBody(e)), (n === "apex" || n === "") && (r += "\n" + this._generateApxSpec(e) + "\n" + this._generateApxBody(e)), r;
 	}
 	generateTAPI(e) {
 		if (e.children.length === 0) return "";
-		let t = this.ctx.objPrefix() + e.parseName(), n = e.getPkName(), r = this._hasSyntheticTenantId(e), i = r ? ",\n        p_tenant_id           in integer" : "", a = n + " = p_" + n + (r ? " and tenant_id = p_tenant_id" : ""), o = ("create or replace package " + t.toL'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('owerCase() + "_API\nis\n\n").toLowerCase();
+		let t = this.ctx.objPrefix() + e.parseName(), n = e.getPkName(), r = this._hasSyntheticTenantId(e), i = r ? ",\n        p_tenant_id           in integer" : "", a = n + " = p_" + n + (r ? " and tenant_id = p_tenant_id" : ""), o = ("create or replace package " + t.toLowerCase() + "_API\nis\n\n").toLowerCase();
 		return o += this.procDecl(e, "get") + ";\n\n", o += this.procDecl(e, "insert") + ";\n\n", o += this.procDecl(e, "update") + ";\n\n", o += "    procedure delete_row (\n        p_" + n + "              in integer" + i + "\n    );\nend " + t.toLowerCase() + "_api;\n/\n\n", o += ("create or replace package body " + t.toLowerCase() + "_API\nis\n\n").toLowerCase(), o += this.procDecl(e, "get") + "\n" + this._getRowBody(e), o += this.procDecl(e, "insert") + "\n" + this._insertRowBody(e), o += this.procDecl(e, "update") + "\n" + this._updateRowBody(e), o += "    procedure delete_row (\n        p_" + n + "              in integer" + i + "\n    )\n    is\n    begin\n        delete from " + t.toLowerCase() + " where " + a + ";\n    end delete_row;\nend " + t.toLowerCase() + "_api;\n/\n", o.toLowerCase();
 	}
 }, Ce = " not null";
@@ -10798,7 +10820,8 @@ var R = class extends ge {
 	}
 	_globalOnDelete() {
 		let e = this._ddl.getOptionValue("ondelete") ?? "";
-		return e === "cascade" ? " on delete cascade" : e === "set null" ? " on delete set null" : e === "restrict" ? " on delete restrict" : "";
+		return e === "cascade" ? " on delete cascade" : e === "set null" ? " on delete set null" : e === "restrict" ? " on delete restric'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('t" : "";
 	}
 	_cpad(e) {
 		return O + O + " ".repeat(e.parent.maxChildNameLen());
@@ -10815,8 +10838,7 @@ var R = class extends ge {
 	_buildColumnConstraints(e, t, n) {
 		if (e.isOption("unique") || e.isOption("uk")) {
 			let r = e.parent !== null && e.parent.isOption("notenantid");
-			'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('(!this._ddl.optionEQvalue("tenantid", !0) || r) && (t += "\n", t += this._cpad(e) + "constraint " + f(this._ddl.objPrefix(), n.parent_child, this._naming.unq) + " unique");
+			(!this._ddl.optionEQvalue("tenantid", !0) || r) && (t += "\n", t += this._cpad(e) + "constraint " + f(this._ddl.objPrefix(), n.parent_child, this._naming.unq) + " unique");
 		}
 		let r = "''";
 		if ((t.startsWith("integer") || t.startsWith("number") || t.startsWith("date")) && (r = ""), e.isOption("default")) {
@@ -10838,7 +10860,8 @@ var R = class extends ge {
 		}
 		if (e.isOption("pk")) {
 			let r = t.startsWith("number") ? " " + this._pkTypeModifier(this._ddl.objPrefix() + e.parent.parseName()) : " not null";
-			t += r + "\n", t += this._cpad(e) + "constraint " + f(this._ddl.objPrefix(), n.parent_child, this._naming.pk) + " primary key";
+			t +'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('= r + "\n", t += this._cpad(e) + "constraint " + f(this._ddl.objPrefix(), n.parent_child, this._naming.pk) + " primary key";
 		}
 		return e.annotations !== null && (0 <= t.indexOf("\n") ? t += "\n" + this._cpad(e) + "annotations (" + e.annotations + ")" : t += " annotations (" + e.annotations + ")"), t;
 	}
@@ -10846,8 +10869,7 @@ var R = class extends ge {
 		return this._ddl.optionEQvalue("pk", "SEQ") && this._ddl.optionEQvalue("genpk", !0) ? "create sequence  " + t + "_seq;\n\n" : "";
 	}
 	_genTableHeader(e, t, n, r) {
-		let i = "create " + n '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('+ "table " + t + " (\n", a = O + " ".repeat(e.maxChildNameLen() - 2);
+		let i = "create " + n + "table " + t + " (\n", a = O + " ".repeat(e.maxChildNameLen() - 2);
 		if (r !== null && !e.isOption("pk")) {
 			i += O + r + a + "number " + this._pkTypeModifier(t) + "\n";
 			let n = f(this._ddl.objPrefix("no schema") + e.parseName(), "_", r);
@@ -10881,12 +10903,12 @@ var R = class extends ge {
 			s === null ? (s = this._ddl.find(r), s?.isMany2One?.() && !r.endsWith("_id") && (i = r, r = l(r) ?? r, c = "_id")) : a = this._fkColType(s) ?? a;
 			let u = O + " ".repeat(e.maxChildNameLen() - r.length);
 			n += O + r + c + u + a;
-			let d = this._ddl.find(i) === null ? "" : this._ddl.objPrefix(), f = r + c;
+			let d = this._ddl.find(i) === null ? "" : this._d'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('dl.objPrefix(), f = r + c;
 			if (this._ddl.optionEQvalue("tenantid", !0) && !e.isOption("notenantid") && s !== null && !s.isOption("notenantid") && f !== "tenant_id") {
 				n += ",\n";
 				let r = d + i, a = r + "_tid_id_uix", o = r + "_tid_id_uq", s = `create unique index ${a}\n    on ${r} (tenant_id, id);\n`, c = `alter table ${r}\n    add constraint ${o}\n    unique (tenant_id, id) using index ${a};\n`;
-				this._ddl.postponedAltersSet.has(s) || (this._ddl.postponedAlters.push(s), this._ddl.postponedAltersSet.a'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('dd(s), this._ddl.postponedAlters.push(c), this._ddl.postponedAltersSet.add(c));
+				this._ddl.postponedAltersSet.has(s) || (this._ddl.postponedAlters.push(s), this._ddl.postponedAltersSet.add(s), this._ddl.postponedAlters.push(c), this._ddl.postponedAltersSet.add(c));
 				let l = "";
 				e.isOption("cascade") ? l = " on delete cascade" : e.isOption("setnull") && (l = " on delete set null");
 				for (let t in e.children) {
@@ -10911,7 +10933,8 @@ var R = class extends ge {
 						break;
 					}
 				}
-				a ||= this._globalOnDelete(), n += O + O + " ".repeat(e.maxChildNameLen()) + "references " + d + i + a + o + ",\n";
+				a ||= this._globalOnDelete(), n += O + O + " ".repeat(e.maxChildNameLen()) + "references " + d + '));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('i + a + o + ",\n";
 			} else {
 				n += ",\n";
 				let a = "";
@@ -10924,8 +10947,7 @@ var R = class extends ge {
 					}
 				}
 				a ||= this._globalOnDelete();
-				let o = "alter table " + t + " add constraint " + t + "_" + r + "_fk foreign key '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('(" + r + ") references " + d + i + a + ";\n";
+				let o = "alter table " + t + " add constraint " + t + "_" + r + "_fk foreign key (" + r + ") references " + d + i + a + ";\n";
 				this._ddl.postponedAltersSet.has(o) || (this._ddl.postponedAlters.push(o), this._ddl.postponedAltersSet.add(o));
 			}
 		}
@@ -10952,7 +10974,8 @@ var R = class extends ge {
 		let r = "";
 		for (let t = 0; t < e.children.length; t++) {
 			let i = e.children[t];
-			if (!(n !== null && i.parseName() === "id") && !(0 < i.children.length) && i.refId() === null) {
+			if (!(n !== nul'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('l && i.parseName() === "id") && !(0 < i.children.length) && i.refId() === null) {
 				if (i.parseName() === e.getExplicitPkName()) continue;
 				r += O + this.generateTable(i) + ",\n";
 				for (let t in j) if (0 < i.indexOf(t)) {
@@ -10967,8 +10990,7 @@ var R = class extends ge {
 		}
 		return r;
 	}
-	_genRowVersio'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('nColumn(e) {
+	_genRowVersionColumn(e) {
 		if (!e.hasRowVersion()) return "";
 		let t = O + " ".repeat(e.maxChildNameLen() - 11);
 		return O + "row_version" + t + "integer not null,\n";
@@ -10994,13 +11016,13 @@ var R = class extends ge {
 	}
 	_genTableFooter(e, t, n, r) {
 		let i = e.annotations === null ? "" : "\nannotations (" + e.annotations + ")", a = "";
-		(this._ddl.optionEQvalue("compress", "yes") || e.isOption("compress")) && (a = r ? " row store compress advanced" : " compress");
+		(this._ddl.optionEQvalue("compress", "yes") || e.isOption("compress")) && (a = r ? " row store com'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('press advanced" : " compress");
 		let o = n === "" ? "" : "\nno drop until 0 days idle\nno delete until 16 days after insert";
 		o !== "" && a !== "" && (a = "\n" + a.trimStart());
 		let s = ")" + o + a + i + ";\n\n";
 		if (e.isOption("audit") && !e.isOption("auditcols") && !e.isOption("audit", "col") && !e.isOption("audit", "cols") && !e.isOption("audit", "columns") && (s += "audit all on " + t + ";\n\n"), e.isOption("flashback") || e.isOption("fda")) {
-			let n = String(e.getOptionValue("flashback") || e.getOptio'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('nValue("fda") || "").trim();
+			let n = String(e.getOptionValue("flashback") || e.getOptionValue("fda") || "").trim();
 			s += "alter table " + t + " flashback archive" + (0 < n.length ? " " + n : "") + ";\n\n";
 		}
 		return s;
@@ -11032,7 +11054,8 @@ var R = class extends ge {
 			let i = e.children[n];
 			if (i.isOption("unique") || i.isOption("uk")) {
 				let e = i.parseName(), n = t + "_tid_" + e + "_uix";
-				r += `create unique index ${n}\n    on ${t} (tenant_id, ${e});\n\n`;
+				r += `create unique index ${'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('n}\n    on ${t} (tenant_id, ${e});\n\n`;
 			}
 		}
 		for (let n = 0; n < e.children.length; n++) {
@@ -11045,8 +11068,7 @@ var R = class extends ge {
 		}
 		if (n) for (let n = 0; n < e.children.length; n++) {
 			let a = e.children[n];
-			a.children.length === 0 && a.inferType() === "vector"'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' && (r += "create vector index " + t + "_vi" + i++ + " on " + t + " (" + a.parseName() + ")\n", r += "    organization neighbor partitions\n", r += "    with distance cosine;\n\n");
+			a.children.length === 0 && a.inferType() === "vector" && (r += "create vector index " + t + "_vi" + i++ + " on " + t + " (" + a.parseName() + ")\n", r += "    organization neighbor partitions\n", r += "    with distance cosine;\n\n");
 		}
 		for (let n = 0; n < e.children.length; n++) {
 			let a = e.children[n];
@@ -11076,12 +11098,12 @@ var R = class extends ge {
 			let t = O;
 			return e.parent !== void 0 && e.parent !== null && (t += " ".repeat(e.parent.maxChildNameLen() - e.parseName().length)), e.parseName() + t + this.parseType(e);
 		}
-		e.lateInitFks();
+		e.lateInit'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('Fks();
 		let t = this._ddl.objPrefix() + e.parseName();
 		if (e.isOption("soda")) {
 			let e = "create table " + t + " (\n";
-			return e += O + "id              varchar2(255" + this._ddl.semantics() + ") not null\n", e += O + "                constraint " + t + "_id_pk primary key,\n", e += O + "created_on      timestamp default sys_extract_utc(systimestamp) not null,\n", e += O + "last_modified   timestamp default sys_extract_utc(systimestamp) not null,\n", e += O + "version         varchar2(255" + this._ddl.seman'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('tics() + ") not null,\n", e += O + "json_document   json\n", e += ");\n\n", e;
+			return e += O + "id              varchar2(255" + this._ddl.semantics() + ") not null\n", e += O + "                constraint " + t + "_id_pk primary key,\n", e += O + "created_on      timestamp default sys_extract_utc(systimestamp) not null,\n", e += O + "last_modified   timestamp default sys_extract_utc(systimestamp) not null,\n", e += O + "version         varchar2(255" + this._ddl.semantics() + ") not null,\n", e += O + "json_document   json\n", e += ");\n\n", e;
 		}
 		let n = this._ddl.getOptionValue("db"), r = n !== null && n.length > 0 && 23 <= (p(n) ?? 0), i = "";
 		e.isOption("immutable") && r && (i = "immutable ");
@@ -11096,11 +11118,11 @@ var R = class extends ge {
 	}
 	generateDrop(e) {
 		let t = this._ddl.objPrefix() + e.parseName(), n = this._ddl.getOptionValue("db"), r = n && n.length > 0 && 23 <= (p(n) ?? 0) ? "if exists " : "", i = "";
-		return e.inferType() === "view" && (i = "drop view " + r + t + ";\n"), e.inferType() === "table" && (i = "drop table " + r + t + " cascade constraints;\n", this._ddl.optionEQvalue("api", "layered") && e.trimmedContent().toLowerCase().includes("/api") ? (i += "drop package " + r + t + "_dal;\n", i += "drop package " + r + t + "_hks;\n", i += "drop package " + r + t + "_svc;\n", e.isOption("auditlog") && (i += "drop package " + r + t + "_aud;\n"), i += "drop package " + r + t + "_apx;\n") : this._ddl.optionEQvalue("api", "yes") && (i += "drop package " + r + t + "_api;\n"), this._ddl.optionEQvalue("pk", "SEQ") && (i += "drop sequence " + r + t + this._naming.seq + ";\n")), i.toLowerCase();
+		return e.inferType() === "view" && (i = "drop view " + r + t + ";\n"), e.inferType() === "table" && (i = "drop table " + r + t + " cascade constraints;\n", this._ddl.optionEQvalue("api", "layered") && e.trimmedContent().toLowerCase().includes("/api") ? (i += "drop package " + r + '));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('t + "_dal;\n", i += "drop package " + r + t + "_hks;\n", i += "drop package " + r + t + "_svc;\n", e.isOption("auditlog") && (i += "drop package " + r + t + "_aud;\n"), i += "drop package " + r + t + "_apx;\n") : this._ddl.optionEQvalue("api", "yes") && (i += "drop package " + r + t + "_api;\n"), this._ddl.optionEQvalue("pk", "SEQ") && (i += "drop sequence " + r + t + this._naming.seq + ";\n")), i.toLowerCase();
 	}
 	identityRestartSql(e, t, n) {
-		return "alter table " + e + "\nmodify " + t + " generated always  as'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' identity restart start with " + n + ";\n\n";
+		return "alter table " + e + "\nmodify " + t + " generated always  as identity restart start with " + n + ";\n\n";
 	}
 	generateView(e) {
 		return this._view.generateView(e);
@@ -11145,15 +11167,15 @@ var R = class extends ge {
 		for (let e of this._ddl.postponedAlters) n += e + "\n";
 		if (t.some((e) => e.getTransColumns().length > 0)) {
 			let e = this._ddl.semantics(), r = this._ddl.objPrefix();
-			n += "-- translation support\n\n", n += `create table ${r}language (\n`, n += `    code           varchar2(5${e}) not null\n`, n += `                   constraint ${r}language_code_pk primary key,\n`, n += `    locale         varchar2(28${e}) not null\n`, n += `                   constraint ${r}language_locale_unq unique,\n`, n += `    name           varchar2(1024${e}),\n`, n += `    native_name    varchar2(1024${e})\n`, n += ");\n\n", n += `create index ${r}language_i1 on ${r}language (locale);\n\n`;
+			n += "-- translation support\n\n", n += `create table ${r}language (\n`, n += `    code           varchar2(5'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('${e}) not null\n`, n += `                   constraint ${r}language_code_pk primary key,\n`, n += `    locale         varchar2(28${e}) not null\n`, n += `                   constraint ${r}language_locale_unq unique,\n`, n += `    name           varchar2(1024${e}),\n`, n += `    native_name    varchar2(1024${e})\n`, n += ");\n\n", n += `create index ${r}language_i1 on ${r}language (locale);\n\n`;
 			for (let e of t) {
 				let t = this.generateTransTable(e);
 				t && (n += t);
 			}
 		}
 		let r = 0;
-		for (let e of t)'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' {
+		for (let e of t) {
 			let t = this.generateTrigger(e);
 			t && (r++ === 0 && (n += "-- triggers\n"), n += t + "\n");
 		}
@@ -11199,7 +11221,8 @@ var R = class extends ge {
 			n += "-- table groups\n";
 			for (let e of o) {
 				n += `insert into user_annotations_groups$ (group_name) values (''${e}'');\n`;
-				for (let t of a[e]) n += `insert into user_annotations_group_members$ (group_name, object_name) values (''${e}'', ''${t.toUpperCase()}'');\n`;
+				for (let t of a[e]) n += `insert into user_anno'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('tations_group_members$ (group_name, object_name) values (''${e}'', ''${t.toUpperCase()}'');\n`;
 			}
 			n += "\n";
 		}
@@ -11210,8 +11233,7 @@ var R = class extends ge {
 				let e = n.inferType(), a = n.getAnnotationPairs(), o = (i + n.parseName()).toUpperCase();
 				if (e === "table") {
 					for (let e of a) {
-						if (e.label.toUpperCase() === "TGR'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('OUP") {
+						if (e.label.toUpperCase() === "TGROUP") {
 							e.value != null && (r[e.value] || (r[e.value] = []), r[e.value].push(o));
 							continue;
 						}
@@ -11255,7 +11277,8 @@ var R = class extends ge {
 	add_fk: 13,
 	transient_add_fk: 13,
 	add_index: 14,
-	create_trigger: 14,
+	cr'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('eate_trigger: 14,
 	drop_trigger: 5,
 	create_package: 15,
 	create_view: 16
@@ -11280,8 +11303,7 @@ function B(e, t, n, r, i = !1) {
 }
 var Ee = class {
 	compute(e, t) {
-		let n = [], r = [], i = this._tableMap(e), a = this._tableMap(t), o = this._viewMap(e)'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(', s = this._viewMap(t), c = [];
+		let n = [], r = [], i = this._tableMap(e), a = this._tableMap(t), o = this._viewMap(e), s = this._viewMap(t), c = [];
 		for (let [e, t] of i) a.has(e) || c.push(t);
 		for (let t of this._reverseTopoSort(c, e)) n.push(...this._dropTable(t, e)), r.push(B("DESTRUCTIVE", t.parseName(), `table dropped: ${t.parseName()}`));
 		let l = [];
@@ -11326,7 +11348,8 @@ var Ee = class {
 				i.push(e);
 			}
 		};
-		for (let t of e) a(t);
+		for (let '));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('t of e) a(t);
 		return i;
 	}
 	_reverseTopoSort(e, t) {
@@ -11335,8 +11358,7 @@ var Ee = class {
 	_dropTable(e, t) {
 		let n = [], r = e.parseName(), i = t.objPrefix() + r, a = I(t) ? "if exists " : "", o = e.trimmedContent().toLowerCase().includes("/api");
 		if (t.optionEQvalue("api", "layered") && o) for (let i of this._layeredPkgNames(e, t)) n.push(z("drop_package", r, `drop package ${a}${i};\n`));
-		else (t.optionEQvalue("api", "yes") || o) && n.push(z("drop_package", r, `drop package ${a}${i}_api;\n`));'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('
+		else (t.optionEQvalue("api", "yes") || o) && n.push(z("drop_package", r, `drop package ${a}${i}_api;\n`));
 		return t.optionEQvalue("pk", "SEQ") && n.push(z("drop_sequence", r, `drop sequence ${a}${i}${D.seq};\n`)), n.push(z("drop_table", r, `drop table ${a}${i} cascade constraints;\n`)), n;
 	}
 	_createTable(e, t) {
@@ -11363,7 +11385,8 @@ var Ee = class {
 		let d = [];
 		for (let [e, t] of l) c.has(e) || d.push(t);
 		let f = this._detectRenames(u, d), p = new Set([...f.keys()].map((e) => e.parseName())), m = new Set([...f.values()].map((e) => e.parseName()));
-		for (let [e, t] of f) i.push(z("rename_hint", o, `-- alter table ${s} rename column ${e.parseName()} to ${t.parseName()};\n`, e.parseName())), a.push(B("INFO", o, `suspected rename: ${e.parseName()} → ${t.parseName()} (verify before applying)`, e.parseName()));
+		for (let [e, t] of f) i.push(z("rename_hint", o, `-- alter table ${s} rename column ${e.par'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('seName()} to ${t.parseName()};\n`, e.parseName())), a.push(B("INFO", o, `suspected rename: ${e.parseName()} → ${t.parseName()} (verify before applying)`, e.parseName()));
 		for (let e of u) p.has(e.parseName()) || (i.push(...this._dropColumn(s, o, e)), a.push(B("DESTRUCTIVE", o, `column dropped: ${e.parseName()}`, e.parseName())));
 		for (let e of d) {
 			if (m.has(e.parseName())) continue;
@@ -11371,8 +11394,7 @@ var Ee = class {
 			i.push(...t), a.push(...n);
 		}
 		for (let [e, t] of l) {
-			l'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('et l = c.get(e);
+			let l = c.get(e);
 			if (l == null) continue;
 			let { stmts: u, warns: d } = this._modifyColumn(s, o, l, t, n, r);
 			i.push(...u), a.push(...d);
@@ -11390,7 +11412,8 @@ var Ee = class {
 		};
 	}
 	_pkDesc(e, t) {
-		let n = e.parseName(), r = t.objPrefix() + n, i = e.getExplicitPkName();
+		let n = e.parseName(), r = t.o'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('bjPrefix() + n, i = e.getExplicitPkName();
 		if (i != null) {
 			let e = i.includes(",") ? i.split(",").map((e) => e.trim()) : [i];
 			return {
@@ -11411,8 +11434,7 @@ var Ee = class {
 		};
 	}
 	_diffPk(e, t, n, r, i, a) {
-		let o = [], s = [], c = t.parseName()'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(', l = n.objPrefix() + c, u = r.objPrefix() + c, d = this._pkDesc(e, n), f = this._pkDesc(t, r);
+		let o = [], s = [], c = t.parseName(), l = n.objPrefix() + c, u = r.objPrefix() + c, d = this._pkDesc(e, n), f = this._pkDesc(t, r);
 		if (d.type === f.type && d.columns.join(",") === f.columns.join(",")) return {
 			stmts: o,
 			warns: s
@@ -11427,7 +11449,8 @@ var Ee = class {
 -- Drop the old primary key constraint before continuing:
 -- alter table ${l} drop constraint ${d.constraintName};\n`, void 0, !0)), d.type === "surrogate") {
 			let e = d.columns[0];
-			a.has(e) || (o.push(z("set_unused", c, `alter table ${l} set unused column ${e};\n`, e)), o.push(z("drop_unused_columns", c, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${l} drop unused columns;\n`, e))), n.optionEQvalue("pk", "SEQ") && o.push(z("drop_sequence", c, `drop sequence ${l}${D.seq};\n`));
+			a.has(e) || (o.push(z("set_unused", c, `alter table ${l} set unused column ${e};\n`, e)), o.push(z("drop_unus'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('ed_columns", c, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${l} drop unused columns;\n`, e))), n.optionEQvalue("pk", "SEQ") && o.push(z("drop_sequence", c, `drop sequence ${l}${D.seq};\n`));
 		}
 		if (f.columns.length > 0) {
 			let e = f.columns.join(", ");
@@ -11436,8 +11459,7 @@ var Ee = class {
 -- alter table ${u} add constraint ${f.constraintName} primary key (${e});\n`, void 0, !0));
 		}
 		return {
-			stmts:'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' o,
+			stmts: o,
 			warns: s
 		};
 	}
@@ -11468,7 +11490,8 @@ var Ee = class {
 	_detectRenames(e, t) {
 		let n = /* @__PURE__ */ new Map(), r = /* @__PURE__ */ new Map(), i = /* @__PURE__ */ new Map(), a = (e) => {
 			let t = e._inferTypeFull();
-			return `${t.base}:${t.varcharLen ?? ""}:${t.numericSpec ?? ""}:${t.vectorSpec ?? ""}`;
+			return `${t.base}:${t.varcharL'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('en ?? ""}:${t.numericSpec ?? ""}:${t.vectorSpec ?? ""}`;
 		};
 		for (let t of e) {
 			let e = a(t);
@@ -11485,8 +11508,7 @@ var Ee = class {
 		return n;
 	}
 	_addColumn(e, t, n, r) {
-		let i = [], a = [], o = I(r), s = F(n._inferTypeFull(), r.semantics(), o), c = n.parseName(), l = this._isNotNull(n'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('), u = "";
+		let i = [], a = [], o = I(r), s = F(n._inferTypeFull(), r.semantics(), o), c = n.parseName(), l = this._isNotNull(n), u = "";
 		if (n.isOption("default")) {
 			let e = n.getDefaultValue() ?? "", t = [
 				"sysdate",
@@ -11507,14 +11529,14 @@ var Ee = class {
 				"systimestamp",
 				"localtimestamp"
 			], l = s.startsWith("integer") || s.startsWith("number") || s.startsWith("date") || s.startsWith("timestamp") || o.includes(r.toLowerCase()), u = !n.isOption("default") || l ? "" : "''", f = o.includes(r.toLowerCase()) ? r : `${u}${r}${u}`, p = n.isOption("default");
-			i.push(z("add_column", t, `alter table ${e} add (${d});\n`, c)), i.push(z("add_column", t, "-- ⚠ MANUAL INTERVENTION REQUIRED\n" + (p ? "-- Populate existing rows with the default value before step 3.\n" : "-- Populate existing rows before step 3. Replace ??? with the correct expression.\n") + `-- update ${e} set ${c} = ${f} where ${c} is null;\n-- commit;\n`, c, !0)), i.push(z("modify_column", t, `alter table ${e} modify (${c} not null);\n`, c)), a.push(B("DESTRUCTIVE", t, `added NOT NULL column ${c} — requires manual data population`, c, !0));
+			i.push(z("add_column", t, `alter table ${e} add (${d});\n`, c)), i.push(z("add_column", t, "-- ⚠ MANUAL INTERVENTION REQUIRED\n" + (p ? "-- Populate existing rows with the default value before step 3.\n" : "-- Populate existing rows before step 3. Replace ??? with the correct expression.\n") + `-- update ${e} set ${c} = ${f} where ${c} is null;\n-- commit;\n`, c, !0)), i.push(z("modify_column", t, `alter table ${e} modify (${c} not null);\n`, c)), a.push(B("DEST'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('RUCTIVE", t, `added NOT NULL column ${c} — requires manual data population`, c, !0));
 		} else i.push(z("add_column", t, `alter table ${e} add (${d});\n`, c));
 		if (n.isOption("check") || n.isOption("values")) {
 			let a = n.isOption("check") ? n.getValues("check") : n.getValues("values"), o = f(r.objPrefix(), `${t}_${c}`, D.ck);
 			i.push(z("add_column", t, `alter table ${e} add constraint ${o} check (${c} in (${a}));\n`, c));
 		} else if (n.isOption("between")) {
-			let r = n.getBetweenClause() ?? "", a = f(`${t'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('}_${c}`, D.bet);
+			let r = n.getBetweenClause() ?? "", a = f(`${t}_${c}`, D.bet);
 			i.push(z("add_column", t, `alter table ${e} add constraint ${a} check (${c} between ${r});\n`, c));
 		}
 		if (n.isOption("unique") || n.isOption("uk")) {
@@ -11540,14 +11562,14 @@ var Ee = class {
 			o.push(z("modify_column", t, `alter table ${e} modify (${g} ${p}${n});\n`, g)), s.push(B("LOSSY", t, `base type changed on ${g}: ${c.base} → ${l.base}`, g));
 		} else {
 			let n = [];
-			_ && n.push(p), v && n.push(h ? "not null" : "null");
+			_ && n.push(p),'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB(' v && n.push(h ? "not null" : "null");
 			let r = n.join(" ");
 			if (!m && h) o.push(z("modify_column", t, `-- ⚠ MANUAL INTERVENTION REQUIRED
 -- Ensure all rows have a non-null value before executing.
 -- alter table ${e} modify (${g} ${r});\n`, g, !0)), s.push(B("DESTRUCTIVE", t, `adding NOT NULL on ${g} — requires manual verification`, g, !0));
 			else if (o.push(z("modify_column", t, `alter table ${e} modify (${g} ${r});\n`, g)), _ && c.base === "varchar") {
-				let e = c.varcharLen ?? 4e3, n = l.varcharLen ?? 4'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('e3;
+				let e = c.varcharLen ?? 4e3, n = l.varcharLen ?? 4e3;
 				n < e && s.push(B("LOSSY", t, `varchar size reduced on ${g}: ${e} → ${n}`, g));
 			}
 		}
@@ -11570,7 +11592,8 @@ var Ee = class {
 				let n = T ? f(`${t}_${g}`, D.bet) : f(i.objPrefix(), `${t}_${g}`, D.ck);
 				o.push(z("modify_column", t, `alter table ${e} drop constraint ${n};\n`, g));
 			}
-			if (w) {
+		'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('	if (w) {
 				let n = w && r.isOption("check") ? r.getValues("check") : r.getValues("values"), i = f(a.objPrefix(), `${t}_${g}`, D.ck);
 				o.push(z("modify_column", t, `alter table ${e} add constraint ${i} check (${g} in (${n}));\n`, g));
 			} else if (E) {
@@ -11584,8 +11607,7 @@ var Ee = class {
 		};
 	}
 	_diffFKs(e, t, n, r) {
-		let i = '));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('[], a = t.parseName(), o = n.objPrefix() + a, s = r.objPrefix() + a, c = I(r), l = e.fks ?? {}, u = t.fks ?? {};
+		let i = [], a = t.parseName(), o = n.objPrefix() + a, s = r.objPrefix() + a, c = I(r), l = e.fks ?? {}, u = t.fks ?? {};
 		for (let e in l) e in u || (i.push(z("drop_fk", a, `alter table ${o} drop constraint ${o}_${e}_fk;\n`)), i.push(z("set_unused", a, `alter table ${o} set unused column ${e};\n`, e)), i.push(z("drop_unused_columns", a, `-- [MAINTENANCE] safe to defer to a maintenance window\nalter table ${o} drop unused columns;\n`, e)));
 		for (let e in u) {
 			if (e in l) continue;
@@ -11607,7 +11629,8 @@ var Ee = class {
 		for (let [e, t] of u) {
 			let n = l.get(e);
 			if (n == null) continue;
-			let r = n.isOption("idx") || n.isOption("index"), u = t.isOption("idx") || t.isOption("index"), d = n.isOption("unique") || n.isOption("uk"), f = t.isOption("unique") || t.isOption("uk");
+			let r = n.isOption("idx") || n.isOption("index"), u = t.isOption("idx") || t.isOption("index"), d = n.isOption("unique") || '));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('n.isOption("uk"), f = t.isOption("unique") || t.isOption("uk");
 			if (!r && u) {
 				let t = `${o}_${e}_i`, n = `create index ${t} on ${o} (${e});\n`;
 				i.push(z("add_index", a, c ? `create index if not exists ${t} on ${o} (${e});\n` : this._wrapIndex(n)));
@@ -11618,8 +11641,7 @@ var Ee = class {
 			}
 			if (!d && f) {
 				let t = `${o}_${e}_unq`, n = `create unique index ${t} on ${o} (${e});\n`;
-				i.push(z("add_index", a, c ? `create unique index'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' if not exists ${t} on ${o} (${e});\n` : this._wrapIndex(n)));
+				i.push(z("add_index", a, c ? `create unique index if not exists ${t} on ${o} (${e});\n` : this._wrapIndex(n)));
 			}
 			if (d && !f) {
 				let t = `${s}_${e}_unq`;
@@ -11659,7 +11681,8 @@ var Ee = class {
 			if (r.has(o)) return;
 			r.add(o);
 			let s = e.trimmedContent().toLowerCase();
-			for (let e of t.values()) {
+			for (let e of t.v'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('alues()) {
 				let t = e.parseName();
 				t !== o && n.has(t) && s.includes(t) && a(e);
 			}
@@ -11671,8 +11694,7 @@ var Ee = class {
 	_diffPackages(e, t, n, r, i) {
 		let a = [], o = [], s = t.parseName(), c = I(r) ? "if exists " : "", l = this._apiKind(e, n), u = this._apiKind(t, r);
 		for (let i of this._droppedPkgs(e, t, n, r, l, u)) a.push(z("drop_package", s, `drop package ${c}${i};\n`));
-		let d = e.isOption("auditlog") !== t.isOption("auditlog"), f = (e.isOption("apex") || e.isOption("apx"'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(')) !== (t.isOption("apex") || t.isOption("apx")), p = i || l !== u || d || f;
+		let d = e.isOption("auditlog") !== t.isOption("auditlog"), f = (e.isOption("apex") || e.isOption("apx")) !== (t.isOption("apex") || t.isOption("apx")), p = i || l !== u || d || f;
 		if (u === "layered" && p) {
 			let e = new L(r, D);
 			a.push(...this._splitPkgBlocks(e.generateLayeredTAPI(t), s));
@@ -11708,13 +11730,13 @@ var Ee = class {
 		return n;
 	}
 	_wrapIndex(e) {
-		return `begin\n    execute immediate ''${e.trim().replace(/;\s*$/, "").replace(/\n/g, " ").replace(/\s+/g, " ").replace(/''/g, "''''")}'';\nexception\n    when others then\n        if sqlcode = -955 then null;\n        else raise;\n        end if;\nend;\n/\n`;
+		return `begin\n    execute immediate ''${e.tr'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('im().replace(/;\s*$/, "").replace(/\n/g, " ").replace(/\s+/g, " ").replace(/''/g, "''''")}'';\nexception\n    when others then\n        if sqlcode = -955 then null;\n        else raise;\n        end if;\nend;\n/\n`;
 	}
 	_wrapConstraint(e) {
 		return `begin\n    execute immediate ''${e.trim().replace(/;\s*$/, "").replace(/\n/g, " ").replace(/\s+/g, " ").replace(/''/g, "''''")}'';\nexception\n    when others then\n        if sqlcode = -2261 then null;\n        else raise;\n        end if;\nend;\n/\n`;
 	}
-	_order(e) {'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('
+	_order(e) {
 		return [...e].sort((e, t) => this._step(e) - this._step(t));
 	}
 	_step(e) {
@@ -11738,7 +11760,8 @@ var Ee = class {
 	_buildPreamble(e, t) {
 		let n = e.filter((e) => e.requiresManualIntervention), r = t.filter((e) => e.level === "INFO"), i = e.filter((e) => e.kind === "drop_table").map((e) => e.table), a = t.filter((e) => e.message.startsWith("column dropped")), o = "";
 		if (o += "-- ============================================================\n", o += "-- QuickSQL Migration Script\n", o += `-- Generated : ${(/* @__PURE__ */ new Date()).toISOString()}\n`, o += "-- ============================================================\n", n.length > 0) {
-			o += "--\n", o += `-- ⚠ MANUAL STEPS REQUIRED (statementsRequiringIntervention = ${n.length})\n`, o += "--\n";
+			o += "--\n", o += `-- ⚠ MANUAL STEPS RE'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('QUIRED (statementsRequiringIntervention = ${n.length})\n`, o += "--\n";
 			for (let e of n) {
 				o += `--   [${e.table}${e.column ? "." + e.column : ""}]\n`;
 				let t = e.sql.split("\n").filter((e) => e.startsWith("-- "));
@@ -11751,8 +11774,7 @@ var Ee = class {
 			for (let e of r) o += `--   [${e.table}] ${e.message}\n`;
 			o += "--\n";
 		}
-		return (i.lengt'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('h > 0 || a.length > 0) && (o += "--\n", o += "-- ⚠ DESTRUCTIVE OPERATIONS\n", i.length > 0 && (o += `--   Tables dropped  : ${i.length}\n`), a.length > 0 && (o += `--   Columns dropped : ${a.length}\n`), o += "--   Apply during a maintenance window.\n", o += "--\n"), o += "-- ============================================================\n", o += "\n", o;
+		return (i.length > 0 || a.length > 0) && (o += "--\n", o += "-- ⚠ DESTRUCTIVE OPERATIONS\n", i.length > 0 && (o += `--   Tables dropped  : ${i.length}\n`), a.length > 0 && (o += `--   Columns dropped : ${a.length}\n`), o += "--   Apply during a maintenance window.\n", o += "--\n"), o += "-- ============================================================\n", o += "\n", o;
 	}
 }, V = { oracle: (e) => new R(e) }, H = { oracle: (e) => new Ee() };
 function De(e, t) {
@@ -11798,7 +11820,8 @@ function W(e) {
 		let r = t[n];
 		for (let t in e) if (t.endsWith(r)) return {
 			key: t,
-			value: e[t]
+			'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('value: e[t]
 		};
 	}
 	return null;
@@ -11819,8 +11842,7 @@ function Ne(e) {
 		break outer;
 	}
 	return t == null || t.toLowerCase() === "id" ? null : t.toLowerCase().endsWith("_id") ? t.substring(0, t.length - 3) : t.endsWith("Id") ? t.substring(0, t.length - 2) : null;
-'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('}
+}
 function Pe(e, t, n) {
 	let r = !1, i = !1;
 	for (let a in e) for (let o = 0; o < a; o++) if (e[a][t] === e[o][t] && e[a][n] !== e[o][n] ? r = !0 : e[a][t] !== e[o][t] && e[a][n] === e[o][n] && (i = !0), r && i) return !0;
@@ -11855,7 +11877,8 @@ var Ie = class {
 		}
 		let i = this.notNormalized.includes(e) ? ">" : "", a = "\n" + U(n) + i + this.tableName(e);
 		if (typeof t == "number" && (a += " num", e.endsWith("_id") || e.endsWith("Id"))) return a += " /pk", a;
-		if (e === "id") return "\n" + U(n) + "id vc32 /pk";
+		if (e === "id") r'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('eturn "\n" + U(n) + "id vc32 /pk";
 		tofinal: if (typeof t == "object" && t) {
 			if (Array.isArray(t)) for (let i in t) {
 				if (1 <= i) break;
@@ -11870,8 +11893,7 @@ var Ie = class {
 				let o = t[r];
 				if (r != null) {
 					let a = l(e) ?? "", o = r.toLowerCase();
-					if (e != null && a + "_id'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('" === o && 0 < n && (i = r), a + "_id" === o || !isNaN(r) && !Array.isArray(t)) continue;
+					if (e != null && a + "_id" === o && 0 < n && (i = r), a + "_id" === o || !isNaN(r) && !Array.isArray(t)) continue;
 				}
 				let s = this.output(r + G(o), o, n + 1);
 				a += s;
@@ -11920,7 +11942,8 @@ var Ie = class {
 				if (isNaN(n)) a = n + G(r);
 				else if (!Array.isArray(t)) continue;
 				a !== e && (this.child2parent[a] = e), this.duplicatesAndParents(a, r), i = !0;
-			}
+			}'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('
 		}
 		Me(t) && !this.tableSignatures.includes(e) && this.tableSignatures.push(e), i || (this.objCounts[n] = r + 1), 1 < this.objCounts[n] && !this.notNormalized.includes(e) && this.notNormalized.push(e);
 	}
@@ -11933,8 +11956,7 @@ var Ie = class {
 		if (t < 0) return e;
 		let n = e.substring(0, t), r = 0, i = -1;
 		for (let t in this.tableSignatures) {
-			let a = this.tableSignatur'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('es[t];
+			let a = this.tableSignatures[t];
 			a.substring(0, a.indexOf("(")) === n && r++, a === e && (i = r);
 		}
 		return r < 2 ? n : n + i;
@@ -11985,7 +12007,8 @@ var K = class {
 	"pk",
 	"cascade",
 	"setnull"
-], ze = /* @__PURE__ */ "idx.index.indexed.unique.uk.check.constant.default.domain.hidden.invincible.values.upper.lower.nn.not.between.references.reference.cascade.setnull.fk.pk.trans.translation.translations".split("."), J = {
+], ze = /* @__PURE__ */ "idx.index.indexed.unique.uk.check.constant.default.domain.hidden.invincible.values.upper.lower.nn.not.between.'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('references.reference.cascade.setnull.fk.pk.trans.translation.translations".split("."), J = {
 	duplicateId: "Explicit ID column conflicts with genpk",
 	invalidDatatype: "Invalid Datatype",
 	undefinedObject: "Undefined Object: ",
@@ -11995,8 +12018,7 @@ var K = class {
 };
 function Be(e) {
 	let t = e, n = [], r = [];
-	for (let t = 0; t < e.forest.length; t++) e.forest[t].inferType() === "tab'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('le" && (r = r.concat(e.forest[t].descendants()));
+	for (let t = 0; t < e.forest.length; t++) e.forest[t].inferType() === "table" && (r = r.concat(e.forest[t].descendants()));
 	n = n.concat(We(r));
 	let i = t.descendants();
 	for (let e = 0; e < i.length; e++) {
@@ -12037,7 +12059,8 @@ function He(e, t) {
 	let n = [];
 	if (t.inferType() === "view") {
 		let r = t.src;
-		for (let i = 2; i < r.length; i++) e.find(r[i].value) ?? n.push(new K(J.undefinedObject + r[i].value, new q(t.line, r[i].begin), new q(t.line, r[i].begin + r[i].value.length)));
+		for (let i = 2; i < r.length; i++) e.find(r[i].value) ?? n.push(new K(J.unde'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('finedObject + r[i].value, new q(t.line, r[i].begin), new q(t.line, r[i].begin + r[i].value.length)));
 	}
 	return n;
 }
@@ -12048,8 +12071,7 @@ function Ue(e, t) {
 		if (r < 0 && (r = t.indexOf("reference")), r++, t.src.length - 1 < r || t.src[r].value === "/") return n;
 		e.find(t.src[r].value) ?? n.push(new K(J.undefinedObject + t.src[r].value, new q(t.line, t.src[r].begin), new q(t.line, t.src[r].begin + t.src[r].value.length)));
 	}
-	return'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' n;
+	return n;
 }
 function We(e) {
 	let t = [], n = Ge(e);
@@ -12106,7 +12128,8 @@ var Z = {
 	},
 	createdcol: {
 		label: "Created Column Name",
-		value: "created"
+		value: "c'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('reated"
 	},
 	createdbycol: {
 		label: "Created By Column Name",
@@ -12136,8 +12159,7 @@ var Z = {
 	},
 	genpk: {
 		label: "Auto Primary Key",
-		'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('value: "yes",
+		value: "yes",
 		check: ["yes", "no"]
 	},
 	semantics: {
@@ -12239,7 +12261,8 @@ var Z = {
 		value: ""
 	},
 	api: {
-		label: "Table API",
+		lab'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('el: "Table API",
 		value: "no",
 		check: ["yes", "no"]
 	},
@@ -12271,8 +12294,7 @@ var Z = {
 		]
 	},
 	tenantid: {
-		label: "Tenant'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB(' ID",
+		label: "Tenant ID",
 		value: "no",
 		check: ["yes", "no"]
 	},
@@ -12322,7 +12344,8 @@ var Z = {
 	}
 	nonDefaultOptions() {
 		let e = {};
-		for (let t in this.options) Z[t] && !this.optionEQvalue(t, Z[t].value) && (e[t] = this.options[t].value);
+		'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('for (let t in this.options) Z[t] && !this.optionEQvalue(t, Z[t].value) && (e[t] = this.options[t].value);
 		return e;
 	}
 	unknownOptions() {
@@ -12335,8 +12358,7 @@ var Z = {
 		let t = e.indexOf("="), n = e.substring(t + 1).trim();
 		n.includes("{") || (n = "{" + e + "}");
 		let r = "", i = x(n, !0, !0, "");
-		for (let e of i) e.type === "identifier" && e.value !== "true" && e.value !== "fa'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('lse" && e.value !== "null" || e.type === "constant.numeric" && !/^\d+(\.\d+)?$/.test(e.value) ? r += "\"" + e.value + "\"" : r += e.value;
+		for (let e of i) e.type === "identifier" && e.value !== "true" && e.value !== "false" && e.value !== "null" || e.type === "constant.numeric" && !/^\d+(\.\d+)?$/.test(e.value) ? r += "\"" + e.value + "\"" : r += e.value;
 		let a = JSON.parse(r);
 		for (let e in a) this.setOptionValue(e.toLowerCase(), a[e]);
 	}
@@ -12376,7 +12398,8 @@ var Z = {
 		return this._ddl ??= Oe(this).generateFullDDL() + this._makeFooter(), this._ddl;
 	}
 	_makeFooter() {
-		let e = (e) => e.replace(/\/\*/g, "--<--").replace(/\*\//g, "-->--").replace(/\/*\s*Non-default options:/g, ""), t = `-- Generated by Radicle QuickSQL ${this.version()} ${(/* @__PURE__ */ new Date()).toLocaleString()}\n\n`;
+		let e = (e) => e.replace(/\/\*/g, "--<--").replace'));
+  DBMS_LOB.APPEND(l_src, TO_CLOB('(/\*\//g, "-->--").replace(/\/*\s*Non-default options:/g, ""), t = `-- Generated by Radicle QuickSQL ${this.version()} ${(/* @__PURE__ */ new Date()).toLocaleString()}\n\n`;
 		t += "/*\n", t += e(this.input), t += "\n";
 		for (let e of this.unknownOptions()) t += "*** Unknown setting: " + e + "\n";
 		return t += "\n*/", t;
@@ -12392,8 +12415,7 @@ function Qe(e, t) {
 	return Le(e, t);
 }
 function $e(e, t) {
-	return new Q(e, t).'));
-  DBMS_LOB.APPEND(l_src, TO_CLOB('getERD();
+	return new Q(e, t).getERD();
 }
 function et(e, t) {
 	return new Q(e, t).getDDL();

@@ -45,6 +45,18 @@ export class OracleViewBuilder {
         const { sortedTables, joinConditions } = this._sortViewTables(node, chunks, setup.tblCache);
         ret += 'from\n';
         ret += this._buildViewFromClause(node, sortedTables, setup.aliasMap, joinConditions, setup.tblTransCols, setup.tblCache);
+        // Add tenant filter when tenantid is active and the primary driving table carries a synthetic tenant_id.
+        // Replace the sys_context expression with the actual tenant context mechanism for your environment.
+        if (this.ctx.optionEQvalue('tenantid', true) && sortedTables.length > 0) {
+            const primaryTbl = setup.tblCache[sortedTables[0]];
+            const hasSynTenant = primaryTbl !== null &&
+                !primaryTbl.children.some(c => c.parseName().toLowerCase() === 'tenant_id');
+            if (hasSynTenant) {
+                const primaryAlias = setup.aliasMap[sortedTables[0]];
+                ret += 'where ' + primaryAlias + '.tenant_id = ';
+                ret += "sys_context('clientcontext', 'tenant_id') -- TODO: replace with your tenant context\n";
+            }
+        }
         ret = ret.toLowerCase();
         if (ret.endsWith('\n')) ret = ret.trimEnd();
         if (!ret.endsWith('\n')) ret += '\n';
