@@ -335,25 +335,16 @@ export class OraclePlsqlBuilder {
         r += `${tab}resource_busy exception;\n`;
         r += `${tab}pragma exception_init(resource_busy, -54);\n\n`;
 
-        if (synTenantId) {
-            // f_tenant_id — private seam for the server-side tenant context.
-            // Replace the body with the mechanism used in your environment, e.g.:
-            //   return to_number(sys_context('myapp_ctx', 'tenant_id'));
-            //   return to_number(apex_util.get_session_state('APP_TENANT_ID'));
-            r += `${tab}function f_tenant_id return number is\n`;
-            r += `${tab}begin\n`;
-            r += `${tab}${tab}-- TODO: return the trusted server-side tenant identifier.\n`;
-            r += `${tab}${tab}-- Example: return to_number(sys_context('myapp_ctx', 'tenant_id'));\n`;
-            r += `${tab}${tab}raise_application_error(-20099, 'tenant context not configured — implement f_tenant_id in ' || $$PLSQL_UNIT);\n`;
-            r += `${tab}end f_tenant_id;\n\n`;
-        }
+        // All tenant-aware queries delegate to the shared <prefix>tenant_ctx package
+        // instead of duplicating a private function in every DAL — single point of configuration.
+        const tenantCtxPkg = this.ctx.objPrefix() + 'tenant_ctx';
 
         // get_by_id — NO_DATA_FOUND raises c_err_not_found; tenant-scoped when tenantid is active
         r += `${tab}function get_by_id (p_id in t_id) return ${tbl}%rowtype is\n`;
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
         r += `${tab}begin\n`;
         if (synTenantId) {
-            r += `${tab}${tab}select * into l_row from ${tbl} where ${pkName} = p_id and tenant_id = f_tenant_id;\n`;
+            r += `${tab}${tab}select * into l_row from ${tbl} where ${pkName} = p_id and tenant_id = ${tenantCtxPkg}.get_id;\n`;
         } else {
             r += `${tab}${tab}select * into l_row from ${tbl} where ${pkName} = p_id;\n`;
         }
@@ -371,7 +362,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}from   ${tbl}\n`;
         if (synTenantId) {
             r += `${tab}${tab}where  ${pkName} = p_id\n`;
-            r += `${tab}${tab}  and  tenant_id = f_tenant_id\n`;
+            r += `${tab}${tab}  and  tenant_id = ${tenantCtxPkg}.get_id\n`;
         } else {
             r += `${tab}${tab}where  ${pkName} = p_id\n`;
         }
@@ -385,11 +376,11 @@ export class OraclePlsqlBuilder {
         r += `${tab}end lock_by_id;\n\n`;
 
         // get_by_<unique_col> — one function per /unique column; NO_DATA_FOUND propagates.
-        // When tenantid is active, f_tenant_id scopes the lookup to the current tenant,
+        // When tenantid is active, tenant_ctx.get_id scopes the lookup to the current tenant,
         // matching the composite unique index (tenant_id, <col>).
         for (const col of uniqueCols) {
             const cn = col.parseName().toLowerCase();
-            const extraWhere = synTenantId ? ` and tenant_id = f_tenant_id` : '';
+            const extraWhere = synTenantId ? ` and tenant_id = ${tenantCtxPkg}.get_id` : '';
             r += `${tab}function get_by_${cn} (p_${cn} in ${tbl}.${cn}%type) return ${tbl}%rowtype is\n`;
             r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
             r += `${tab}begin\n`;
@@ -403,7 +394,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}l_cur t_cursor;\n`;
         r += `${tab}begin\n`;
         if (synTenantId) {
-            r += `${tab}${tab}open l_cur for select * from ${tbl} where tenant_id = f_tenant_id;\n`;
+            r += `${tab}${tab}open l_cur for select * from ${tbl} where tenant_id = ${tenantCtxPkg}.get_id;\n`;
         } else {
             r += `${tab}${tab}open l_cur for select * from ${tbl};\n`;
         }
@@ -421,7 +412,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}procedure insert_row (p_row in out nocopy ${tbl}%rowtype) is\n`;
         r += `${tab}begin\n`;
         // Overwrite caller-supplied tenant_id with the trusted context value.
-        if (synTenantId) r += `${tab}${tab}p_row.tenant_id := f_tenant_id;\n`;
+        if (synTenantId) r += `${tab}${tab}p_row.tenant_id := ${tenantCtxPkg}.get_id;\n`;
         r += `${tab}${tab}insert into ${tbl} (\n`;
         r += `${tab}${tab}${tab}` + insCols.join(`,\n${tab}${tab}${tab}`) + '\n';
         r += `${tab}${tab}) values (\n`;
@@ -443,7 +434,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}end insert_row;\n\n`;
 
         // update_row and delete_row are omitted for audit-log targets (append-only integrity).
-        // When tenantid is active, both operations use f_tenant_id in the WHERE clause so they
+        // When tenantid is active, both operations use tenant_ctx.get_id in the WHERE clause so they
         // can only affect rows belonging to the current session tenant — cross-tenant mutations
         // silently affect 0 rows (update triggers c_err_stale_data; delete is a no-op).
         const setCols = [...fkCols.map(f => `${f.toLowerCase()} = p_row.${f.toLowerCase()}`),
@@ -456,7 +447,7 @@ export class OraclePlsqlBuilder {
             r += `${tab}${tab}update ${tbl} set\n`;
             r += `${tab}${tab}${tab}` + setCols.join(`,\n${tab}${tab}${tab}`) + '\n';
             r += `${tab}${tab}where ${pkName} = l_id`;
-            if (synTenantId) r += `\n${tab}${tab}  and tenant_id = f_tenant_id`;
+            if (synTenantId) r += `\n${tab}${tab}  and tenant_id = ${tenantCtxPkg}.get_id`;
             if (hasVer) r += `\n${tab}${tab}  and row_version = p_row.row_version`;
             if (hasVer) {
                 const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
@@ -474,7 +465,7 @@ export class OraclePlsqlBuilder {
                 r += `${tab}${tab}${tab}begin\n`;
                 // Stale data check includes tenant_id so we never reveal existence of other-tenant records.
                 if (synTenantId) {
-                    r += `${tab}${tab}${tab}${tab}select 1 into l_dummy from ${tbl} where ${pkName} = l_id and tenant_id = f_tenant_id;\n`;
+                    r += `${tab}${tab}${tab}${tab}select 1 into l_dummy from ${tbl} where ${pkName} = l_id and tenant_id = ${tenantCtxPkg}.get_id;\n`;
                 } else {
                     r += `${tab}${tab}${tab}${tab}select 1 into l_dummy from ${tbl} where ${pkName} = l_id;\n`;
                 }
@@ -491,7 +482,7 @@ export class OraclePlsqlBuilder {
             r += `${tab}procedure delete_row (p_id in t_id) is\n`;
             r += `${tab}begin\n`;
             if (synTenantId) {
-                r += `${tab}${tab}delete from ${tbl} where ${pkName} = p_id and tenant_id = f_tenant_id;\n`;
+                r += `${tab}${tab}delete from ${tbl} where ${pkName} = p_id and tenant_id = ${tenantCtxPkg}.get_id;\n`;
             } else {
                 r += `${tab}${tab}delete from ${tbl} where ${pkName} = p_id;\n`;
             }
@@ -544,7 +535,7 @@ export class OraclePlsqlBuilder {
     /**
      * Ordered list of t_rec / APX parameter descriptors: FK cols → regular cols.
      * Single source of truth for SVC t_rec fields and APX parameter lists.
-     * tenant_id is intentionally excluded: the DAL enforces it via f_tenant_id (server-side context).
+     * tenant_id is intentionally excluded: the DAL enforces it via tenant_ctx.get_id (server-side context).
      */
     private _svcParamCols(node: IDdlNode): Array<{ name: string; nullable: boolean }> {
         const out: Array<{ name: string; nullable: boolean }> = [];
@@ -664,7 +655,7 @@ export class OraclePlsqlBuilder {
         if (hasVer) r += `${tab}${tab}p_row_version := l_row.row_version;\n`;
         r += `${tab}end update_rec;\n\n`;
 
-        // delete_rec — tenant isolation is enforced by dal.delete_row (via f_tenant_id),
+        // delete_rec — tenant isolation is enforced by dal.delete_row (via tenant_ctx.get_id),
         // which silently affects 0 rows when the record belongs to a different tenant.
         r += `${tab}procedure delete_rec (p_id in ${tbl}.${pkNm}%type) is\n`;
         if (hasAuditLog) r += `${tab}${tab}l_old_row ${tbl}%rowtype;\n`;
@@ -879,7 +870,7 @@ export class OraclePlsqlBuilder {
         }
 
         // p_log — private; autonomous transaction so audit survives caller rollback.
-        // tenant_id on the audit log row is set by insert_row via the audit log DAL's f_tenant_id.
+        // tenant_id on the audit log row is set by insert_row via the audit log DAL's tenant_ctx.get_id.
         r += `${tab}procedure p_log (\n`;
         r += `${tab}${tab}p_operation  in varchar2,\n`;
         r += `${tab}${tab}p_id         in ${dal}.t_id`;
@@ -986,5 +977,40 @@ export class OraclePlsqlBuilder {
              + '    end delete_row;\n'
              + 'end ' + objName.toLowerCase() + '_api;\n/\n';
         return ret.toLowerCase();
+    }
+
+    /**
+     * Spec for the shared tenant-context package.
+     * Emitted once before any DAL that references <prefix>tenant_ctx.get_id.
+     * The CREATE CONTEXT statement (commented out here) must be run once by a DBA
+     * or schema owner with CREATE ANY CONTEXT privilege.
+     */
+    generateTenantCtxSpec(prefix: string): string {
+        const pkg = (prefix + 'tenant_ctx').toLowerCase();
+        let r = `-- Shared tenant-isolation context provider\n`;
+        r += `-- Run once as DBA: create or replace context ${pkg} using ${pkg};\n`;
+        r += `create or replace package ${pkg} as\n\n`;
+        r += `${tab}-- Returns the tenant ID bound to the current session (null when not set).\n`;
+        r += `${tab}function get_id return integer;\n\n`;
+        r += `${tab}-- Binds the tenant ID at session start (logon trigger or REST auth handler).\n`;
+        r += `${tab}procedure set_id(p_tenant_id in integer);\n\n`;
+        r += `end ${pkg};\n/\n`;
+        return r;
+    }
+
+    /** Body for the shared tenant-context package. */
+    generateTenantCtxBody(prefix: string): string {
+        const pkg = (prefix + 'tenant_ctx').toLowerCase();
+        let r = `create or replace package body ${pkg} as\n\n`;
+        r += `${tab}function get_id return integer is\n`;
+        r += `${tab}begin\n`;
+        r += `${tab}${tab}return to_number(sys_context('${pkg}', 'tenant_id'));\n`;
+        r += `${tab}end get_id;\n\n`;
+        r += `${tab}procedure set_id(p_tenant_id in integer) is\n`;
+        r += `${tab}begin\n`;
+        r += `${tab}${tab}dbms_session.set_context('${pkg}', 'tenant_id', to_char(p_tenant_id));\n`;
+        r += `${tab}end set_id;\n\n`;
+        r += `end ${pkg};\n/\n`;
+        return r;
     }
 }

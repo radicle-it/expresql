@@ -84,6 +84,7 @@ const defaultOptions: OptionsRecord = {
     ondelete:         { label: 'On Delete',                     value: '',        check: ['cascade','restrict','set null'] },
     tenantid:         { label: 'Tenant ID',                     value: 'no',      check: ['yes','no'] },
     tenantref:        { label: 'Tenant Reference Table',        value: '' },
+    readonlyviews:    { label: 'Read-Only Views',               value: 'no',      check: ['yes','no'] },
     verbose:          { label: 'Verbose Output',                value: 'no',      check: ['yes','no'] },
 };
 

@@ -53,14 +53,15 @@ export class OracleViewBuilder {
                 !primaryTbl.children.some(c => c.parseName().toLowerCase() === 'tenant_id');
             if (hasSynTenant) {
                 const primaryAlias = setup.aliasMap[sortedTables[0]];
-                ret += 'where ' + primaryAlias + '.tenant_id = ';
-                ret += "sys_context('clientcontext', 'tenant_id') -- TODO: replace with your tenant context\n";
+                const tenantCtxPkg = (this.ctx.objPrefix() + 'tenant_ctx').toLowerCase();
+                ret += 'where ' + primaryAlias + '.tenant_id = ' + tenantCtxPkg + '.get_id\n';
             }
         }
         ret = ret.toLowerCase();
         if (ret.endsWith('\n')) ret = ret.trimEnd();
         if (!ret.endsWith('\n')) ret += '\n';
-        ret += '/\n';
+        if (this.ctx.optionEQvalue('readonlyviews', true)) ret += '\nwith read only';
+        ret += '\n/\n';
         return ret.toLowerCase();
     }
 
