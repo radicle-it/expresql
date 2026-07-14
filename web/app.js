@@ -576,7 +576,9 @@ order_lines                       -- /cascade → ON DELETE CASCADE on composite
   qty        num /nn
   unit_price num(10,2) /nn
 
-# settings = { prefix: "app_", tenantid: yes, auditcols: yes, drop: yes, db: "23c" }`,
+view orders_v orders order_lines  -- view filtered by tenant_ctx.get_id; WITH READ ONLY
+
+# settings = { prefix: "app_", tenantid: yes, auditcols: yes, drop: yes, db: "23c", readonlyviews: yes }`,
     },
 ];
 

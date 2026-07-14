@@ -42,6 +42,7 @@ export function writeSettings(s) {
     add('aienrichment',       s.aienrich);
     add('tenantid',           s.tenantid);
     addStr('tenantref',       s.tenantref);
+    add('readonlyviews',      s.readonlyviews);
     add('drop',               s.drop);
     add('inserts',            s.inserts);
     add('dv',                 s.dv);
@@ -98,6 +99,7 @@ export function syncSettingsForm() {
     set('sett-aienrich',         'aienrichment');
     set('sett-tenantid',         'tenantid');
     set('sett-tenantref',        'tenantref');
+    set('sett-readonlyviews',    'readonlyviews');
     set('sett-drop',             'drop');
     set('sett-inserts',          'inserts');
     set('sett-dv',               'dv');
@@ -236,6 +238,7 @@ export function initSettingsPanel() {
             rowkey:           v('sett-rowkey'),    aienrich:        v('sett-aienrich'),
             tenantid:         v('sett-tenantid'),
             tenantref:        v('sett-tenantref'),
+            readonlyviews:    v('sett-readonlyviews'),
             drop:             v('sett-drop'),      inserts:         v('sett-inserts'),
             dv:               v('sett-dv'),        edit:            v('sett-edit'),
             api:              v('sett-api'),       apex:            v('sett-apex'),
