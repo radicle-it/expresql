@@ -10,6 +10,15 @@ maintained by Radicle IT, released under the same Universal Permissive
 License v1.0. Versions and entries below `1.2.15` are inherited from the
 upstream project.
 
+## [2.1.0] - 2026-07-16
+
+### Multi-tenancy: `tenant_ctx.clear_id()`
+
+- **New `clear_id` procedure** on the auto-generated `<prefix>tenant_ctx` package (emitted when `tenantid: yes` is combined with `api: layered`), alongside the existing `get_id`/`set_id`. Wraps `DBMS_SESSION.CLEAR_CONTEXT` from inside the trusted package, so callers can reset the tenant context at connection-pool checkout, logoff, or test teardown without hitting `ORA-01031` (the same trusted-package restriction that already applied to `set_id`).
+- `doc/user/quick-sql-grammar.md` — documented the full `tenant_ctx` package contract (`get_id`/`set_id`/`clear_id`) under the `tenantID` setting, which was previously undocumented.
+- `doc/user/multitenant-design.md` §9.2 — noted that the manual `pkg_app_context` example is no longer needed for tenant-only context when using `api: layered` + `tenantid: yes`, since QuickSQL now generates the equivalent out of the box.
+- `test/unit/tenantid.test.ts` — new section 18 covering spec/body generation of `clear_id`.
+
 ## [2.0.0] - 2026-05-07
 
 ### Major TypeScript Refactoring

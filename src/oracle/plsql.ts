@@ -994,6 +994,11 @@ export class OraclePlsqlBuilder {
         r += `${tab}function get_id return integer;\n\n`;
         r += `${tab}-- Binds the tenant ID at session start (logon trigger or REST auth handler).\n`;
         r += `${tab}procedure set_id(p_tenant_id in integer);\n\n`;
+        r += `${tab}-- Clears the tenant ID bound to the current session (connection-pool checkout\n`;
+        r += `${tab}-- boundaries, logoff, or test teardown). Must be called from within this trusted\n`;
+        r += `${tab}-- package, same restriction as set_id: DBMS_SESSION.CLEAR_CONTEXT raises ORA-01031\n`;
+        r += `${tab}-- if invoked directly by code outside this package.\n`;
+        r += `${tab}procedure clear_id;\n\n`;
         r += `end ${pkg};\n/\n`;
         return r;
     }
@@ -1010,6 +1015,10 @@ export class OraclePlsqlBuilder {
         r += `${tab}begin\n`;
         r += `${tab}${tab}dbms_session.set_context('${pkg}', 'tenant_id', to_char(p_tenant_id));\n`;
         r += `${tab}end set_id;\n\n`;
+        r += `${tab}procedure clear_id is\n`;
+        r += `${tab}begin\n`;
+        r += `${tab}${tab}dbms_session.clear_context('${pkg}');\n`;
+        r += `${tab}end clear_id;\n\n`;
         r += `end ${pkg};\n/\n`;
         return r;
     }

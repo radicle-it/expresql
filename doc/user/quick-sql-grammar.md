@@ -685,6 +685,14 @@ Enables the shared-schema multi-tenancy pattern. When set to `yes`, for each gen
 
 If `tenant_id` is already declared as an explicit column, the synthetic column is skipped (no duplicate); the auto-FK is also skipped (the user manages it via `/fk`).
 
+**Shared `tenant_ctx` package** — when `api: layered` is combined with `tenantid: yes`, QuickSQL also generates once, before any DAL, a shared `<prefix>tenant_ctx` package that centralizes tenant-scoping for every generated DAL and read-only view:
+
+- `function get_id return integer` — returns the tenant ID bound to the current session (`null` when not set).
+- `procedure set_id(p_tenant_id in integer)` — binds the tenant ID at session start (logon trigger, REST auth handler, or connection-pool checkout).
+- `procedure clear_id` — resets the tenant ID for the current session (connection-pool checkout, logoff, or test teardown).
+
+All three must be invoked through this package: `DBMS_SESSION.SET_CONTEXT`/`CLEAR_CONTEXT` raise `ORA-01031` if called directly from outside the trusted package associated with the context via `CREATE CONTEXT ... USING`. Run `CREATE OR REPLACE CONTEXT <prefix>tenant_ctx USING <prefix>tenant_ctx;` once as DBA before first use.
+
 **Supra-tenant tables** (lookup data, tenant master, global config) that must not have a `TENANT_ID` can be marked with the `/notenantid` table directive. QuickSQL skips the synthetic column and all tenant-scoped logic for those tables, and FK references to them remain simple (no composite).
 
 ```quicksql

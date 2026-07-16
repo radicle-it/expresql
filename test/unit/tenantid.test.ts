@@ -17,6 +17,7 @@
  * 13. Auto-FK tenant_id → tenants table when a tenants (/notenantid) table exists in schema
  * 14. tenantref setting customises the name of the master tenant table
  * 15. /cascade and /setnull propagated to composite FK and postponed simple FK
+ * 16. tenant_ctx package exposes clear_id() alongside get_id()/set_id()
  */
 
 import { describe, test, expect } from 'vitest';
@@ -533,5 +534,42 @@ orders
 
 # settings = { tenantid: yes, prefix: "app_" }`;
         expect(ddl(qsql)).not.toContain('on delete');
+    });
+});
+
+// ── 18. tenant_ctx clear_id() ─────────────────────────────────────────────────
+// Added so callers have a trusted-package way to reset the tenant context (pool
+// checkout/logoff/test teardown) without hitting ORA-01031 from DBMS_SESSION.CLEAR_CONTEXT
+// called outside the package associated with the context via CREATE CONTEXT ... USING.
+
+describe('tenantid: yes — tenant_ctx.clear_id()', () => {
+    // tenant_ctx is only emitted alongside a layered DAL that references it (generator.ts:661),
+    // so this needs api: layered + a table carrying /api, not just tenantid: yes alone.
+    const qsql = `
+customers /api
+  full_name vc200 /nn
+
+# settings = { tenantid: yes, prefix: "app_", api: layered }`;
+
+    test('clear_id is declared in the tenant_ctx package spec', () => {
+        const out = ddl(qsql);
+        const specPos = out.indexOf('create or replace package app_tenant_ctx as');
+        const specEnd = out.indexOf('end app_tenant_ctx;', specPos);
+        expect(out.substring(specPos, specEnd)).toContain('procedure clear_id;');
+    });
+
+    test('clear_id is implemented in the tenant_ctx package body', () => {
+        const out = ddl(qsql);
+        const bodyPos = out.indexOf('create or replace package body app_tenant_ctx as');
+        const bodyEnd = out.indexOf('end app_tenant_ctx;', bodyPos);
+        const block = out.substring(bodyPos, bodyEnd);
+        expect(block).toContain('procedure clear_id is');
+        expect(block).toContain("dbms_session.clear_context('app_tenant_ctx');");
+    });
+
+    test('get_id and set_id are unchanged alongside the new clear_id', () => {
+        const out = ddl(qsql);
+        expect(out).toContain('function get_id return integer;');
+        expect(out).toContain('procedure set_id(p_tenant_id in integer);');
     });
 });

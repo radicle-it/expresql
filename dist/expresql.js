@@ -10600,11 +10600,11 @@ var L = class {
 	}
 	generateTenantCtxSpec(e) {
 		let t = (e + "tenant_ctx").toLowerCase(), n = "-- Shared tenant-isolation context provider\n";
-		return n += `-- Run once as DBA: create or replace context ${t} using ${t};\n`, n += `create or replace package ${t} as\n\n`, n += `${O}-- Returns the tenant ID bound to the current session (null when not set).\n`, n += `${O}function get_id return integer;\n\n`, n += `${O}-- Binds the tenant ID at session start (logon trigger or REST auth handler).\n`, n += `${O}procedure set_id(p_tenant_id in integer);\n\n`, n += `end ${t};\n/\n`, n;
+		return n += `-- Run once as DBA: create or replace context ${t} using ${t};\n`, n += `create or replace package ${t} as\n\n`, n += `${O}-- Returns the tenant ID bound to the current session (null when not set).\n`, n += `${O}function get_id return integer;\n\n`, n += `${O}-- Binds the tenant ID at session start (logon trigger or REST auth handler).\n`, n += `${O}procedure set_id(p_tenant_id in integer);\n\n`, n += `${O}-- Clears the tenant ID bound to the current session (connection-pool checkout\n`, n += `${O}-- boundaries, logoff, or test teardown). Must be called from within this trusted\n`, n += `${O}-- package, same restriction as set_id: DBMS_SESSION.CLEAR_CONTEXT raises ORA-01031\n`, n += `${O}-- if invoked directly by code outside this package.\n`, n += `${O}procedure clear_id;\n\n`, n += `end ${t};\n/\n`, n;
 	}
 	generateTenantCtxBody(e) {
 		let t = (e + "tenant_ctx").toLowerCase(), n = `create or replace package body ${t} as\n\n`;
-		return n += `${O}function get_id return integer is\n`, n += `${O}begin\n`, n += `${O}${O}return to_number(sys_context('${t}', 'tenant_id'));\n`, n += `${O}end get_id;\n\n`, n += `${O}procedure set_id(p_tenant_id in integer) is\n`, n += `${O}begin\n`, n += `${O}${O}dbms_session.set_context('${t}', 'tenant_id', to_char(p_tenant_id));\n`, n += `${O}end set_id;\n\n`, n += `end ${t};\n/\n`, n;
+		return n += `${O}function get_id return integer is\n`, n += `${O}begin\n`, n += `${O}${O}return to_number(sys_context('${t}', 'tenant_id'));\n`, n += `${O}end get_id;\n\n`, n += `${O}procedure set_id(p_tenant_id in integer) is\n`, n += `${O}begin\n`, n += `${O}${O}dbms_session.set_context('${t}', 'tenant_id', to_char(p_tenant_id));\n`, n += `${O}end set_id;\n\n`, n += `${O}procedure clear_id is\n`, n += `${O}begin\n`, n += `${O}${O}dbms_session.clear_context('${t}');\n`, n += `${O}end clear_id;\n\n`, n += `end ${t};\n/\n`, n;
 	}
 }, Ce = " not null";
 function we(e) {

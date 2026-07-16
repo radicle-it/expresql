@@ -743,6 +743,8 @@ end pkg_app_context;
 
 > **`clear_context`**: la firma corretta richiede namespace, client_id, attribute. Usare `null` per client_id se non si usa il client identifier.
 
+> **Generato automaticamente da QuickSQL**: quando si usa `api: layered` insieme a `tenantid: yes`, QuickSQL genera gia' un package equivalente (`<prefix>tenant_ctx`, con `get_id`/`set_id`/`clear_id`) — l'esempio manuale sopra resta utile per schemi che gestiscono anche `USER_ID`/`USERNAME` o altri attributi custom oltre al solo tenant, ma non serve scriverlo a mano solo per il tenant se si sta gia' usando la generazione a livelli.
+
 ### 9.3 Integrazione con connection pool (Java/Python/Node)
 
 ```sql
