@@ -557,8 +557,9 @@ export class OraclePlsqlBuilder {
         let r = `create or replace package ${svc} as\n\n`;
 
         // t_rec: writable business columns only — excludes PK, row_version, audit cols (all trigger-managed)
+        const tRecWidth = Math.max(20, ...paramCols.map(({ name }) => name.length + 1));
         r += `${tab}type t_rec is record (\n`;
-        r += paramCols.map(({ name }) => `${tab}${tab}${name.padEnd(20)}${tbl}.${name}%type`).join(',\n') + '\n';
+        r += paramCols.map(({ name }) => `${tab}${tab}${name.padEnd(tRecWidth)}${tbl}.${name}%type`).join(',\n') + '\n';
         r += `${tab});\n\n`;
 
         r += `${tab}function get (p_id in ${tbl}.${pkNm}%type) return ${tbl}%rowtype;\n\n`;
@@ -684,20 +685,24 @@ export class OraclePlsqlBuilder {
         const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
         const updatedByCol = String(this.ctx.getOptionValue('updatedbycol') ?? 'updated_by');
 
+        const auditCols = hasAudit ? [createdCol, createdByCol, updatedCol, updatedByCol] : [];
+        const apxPadWidth = Math.max(13, ...paramCols.map(({ name }) => name.length + 1),
+                                        ...auditCols.map(n => n.length + 1));
+
         let r = `create or replace package ${apx} as\n\n`;
 
         // get: loads one row into OUT params — APEX Invoke API maps them to page items
         r += `${tab}procedure get (\n`;
         r += `${tab}${tab}p_id          in  ${tbl}.${pkNm}%type`;
         for (const { name } of paramCols)
-            r += `,\n${tab}${tab}p_${name.padEnd(13)} out ${tbl}.${name}%type`;
+            r += `,\n${tab}${tab}p_${name.padEnd(apxPadWidth)} out ${tbl}.${name}%type`;
         if (hasVer)
             r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
         if (hasAudit) {
-            r += `,\n${tab}${tab}p_${createdCol.padEnd(13)} out ${tbl}.${createdCol}%type`;
-            r += `,\n${tab}${tab}p_${createdByCol.padEnd(13)} out ${tbl}.${createdByCol}%type`;
-            r += `,\n${tab}${tab}p_${updatedCol.padEnd(13)} out ${tbl}.${updatedCol}%type`;
-            r += `,\n${tab}${tab}p_${updatedByCol.padEnd(13)} out ${tbl}.${updatedByCol}%type`;
+            r += `,\n${tab}${tab}p_${createdCol.padEnd(apxPadWidth)} out ${tbl}.${createdCol}%type`;
+            r += `,\n${tab}${tab}p_${createdByCol.padEnd(apxPadWidth)} out ${tbl}.${createdByCol}%type`;
+            r += `,\n${tab}${tab}p_${updatedCol.padEnd(apxPadWidth)} out ${tbl}.${updatedCol}%type`;
+            r += `,\n${tab}${tab}p_${updatedByCol.padEnd(apxPadWidth)} out ${tbl}.${updatedByCol}%type`;
         }
         r += `\n${tab});\n\n`;
 
@@ -705,7 +710,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}procedure ins (\n`;
         const insLines: string[] = [];
         for (const { name, nullable } of paramCols)
-            insLines.push(`${tab}${tab}p_${name.padEnd(13)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+            insLines.push(`${tab}${tab}p_${name.padEnd(apxPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
         insLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
         r += insLines.join(',\n') + `\n${tab});\n\n`;
 
@@ -714,7 +719,7 @@ export class OraclePlsqlBuilder {
         const updLines: string[] = [];
         updLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
         for (const { name, nullable } of paramCols)
-            updLines.push(`${tab}${tab}p_${name.padEnd(13)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+            updLines.push(`${tab}${tab}p_${name.padEnd(apxPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
         if (hasVer) updLines.push(`${tab}${tab}p_row_version  in out ${tbl}.row_version%type`);
         r += updLines.join(',\n') + `\n${tab});\n\n`;
 
@@ -737,20 +742,24 @@ export class OraclePlsqlBuilder {
         const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
         const updatedByCol = String(this.ctx.getOptionValue('updatedbycol') ?? 'updated_by');
 
+        const auditColsBody = hasAudit ? [createdCol, createdByCol, updatedCol, updatedByCol] : [];
+        const apxPadWidthBody = Math.max(13, ...paramCols.map(({ name }) => name.length + 1),
+                                             ...auditColsBody.map(n => n.length + 1));
+
         let r = `create or replace package body ${apx} as\n\n`;
 
         // get
         r += `${tab}procedure get (\n`;
         r += `${tab}${tab}p_id          in  ${tbl}.${pkNm}%type`;
         for (const { name } of paramCols)
-            r += `,\n${tab}${tab}p_${name.padEnd(13)} out ${tbl}.${name}%type`;
+            r += `,\n${tab}${tab}p_${name.padEnd(apxPadWidthBody)} out ${tbl}.${name}%type`;
         if (hasVer)
             r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
         if (hasAudit) {
-            r += `,\n${tab}${tab}p_${createdCol.padEnd(13)} out ${tbl}.${createdCol}%type`;
-            r += `,\n${tab}${tab}p_${createdByCol.padEnd(13)} out ${tbl}.${createdByCol}%type`;
-            r += `,\n${tab}${tab}p_${updatedCol.padEnd(13)} out ${tbl}.${updatedCol}%type`;
-            r += `,\n${tab}${tab}p_${updatedByCol.padEnd(13)} out ${tbl}.${updatedByCol}%type`;
+            r += `,\n${tab}${tab}p_${createdCol.padEnd(apxPadWidthBody)} out ${tbl}.${createdCol}%type`;
+            r += `,\n${tab}${tab}p_${createdByCol.padEnd(apxPadWidthBody)} out ${tbl}.${createdByCol}%type`;
+            r += `,\n${tab}${tab}p_${updatedCol.padEnd(apxPadWidthBody)} out ${tbl}.${updatedCol}%type`;
+            r += `,\n${tab}${tab}p_${updatedByCol.padEnd(apxPadWidthBody)} out ${tbl}.${updatedByCol}%type`;
         }
         r += `\n${tab}) is\n`;
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
@@ -772,7 +781,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}procedure ins (\n`;
         const insLines: string[] = [];
         for (const { name, nullable } of paramCols)
-            insLines.push(`${tab}${tab}p_${name.padEnd(13)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+            insLines.push(`${tab}${tab}p_${name.padEnd(apxPadWidthBody)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
         insLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
         r += insLines.join(',\n') + `\n${tab}) is\n`;
         r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
@@ -787,7 +796,7 @@ export class OraclePlsqlBuilder {
         const updLines: string[] = [];
         updLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
         for (const { name, nullable } of paramCols)
-            updLines.push(`${tab}${tab}p_${name.padEnd(13)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+            updLines.push(`${tab}${tab}p_${name.padEnd(apxPadWidthBody)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
         if (hasVer) updLines.push(`${tab}${tab}p_row_version  in out ${tbl}.row_version%type`);
         r += updLines.join(',\n') + `\n${tab}) is\n`;
         r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
