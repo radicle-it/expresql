@@ -657,11 +657,15 @@ export class OracleDDLGenerator extends BaseGenerator {
         // TAPI
         j = 0;
         const isLayered = this._ddl.optionEQvalue('api', 'layered');
-        // Emit shared tenant-context package first so all DALs can reference it.
+        // Emit shared tenant-context packages first so all DALs can reference them: the
+        // read-only tenant_ctx (get_id, safe to grant broadly) and the separate, more tightly
+        // granted tenant_bootstrap (set_id/clear_id, must be the CREATE CONTEXT trusted package).
         if (isLayered && this._ddl.optionEQvalue('tenantid', true)) {
             if (j++ === 0) output += '-- APIs\n';
             output += this._plsql.generateTenantCtxSpec(this._ddl.objPrefix()) + '\n';
             output += this._plsql.generateTenantCtxBody(this._ddl.objPrefix()) + '\n';
+            output += this._plsql.generateTenantBootstrapSpec(this._ddl.objPrefix()) + '\n';
+            output += this._plsql.generateTenantBootstrapBody(this._ddl.objPrefix()) + '\n';
         }
         for (const node of descendants) {
             const hasApiDir = node.trimmedContent().toLowerCase().includes('/api');

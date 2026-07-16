@@ -685,13 +685,17 @@ Enables the shared-schema multi-tenancy pattern. When set to `yes`, for each gen
 
 If `tenant_id` is already declared as an explicit column, the synthetic column is skipped (no duplicate); the auto-FK is also skipped (the user manages it via `/fk`).
 
-**Shared `tenant_ctx` package** — when `api: layered` is combined with `tenantid: yes`, QuickSQL also generates once, before any DAL, a shared `<prefix>tenant_ctx` package that centralizes tenant-scoping for every generated DAL and read-only view:
+**Shared `tenant_ctx` / `tenant_bootstrap` packages** — when `api: layered` is combined with `tenantid: yes`, QuickSQL also generates once, before any DAL, two packages that split tenant-scoping by privilege level:
 
-- `function get_id return integer` — returns the tenant ID bound to the current session (`null` when not set).
-- `procedure set_id(p_tenant_id in integer)` — binds the tenant ID at session start (logon trigger, REST auth handler, or connection-pool checkout).
-- `procedure clear_id` — resets the tenant ID for the current session (connection-pool checkout, logoff, or test teardown).
+- **`<prefix>tenant_ctx`** (read-only, safe to grant broadly to any application/APEX runtime role):
+  - `function get_id return integer` — returns the tenant ID bound to the current session (`null` when not set). A plain `SYS_CONTEXT` read, no privilege restriction.
+- **`<prefix>tenant_bootstrap`** (mutating, grant only to a trusted bootstrap principal — a logon trigger owner or a dedicated auth handler, never the general application role):
+  - `procedure set_id(p_tenant_id in integer)` — binds the tenant ID at session start (logon trigger, REST auth handler, or connection-pool checkout).
+  - `procedure clear_id` — resets the tenant ID for the current session (connection-pool checkout, logoff, or test teardown).
 
-All three must be invoked through this package: `DBMS_SESSION.SET_CONTEXT`/`CLEAR_CONTEXT` raise `ORA-01031` if called directly from outside the trusted package associated with the context via `CREATE CONTEXT ... USING`. Run `CREATE OR REPLACE CONTEXT <prefix>tenant_ctx USING <prefix>tenant_ctx;` once as DBA before first use.
+`set_id`/`clear_id` must live in `tenant_bootstrap`, not `tenant_ctx`: `DBMS_SESSION.SET_CONTEXT`/`CLEAR_CONTEXT` raise `ORA-01031` if called from outside the trusted package named in `CREATE CONTEXT ... USING` — and that package cannot also be the one broadly granted to application code, or every caller with `get_id` access could impersonate any tenant via `set_id`. Run `CREATE OR REPLACE CONTEXT <prefix>tenant_ctx USING <prefix>tenant_bootstrap;` once as DBA before first use (note: the context *namespace* stays named `tenant_ctx`; only the trusted package is `tenant_bootstrap`).
+
+> **Breaking change (2.x → 3.0.0)**: prior to 3.0.0, `set_id`/`clear_id` lived directly on `<prefix>tenant_ctx`. Regenerating with 3.0.0+ moves them to `<prefix>tenant_bootstrap` — update any hand-written caller (`ex1_tenant_ctx.set_id(...)` → `ex1_tenant_bootstrap.set_id(...)`).
 
 **Supra-tenant tables** (lookup data, tenant master, global config) that must not have a `TENANT_ID` can be marked with the `/notenantid` table directive. QuickSQL skips the synthetic column and all tenant-scoped logic for those tables, and FK references to them remain simple (no composite).
 

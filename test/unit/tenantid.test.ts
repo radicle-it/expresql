@@ -537,39 +537,71 @@ orders
     });
 });
 
-// ── 18. tenant_ctx clear_id() ─────────────────────────────────────────────────
-// Added so callers have a trusted-package way to reset the tenant context (pool
-// checkout/logoff/test teardown) without hitting ORA-01031 from DBMS_SESSION.CLEAR_CONTEXT
-// called outside the package associated with the context via CREATE CONTEXT ... USING.
+// ── 18. tenant_ctx / tenant_bootstrap split (set_id/clear_id vs get_id) ───────
+// set_id/clear_id must live in the package named in CREATE CONTEXT ... USING (the trusted
+// package): DBMS_SESSION.SET_CONTEXT/CLEAR_CONTEXT raise ORA-01031 for any other caller. Since
+// get_id (a plain SYS_CONTEXT read) carries no such restriction, it lives in a separate,
+// broadly-grantable package (tenant_ctx) so a real deployment can grant EXECUTE on tenant_ctx to
+// the general application/APEX role while restricting tenant_bootstrap to a trusted bootstrap
+// principal (logon trigger owner, auth handler) — closing the "anyone can impersonate any tenant"
+// gap that a single shared package could never close via grants alone.
 
-describe('tenantid: yes — tenant_ctx.clear_id()', () => {
-    // tenant_ctx is only emitted alongside a layered DAL that references it (generator.ts:661),
-    // so this needs api: layered + a table carrying /api, not just tenantid: yes alone.
+describe('tenantid: yes — tenant_ctx / tenant_bootstrap package split', () => {
+    // tenant_ctx/tenant_bootstrap are only emitted alongside a layered DAL that references them
+    // (generator.ts:661), so this needs api: layered + a table carrying /api, not just tenantid: yes.
     const qsql = `
 customers /api
   full_name vc200 /nn
 
 # settings = { tenantid: yes, prefix: "app_", api: layered }`;
 
-    test('clear_id is declared in the tenant_ctx package spec', () => {
+    test('tenant_ctx spec declares ONLY get_id (no set_id/clear_id)', () => {
         const out = ddl(qsql);
         const specPos = out.indexOf('create or replace package app_tenant_ctx as');
         const specEnd = out.indexOf('end app_tenant_ctx;', specPos);
-        expect(out.substring(specPos, specEnd)).toContain('procedure clear_id;');
+        const block = out.substring(specPos, specEnd);
+        expect(block).toContain('function get_id return integer;');
+        expect(block).not.toContain('procedure set_id');
+        expect(block).not.toContain('procedure clear_id');
     });
 
-    test('clear_id is implemented in the tenant_ctx package body', () => {
+    test('tenant_ctx body implements ONLY get_id', () => {
         const out = ddl(qsql);
         const bodyPos = out.indexOf('create or replace package body app_tenant_ctx as');
         const bodyEnd = out.indexOf('end app_tenant_ctx;', bodyPos);
         const block = out.substring(bodyPos, bodyEnd);
-        expect(block).toContain('procedure clear_id is');
+        expect(block).toContain("sys_context('app_tenant_ctx', 'tenant_id')");
+        expect(block).not.toContain('dbms_session.set_context');
+        expect(block).not.toContain('dbms_session.clear_context');
+    });
+
+    test('tenant_bootstrap spec declares set_id and clear_id', () => {
+        const out = ddl(qsql);
+        const specPos = out.indexOf('create or replace package app_tenant_bootstrap as');
+        const specEnd = out.indexOf('end app_tenant_bootstrap;', specPos);
+        expect(specPos).toBeGreaterThan(-1);
+        const block = out.substring(specPos, specEnd);
+        expect(block).toContain('procedure set_id(p_tenant_id in integer);');
+        expect(block).toContain('procedure clear_id;');
+    });
+
+    test('tenant_bootstrap body sets/clears the tenant_ctx namespace', () => {
+        const out = ddl(qsql);
+        const bodyPos = out.indexOf('create or replace package body app_tenant_bootstrap as');
+        const bodyEnd = out.indexOf('end app_tenant_bootstrap;', bodyPos);
+        const block = out.substring(bodyPos, bodyEnd);
+        expect(block).toContain("dbms_session.set_context('app_tenant_ctx', 'tenant_id', to_char(p_tenant_id));");
         expect(block).toContain("dbms_session.clear_context('app_tenant_ctx');");
     });
 
-    test('get_id and set_id are unchanged alongside the new clear_id', () => {
+    test('CREATE CONTEXT comment names tenant_bootstrap as the trusted package', () => {
         const out = ddl(qsql);
-        expect(out).toContain('function get_id return integer;');
-        expect(out).toContain('procedure set_id(p_tenant_id in integer);');
+        expect(out).toContain('create or replace context app_tenant_ctx using app_tenant_bootstrap');
+    });
+
+    test('tenant_bootstrap appears after tenant_ctx in the output', () => {
+        const out = ddl(qsql);
+        expect(out.indexOf('create or replace package app_tenant_ctx as'))
+            .toBeLessThan(out.indexOf('create or replace package app_tenant_bootstrap as'));
     });
 });

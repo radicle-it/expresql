@@ -989,30 +989,25 @@ export class OraclePlsqlBuilder {
     }
 
     /**
-     * Spec for the shared tenant-context package.
+     * Spec for the shared tenant-context package (read-only side).
      * Emitted once before any DAL that references <prefix>tenant_ctx.get_id.
-     * The CREATE CONTEXT statement (commented out here) must be run once by a DBA
-     * or schema owner with CREATE ANY CONTEXT privilege.
+     * Contains ONLY get_id: a pure SYS_CONTEXT read has no privilege restriction, so this
+     * package is safe to grant broadly to application/APEX runtime roles. Mutating the
+     * context (set_id/clear_id) lives in the separate, more tightly-granted
+     * generateTenantBootstrapSpec/Body package — see its doc comment for why.
      */
     generateTenantCtxSpec(prefix: string): string {
         const pkg = (prefix + 'tenant_ctx').toLowerCase();
-        let r = `-- Shared tenant-isolation context provider\n`;
-        r += `-- Run once as DBA: create or replace context ${pkg} using ${pkg};\n`;
+        let r = `-- Shared tenant-isolation context provider (read-only side)\n`;
         r += `create or replace package ${pkg} as\n\n`;
         r += `${tab}-- Returns the tenant ID bound to the current session (null when not set).\n`;
+        r += `${tab}-- Safe to grant broadly: a SYS_CONTEXT read carries no privilege restriction.\n`;
         r += `${tab}function get_id return integer;\n\n`;
-        r += `${tab}-- Binds the tenant ID at session start (logon trigger or REST auth handler).\n`;
-        r += `${tab}procedure set_id(p_tenant_id in integer);\n\n`;
-        r += `${tab}-- Clears the tenant ID bound to the current session (connection-pool checkout\n`;
-        r += `${tab}-- boundaries, logoff, or test teardown). Must be called from within this trusted\n`;
-        r += `${tab}-- package, same restriction as set_id: DBMS_SESSION.CLEAR_CONTEXT raises ORA-01031\n`;
-        r += `${tab}-- if invoked directly by code outside this package.\n`;
-        r += `${tab}procedure clear_id;\n\n`;
         r += `end ${pkg};\n/\n`;
         return r;
     }
 
-    /** Body for the shared tenant-context package. */
+    /** Body for the shared tenant-context package (read-only side). */
     generateTenantCtxBody(prefix: string): string {
         const pkg = (prefix + 'tenant_ctx').toLowerCase();
         let r = `create or replace package body ${pkg} as\n\n`;
@@ -1020,15 +1015,51 @@ export class OraclePlsqlBuilder {
         r += `${tab}begin\n`;
         r += `${tab}${tab}return to_number(sys_context('${pkg}', 'tenant_id'));\n`;
         r += `${tab}end get_id;\n\n`;
+        r += `end ${pkg};\n/\n`;
+        return r;
+    }
+
+    /**
+     * Spec for the tenant-bootstrap package (mutating side: set_id/clear_id).
+     * This is the package that must be named in `CREATE CONTEXT <ns> USING <this pkg>` — Oracle
+     * restricts DBMS_SESSION.SET_CONTEXT/CLEAR_CONTEXT for a given namespace to callers compiled
+     * inside that exact trusted package (ORA-01031 otherwise), so set_id and clear_id cannot live
+     * in the general-purpose <prefix>tenant_ctx package if that one is meant to be granted broadly
+     * to application/APEX runtime roles. Grant EXECUTE on this package ONLY to a trusted bootstrap
+     * principal (a logon trigger's owning schema, or a dedicated auth handler) — never to the
+     * general application role, which should only get EXECUTE on <prefix>tenant_ctx (get_id).
+     */
+    generateTenantBootstrapSpec(prefix: string): string {
+        const ctxPkg = (prefix + 'tenant_ctx').toLowerCase();
+        const bootPkg = (prefix + 'tenant_bootstrap').toLowerCase();
+        let r = `-- Tenant-isolation bootstrap provider (mutating side: set_id/clear_id)\n`;
+        r += `-- Run once as DBA: create or replace context ${ctxPkg} using ${bootPkg};\n`;
+        r += `-- Grant EXECUTE on ${bootPkg} ONLY to a trusted bootstrap principal (logon trigger\n`;
+        r += `-- owner or auth handler) — never to the general application/APEX runtime role.\n`;
+        r += `create or replace package ${bootPkg} as\n\n`;
+        r += `${tab}-- Binds the tenant ID at session start (logon trigger or REST auth handler).\n`;
+        r += `${tab}procedure set_id(p_tenant_id in integer);\n\n`;
+        r += `${tab}-- Clears the tenant ID bound to the current session (connection-pool checkout\n`;
+        r += `${tab}-- boundaries, logoff, or test teardown).\n`;
+        r += `${tab}procedure clear_id;\n\n`;
+        r += `end ${bootPkg};\n/\n`;
+        return r;
+    }
+
+    /** Body for the tenant-bootstrap package (mutating side: set_id/clear_id). */
+    generateTenantBootstrapBody(prefix: string): string {
+        const ctxPkg = (prefix + 'tenant_ctx').toLowerCase();
+        const bootPkg = (prefix + 'tenant_bootstrap').toLowerCase();
+        let r = `create or replace package body ${bootPkg} as\n\n`;
         r += `${tab}procedure set_id(p_tenant_id in integer) is\n`;
         r += `${tab}begin\n`;
-        r += `${tab}${tab}dbms_session.set_context('${pkg}', 'tenant_id', to_char(p_tenant_id));\n`;
+        r += `${tab}${tab}dbms_session.set_context('${ctxPkg}', 'tenant_id', to_char(p_tenant_id));\n`;
         r += `${tab}end set_id;\n\n`;
         r += `${tab}procedure clear_id is\n`;
         r += `${tab}begin\n`;
-        r += `${tab}${tab}dbms_session.clear_context('${pkg}');\n`;
+        r += `${tab}${tab}dbms_session.clear_context('${ctxPkg}');\n`;
         r += `${tab}end clear_id;\n\n`;
-        r += `end ${pkg};\n/\n`;
+        r += `end ${bootPkg};\n/\n`;
         return r;
     }
 }

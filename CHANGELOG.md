@@ -10,6 +10,16 @@ maintained by Radicle IT, released under the same Universal Permissive
 License v1.0. Versions and entries below `1.2.15` are inherited from the
 upstream project.
 
+## [3.0.0] - 2026-07-16
+
+### BREAKING: split `tenant_ctx` into `tenant_ctx` (read) / `tenant_bootstrap` (write)
+
+- **`set_id`/`clear_id` moved from `<prefix>tenant_ctx` to a new `<prefix>tenant_bootstrap` package.** `<prefix>tenant_ctx` now exposes only `get_id`. Reason: `DBMS_SESSION.SET_CONTEXT`/`CLEAR_CONTEXT` can only be called from the package named in `CREATE CONTEXT ... USING` (the trusted package) — keeping `set_id` there meant that package could never be granted broadly to application/APEX roles without also handing out the ability to impersonate any tenant. Splitting the package makes the privilege boundary real: grant `tenant_ctx` (read-only) broadly, grant `tenant_bootstrap` (mutating) only to a trusted bootstrap principal (logon trigger owner, auth handler).
+- **Migration**: any hand-written or previously generated caller of `<prefix>tenant_ctx.set_id(...)` or `.clear_id` must be updated to `<prefix>tenant_bootstrap.set_id(...)` / `.clear_id`. `CREATE OR REPLACE CONTEXT <prefix>tenant_ctx USING ...` must now reference `<prefix>tenant_bootstrap`, not `<prefix>tenant_ctx`.
+- `doc/user/quick-sql-grammar.md` — updated the `tenantID` section with the two-package contract and a breaking-change callout.
+- `doc/user/multitenant-design.md` §9.2 — updated the note to describe both generated packages and why the split exists.
+- `test/unit/tenantid.test.ts` — section 18 rewritten to cover the split (spec/body content of both packages, `CREATE CONTEXT` trusted-package reference, generation order).
+
 ## [2.1.0] - 2026-07-16
 
 ### Multi-tenancy: `tenant_ctx.clear_id()`

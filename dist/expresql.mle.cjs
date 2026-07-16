@@ -10619,12 +10619,20 @@ var L = class {
 		return o += this.procDecl(e, "get") + ";\n\n", o += this.procDecl(e, "insert") + ";\n\n", o += this.procDecl(e, "update") + ";\n\n", o += "    procedure delete_row (\n        p_" + n + "              in integer" + i + "\n    );\nend " + t.toLowerCase() + "_api;\n/\n\n", o += ("create or replace package body " + t.toLowerCase() + "_API\nis\n\n").toLowerCase(), o += this.procDecl(e, "get") + "\n" + this._getRowBody(e), o += this.procDecl(e, "insert") + "\n" + this._insertRowBody(e), o += this.procDecl(e, "update") + "\n" + this._updateRowBody(e), o += "    procedure delete_row (\n        p_" + n + "              in integer" + i + "\n    )\n    is\n    begin\n        delete from " + t.toLowerCase() + " where " + a + ";\n    end delete_row;\nend " + t.toLowerCase() + "_api;\n/\n", o.toLowerCase();
 	}
 	generateTenantCtxSpec(e) {
-		let t = (e + "tenant_ctx").toLowerCase(), n = "-- Shared tenant-isolation context provider\n";
-		return n += `-- Run once as DBA: create or replace context ${t} using ${t};\n`, n += `create or replace package ${t} as\n\n`, n += `${O}-- Returns the tenant ID bound to the current session (null when not set).\n`, n += `${O}function get_id return integer;\n\n`, n += `${O}-- Binds the tenant ID at session start (logon trigger or REST auth handler).\n`, n += `${O}procedure set_id(p_tenant_id in integer);\n\n`, n += `${O}-- Clears the tenant ID bound to the current session (connection-pool checkout\n`, n += `${O}-- boundaries, logoff, or test teardown). Must be called from within this trusted\n`, n += `${O}-- package, same restriction as set_id: DBMS_SESSION.CLEAR_CONTEXT raises ORA-01031\n`, n += `${O}-- if invoked directly by code outside this package.\n`, n += `${O}procedure clear_id;\n\n`, n += `end ${t};\n/\n`, n;
+		let t = (e + "tenant_ctx").toLowerCase(), n = "-- Shared tenant-isolation context provider (read-only side)\n";
+		return n += `create or replace package ${t} as\n\n`, n += `${O}-- Returns the tenant ID bound to the current session (null when not set).\n`, n += `${O}-- Safe to grant broadly: a SYS_CONTEXT read carries no privilege restriction.\n`, n += `${O}function get_id return integer;\n\n`, n += `end ${t};\n/\n`, n;
 	}
 	generateTenantCtxBody(e) {
 		let t = (e + "tenant_ctx").toLowerCase(), n = `create or replace package body ${t} as\n\n`;
-		return n += `${O}function get_id return integer is\n`, n += `${O}begin\n`, n += `${O}${O}return to_number(sys_context('${t}', 'tenant_id'));\n`, n += `${O}end get_id;\n\n`, n += `${O}procedure set_id(p_tenant_id in integer) is\n`, n += `${O}begin\n`, n += `${O}${O}dbms_session.set_context('${t}', 'tenant_id', to_char(p_tenant_id));\n`, n += `${O}end set_id;\n\n`, n += `${O}procedure clear_id is\n`, n += `${O}begin\n`, n += `${O}${O}dbms_session.clear_context('${t}');\n`, n += `${O}end clear_id;\n\n`, n += `end ${t};\n/\n`, n;
+		return n += `${O}function get_id return integer is\n`, n += `${O}begin\n`, n += `${O}${O}return to_number(sys_context('${t}', 'tenant_id'));\n`, n += `${O}end get_id;\n\n`, n += `end ${t};\n/\n`, n;
+	}
+	generateTenantBootstrapSpec(e) {
+		let t = (e + "tenant_ctx").toLowerCase(), n = (e + "tenant_bootstrap").toLowerCase(), r = "-- Tenant-isolation bootstrap provider (mutating side: set_id/clear_id)\n";
+		return r += `-- Run once as DBA: create or replace context ${t} using ${n};\n`, r += `-- Grant EXECUTE on ${n} ONLY to a trusted bootstrap principal (logon trigger\n`, r += "-- owner or auth handler) — never to the general application/APEX runtime role.\n", r += `create or replace package ${n} as\n\n`, r += `${O}-- Binds the tenant ID at session start (logon trigger or REST auth handler).\n`, r += `${O}procedure set_id(p_tenant_id in integer);\n\n`, r += `${O}-- Clears the tenant ID bound to the current session (connection-pool checkout\n`, r += `${O}-- boundaries, logoff, or test teardown).\n`, r += `${O}procedure clear_id;\n\n`, r += `end ${n};\n/\n`, r;
+	}
+	generateTenantBootstrapBody(e) {
+		let t = (e + "tenant_ctx").toLowerCase(), n = (e + "tenant_bootstrap").toLowerCase(), r = `create or replace package body ${n} as\n\n`;
+		return r += `${O}procedure set_id(p_tenant_id in integer) is\n`, r += `${O}begin\n`, r += `${O}${O}dbms_session.set_context('${t}', 'tenant_id', to_char(p_tenant_id));\n`, r += `${O}end set_id;\n\n`, r += `${O}procedure clear_id is\n`, r += `${O}begin\n`, r += `${O}${O}dbms_session.clear_context('${t}');\n`, r += `${O}end clear_id;\n\n`, r += `end ${n};\n/\n`, r;
 	}
 }, Ce = " not null";
 function we(e) {
@@ -11001,7 +11009,7 @@ var R = class extends ge {
 		}
 		r = 0;
 		let i = this._ddl.optionEQvalue("api", "layered");
-		i && this._ddl.optionEQvalue("tenantid", !0) && (r++ === 0 && (n += "-- APIs\n"), n += this._plsql.generateTenantCtxSpec(this._ddl.objPrefix()) + "\n", n += this._plsql.generateTenantCtxBody(this._ddl.objPrefix()) + "\n");
+		i && this._ddl.optionEQvalue("tenantid", !0) && (r++ === 0 && (n += "-- APIs\n"), n += this._plsql.generateTenantCtxSpec(this._ddl.objPrefix()) + "\n", n += this._plsql.generateTenantCtxBody(this._ddl.objPrefix()) + "\n", n += this._plsql.generateTenantBootstrapSpec(this._ddl.objPrefix()) + "\n", n += this._plsql.generateTenantBootstrapBody(this._ddl.objPrefix()) + "\n");
 		for (let e of t) {
 			let t = e.trimmedContent().toLowerCase().includes("/api");
 			if (i) {

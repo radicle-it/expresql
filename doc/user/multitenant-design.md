@@ -743,7 +743,7 @@ end pkg_app_context;
 
 > **`clear_context`**: la firma corretta richiede namespace, client_id, attribute. Usare `null` per client_id se non si usa il client identifier.
 
-> **Generato automaticamente da QuickSQL**: quando si usa `api: layered` insieme a `tenantid: yes`, QuickSQL genera gia' un package equivalente (`<prefix>tenant_ctx`, con `get_id`/`set_id`/`clear_id`) — l'esempio manuale sopra resta utile per schemi che gestiscono anche `USER_ID`/`USERNAME` o altri attributi custom oltre al solo tenant, ma non serve scriverlo a mano solo per il tenant se si sta gia' usando la generazione a livelli.
+> **Generato automaticamente da QuickSQL**: quando si usa `api: layered` insieme a `tenantid: yes`, QuickSQL genera gia' due package equivalenti — `<prefix>tenant_ctx` (solo `get_id`, da concedere in EXECUTE liberamente a qualunque ruolo runtime applicativo/APEX) e `<prefix>tenant_bootstrap` (`set_id`/`clear_id`, da concedere in EXECUTE solo a un principal bootstrap fidato: chi possiede il logon trigger o l'handler di autenticazione, mai il ruolo applicativo generale). La separazione in due package, non uno solo, e' voluta: `set_id`/`clear_id` devono vivere nel package trusted associato al context (altrimenti `ORA-01031`), e quel package non puo' essere lo stesso concesso genericamente all'applicazione, o chiunque abbia accesso a `get_id` potrebbe impersonare qualunque tenant tramite `set_id`. L'esempio manuale sopra resta utile per schemi che gestiscono anche `USER_ID`/`USERNAME` o altri attributi custom oltre al solo tenant, ma non serve scriverlo a mano solo per il tenant se si sta gia' usando la generazione a livelli.
 
 ### 9.3 Integrazione con connection pool (Java/Python/Node)
 
