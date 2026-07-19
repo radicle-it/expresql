@@ -969,20 +969,16 @@ export class OraclePlsqlBuilder {
     private _generateRstSpec(node: IDdlNode): string {
         const tbl  = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
         const rst  = tbl + '_rst';
-        const pkNm = (node.getPkName() ?? 'id').toLowerCase();
         const res  = node.parseName().toLowerCase();
         let r = `create or replace package ${rst} as\n\n`;
         r += `${tab}-- ORDS resource handlers for /${res}\n`;
-        r += `${tab}-- Map GET    /${res}/:${pkNm}  → get_one\n`;
-        r += `${tab}-- Map GET    /${res}/          → get_all\n`;
-        r += `${tab}-- Map POST   /${res}/          → post_one\n`;
-        r += `${tab}-- Map PUT    /${res}/:${pkNm}  → put_one\n`;
-        r += `${tab}-- Map DELETE /${res}/:${pkNm}  → delete_one\n\n`;
-        r += `${tab}procedure get_one    (p_${pkNm} in ${tbl}.${pkNm}%type);\n`;
+        r += `${tab}-- Bind :p_id to the URL path parameter, :body_text to the request body,\n`;
+        r += `${tab}-- and :status to the HTTP response status output bind.\n\n`;
+        r += `${tab}procedure get;\n`;
         r += `${tab}procedure get_all;\n`;
-        r += `${tab}procedure post_one   (p_body    in clob);\n`;
-        r += `${tab}procedure put_one    (p_${pkNm} in ${tbl}.${pkNm}%type, p_body in clob);\n`;
-        r += `${tab}procedure delete_one (p_${pkNm} in ${tbl}.${pkNm}%type);\n\n`;
+        r += `${tab}procedure ins;\n`;
+        r += `${tab}procedure upd;\n`;
+        r += `${tab}procedure del;\n\n`;
         r += `end ${rst};\n/\n`;
         return r;
     }
@@ -996,82 +992,115 @@ export class OraclePlsqlBuilder {
         const paramCols = this._svcParamCols(node);
         const hasVer    = this._hasVersionCol(node);
 
+        // json_object() column list for a %rowtype variable named l_row
+        const jsonCols = [
+            `'${pkNm}' value l_row.${pkNm}`,
+            ...paramCols.map(({ name }) => `'${name}' value l_row.${name}`),
+            ...(hasVer ? [`'row_version' value l_row.row_version`] : []),
+        ];
+        const jsonObj = (indent: string) =>
+            `json_object(\n${indent}${tab}` +
+            jsonCols.join(`,\n${indent}${tab}`) +
+            `\n${indent}${tab}returning clob\n${indent})`;
+
+        // shared exception handler block
+        const exc =
+            `${tab}exception\n` +
+            `${tab}${tab}when others then\n` +
+            `${tab}${tab}${tab}rollback;\n` +
+            `${tab}${tab}${tab}:status := case sqlcode\n` +
+            `${tab}${tab}${tab}${tab}when -20001 then 409\n` +
+            `${tab}${tab}${tab}${tab}when -20002 then 404\n` +
+            `${tab}${tab}${tab}${tab}when -20003 then 409\n` +
+            `${tab}${tab}${tab}${tab}else              500\n` +
+            `${tab}${tab}${tab}end;\n` +
+            `${tab}${tab}${tab}htp.p(json_object('error_code' value sqlcode, 'message' value sqlerrm, 'detail' value dbms_utility.format_error_backtrace));\n`;
+
         let r = `create or replace package body ${rst} as\n\n`;
 
-        // private: serialise a single row to an open apex_json object
-        r += `${tab}procedure p_write_row (p_row in ${tbl}%rowtype) is\n`;
-        r += `${tab}begin\n`;
-        r += `${tab}${tab}apex_json.open_object;\n`;
-        r += `${tab}${tab}apex_json.write('${pkNm}', p_row.${pkNm});\n`;
-        for (const { name } of paramCols)
-            r += `${tab}${tab}apex_json.write('${name}', p_row.${name});\n`;
-        if (hasVer) r += `${tab}${tab}apex_json.write('row_version', p_row.row_version);\n`;
-        r += `${tab}${tab}apex_json.close_object;\n`;
-        r += `${tab}end p_write_row;\n\n`;
-
-        // get_one
-        r += `${tab}procedure get_one (p_${pkNm} in ${tbl}.${pkNm}%type) is\n`;
+        // get — single row by :p_id
+        r += `${tab}procedure get is\n`;
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
         r += `${tab}begin\n`;
-        r += `${tab}${tab}l_row := ${svc}.get(p_id => p_${pkNm});\n`;
-        r += `${tab}${tab}p_write_row(l_row);\n`;
-        r += `${tab}end get_one;\n\n`;
+        r += `${tab}${tab}l_row := ${svc}.get(p_id => :p_id);\n`;
+        r += `${tab}${tab}:status := 200;\n`;
+        r += `${tab}${tab}htp.p(${jsonObj(tab + tab)});\n`;
+        r += exc;
+        r += `${tab}end get;\n\n`;
 
-        // get_all
+        // get_all — full collection (tenant-scoped via dal.get_all when tenantid active)
         r += `${tab}procedure get_all is\n`;
         r += `${tab}${tab}l_cur ${dal}.t_cursor;\n`;
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+        r += `${tab}${tab}l_sep varchar2(1) := '';\n`;
         r += `${tab}begin\n`;
         r += `${tab}${tab}l_cur := ${dal}.get_all;\n`;
-        r += `${tab}${tab}apex_json.open_array;\n`;
+        r += `${tab}${tab}htp.p('[');\n`;
         r += `${tab}${tab}loop\n`;
         r += `${tab}${tab}${tab}fetch l_cur into l_row;\n`;
         r += `${tab}${tab}${tab}exit when l_cur%notfound;\n`;
-        r += `${tab}${tab}${tab}p_write_row(l_row);\n`;
+        r += `${tab}${tab}${tab}htp.p(l_sep || ${jsonObj(tab + tab + tab)});\n`;
+        r += `${tab}${tab}${tab}l_sep := ',';\n`;
         r += `${tab}${tab}end loop;\n`;
         r += `${tab}${tab}close l_cur;\n`;
-        r += `${tab}${tab}apex_json.close_array;\n`;
+        r += `${tab}${tab}htp.p(']');\n`;
+        r += `${tab}${tab}:status := 200;\n`;
+        r += exc;
         r += `${tab}end get_all;\n\n`;
 
-        // post_one — parse body, create, return 201 + {"id": <new_id>}
-        r += `${tab}procedure post_one (p_body in clob) is\n`;
-        r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
-        r += `${tab}${tab}l_id  ${tbl}.${pkNm}%type;\n`;
+        // ins — create from :body_text
+        r += `${tab}procedure ins is\n`;
+        r += `${tab}${tab}l_body clob := :body_text;\n`;
+        r += `${tab}${tab}l_rec  ${svc}.t_rec;\n`;
+        r += `${tab}${tab}l_id   ${tbl}.${pkNm}%type;\n`;
         r += `${tab}begin\n`;
-        r += `${tab}${tab}apex_json.parse(p_body);\n`;
+        r += `${tab}${tab}if l_body is null or not json_exists(l_body, '$') then\n`;
+        r += `${tab}${tab}${tab}:status := 400;\n`;
+        r += `${tab}${tab}${tab}htp.p(json_object('message' value 'request body must be valid json'));\n`;
+        r += `${tab}${tab}${tab}return;\n`;
+        r += `${tab}${tab}end if;\n`;
         for (const { name } of paramCols)
-            r += `${tab}${tab}l_rec.${name} := apex_json.get_varchar2(p_path => '${name}');\n`;
+            r += `${tab}${tab}l_rec.${name} := json_value(l_body, '$.${name}');\n`;
         r += `${tab}${tab}${svc}.create_rec(p_rec => l_rec, x_id => l_id);\n`;
-        r += `${tab}${tab}owa_util.status_line(201, 'Created');\n`;
-        r += `${tab}${tab}owa_util.mime_header('application/json', false);\n`;
-        r += `${tab}${tab}owa_util.http_header_close;\n`;
-        r += `${tab}${tab}apex_json.open_object;\n`;
-        r += `${tab}${tab}apex_json.write('${pkNm}', l_id);\n`;
-        r += `${tab}${tab}apex_json.close_object;\n`;
-        r += `${tab}end post_one;\n\n`;
+        r += `${tab}${tab}:status := 201;\n`;
+        r += `${tab}${tab}htp.p(json_object('${pkNm}' value l_id));\n`;
+        r += exc;
+        r += `${tab}end ins;\n\n`;
 
-        // put_one — parse body, update
-        r += `${tab}procedure put_one (p_${pkNm} in ${tbl}.${pkNm}%type, p_body in clob) is\n`;
-        r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
-        if (hasVer) r += `${tab}${tab}l_ver ${tbl}.row_version%type;\n`;
+        // upd — update :p_id from :body_text
+        r += `${tab}procedure upd is\n`;
+        r += `${tab}${tab}l_body clob := :body_text;\n`;
+        r += `${tab}${tab}l_rec  ${svc}.t_rec;\n`;
         r += `${tab}begin\n`;
-        r += `${tab}${tab}apex_json.parse(p_body);\n`;
+        r += `${tab}${tab}if l_body is null or not json_exists(l_body, '$') then\n`;
+        r += `${tab}${tab}${tab}:status := 400;\n`;
+        r += `${tab}${tab}${tab}htp.p(json_object('message' value 'request body must be valid json'));\n`;
+        r += `${tab}${tab}${tab}return;\n`;
+        r += `${tab}${tab}end if;\n`;
         for (const { name } of paramCols)
-            r += `${tab}${tab}l_rec.${name} := apex_json.get_varchar2(p_path => '${name}');\n`;
+            r += `${tab}${tab}l_rec.${name} := json_value(l_body, '$.${name}');\n`;
         if (hasVer) {
-            r += `${tab}${tab}l_ver := apex_json.get_number(p_path => 'row_version');\n`;
-            r += `${tab}${tab}${svc}.update_rec(p_id => p_${pkNm}, p_rec => l_rec, p_row_version => l_ver);\n`;
+            r += `${tab}${tab}${svc}.update_rec(\n`;
+            r += `${tab}${tab}${tab}p_id          => :p_id,\n`;
+            r += `${tab}${tab}${tab}p_rec         => l_rec,\n`;
+            r += `${tab}${tab}${tab}p_row_version => json_value(l_body, '$.row_version' returning ${tbl}.row_version%type)\n`;
+            r += `${tab}${tab});\n`;
         } else {
-            r += `${tab}${tab}${svc}.update_rec(p_id => p_${pkNm}, p_rec => l_rec);\n`;
+            r += `${tab}${tab}${svc}.update_rec(p_id => :p_id, p_rec => l_rec);\n`;
         }
-        r += `${tab}end put_one;\n\n`;
+        r += `${tab}${tab}:status := 200;\n`;
+        r += `${tab}${tab}htp.p(json_object('${pkNm}' value :p_id));\n`;
+        r += exc;
+        r += `${tab}end upd;\n\n`;
 
-        // delete_one — delete, return 204 No Content
-        r += `${tab}procedure delete_one (p_${pkNm} in ${tbl}.${pkNm}%type) is\n`;
+        // del — delete :p_id
+        r += `${tab}procedure del is\n`;
         r += `${tab}begin\n`;
-        r += `${tab}${tab}${svc}.delete_rec(p_id => p_${pkNm});\n`;
-        r += `${tab}${tab}owa_util.status_line(204, 'No Content');\n`;
-        r += `${tab}end delete_one;\n\n`;
+        r += `${tab}${tab}${svc}.delete_rec(p_id => :p_id);\n`;
+        r += `${tab}${tab}:status := 200;\n`;
+        r += `${tab}${tab}htp.p(json_object('${pkNm}' value :p_id));\n`;
+        r += exc;
+        r += `${tab}end del;\n\n`;
 
         r += `end ${rst};\n/\n`;
         return r;
