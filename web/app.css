@@ -36,7 +36,7 @@
     --ln-color:       #5C5855;
     --ln-border:      #2B2926;
 
-    /* Quick SQL tokens — dark */
+    /* ExpreSQL tokens — dark */
     --qs-comment:     #6A9955;
     --qs-setting:     #608B4E;
     --qs-table:       #4FC1FF;
@@ -82,7 +82,7 @@
     --ln-color:       #9E9894;
     --ln-border:      #D4D0CB;
 
-    /* Quick SQL tokens — light (darker for contrast on white) */
+    /* ExpreSQL tokens — light (darker for contrast on white) */
     --qs-comment:     #3D7A4F;
     --qs-setting:     #2D6240;
     --qs-table:       #0060B0;
@@ -354,7 +354,7 @@ footer {
 footer.status-active { background: var(--accent); color: #fff; border-top-color: var(--accent); }
 footer.status-error  { background: var(--error-bg); color: var(--error-text); border-top-color: var(--error-border); }
 
-/* ── Quick SQL token colors ───────────────────────────────────────── */
+/* ── ExpreSQL token colors ────────────────────────────────────────── */
 .qs-comment    { color: var(--qs-comment);    font-style: italic; }
 .qs-setting    { color: var(--qs-setting);    font-style: italic; }
 .qs-table      { color: var(--qs-table);      font-weight: bold;  }

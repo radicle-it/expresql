@@ -1166,7 +1166,7 @@ export class OracleDiffGenerator implements DiffGenerator {
 
         let out = '';
         out += '-- ============================================================\n';
-        out += '-- QuickSQL Migration Script\n';
+        out += '-- ExpreSQL Migration Script\n';
         out += `-- Generated : ${new Date().toISOString()}\n`;
         out += '-- ============================================================\n';
 

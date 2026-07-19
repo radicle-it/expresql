@@ -46,7 +46,7 @@ function tokenize(text, tokens, defaultCls) {
     return html;
 }
 
-// ── Quick SQL ─────────────────────────────────────────────────────
+// ── ExpreSQL ──────────────────────────────────────────────────────
 // All regexes pre-compiled once at module load with 'i' flag.
 
 const QS_INLINE = [

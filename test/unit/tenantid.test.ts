@@ -1,7 +1,7 @@
 /**
  * Tests for the tenantid: yes setting.
  *
- * When tenantid: yes is active, QuickSQL:
+ * When tenantid: yes is active, ExpreSQL:
  *  1. Adds a tenant_id NUMBER column as the second column (after PK, before FK columns)
  *  2. Generates a (tenant_id, id) composite unique index + USING INDEX constraint
  *  3. Prefixes FK indices with (tenant_id, fk_col) instead of (fk_col)
@@ -401,7 +401,7 @@ customers /insert 5
     });
 
     test('explicit tenant_id column preserves its own nullability', () => {
-        // User declared the column — QuickSQL does not touch it
+        // User declared the column — ExpreSQL does not touch it
         const qsql = `
 orders
   tenant_id num /nn

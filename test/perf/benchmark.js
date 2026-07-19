@@ -36,7 +36,7 @@ function bench(name, input, runs) {
     return { name, median: med, outputLen: output.length };
 }
 
-console.log('QuickSQL Benchmark\n');
+console.log('ExpreSQL Benchmark\n');
 
 // Warmup
 quicksql.toDDL(syntheticInput);
