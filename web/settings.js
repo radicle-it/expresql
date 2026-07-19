@@ -178,7 +178,9 @@ export function initSettingsPanel() {
         body.querySelectorAll('.sett-row').forEach(row => {
             const label = row.querySelector('label');
             const text  = label ? label.textContent.toLowerCase() : '';
-            row.style.display = (!q || text.includes(q)) ? '' : 'none';
+            const ctrl  = row.querySelector('select, input[type=text], input[type=checkbox]');
+            const key   = ctrl ? (ctrl.id || '').replace(/^sett-/, '') : '';
+            row.style.display = (!q || text.includes(q) || key.includes(q)) ? '' : 'none';
         });
 
         body.querySelectorAll('.sett-group').forEach(group => {
