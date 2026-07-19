@@ -17,6 +17,7 @@
 - [Settings](#settings)
     - [apex](#apex)
     - [api](#api)
+    - [ifc](#ifc)
     - [auditcols](#auditcols)
     - [boolean](#boolean)
     - [compress](#compress)
@@ -38,6 +39,7 @@
     - [rowkey](#rowkey)
     - [tenantID](#tenantid)
     - [rowVersion](#rowversion)
+    - [readonlyviews](#readonlyviews)
     - [schema](#schema)
     - [semantics](#semantics)
     - [updatedByCol](#updatedbycol)
@@ -512,6 +514,25 @@ procedure delete_row (
 );
 ```
 
+### ifc
+
+**Possible Values**: `apex`, `none`  
+**Default Value**: `apex`
+
+Controls which presentation-layer package is generated on top of the `_svc` layer when `api: layered` is active.
+
+| Value | Behaviour |
+|---|---|
+| `apex` | Generates an `_apx` package (spec + body) with `get`, `ins`, `upd`, `del` procedures that map directly to APEX page-item parameters. |
+| `none` | Skips the `_apx` package entirely. Use this when the application talks directly to `_svc`, or when a different interface (REST, GraphQL, etc.) will be layered on top by hand. |
+
+```quicksql
+employees /api
+  name vc100 /nn
+
+# settings = { api: layered, ifc: none }
+```
+
 ### auditcols
 
 **Possible Values**: `true`, `false`  
@@ -779,6 +800,33 @@ QuickSQL generates `FOREIGN KEY (tenant_id) REFERENCES app_workspaces (id)` on `
 For each table generated add a ROW_VERSION column that increments by 1 for each
 update. When enabled database table trigger logic will be generated to increment
 row versions on update.
+
+### readonlyviews
+
+**Possible Values**: `true`, `false`  
+**Default Value**: `false`
+
+Appends `WITH READ ONLY` to every generated view, preventing DML through the view at the database level.
+
+```quicksql
+employees
+  name vc100 /nn
+view emp_v employees
+
+# settings = { readonlyviews: yes }
+```
+
+Generated view (excerpt):
+
+```sql
+create or replace view emp_v as
+select ...
+from employees
+with read only
+/
+```
+
+When `tenantid: yes` is also active, the view's `WHERE` clause uses `<prefix>tenant_ctx.get_id` to scope rows to the current session tenant, and `WITH READ ONLY` prevents callers from bypassing that filter through DML.
 
 ### schema
 
