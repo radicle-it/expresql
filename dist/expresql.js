@@ -10601,7 +10601,21 @@ var L = class {
 	generateLayeredTAPI(e) {
 		if (e.inferType() !== "table" || e.children.length === 0) return "";
 		let t = this._hasAuditLog(e), n = String(this.ctx.getOptionValue("ifc") ?? "apex").toLowerCase(), r = this._generateDalSpec(e) + "\n" + this._generateDalBody(e) + "\n" + this._generateHksSpec(e) + "\n" + this._generateHksBody(e) + "\n" + this._generateSvcSpec(e) + "\n";
-		return t && (r += this._generateAuditSpec(e) + "\n"), r += this._generateSvcBody(e), t && (r += "\n" + this._generateAuditBody(e)), (n === "apex" || n === "") && (r += "\n" + this._generateApxSpec(e) + "\n" + this._generateApxBody(e)), r;
+		return t && (r += this._generateAuditSpec(e) + "\n"), r += this._generateSvcBody(e), t && (r += "\n" + this._generateAuditBody(e)), n === "apex" || n === "" ? r += "\n" + this._generateApxSpec(e) + "\n" + this._generateApxBody(e) : n === "rest" && (r += "\n" + this._generateRstSpec(e) + "\n" + this._generateRstBody(e)), r;
+	}
+	_generateRstSpec(e) {
+		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_rst", r = (e.getPkName() ?? "id").toLowerCase(), i = e.parseName().toLowerCase(), a = `create or replace package ${n} as\n\n`;
+		return a += `${O}-- ORDS resource handlers for /${i}\n`, a += `${O}-- Map GET    /${i}/:${r}  → get_one\n`, a += `${O}-- Map GET    /${i}/          → get_all\n`, a += `${O}-- Map POST   /${i}/          → post_one\n`, a += `${O}-- Map PUT    /${i}/:${r}  → put_one\n`, a += `${O}-- Map DELETE /${i}/:${r}  → delete_one\n\n`, a += `${O}procedure get_one    (p_${r} in ${t}.${r}%type);\n`, a += `${O}procedure get_all;\n`, a += `${O}procedure post_one   (p_body    in clob);\n`, a += `${O}procedure put_one    (p_${r} in ${t}.${r}%type, p_body in clob);\n`, a += `${O}procedure delete_one (p_${r} in ${t}.${r}%type);\n\n`, a += `end ${n};\n/\n`, a;
+	}
+	_generateRstBody(e) {
+		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_dal", r = t + "_svc", i = t + "_rst", a = (e.getPkName() ?? "id").toLowerCase(), o = this._svcParamCols(e), s = this._hasVersionCol(e), c = `create or replace package body ${i} as\n\n`;
+		c += `${O}procedure p_write_row (p_row in ${t}%rowtype) is\n`, c += `${O}begin\n`, c += `${O}${O}apex_json.open_object;\n`, c += `${O}${O}apex_json.write('${a}', p_row.${a});\n`;
+		for (let { name: e } of o) c += `${O}${O}apex_json.write('${e}', p_row.${e});\n`;
+		s && (c += `${O}${O}apex_json.write('row_version', p_row.row_version);\n`), c += `${O}${O}apex_json.close_object;\n`, c += `${O}end p_write_row;\n\n`, c += `${O}procedure get_one (p_${a} in ${t}.${a}%type) is\n`, c += `${O}${O}l_row ${t}%rowtype;\n`, c += `${O}begin\n`, c += `${O}${O}l_row := ${r}.get(p_id => p_${a});\n`, c += `${O}${O}p_write_row(l_row);\n`, c += `${O}end get_one;\n\n`, c += `${O}procedure get_all is\n`, c += `${O}${O}l_cur ${n}.t_cursor;\n`, c += `${O}${O}l_row ${t}%rowtype;\n`, c += `${O}begin\n`, c += `${O}${O}l_cur := ${n}.get_all;\n`, c += `${O}${O}apex_json.open_array;\n`, c += `${O}${O}loop\n`, c += `${O}${O}${O}fetch l_cur into l_row;\n`, c += `${O}${O}${O}exit when l_cur%notfound;\n`, c += `${O}${O}${O}p_write_row(l_row);\n`, c += `${O}${O}end loop;\n`, c += `${O}${O}close l_cur;\n`, c += `${O}${O}apex_json.close_array;\n`, c += `${O}end get_all;\n\n`, c += `${O}procedure post_one (p_body in clob) is\n`, c += `${O}${O}l_rec ${r}.t_rec;\n`, c += `${O}${O}l_id  ${t}.${a}%type;\n`, c += `${O}begin\n`, c += `${O}${O}apex_json.parse(p_body);\n`;
+		for (let { name: e } of o) c += `${O}${O}l_rec.${e} := apex_json.get_varchar2(p_path => '${e}');\n`;
+		c += `${O}${O}${r}.create_rec(p_rec => l_rec, x_id => l_id);\n`, c += `${O}${O}owa_util.status_line(201, 'Created');\n`, c += `${O}${O}owa_util.mime_header('application/json', false);\n`, c += `${O}${O}owa_util.http_header_close;\n`, c += `${O}${O}apex_json.open_object;\n`, c += `${O}${O}apex_json.write('${a}', l_id);\n`, c += `${O}${O}apex_json.close_object;\n`, c += `${O}end post_one;\n\n`, c += `${O}procedure put_one (p_${a} in ${t}.${a}%type, p_body in clob) is\n`, c += `${O}${O}l_rec ${r}.t_rec;\n`, s && (c += `${O}${O}l_ver ${t}.row_version%type;\n`), c += `${O}begin\n`, c += `${O}${O}apex_json.parse(p_body);\n`;
+		for (let { name: e } of o) c += `${O}${O}l_rec.${e} := apex_json.get_varchar2(p_path => '${e}');\n`;
+		return s ? (c += `${O}${O}l_ver := apex_json.get_number(p_path => 'row_version');\n`, c += `${O}${O}${r}.update_rec(p_id => p_${a}, p_rec => l_rec, p_row_version => l_ver);\n`) : c += `${O}${O}${r}.update_rec(p_id => p_${a}, p_rec => l_rec);\n`, c += `${O}end put_one;\n\n`, c += `${O}procedure delete_one (p_${a} in ${t}.${a}%type) is\n`, c += `${O}begin\n`, c += `${O}${O}${r}.delete_rec(p_id => p_${a});\n`, c += `${O}${O}owa_util.status_line(204, 'No Content');\n`, c += `${O}end delete_one;\n\n`, c += `end ${i};\n/\n`, c;
 	}
 	generateTAPI(e) {
 		if (e.children.length === 0) return "";
@@ -12063,7 +12077,11 @@ var Z = {
 	ifc: {
 		label: "API Interface Layer",
 		value: "apex",
-		check: ["apex", "none"]
+		check: [
+			"apex",
+			"rest",
+			"none"
+		]
 	},
 	compress: {
 		label: "Table Compression",

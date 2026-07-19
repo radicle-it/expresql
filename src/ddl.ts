@@ -77,7 +77,7 @@ const defaultOptions: OptionsRecord = {
     rowversion:       { label: 'Row Version Number',            value: 'no',      check: ['yes','no'] },
     schema:           { label: 'Schema',                        value: '' },
     api:              { label: 'Table API',                     value: 'no',      check: ['yes','no','layered'] },
-    ifc:              { label: 'API Interface Layer',           value: 'apex',    check: ['apex','none'] },
+    ifc:              { label: 'API Interface Layer',           value: 'apex',    check: ['apex','rest','none'] },
     compress:         { label: 'Table Compression',             value: 'no',      check: ['yes','no'] },
     transcontext:     { label: 'Translation Context',           value: "sys_context('APP_CTX','LANG')" },
     dialect:          { label: 'SQL Dialect',                   value: 'oracle' },
