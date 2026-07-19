@@ -557,7 +557,12 @@ export class OracleDDLGenerator extends BaseGenerator {
                 if (node.isOption('auditlog')) {
                     ret += 'drop package ' + ifExists + objName + '_aud;\n';
                 }
-                ret += 'drop package ' + ifExists + objName + '_apx;\n';
+                const ifc = String(this._ddl.getOptionValue('ifc') ?? 'apex').toLowerCase();
+                if (ifc === 'apex' || ifc === '') {
+                    ret += 'drop package ' + ifExists + objName + '_apx;\n';
+                } else if (ifc === 'rest') {
+                    ret += 'drop package ' + ifExists + objName + '_rst;\n';
+                }
             } else if (this._ddl.optionEQvalue('api', 'yes')) {
                 ret += 'drop package ' + ifExists + objName + '_api;\n';
             }

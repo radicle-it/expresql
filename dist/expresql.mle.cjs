@@ -10956,7 +10956,15 @@ var R = class extends ge {
 	}
 	generateDrop(e) {
 		let t = this._ddl.objPrefix() + e.parseName(), n = this._ddl.getOptionValue("db"), r = n && n.length > 0 && 23 <= (p(n) ?? 0) ? "if exists " : "", i = "";
-		return e.inferType() === "view" && (i = "drop view " + r + t + ";\n"), e.inferType() === "table" && (i = "drop table " + r + t + " cascade constraints;\n", this._ddl.optionEQvalue("api", "layered") && e.trimmedContent().toLowerCase().includes("/api") ? (i += "drop package " + r + t + "_dal;\n", i += "drop package " + r + t + "_hks;\n", i += "drop package " + r + t + "_svc;\n", e.isOption("auditlog") && (i += "drop package " + r + t + "_aud;\n"), i += "drop package " + r + t + "_apx;\n") : this._ddl.optionEQvalue("api", "yes") && (i += "drop package " + r + t + "_api;\n"), this._ddl.optionEQvalue("pk", "SEQ") && (i += "drop sequence " + r + t + this._naming.seq + ";\n")), i.toLowerCase();
+		if (e.inferType() === "view" && (i = "drop view " + r + t + ";\n"), e.inferType() === "table") {
+			if (i = "drop table " + r + t + " cascade constraints;\n", this._ddl.optionEQvalue("api", "layered") && e.trimmedContent().toLowerCase().includes("/api")) {
+				i += "drop package " + r + t + "_dal;\n", i += "drop package " + r + t + "_hks;\n", i += "drop package " + r + t + "_svc;\n", e.isOption("auditlog") && (i += "drop package " + r + t + "_aud;\n");
+				let n = String(this._ddl.getOptionValue("ifc") ?? "apex").toLowerCase();
+				n === "apex" || n === "" ? i += "drop package " + r + t + "_apx;\n" : n === "rest" && (i += "drop package " + r + t + "_rst;\n");
+			} else this._ddl.optionEQvalue("api", "yes") && (i += "drop package " + r + t + "_api;\n");
+			this._ddl.optionEQvalue("pk", "SEQ") && (i += "drop sequence " + r + t + this._naming.seq + ";\n");
+		}
+		return i.toLowerCase();
 	}
 	identityRestartSql(e, t, n) {
 		return "alter table " + e + "\nmodify " + t + " generated always  as identity restart start with " + n + ";\n\n";
