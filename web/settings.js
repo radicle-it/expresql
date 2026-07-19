@@ -48,6 +48,7 @@ export function writeSettings(s) {
     add('dv',                 s.dv);
     add('editionable',        s.edit);
     add('api',                s.api);
+    add('ifc',                s.ifc);
     add('apex',               s.apex);
     add('compress',           s.compress);
     add('ondelete',           s.ondelete);
@@ -105,6 +106,7 @@ export function syncSettingsForm() {
     set('sett-dv',               'dv');
     set('sett-edit',             'editionable');
     set('sett-api',              'api');
+    set('sett-ifc',              'ifc');
     set('sett-apex',             'apex');
     set('sett-compress',         'compress');
     set('sett-ondelete',         'ondelete');
@@ -241,7 +243,8 @@ export function initSettingsPanel() {
             readonlyviews:    v('sett-readonlyviews'),
             drop:             v('sett-drop'),      inserts:         v('sett-inserts'),
             dv:               v('sett-dv'),        edit:            v('sett-edit'),
-            api:              v('sett-api'),       apex:            v('sett-apex'),
+            api:              v('sett-api'),       ifc:             v('sett-ifc'),
+            apex:            v('sett-apex'),
             compress:         v('sett-compress'),
             ondelete:         v('sett-ondelete'),  longvc:          v('sett-longvc'),
             namelen:          v('sett-namelen'),   datalimit:       v('sett-datalimit'),

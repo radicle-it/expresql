@@ -12054,7 +12054,16 @@ var Z = {
 	api: {
 		label: "Table API",
 		value: "no",
-		check: ["yes", "no"]
+		check: [
+			"yes",
+			"no",
+			"layered"
+		]
+	},
+	ifc: {
+		label: "API Interface Layer",
+		value: "apex",
+		check: ["apex", "none"]
 	},
 	compress: {
 		label: "Table Compression",
