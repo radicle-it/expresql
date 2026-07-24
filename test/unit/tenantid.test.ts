@@ -605,3 +605,47 @@ customers /api
             .toBeLessThan(out.indexOf('create or replace package app_tenant_bootstrap as'));
     });
 });
+
+// ── User-defined PK with ifc: apex ────────────────────────────────────────────
+
+describe('user-defined PK (pk: none, genpk: no) — APX package', () => {
+
+    const qsql = `
+party /api full+hks
+    id vc100 /pk /nn
+    party_ref vc200 /nn /unique
+    party_type vc20 /nn /check PERSON,ORGANIZATION
+    lifecycle vc20 /nn /check ACTIVE,INACTIVE
+# settings = { prefix: "mdm", genpk: no, pk: none, auditcols: yes, api: layered, apex: yes, ifc: apex }`;
+
+    test('APX get has p_id once (IN only, not duplicated as OUT)', () => {
+        const out = ddl(qsql);
+        const spec = out.slice(out.indexOf('create or replace package mdm_party_apx as'));
+        // p_id should appear exactly once in the get signature
+        const getProc = spec.slice(spec.indexOf('procedure get'), spec.indexOf('procedure ins'));
+        expect(getProc.match(/\bp_id\b/g)?.length).toBe(1);
+    });
+
+    test('APX ins has p_id IN (user supplies key, not OUT)', () => {
+        const out  = ddl(qsql);
+        const spec = out.slice(out.indexOf('create or replace package mdm_party_apx as'));
+        const ins  = spec.slice(spec.indexOf('procedure ins'), spec.indexOf('procedure upd'));
+        expect(ins).toContain('p_id           in  mdm_party.id%type');
+        expect(ins).not.toContain('p_id           out');
+    });
+
+    test('APX upd has p_id once (IN only, not duplicated)', () => {
+        const out  = ddl(qsql);
+        const spec = out.slice(out.indexOf('create or replace package mdm_party_apx as'));
+        const upd  = spec.slice(spec.indexOf('procedure upd'), spec.indexOf('procedure del'));
+        expect(upd.match(/\bp_id\b/g)?.length).toBe(1);
+    });
+
+    test('APX body ins propagates p_id to l_rec and uses l_xid for create_rec OUT', () => {
+        const out  = ddl(qsql);
+        const body = out.slice(out.indexOf('create or replace package body mdm_party_apx as'));
+        const ins  = body.slice(body.indexOf('procedure ins'), body.indexOf('end ins;') + 8);
+        expect(ins).toContain('l_rec.id := p_id');
+        expect(ins).toContain('x_id => l_xid');
+    });
+});
