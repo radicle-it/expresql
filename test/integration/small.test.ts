@@ -302,6 +302,20 @@ describe('constraints and directives', () => {
         expect(out).not.toContain("to_date(''01-APR-2025'',''DD-MON-YYYY'')");
     });
 
+    test('/check with bare values starting with a digit are still quoted', () => {
+        // The lexer tags any token starting with a digit as 'constant.numeric', even when the
+        // rest of the token isn't numeric (e.g. "2WAY"). listValues() used to trust that
+        // classification directly and left such tokens unquoted, producing invalid DDL
+        // (check (match_type in (2WAY,3WAY)), ORA-00907: missing right parenthesis).
+        const out = ddl('match_sessions\n    match_type vc10 /nn /check 2WAY,3WAY');
+        expect(out).toContain("check (match_type in ('2WAY','3WAY'))");
+    });
+
+    test('/check still leaves genuine numeric values unquoted', () => {
+        const out = ddl('priorities\n    rank_value number /check 1,2,3');
+        expect(out).toContain('check (rank_value in (1,2,3))');
+    });
+
     test('vc(255) maps to varchar2(255 char)', () => {
         const out = ddl(`Bugs35692739\n    description vc(255)`);
         expect(out).toContain('varchar2(255 char)');
