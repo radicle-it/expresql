@@ -563,7 +563,7 @@ var M = class {
 		ie(t, e, r, a, o, this.indexOf("pk")) && (i = "number"), this.occursBeforeOption("int", !0) && (i = "integer"), 0 < r && (i = "varchar");
 		let s, c = this.vectorType("vector") || this.vectorType("vect");
 		c !== null && (i = "vector", s = c.substring(6));
-		let l = this.parent, u = f(l.parseName(), "_", this.parseName()), d = !1, m = t.endsWith("_yn") || t.startsWith("is_"), h = te.some((e) => 0 < this.indexOf(e));
+		let l = this.parent, u = f(l.parseName(), "_", this.parseName()), d = !1, m = !(r > 0 || this.occursBeforeOption("int", !0) || c !== null) && (t.endsWith("_yn") || t.startsWith("is_")), h = te.some((e) => 0 < this.indexOf(e));
 		(m || h) && (i = "varchar", n = 1, d = !0);
 		let g = this._ctx.getOptionValue("db");
 		d && (this._ctx.getOptionValue("boolean") === "native" || this._ctx.getOptionValue("boolean") !== "yn" && g && g.length > 0 && 23 <= (p(g) ?? 0)) && (d = !1, i = "boolean");

@@ -722,14 +722,22 @@ describe('Oracle 23ai+ features', () => {
         expect(out).toContain('ok    boolean');
     });
 
-    test('is_active (vc1/check Y,N) maps to boolean true/false on db >= 23', () => {
+    test('is_active with explicit vc1/check Y,N respects the explicit type (stays varchar2)', () => {
+        // Explicit type keyword wins over the is_ naming heuristic — the user opted out of
+        // the boolean inference by writing vc1 /check Y,N.
         const out = ddl(`# settings = {"db":"23ai","pk":"IDENTITY"}\ntenant\n  is_active vc(1) /nn /check Y, N /default Y\n  flag_yn boolean /default N`);
         expect(out).toContain('is_active');
-        expect(out).toContain('boolean default on null true');
-        expect(out).not.toContain("default on null 'Y'");
-        expect(out).not.toContain("in ('Y','N')");
+        expect(out).toContain("varchar2(1 char) default on null 'Y'");
+        expect(out).toContain("in ('Y','N')");
+        expect(out).not.toContain('is_active    boolean');
         expect(out).toContain('flag_yn');
         expect(out).toContain('boolean default on null false');
+    });
+
+    test('is_active without explicit type maps to boolean on db >= 23', () => {
+        const out = ddl(`# settings = {"db":"23ai","pk":"IDENTITY"}\ntenant\n  is_active\n  is_enabled`);
+        expect(out).toMatch(/is_active\s+boolean/);
+        expect(out).toMatch(/is_enabled\s+boolean/);
     });
 
     test('is_active on db < 23 stays varchar2', () => {

@@ -431,7 +431,11 @@ export class DdlNode implements IDdlNode {
         const parent       = this.parent!;
         const parent_child = concatNames(parent.parseName(), '_', this.parseName());
         let needsBoolCheck = false;
-        const isBooleanName  = colName.endsWith('_yn') || colName.startsWith('is_');
+        // Name-based heuristics (is_ / _yn) must not override an explicit type keyword
+        // supplied by the user (vc, int, vector). hasBoolKeyword (yn/boolean/bool) is itself
+        // an explicit declaration so it always wins.
+        const hasExplicitType = vcPos > 0 || this.occursBeforeOption('int', true) || vector !== null;
+        const isBooleanName  = !hasExplicitType && (colName.endsWith('_yn') || colName.startsWith('is_'));
         const hasBoolKeyword = boolTypes.some(bt => 0 < this.indexOf(bt));
         if (isBooleanName || hasBoolKeyword) {
             base       = 'varchar';
