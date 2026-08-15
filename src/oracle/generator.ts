@@ -559,7 +559,7 @@ export class OracleDDLGenerator extends BaseGenerator {
                 }
                 const ifc = String(this._ddl.getOptionValue('ifc') ?? 'apex').toLowerCase();
                 if (ifc === 'apex' || ifc === '') {
-                    ret += 'drop package ' + ifExists + objName + '_apx;\n';
+                    ret += 'drop package ' + ifExists + objName + '_app;\n';
                 } else if (ifc === 'rest') {
                     ret += 'drop package ' + ifExists + objName + '_rst;\n';
                 }

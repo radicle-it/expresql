@@ -620,7 +620,7 @@ party /api full+hks
 
     test('APX get has p_id once (IN only, not duplicated as OUT)', () => {
         const out = ddl(qsql);
-        const spec = out.slice(out.indexOf('create or replace package mdm_party_apx as'));
+        const spec = out.slice(out.indexOf('create or replace package mdm_party_app as'));
         // p_id should appear exactly once in the get signature
         const getProc = spec.slice(spec.indexOf('procedure get'), spec.indexOf('procedure ins'));
         expect(getProc.match(/\bp_id\b/g)?.length).toBe(1);
@@ -628,7 +628,7 @@ party /api full+hks
 
     test('APX ins has p_id IN (user supplies key, not OUT)', () => {
         const out  = ddl(qsql);
-        const spec = out.slice(out.indexOf('create or replace package mdm_party_apx as'));
+        const spec = out.slice(out.indexOf('create or replace package mdm_party_app as'));
         const ins  = spec.slice(spec.indexOf('procedure ins'), spec.indexOf('procedure upd'));
         expect(ins).toContain('p_id           in  mdm_party.id%type');
         expect(ins).not.toContain('p_id           out');
@@ -636,14 +636,14 @@ party /api full+hks
 
     test('APX upd has p_id once (IN only, not duplicated)', () => {
         const out  = ddl(qsql);
-        const spec = out.slice(out.indexOf('create or replace package mdm_party_apx as'));
+        const spec = out.slice(out.indexOf('create or replace package mdm_party_app as'));
         const upd  = spec.slice(spec.indexOf('procedure upd'), spec.indexOf('procedure del'));
         expect(upd.match(/\bp_id\b/g)?.length).toBe(1);
     });
 
     test('APX body ins propagates p_id to l_rec and uses l_xid for create_rec OUT', () => {
         const out  = ddl(qsql);
-        const body = out.slice(out.indexOf('create or replace package body mdm_party_apx as'));
+        const body = out.slice(out.indexOf('create or replace package body mdm_party_app as'));
         const ins  = body.slice(body.indexOf('procedure ins'), body.indexOf('end ins;') + 8);
         expect(ins).toContain('l_rec.id := p_id');
         expect(ins).toContain('x_id => l_xid');

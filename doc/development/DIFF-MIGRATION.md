@@ -31,7 +31,7 @@ This solves the core production gap: once a schema is deployed, `toDDL()` cannot
 | Row version | Add/drop `row_version INTEGER NOT NULL` column (add requires manual intervention) |
 | PK changes | Surrogate → business PK, composite PK add/remove/reorder — all via manual-intervention blocks (see `COMPOSITE-PK-SPEC.md`) |
 | Views | Re-emit `CREATE OR REPLACE VIEW` when content changes; topological sort on inter-view deps |
-| Layered TAPI packages | Add/drop/replace DAL, HKS, SVC, APX, AUD via `CREATE OR REPLACE` |
+| Layered TAPI packages | Add/drop/replace DAL, HKS, SVC, APP, AUD via `CREATE OR REPLACE` |
 | Simple TAPI (`/api yes`) | Add/drop `_api` package |
 
 ### Out of scope (v1)
@@ -173,17 +173,17 @@ Package replacement uses `CREATE OR REPLACE PACKAGE` / `CREATE OR REPLACE PACKAG
 |---|---|
 | `/api yes` added | `CREATE OR REPLACE` `_api` spec + body |
 | `/api yes` removed | `DROP PACKAGE _api` |
-| `/api layered` added | `CREATE OR REPLACE` DAL/HKS/SVC/APX/AUD specs + bodies |
-| `/api layered` removed | `DROP PACKAGE` DAL, HKS, SVC, APX, AUD |
+| `/api layered` added | `CREATE OR REPLACE` DAL/HKS/SVC/APP/AUD specs + bodies |
+| `/api layered` removed | `DROP PACKAGE` DAL, HKS, SVC, APP, AUD |
 | `/api yes` → `/api layered` | `DROP PACKAGE _api` + `CREATE OR REPLACE` five layered packages |
 | `/api layered` → `/api yes` | `DROP PACKAGE` five layered packages + `CREATE OR REPLACE _api` |
 | `/auditlog` added (layered) | `CREATE OR REPLACE` all layered packages (`_aud` included) |
 | `/auditlog` removed (layered) | `DROP PACKAGE _aud` + `CREATE OR REPLACE` remaining four packages |
-| `/apex` added (layered) | `CREATE OR REPLACE` all layered packages (`_apx` included) |
-| `/apex` removed (layered) | `DROP PACKAGE _apx` + `CREATE OR REPLACE` remaining four packages |
+| `/apex` added (layered) | `CREATE OR REPLACE` all layered packages (`_app` included) |
+| `/apex` removed (layered) | `DROP PACKAGE _app` + `CREATE OR REPLACE` remaining four packages |
 | Any column change on a layered table | `CREATE OR REPLACE` all layered packages for that table |
 
-> **Why all-or-nothing for replacement**: the dependency graph between DAL/HKS/SVC/APX/AUD is tight — SVC body calls DAL and AUD, APX body calls SVC. Regenerating all packages via `CREATE OR REPLACE` is safe (idempotent) and avoids the risk of stale inter-package references from partial replacement.
+> **Why all-or-nothing for replacement**: the dependency graph between DAL/HKS/SVC/APP/AUD is tight — SVC body calls DAL and AUD, APP body calls SVC. Regenerating all packages via `CREATE OR REPLACE` is safe (idempotent) and avoids the risk of stale inter-package references from partial replacement.
 
 ### 4.7 PK changes
 
@@ -306,7 +306,7 @@ function diffTable(oldTbl, newTbl, ctx):
 ```
 function diffPackages(oldTbl, newTbl, ctx):
   stmts  ← []
-  oldPkgs ← packageNamesOf(oldTbl)   // e.g. {_api} or {_dal, _hks, _svc, _apx, _aud}
+  oldPkgs ← packageNamesOf(oldTbl)   // e.g. {_api} or {_dal, _hks, _svc, _app, _aud}
   newPkgs ← packageNamesOf(newTbl)
 
   // Permanently removed packages → DROP (the only case DROP PACKAGE is emitted)
@@ -316,7 +316,7 @@ function diffPackages(oldTbl, newTbl, ctx):
   // Packages in new state → CREATE OR REPLACE (covers both new and replacement)
   // Emitted only if packages input changed or a package is new
   if packagesInputChanged(oldTbl, newTbl) or newPkgs \ oldPkgs ≠ ∅:
-    for each pkg in newPkgs (in dependency order: AUD→DAL→HKS→SVC→APX):
+    for each pkg in newPkgs (in dependency order: AUD→DAL→HKS→SVC→APP):
       stmts += create_or_replace_package_spec(pkg)
       stmts += create_or_replace_package_body(pkg)
 
@@ -379,7 +379,7 @@ function diffViews(allOldNodes, allNewNodes):
 | 12 | `drop_unused_columns` | Tagged `[MAINTENANCE]` — safe to defer |
 | 13 | `add_fk`, `transient_add_fk` | After all tables and columns exist |
 | 14 | `add_index`, `create_trigger` | After columns exist |
-| 15 | `create_package` (specs) | `CREATE OR REPLACE`; dependency order: AUD→DAL→HKS→SVC→APX |
+| 15 | `create_package` (specs) | `CREATE OR REPLACE`; dependency order: AUD→DAL→HKS→SVC→APP |
 | 16 | `create_view` | After package specs (views may call package functions declared in specs) |
 | 17 | `create_package` (bodies) | After views (bodies may query views) |
 
@@ -765,3 +765,4 @@ Tests live in `test/integration/diff.test.ts`.
 | 0.4     | 2026-05-06 | Roberto Capancioni | Rename DDL suppression (unambiguous pairs → comment only); `CREATE OR REPLACE` for package replacement (eliminates downtime window; DROP only for permanent removal); CI/CD incremental pattern for NOT NULL (§7.2); idempotency extended to ADD CONSTRAINT; view topological sort; shadow state section reorganised; test matrix expanded |
 | 0.5     | 2026-05-06 | Roberto Capancioni | Added: check/between constraints (§4.3); default/hidden column properties (§4.2); trigger diff (§4.4); rowversion diff (§4.5); indexes on new columns; PK structural changes (§4.7, COMPOSITE-PK-SPEC.md); `create_trigger`/`drop_trigger` statement kinds; `diffTable` pseudocode updated; §12 Limitations updated; test matrix expanded |
 | 0.6     | 2026-05-06 | Roberto Capancioni | Added table-level composite unique (`/unique col1,col2`) diff support (§4.3); cross-change between column-level `_unq` index and table-level `_uk` constraint handled correctly |
+| 0.7     | 2026-08-15 | Roberto Capancioni | IFC — APEX package suffix corrected `_apx` → `_app` throughout (naming mistake, never the intended convention — see `TAPI-LAYERED-ARCHITECTURE.md` §Revision History 1.9 for full rationale) |

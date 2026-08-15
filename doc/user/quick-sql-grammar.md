@@ -523,8 +523,8 @@ Controls which presentation-layer package is generated on top of the `_svc` laye
 
 | Value | Behaviour |
 |---|---|
-| `apex` | Generates an `_apx` package (spec + body) with `get`, `ins`, `upd`, `del` procedures that map directly to APEX page-item parameters. |
-| `none` | Skips the `_apx` package entirely. Use this when the application talks directly to `_svc`, or when a different interface (REST, GraphQL, etc.) will be layered on top by hand. |
+| `apex` | Generates an `_app` package (spec + body) with `get`, `ins`, `upd`, `del` procedures that map directly to APEX page-item parameters. |
+| `none` | Skips the `_app` package entirely. Use this when the application talks directly to `_svc`, or when a different interface (REST, GraphQL, etc.) will be layered on top by hand. |
 
 ```quicksql
 employees /api

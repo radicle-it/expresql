@@ -80,7 +80,7 @@ Adequate for APEX rapid prototyping. Not suitable as a contract-stable enterpris
 | Extensibility | Requires forking the generated package | Hook layer: `validate / before / after` |
 | Error visibility | Low — exceptions swallowed or raw | Full call stack via `DBMS_UTILITY.FORMAT_ERROR_BACKTRACE` |
 | Consumer coverage | APEX only | APEX, ORDS, batch — same service layer |
-| Technology-specific interface | None | IFC layer: `_apx` for APEX, `_rst` for ORDS |
+| Technology-specific interface | None | IFC layer: `_app` for APEX, `_rst` for ORDS |
 | DML + side-effect atomicity | Undefined | Explicit policy per consumer |
 | Migration path | N/A | Incremental, coexists with old package |
 
@@ -102,7 +102,7 @@ The four-layer split is justified when:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  INTERFACE LAYER                                                │
-│  {entity}_apx                   {entity}_rst                   │
+│  {entity}_app                   {entity}_rst                   │
 │  APEX Invoke API                REST/ORDS handler              │
 │  p_-prefixed params             JSON body in / JSON out        │
 │  get / ins / upd / del          get / ins / upd / del          │
@@ -147,7 +147,7 @@ The four-layer split is justified when:
 
 | Layer | Package suffix | Parameters | Responsibilities |
 |---|---|---|---|
-| IFC — APEX | `_apx` | `p_`-prefixed scalars | Maps APEX page items ↔ SVC `t_rec` |
+| IFC — APEX | `_app` | `p_`-prefixed scalars | Maps APEX page items ↔ SVC `t_rec` |
 | IFC — REST | `_rst` | JSON body / JSON response | Maps REST payload ↔ SVC `t_rec` |
 | Service | `_svc` | `t_rec` record | Business logic, hook sequencing, constraint mapping |
 | Hook | `_hks` | `%ROWTYPE` | Validate / before / after (replaceable body) |
@@ -187,7 +187,7 @@ Even though row_version is trigger-managed in writing, optimistic concurrency co
 **IFC layer — one package per technology**
 
 The interface layer does not attempt to be generic. Each technology (APEX, ORDS) has its own package with conventions native to that technology:
-- `_apx`: parameters follow the `p_` naming convention; APEX Invoke API auto-maps them to page items of the same root name.
+- `_app`: parameters follow the `p_` naming convention; APEX Invoke API auto-maps them to page items of the same root name.
 - `_rst`: procedures parse JSON input and emit JSON output using Oracle SQL/JSON functions.
 
 Which IFC package is generated is controlled by the global setting `ifc` (default: `apex`). Multiple IFC packages can coexist for the same entity.
@@ -288,11 +288,11 @@ IF SQL%ROWCOUNT = 0 THEN
     BEGIN
         SELECT 1 INTO l_dummy FROM doctors WHERE id = p_row.id;
         raise_application_error(c_err_stale_data,
-            'Row modified by another session. Reload and retry.');
+            '[STALE_DATA] Row modified by another session. Reload and retry.');
     EXCEPTION
         WHEN no_data_found THEN
             raise_application_error(c_err_not_found,
-                'Record ' || p_row.id || ' does not exist.');
+                '[NOT_FOUND] Record ' || p_row.id || ' does not exist.');
     END;
 END IF;
 ```
@@ -315,10 +315,10 @@ BEGIN
 EXCEPTION
     WHEN no_data_found THEN
         raise_application_error(c_err_not_found,
-            'doctors: record not found (id=' || p_id || ')');
+            '[NOT_FOUND] doctors: record not found (id=' || p_id || ')');
     WHEN resource_busy THEN
         raise_application_error(c_err_locked,
-            'doctors: record locked by another session');
+            '[LOCKED] doctors: record locked by another session');
 END lock_by_id;
 ```
 
@@ -438,7 +438,7 @@ BEGIN
 
     -- validate, before_insert, insert_row, after_insert all execute in the
     -- same open transaction. If any step raises, the exception propagates to
-    -- the IFC boundary (APX or RST package), which is responsible for rollback
+    -- the IFC boundary (APP or RST package), which is responsible for rollback
     -- policy. Neither the INSERT nor the audit record is committed.
     doctors_hks.validate(p_operation => 'INSERT', p_row => l_row);
     doctors_hks.before_insert(p_row => l_row);
@@ -492,7 +492,7 @@ END update_rec;
 All hook calls and the DAL call execute within the same open database transaction. There is no implicit commit between them. The consequences:
 
 - If `after_insert` raises (e.g., the audit table's tablespace is full), the exception propagates upward uncaught through `create_rec` to the IFC layer.
-- **APX (APEX)**: the APEX framework automatically rolls back the open transaction when an error is raised in a page process. Both the INSERT and the failed audit INSERT are rolled back. Atomicity is preserved by default.
+- **APP (APEX)**: the APEX framework automatically rolls back the open transaction when an error is raised in a page process. Both the INSERT and the failed audit INSERT are rolled back. Atomicity is preserved by default.
 - **RST (ORDS)**: the ORDS handler catches the exception in its `WHEN OTHERS` block. Before responding to the client, it **must** issue an explicit `ROLLBACK` (see Section 7.2).
 
 ---
@@ -527,7 +527,7 @@ The responsibility for protecting custom hooks code from accidental overwrite be
 ```
 First generation:
   1. Run QuickSQL → copy the full output into your SQL client
-  2. Execute the full script — installs dal, hks spec, hks body (no-op), svc, apx
+  2. Execute the full script — installs dal, hks spec, hks body (no-op), svc, app
   3. Save the hks body block into a separate developer-owned file
      (e.g. doctors_hks_impl.sql) in version control
   4. Replace the no-op stubs with custom logic in that file
@@ -538,7 +538,7 @@ Subsequent regenerations (e.g. new column added):
        dal spec + body     ← always safe to re-run
        hks spec            ← safe to re-run (spec is generated, fixed interface)
        svc spec + body     ← always safe to re-run
-       apx spec + body     ← always safe to re-run
+       app spec + body     ← always safe to re-run
   3. Do NOT re-execute the hks body block from QuickSQL output
   4. If the hks spec changed (new hook added), update doctors_hks_impl.sql manually
      to add the new stub, then re-execute your custom body
@@ -552,7 +552,7 @@ Subsequent regenerations (e.g. new column added):
 | `{entity}_hks` spec | Yes | Generator |
 | `{entity}_hks` body | **No** — contains custom logic | Developer |
 | `{entity}_svc` (spec + body) | Yes | Generator |
-| `{entity}_apx` (spec + body) | Yes | Generator |
+| `{entity}_app` (spec + body) | Yes | Generator |
 | `{entity}_audit` (spec + body) | Yes | Generator |
 | `app_audit_log` DAL/HKS/SVC | Yes | Generator |
 
@@ -682,7 +682,7 @@ END doctors_hks;
 
 ---
 
-## 7. Layer 4 — Interface Layer (`{entity}_apx` / `{entity}_rst`)
+## 7. Layer 4 — Interface Layer (`{entity}_app` / `{entity}_rst`)
 
 ### 7.1 Purpose
 
@@ -695,13 +695,13 @@ The interface layer is the only layer that knows which technology is consuming t
 Which IFC package is generated is controlled by the `ifc` setting (default: `apex`). Multiple IFC packages can coexist.
 
 ```
-# settings = {"api": "layered", "ifc": "apex"}    ← generates _apx only
+# settings = {"api": "layered", "ifc": "apex"}    ← generates _app only
 # settings = {"api": "layered", "ifc": "rest"}     ← generates _rst only
 ```
 
-### 7.2 APEX Interface Package (`{entity}_apx`)
+### 7.2 APEX Interface Package (`{entity}_app`)
 
-APEX calls `_apx` procedures from page processes using the **Invoke API** process type. APEX automatically maps page items to parameters by name: a parameter `p_name` is sourced from (or written to) a page item whose name ends in `_NAME` after stripping the page prefix (`P<n>_`).
+APEX calls `_app` procedures from page processes using the **Invoke API** process type. APEX automatically maps page items to parameters by name: a parameter `p_name` is sourced from (or written to) a page item whose name ends in `_NAME` after stripping the page prefix (`P<n>_`).
 
 **Procedure naming**: `get`, `ins`, `upd`, `del` — short imperative verbs consistent with the consumer's mental model. `update` and `delete` are SQL reserved words and cannot be used as bare procedure names in Oracle PL/SQL; `upd` and `del` are the standard short forms.
 
@@ -712,7 +712,7 @@ The parameters of `get` are generated conditionally:
 - Audit columns OUT (`p_created`, `p_created_by`, `p_updated`, `p_updated_by`) — only if `auditcols: yes` is active.
 
 ```sql
-CREATE OR REPLACE PACKAGE doctors_apx AS
+CREATE OR REPLACE PACKAGE doctors_app AS
 
     -- Loads a row into OUT parameters, which APEX maps back to page items.
     -- Call from an APEX "Fetch Row" process on page load.
@@ -752,14 +752,14 @@ CREATE OR REPLACE PACKAGE doctors_apx AS
 
     PROCEDURE del (p_id IN doctors.id%TYPE);
 
-END doctors_apx;
+END doctors_app;
 /
 ```
 
 #### 7.2.2 Package Body
 
 ```sql
-CREATE OR REPLACE PACKAGE BODY doctors_apx AS
+CREATE OR REPLACE PACKAGE BODY doctors_app AS
 
     PROCEDURE get (
         p_id          IN  doctors.id%TYPE,
@@ -823,7 +823,7 @@ CREATE OR REPLACE PACKAGE BODY doctors_apx AS
         doctors_svc.delete_rec(p_id => p_id);
     END del;
 
-END doctors_apx;
+END doctors_app;
 /
 ```
 
@@ -833,7 +833,7 @@ END doctors_apx;
 
 APEX forms have a native lost-update mechanism: a hidden `p_md5` item containing an MD5 checksum of the displayed column values. If left active alongside `row_version`, two independent locking mechanisms operate in parallel and can produce contradictory results.
 
-Resolution: **disable APEX's native Lost Update Protection** on any form that submits to this TAPI. Include `row_version` as a hidden page item (e.g., `:P10_ROW_VERSION`) populated by `doctors_apx.get` on load and submitted to `doctors_apx.upd` on save.
+Resolution: **disable APEX's native Lost Update Protection** on any form that submits to this TAPI. Include `row_version` as a hidden page item (e.g., `:P10_ROW_VERSION`) populated by `doctors_app.get` on load and submitted to `doctors_app.upd` on save.
 
 To disable Lost Update Protection in APEX: on each updatable column in the form region, set "Enable Column Locking" to **Off**, and remove any `APEX_ITEM.md5` or `P{n}_CHECKSUM` usage from the page process.
 
@@ -841,9 +841,9 @@ To disable Lost Update Protection in APEX: on each updatable column in the form 
 
 | Process event | Type | Package | Procedure | Parameter mapping |
 |---|---|---|---|---|
-| After Header | Invoke API | `doctors_apx` | `get` | `p_id` ← `:P10_ID`; OUT params → corresponding items |
-| Processing | Invoke API | `doctors_apx` | `ins` or `upd` | `p_*` ← page items; `p_id OUT` → `:P10_ID` |
-| Processing | Invoke API | `doctors_apx` | `del` | `p_id` ← `:P10_ID` |
+| After Header | Invoke API | `doctors_app` | `get` | `p_id` ← `:P10_ID`; OUT params → corresponding items |
+| Processing | Invoke API | `doctors_app` | `ins` or `upd` | `p_*` ← page items; `p_id OUT` → `:P10_ID` |
+| Processing | Invoke API | `doctors_app` | `del` | `p_id` ← `:P10_ID` |
 
 APEX automatically applies the page prefix when matching parameter names to items. A parameter `p_name` on page 10 is matched to item `P10_NAME`.
 
@@ -879,7 +879,7 @@ END app_error_handler;
 
 ### 7.3 REST Interface Package (`{entity}_rst`)
 
-The `_rst` package is generated when `ifc: rest` is set. It wraps the same SVC layer as `_apx`, translating between JSON and `t_rec`. It is typically called from ORDS resource module handlers.
+The `_rst` package is generated when `ifc: rest` is set. It wraps the same SVC layer as `_app`, translating between JSON and `t_rec`. It is typically called from ORDS resource module handlers.
 
 ```sql
 CREATE OR REPLACE PACKAGE BODY doctors_rst AS
@@ -1059,7 +1059,7 @@ app_audit_log_svc   (spec + body)
 doctors_dal         (spec + body)
 doctors_hks         (spec + body)
 doctors_svc         (spec + body)
-doctors_apx         (spec + body)   ← when ifc: apex
+doctors_app         (spec + body)   ← when ifc: apex
 doctors_audit       (spec + body)
 ```
 
@@ -1098,6 +1098,20 @@ END app_errors;
 /
 ```
 
+### 9.1 Message Marker Convention
+
+Every `raise_application_error` call generated for a named error constant (`c_err_stale_data`, `c_err_not_found`, `c_err_locked`, and the SVC `dup_val_on_index` handler) prefixes its message with a bracketed token — `[STALE_DATA]`, `[NOT_FOUND]`, `[LOCKED]`, `[DUPLICATE]` — matching the constant it is paired with:
+
+```sql
+raise_application_error(c_err_stale_data, '[STALE_DATA] row modified by another session. reload and retry.');
+raise_application_error(c_err_not_found,  '[NOT_FOUND] doctors: record not found (id=' || p_id || ')');
+raise_application_error(c_err_locked,     '[LOCKED] doctors: record locked by another session');
+```
+
+**Why this exists**: a caller one level removed from the TAPI cannot always rely on `SQLCODE` to survive intact. Some integration paths re-wrap *any* exception from custom code into a single generic outer code — for example, `APEX_EXEC.EXECUTE_DML`'s `p_dml_plsql_code` parameter (used to route automated DML through a TAPI instead of generated SQL) catches every exception the custom block raises and re-raises it uniformly as `ORA-20987`, with the original error's text nested inside the new message (verified empirically: `ORA-20987: Row 1: ORA-20001: row modified by another session...`). In that situation `SQLCODE` alone no longer distinguishes a stale-data conflict from a validation failure or any other error — only the message text does, and relying on the numeric code appearing inside that text (`INSTR(SQLERRM, 'ORA-20001')`) is fragile: `-20001`-range codes are commonly reused across unrelated packages, so a numeric substring match can collide. A dedicated, human-named token is not subject to that collision and remains greppable through arbitrary layers of re-wrapping.
+
+This costs nothing when the error is consumed directly (the token is just a readable prefix) and pays for itself the moment a caller sits behind a wrapping layer it does not control.
+
 ---
 
 ## 10. Grant Strategy
@@ -1109,7 +1123,7 @@ Grants must be planned at install time. In a two-schema setup (`DATA_SCHEMA` own
 GRANT SELECT, INSERT, UPDATE, DELETE ON doctors TO APP_SCHEMA;
 
 -- From APP_SCHEMA — only the IFC package is exposed to consumers
-GRANT EXECUTE ON doctors_apx TO APEX_SCHEMA;
+GRANT EXECUTE ON doctors_app TO APEX_SCHEMA;
 GRANT EXECUTE ON doctors_rst TO ORDS_PUBLIC_USER;
 
 -- SVC, DAL, and HKS are internal — no external grants.
@@ -1143,8 +1157,8 @@ generateLayeredTAPI(node: IDdlNode): string {
           + this._generateSvcSpec(node) + '\n'   // emits t_rec type + procedures
           + this._generateSvcBody(node);
     const ifc = this.ctx.getOption('ifc') ?? 'apex';
-    if (ifc === 'apex') r += '\n' + this._generateApxSpec(node)
-                           + '\n' + this._generateApxBody(node);
+    if (ifc === 'apex') r += '\n' + this._generateAppSpec(node)
+                           + '\n' + this._generateAppBody(node);
     if (ifc === 'rest')  r += '\n' + this._generateRstSpec(node)
                            + '\n' + this._generateRstBody(node);
     if (this._hasAuditLog(node)) {
@@ -1185,9 +1199,9 @@ SELECT application_id, page_id, process_name, process_text
  WHERE UPPER(process_text) LIKE '%DOCTORS_API%';
 ```
 
-**Step 2** — Install `doctors_dal`, `doctors_hks` (spec + no-op body), `doctors_svc`, `doctors_apx`. The old flat package coexists.
+**Step 2** — Install `doctors_dal`, `doctors_hks` (spec + no-op body), `doctors_svc`, `doctors_app`. The old flat package coexists.
 
-**Step 3** — Migrate APEX page processes one at a time to use `doctors_apx`. Switch from manual bind-variable process code to APEX Invoke API. Disable APEX Lost Update Protection. Map `row_version` to a hidden page item.
+**Step 3** — Migrate APEX page processes one at a time to use `doctors_app`. Switch from manual bind-variable process code to APEX Invoke API. Disable APEX Lost Update Protection. Map `row_version` to a hidden page item.
 
 **Step 4** — Move existing validation logic into the hooks body. Execute the no-op stub from QuickSQL output once, save it as a developer-owned file, then replace the stubs with the custom logic ported from the old package.
 
@@ -1207,3 +1221,5 @@ SELECT application_id, page_id, process_name, process_text
 | 1.5     | 2026-04-27 | Roberto Capancioni | `app_audit_log` is now developer-owned; `_audit.p_log` calls `app_audit_log_svc.create_rec` |
 | 1.6     | 2026-05-05 | Roberto Capancioni | Four-layer architecture: IFC layer added (`_apx` / `_rst`); SVC switches from scalar params to `t_rec` record (business columns only, no PK/rowversion/audit — all trigger-managed); `x_version OUT` removed from SVC; hooks renamed to `_hks` throughout; `ifc` setting controls which IFC package is generated (default: `apex`); APX procedures: `get / ins / upd / del` with `p_`-prefix for APEX Invoke API auto-mapping; grants model updated — only IFC layer is public; `p_row_version` in APX `get`/`upd` only when `/rowversion` active; audit OUT params in APX `get` only when `auditcols: yes` active |
 | 1.7     | 2026-05-05 | Roberto Capancioni | DAL: `lock_by_id` function added (SELECT FOR UPDATE NOWAIT); `c_err_locked` constant (-20003); `resource_busy` exception with PRAGMA EXCEPTION_INIT(-54) declared at body level; §4.3 extended with check-then-act pattern, SVC usage example, and guidance on when to use `lock_by_id` vs `get_by_id`; §7.2.3 APEX error handler updated with -20003 mapping; §8 audit body corrected to `l_rec t_rec` pattern (was showing old scalar named-param call); §9 error range and `app_errors` package updated with `c_locked`; §6.2 rewritten — QuickSQL generates a single SQL block, not separate files; file management is a deployment discipline, not a generator feature; `_hks_impl.sql` naming is a developer convention, not enforced by QuickSQL |
+| 1.8     | 2026-08-15 | Roberto Capancioni | §9.1 added: `raise_application_error` messages for `c_err_stale_data`/`c_err_not_found`/`c_err_locked`/`dup_val_on_index` now carry a bracketed token (`[STALE_DATA]`, `[NOT_FOUND]`, `[LOCKED]`, `[DUPLICATE]`) so callers behind a wrapping layer (e.g. `APEX_EXEC`'s `p_dml_plsql_code`, which re-raises any custom-code exception as a generic `ORA-20987`) can classify the error from message text alone, without depending on a numeric `SQLCODE` substring that can collide with unrelated codes; generator updated in `src/oracle/plsql.ts` (`_generateDalBody`, `_generateSvcBody`) |
+| 1.9     | 2026-08-15 | Roberto Capancioni | IFC — APEX package suffix renamed `_apx` → `_app` throughout (generator, tests, this document): `_apx` was never the intended convention, it was a naming mistake introduced in 1.6 and only now caught by comparing against a real generated example. Renamed in `src/oracle/plsql.ts` (`_generateApxSpec`/`_generateApxBody` → `_generateAppSpec`/`_generateAppBody`, plus all local `apx*` identifiers), `src/oracle/generator.ts` (drop-package statement), `src/oracle/diff-generator.ts` (layered package name lists — NOT the unrelated `isOption('apx')` alias check, left untouched); `test/unit/tenantid.test.ts` and `test/integration/diff.test.ts` updated to match; `doc/development/DIFF-MIGRATION.md` and `doc/user/quick-sql-grammar.md` updated. All 775 vitest tests pass unchanged (assertions check constant/procedure names, never depended on the `apx` spelling itself) |

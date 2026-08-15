@@ -1038,7 +1038,7 @@ export class OracleDiffGenerator implements DiffGenerator {
 
     private _layeredPkgNames(node: IDdlNode, ctx: DdlContext): string[] {
         const obj  = ctx.objPrefix() + node.parseName();
-        const pkgs = [`${obj}_dal`, `${obj}_hks`, `${obj}_svc`, `${obj}_apx`];
+        const pkgs = [`${obj}_dal`, `${obj}_hks`, `${obj}_svc`, `${obj}_app`];
         if (node.isOption('auditlog')) pkgs.unshift(`${obj}_aud`);
         return pkgs;
     }
@@ -1052,7 +1052,7 @@ export class OracleDiffGenerator implements DiffGenerator {
         const oldObj  = oldCtx.objPrefix() + oldNode.parseName();
 
         if (oldKind === 'layered' && (newKind === 'simple' || newKind === 'none')) {
-            dropped.push(`${oldObj}_dal`, `${oldObj}_hks`, `${oldObj}_svc`, `${oldObj}_apx`);
+            dropped.push(`${oldObj}_dal`, `${oldObj}_hks`, `${oldObj}_svc`, `${oldObj}_app`);
             if (oldNode.isOption('auditlog')) dropped.push(`${oldObj}_aud`);
         } else if (oldKind === 'simple' && (newKind === 'layered' || newKind === 'none')) {
             dropped.push(`${oldObj}_api`);

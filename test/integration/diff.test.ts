@@ -297,7 +297,7 @@ describe('layered TAPI', () => {
         const newQsql = `employees\n  name vc100 /nn`;
         const r = diff(base, newQsql);
         const drops = r.statements.filter(s => s.kind === 'drop_package');
-        expect(drops.length).toBeGreaterThanOrEqual(4); // at least _dal _hks _svc _apx
+        expect(drops.length).toBeGreaterThanOrEqual(4); // at least _dal _hks _svc _app
     });
 
     test('column change on layered table — CREATE OR REPLACE all packages, no DROP', () => {

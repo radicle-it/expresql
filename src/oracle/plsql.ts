@@ -351,7 +351,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}return l_row;\n`;
         r += `${tab}exception\n`;
         r += `${tab}${tab}when no_data_found then\n`;
-        r += `${tab}${tab}${tab}raise_application_error(c_err_not_found, '${tbl}: record not found (id=' || p_id || ')');\n`;
+        r += `${tab}${tab}${tab}raise_application_error(c_err_not_found, '[NOT_FOUND] ${tbl}: record not found (id=' || p_id || ')');\n`;
         r += `${tab}end get_by_id;\n\n`;
 
         // lock_by_id — SELECT FOR UPDATE NOWAIT for check-then-act SVC procedures
@@ -370,9 +370,9 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}return l_row;\n`;
         r += `${tab}exception\n`;
         r += `${tab}${tab}when no_data_found then\n`;
-        r += `${tab}${tab}${tab}raise_application_error(c_err_not_found, '${tbl}: record not found (id=' || p_id || ')');\n`;
+        r += `${tab}${tab}${tab}raise_application_error(c_err_not_found, '[NOT_FOUND] ${tbl}: record not found (id=' || p_id || ')');\n`;
         r += `${tab}${tab}when resource_busy then\n`;
-        r += `${tab}${tab}${tab}raise_application_error(c_err_locked, '${tbl}: record locked by another session');\n`;
+        r += `${tab}${tab}${tab}raise_application_error(c_err_locked, '[LOCKED] ${tbl}: record locked by another session');\n`;
         r += `${tab}end lock_by_id;\n\n`;
 
         // get_by_<unique_col> — one function per /unique column; NO_DATA_FOUND propagates.
@@ -469,10 +469,10 @@ export class OraclePlsqlBuilder {
                 } else {
                     r += `${tab}${tab}${tab}${tab}select 1 into l_dummy from ${tbl} where ${pkName} = l_id;\n`;
                 }
-                r += `${tab}${tab}${tab}${tab}raise_application_error(c_err_stale_data, 'row modified by another session. reload and retry.');\n`;
+                r += `${tab}${tab}${tab}${tab}raise_application_error(c_err_stale_data, '[STALE_DATA] row modified by another session. reload and retry.');\n`;
                 r += `${tab}${tab}${tab}exception\n`;
                 r += `${tab}${tab}${tab}${tab}when no_data_found then\n`;
-                r += `${tab}${tab}${tab}${tab}${tab}raise_application_error(c_err_not_found, 'record ' || l_id || ' does not exist.');\n`;
+                r += `${tab}${tab}${tab}${tab}${tab}raise_application_error(c_err_not_found, '[NOT_FOUND] record ' || l_id || ' does not exist.');\n`;
                 r += `${tab}${tab}${tab}end;\n`;
                 r += `${tab}${tab}end if;\n`;
             }
@@ -533,8 +533,8 @@ export class OraclePlsqlBuilder {
     }
 
     /**
-     * Ordered list of t_rec / APX parameter descriptors: FK cols → regular cols.
-     * Single source of truth for SVC t_rec fields and APX parameter lists.
+     * Ordered list of t_rec / APP parameter descriptors: FK cols → regular cols.
+     * Single source of truth for SVC t_rec fields and APP parameter lists.
      * tenant_id is intentionally excluded: the DAL enforces it via tenant_ctx.get_id (server-side context).
      */
     private _svcParamCols(node: IDdlNode): Array<{ name: string; nullable: boolean }> {
@@ -636,7 +636,7 @@ export class OraclePlsqlBuilder {
         if (hasUniq) {
             r += `${tab}exception\n`;
             r += `${tab}${tab}when dup_val_on_index then\n`;
-            r += `${tab}${tab}${tab}raise_application_error(-20010, 'duplicate value on unique constraint.');\n`;
+            r += `${tab}${tab}${tab}raise_application_error(-20010, '[DUPLICATE] duplicate value on unique constraint.');\n`;
         }
         r += `${tab}end create_rec;\n\n`;
 
@@ -678,40 +678,40 @@ export class OraclePlsqlBuilder {
         return r;
     }
 
-    private _generateApxSpec(node: IDdlNode): string {
+    private _generateAppSpec(node: IDdlNode): string {
         const tbl         = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const apx         = tbl + '_apx';
+        const app         = tbl + '_app';
         const pkNm        = (node.getPkName() ?? 'id').toLowerCase();
         const hasVer      = this._hasVersionCol(node);
         const hasAudit    = node.hasAuditCols();
         const synTenantId = this._hasSyntheticTenantId(node);
         const paramCols       = this._svcParamCols(node);
         const pkIsUserDefined = this._pkIsUserDefined(node);
-        // APX flat parameter list excludes PK — it is always handled explicitly in each procedure
-        const apxCols         = paramCols.filter(({ name }) => name !== pkNm);
+        // APP flat parameter list excludes PK — it is always handled explicitly in each procedure
+        const appCols         = paramCols.filter(({ name }) => name !== pkNm);
         const createdCol   = String(this.ctx.getOptionValue('createdcol')   ?? 'created');
         const createdByCol = String(this.ctx.getOptionValue('createdbycol') ?? 'created_by');
         const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
         const updatedByCol = String(this.ctx.getOptionValue('updatedbycol') ?? 'updated_by');
 
         const auditCols = hasAudit ? [createdCol, createdByCol, updatedCol, updatedByCol] : [];
-        const apxPadWidth = Math.max(13, ...apxCols.map(({ name }) => name.length + 1),
+        const appPadWidth = Math.max(13, ...appCols.map(({ name }) => name.length + 1),
                                         ...auditCols.map(n => n.length + 1));
 
-        let r = `create or replace package ${apx} as\n\n`;
+        let r = `create or replace package ${app} as\n\n`;
 
         // get: loads one row into OUT params — APEX Invoke API maps them to page items
         r += `${tab}procedure get (\n`;
         r += `${tab}${tab}p_id          in  ${tbl}.${pkNm}%type`;
-        for (const { name } of apxCols)
-            r += `,\n${tab}${tab}p_${name.padEnd(apxPadWidth)} out ${tbl}.${name}%type`;
+        for (const { name } of appCols)
+            r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
         if (hasVer)
             r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
         if (hasAudit) {
-            r += `,\n${tab}${tab}p_${createdCol.padEnd(apxPadWidth)} out ${tbl}.${createdCol}%type`;
-            r += `,\n${tab}${tab}p_${createdByCol.padEnd(apxPadWidth)} out ${tbl}.${createdByCol}%type`;
-            r += `,\n${tab}${tab}p_${updatedCol.padEnd(apxPadWidth)} out ${tbl}.${updatedCol}%type`;
-            r += `,\n${tab}${tab}p_${updatedByCol.padEnd(apxPadWidth)} out ${tbl}.${updatedByCol}%type`;
+            r += `,\n${tab}${tab}p_${createdCol.padEnd(appPadWidth)} out ${tbl}.${createdCol}%type`;
+            r += `,\n${tab}${tab}p_${createdByCol.padEnd(appPadWidth)} out ${tbl}.${createdByCol}%type`;
+            r += `,\n${tab}${tab}p_${updatedCol.padEnd(appPadWidth)} out ${tbl}.${updatedCol}%type`;
+            r += `,\n${tab}${tab}p_${updatedByCol.padEnd(appPadWidth)} out ${tbl}.${updatedByCol}%type`;
         }
         r += `\n${tab});\n\n`;
 
@@ -720,8 +720,8 @@ export class OraclePlsqlBuilder {
         r += `${tab}procedure ins (\n`;
         const insLines: string[] = [];
         if (pkIsUserDefined) insLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
-        for (const { name, nullable } of apxCols)
-            insLines.push(`${tab}${tab}p_${name.padEnd(apxPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+        for (const { name, nullable } of appCols)
+            insLines.push(`${tab}${tab}p_${name.padEnd(appPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
         if (!pkIsUserDefined) insLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
         r += insLines.join(',\n') + `\n${tab});\n\n`;
 
@@ -729,57 +729,57 @@ export class OraclePlsqlBuilder {
         r += `${tab}procedure upd (\n`;
         const updLines: string[] = [];
         updLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
-        for (const { name, nullable } of apxCols)
-            updLines.push(`${tab}${tab}p_${name.padEnd(apxPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+        for (const { name, nullable } of appCols)
+            updLines.push(`${tab}${tab}p_${name.padEnd(appPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
         if (hasVer) updLines.push(`${tab}${tab}p_row_version  in out ${tbl}.row_version%type`);
         r += updLines.join(',\n') + `\n${tab});\n\n`;
 
         r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type);\n\n`;
-        r += `end ${apx};\n/\n`;
+        r += `end ${app};\n/\n`;
         return r;
     }
 
-    private _generateApxBody(node: IDdlNode): string {
+    private _generateAppBody(node: IDdlNode): string {
         const tbl         = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
         const svc         = tbl + '_svc';
-        const apx         = tbl + '_apx';
+        const app         = tbl + '_app';
         const pkNm        = (node.getPkName() ?? 'id').toLowerCase();
         const hasVer      = this._hasVersionCol(node);
         const hasAudit    = node.hasAuditCols();
         const synTenantId = this._hasSyntheticTenantId(node);
         const paramCols       = this._svcParamCols(node);
         const pkIsUserDefined = this._pkIsUserDefined(node);
-        const apxCols         = paramCols.filter(({ name }) => name !== pkNm);
+        const appCols         = paramCols.filter(({ name }) => name !== pkNm);
         const createdCol   = String(this.ctx.getOptionValue('createdcol')   ?? 'created');
         const createdByCol = String(this.ctx.getOptionValue('createdbycol') ?? 'created_by');
         const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
         const updatedByCol = String(this.ctx.getOptionValue('updatedbycol') ?? 'updated_by');
 
         const auditColsBody = hasAudit ? [createdCol, createdByCol, updatedCol, updatedByCol] : [];
-        const apxPadWidthBody = Math.max(13, ...apxCols.map(({ name }) => name.length + 1),
+        const appPadWidthBody = Math.max(13, ...appCols.map(({ name }) => name.length + 1),
                                              ...auditColsBody.map(n => n.length + 1));
 
-        let r = `create or replace package body ${apx} as\n\n`;
+        let r = `create or replace package body ${app} as\n\n`;
 
         // get
         r += `${tab}procedure get (\n`;
         r += `${tab}${tab}p_id          in  ${tbl}.${pkNm}%type`;
-        for (const { name } of apxCols)
-            r += `,\n${tab}${tab}p_${name.padEnd(apxPadWidthBody)} out ${tbl}.${name}%type`;
+        for (const { name } of appCols)
+            r += `,\n${tab}${tab}p_${name.padEnd(appPadWidthBody)} out ${tbl}.${name}%type`;
         if (hasVer)
             r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
         if (hasAudit) {
-            r += `,\n${tab}${tab}p_${createdCol.padEnd(apxPadWidthBody)} out ${tbl}.${createdCol}%type`;
-            r += `,\n${tab}${tab}p_${createdByCol.padEnd(apxPadWidthBody)} out ${tbl}.${createdByCol}%type`;
-            r += `,\n${tab}${tab}p_${updatedCol.padEnd(apxPadWidthBody)} out ${tbl}.${updatedCol}%type`;
-            r += `,\n${tab}${tab}p_${updatedByCol.padEnd(apxPadWidthBody)} out ${tbl}.${updatedByCol}%type`;
+            r += `,\n${tab}${tab}p_${createdCol.padEnd(appPadWidthBody)} out ${tbl}.${createdCol}%type`;
+            r += `,\n${tab}${tab}p_${createdByCol.padEnd(appPadWidthBody)} out ${tbl}.${createdByCol}%type`;
+            r += `,\n${tab}${tab}p_${updatedCol.padEnd(appPadWidthBody)} out ${tbl}.${updatedCol}%type`;
+            r += `,\n${tab}${tab}p_${updatedByCol.padEnd(appPadWidthBody)} out ${tbl}.${updatedByCol}%type`;
         }
         r += `\n${tab}) is\n`;
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
         r += `${tab}begin\n`;
         r += `${tab}${tab}if p_id is null then return; end if;  -- INSERT mode: leave OUT params null\n`;
         r += `${tab}${tab}l_row := ${svc}.get(p_id => p_id);\n`;
-        for (const { name } of apxCols)
+        for (const { name } of appCols)
             r += `${tab}${tab}p_${name} := l_row.${name};\n`;
         if (hasVer) r += `${tab}${tab}p_row_version := l_row.row_version;\n`;
         if (hasAudit) {
@@ -796,14 +796,14 @@ export class OraclePlsqlBuilder {
         r += `${tab}procedure ins (\n`;
         const insLines: string[] = [];
         if (pkIsUserDefined) insLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
-        for (const { name, nullable } of apxCols)
-            insLines.push(`${tab}${tab}p_${name.padEnd(apxPadWidthBody)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+        for (const { name, nullable } of appCols)
+            insLines.push(`${tab}${tab}p_${name.padEnd(appPadWidthBody)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
         if (!pkIsUserDefined) insLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
         r += insLines.join(',\n') + `\n${tab}) is\n`;
         r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
         if (pkIsUserDefined) r += `${tab}${tab}l_xid  ${tbl}.${pkNm}%type;\n`;
         r += `${tab}begin\n`;
-        for (const { name } of apxCols)
+        for (const { name } of appCols)
             r += `${tab}${tab}l_rec.${name} := p_${name};\n`;
         if (pkIsUserDefined) {
             r += `${tab}${tab}l_rec.${pkNm} := p_id;\n`;
@@ -817,13 +817,13 @@ export class OraclePlsqlBuilder {
         r += `${tab}procedure upd (\n`;
         const updLines: string[] = [];
         updLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
-        for (const { name, nullable } of apxCols)
-            updLines.push(`${tab}${tab}p_${name.padEnd(apxPadWidthBody)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+        for (const { name, nullable } of appCols)
+            updLines.push(`${tab}${tab}p_${name.padEnd(appPadWidthBody)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
         if (hasVer) updLines.push(`${tab}${tab}p_row_version  in out ${tbl}.row_version%type`);
         r += updLines.join(',\n') + `\n${tab}) is\n`;
         r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
         r += `${tab}begin\n`;
-        for (const { name } of apxCols)
+        for (const { name } of appCols)
             r += `${tab}${tab}l_rec.${name} := p_${name};\n`;
         r += `${tab}${tab}${svc}.update_rec(\n`;
         r += `${tab}${tab}${tab}p_id  => p_id,\n`;
@@ -838,7 +838,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}${svc}.delete_rec(p_id => p_id);\n`;
         r += `${tab}end del;\n\n`;
 
-        r += `end ${apx};\n/\n`;
+        r += `end ${app};\n/\n`;
         return r;
     }
 
@@ -981,7 +981,7 @@ export class OraclePlsqlBuilder {
             r += '\n' + this._generateAuditBody(node);
         }
         if (ifc === 'apex' || ifc === '') {
-            r += '\n' + this._generateApxSpec(node) + '\n' + this._generateApxBody(node);
+            r += '\n' + this._generateAppSpec(node) + '\n' + this._generateAppBody(node);
         } else if (ifc === 'rest') {
             r += '\n' + this._generateRstSpec(node) + '\n' + this._generateRstBody(node);
         }
