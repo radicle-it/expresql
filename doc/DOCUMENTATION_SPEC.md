@@ -238,6 +238,7 @@ Le impostazioni si specificano con `# chiave: valore` oppure `# settings = { chi
 | `dv` | `true`, `false` | `false` | Abilita JSON Duality Views | **no** |
 | `editionable` | `true`, `false` | `false` | Oggetti PL/SQL EDITIONABLE | **no** |
 | `api` | `true`, `false`, `layered` | `false` | Genera TAPI package | sì |
+| `dimensioncolumns` | oggetto JSON `{ colonna: "TIPO_DIMENSIONE" }` | `{}` | Genera `chk_rls` in `_hks` + filtro WHERE in lettura per le colonne mappate; `chk_rbac` sempre generato su ogni tabella, a prescindere | sì |
 | `apex` | `true`, `false` | `false` | Usa `APEX$SESSION` per audit | sì |
 | `compress` | `true`, `false` | `false` | Compressione su tutte le tabelle | sì |
 
