@@ -24,6 +24,7 @@ const DIRECTIVES = [
     { cmd: '/api',        desc: 'Table API (TAPI)' },
     { cmd: '/auditlog',   desc: 'Audit package with autonomous transaction' },
     { cmd: '/immutable',  desc: 'Immutable table (no UPDATE/DELETE)' },
+    { cmd: '/versioned',  desc: 'Versioned insert-only table (freeze by reference)' },
     { cmd: '/history',    desc: 'Temporal history tracking' },
     { cmd: '/soda',       desc: 'SODA document store' },
 ];

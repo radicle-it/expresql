@@ -117,6 +117,7 @@ A comment can appear between any keywords, parameters, or punctuation marks in a
 | /flashback, /fda                        | Enable Flashback Data Archive on the table. Optionally specify an archive name, e.g. `/flashback myarchive`. |
 | /history                                | *(23ai+)* Temporal history tracking. Generates a `<table>_history` shadow table and triggers that capture every row version with `valid_from` / `valid_to` timestamps. |
 | /immutable                              | *(21c+)* Append-only table. A BEFORE UPDATE OR DELETE trigger raises an application error to prevent modifications. Use for ledger-style or compliance data that must never be changed after insertion. |
+| /versioned [*valid\_to\_col*]           | Versioned insert-only table (freeze-by-reference). Adds `valid_from timestamp default systimestamp not null` and `valid_to timestamp` (or a custom column name) if not already declared. Generates a `<table>_current` view (`where valid_to is null`) and a BEFORE UPDATE OR DELETE trigger that: blocks all DELETEs, blocks any UPDATE that is not a plain `valid_to` closure (setting it from NULL to a non-null timestamp), and verifies that no other business column changed in the same statement. Distinct from `/history` (which creates a shadow table for CDC/audit); here the FK referencing a specific row always points to the exact historical version used at that moment. |
 | /insert NN                              | Generate NN SQL INSERT statement(s) with random data, for example: `/insert 20`. (Maximum = 1000) |
 | /rest                                   | Generate REST enablement of the table using Oracle REST Data Services (ORDS). |
 | /rowversion                             | Adds a `ROW_VERSION NUMBER DEFAULT 0` column and a BEFORE UPDATE trigger that increments it by 1 on every update. Use for optimistic concurrency control (OCC). |
@@ -1239,6 +1240,7 @@ tableDirective::= '/'
       |'flashback'|'fda'
       |'history'
       |'immutable'
+      |'versioned' identifier?
       |'insert' integer
       |'notenantid'
       |'rest'

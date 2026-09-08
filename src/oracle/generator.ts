@@ -234,18 +234,20 @@ export class OracleDDLGenerator extends BaseGenerator {
                 if (!onDelete) onDelete = this._globalOnDelete();
                 ret += tab + tab + ' '.repeat(node.maxChildNameLen()) + 'references ' + refPrefix + parent + onDelete + notNull + ',\n';
             } else {
-                ret += ',\n';
+                let notNull = '';
                 let onDelete = '';
                 if (node.isOption('cascade')) onDelete = ' on delete cascade';
                 else if (node.isOption('setnull')) onDelete = ' on delete set null';
                 for (const c in node.children) {
                     const child = node.children[c];
                     if (fk === child.parseName()) {
+                        if (child.isOption('nn') || child.isOption('notnull')) notNull = NOT_NULL_LOWER;
                         if (child.isOption('cascade')) onDelete = ' on delete cascade';
                         else if (child.isOption('setnull')) onDelete = ' on delete set null';
                         break;
                     }
                 }
+                ret += notNull + ',\n';
                 if (!onDelete) onDelete = this._globalOnDelete();
                 const alter = 'alter table ' + objName + ' add constraint ' + objName + '_' + fk + '_fk foreign key (' + fk + ') references ' + refPrefix + parent + onDelete + ';\n';
                 if (!this._ddl.postponedAltersSet.has(alter)) {
@@ -343,6 +345,27 @@ export class OracleDDLGenerator extends BaseGenerator {
             const type = cols[col];
             const pad  = tab + ' '.repeat(node.maxChildNameLen() - col.length);
             ret += tab + col.toUpperCase() + pad + type + ' not null,\n';
+        }
+        return ret;
+    }
+
+    _genVersionedColumns(node: IDdlNode): string {
+        if (!node.isOption('versioned')) return '';
+        const vtCol  = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
+        const maxLen = node.maxChildNameLen();
+        let ret = '';
+        if (node.findChild('valid_from') === null) {
+            const pad = tab + ' '.repeat(Math.max(0, maxLen - 'valid_from'.length));
+            ret += tab + 'valid_from' + pad + 'timestamp default systimestamp not null,\n';
+        }
+        if (node.findChild(vtCol) === null) {
+            const pad = tab + ' '.repeat(Math.max(0, maxLen - vtCol.length));
+            ret += tab + vtCol + pad + 'timestamp,\n';
+        }
+        // Virtual column: 1 = open (current version), 0 = closed. Enables indexed _current view.
+        if (node.findChild('is_current') === null) {
+            const pad = tab + ' '.repeat(Math.max(0, maxLen - 'is_current'.length));
+            ret += tab + 'is_current' + pad + `number generated always as (case when ${vtCol} is null then 1 end) virtual,\n`;
         }
         return ret;
     }
@@ -522,6 +545,7 @@ export class OracleDDLGenerator extends BaseGenerator {
         ret += this._genRowVersionColumn(node);
         ret += this._genAuditColumns(node);
         ret += this._genAdditionalColumns(node);
+        ret += this._genVersionedColumns(node);
         ret += node.genConstraint();
         ret = trimTrailingComma(ret);
         ret += this._genTableFooter(node, objName, immutableKeyword, _db23plus);
@@ -548,7 +572,9 @@ export class OracleDDLGenerator extends BaseGenerator {
         let ret = '';
         if (node.inferType() === 'view') ret = 'drop view ' + ifExists + objName + ';\n';
         if (node.inferType() === 'table') {
-            ret = 'drop table ' + ifExists + objName + ' cascade constraints;\n';
+            if (node.isOption('versioned'))
+                ret += 'drop view ' + ifExists + objName + '_current;\n';
+            ret += 'drop table ' + ifExists + objName + ' cascade constraints;\n';
             if (this._ddl.optionEQvalue('api', 'layered') &&
                 node.trimmedContent().toLowerCase().includes('/api')) {
                 ret += 'drop package ' + ifExists + objName + '_dal;\n';
@@ -582,10 +608,18 @@ export class OracleDDLGenerator extends BaseGenerator {
     generateTransTable(node: DdlNode): string          { return this._view.generateTransTable(node); }
     generateResolvedView(node: DdlNode): string        { return this._view.generateResolvedView(node); }
 
+    // ── View helpers ─────────────────────────────────────────────────────────────
+    generateVersionedView(node: IDdlNode): string {
+        if (node.inferType() !== 'table' || !node.isOption('versioned')) return '';
+        const objName = (this._ddl.objPrefix() + node.parseName()).toLowerCase();
+        return `create or replace view ${objName}_current as\nselect *\nfrom ${objName}\nwhere is_current = 1;\n\n`;
+    }
+
     // ── PL/SQL / ORDS / triggers delegates ───────────────────────────────────────
     restEnable(node: IDdlNode): string                 { return this._plsql.restEnable(node); }
     generateTrigger(node: IDdlNode): string            { return this._plsql.generateTrigger(node); }
     generateImmutableTrigger(node: IDdlNode): string   { return this._plsql.generateImmutableTrigger(node); }
+    generateVersionedTrigger(node: IDdlNode): string   { return this._plsql.generateVersionedTrigger(node); }
     generateTAPI(node: IDdlNode): string               { return this._plsql.generateTAPI(node); }
     generateLayeredTAPI(node: IDdlNode): string        { return this._plsql.generateLayeredTAPI(node); }
 
@@ -652,6 +686,10 @@ export class OracleDDLGenerator extends BaseGenerator {
             const trigger = this.generateImmutableTrigger(node);
             if (trigger) { if (j++ === 0) output += '-- immutable triggers\n'; output += trigger; }
         }
+        for (const node of descendants) {
+            const trigger = this.generateVersionedTrigger(node);
+            if (trigger) { if (j++ === 0) output += '-- triggers\n'; output += trigger; }
+        }
 
         // ORDS REST enable
         for (const node of descendants) {
@@ -694,6 +732,15 @@ export class OracleDDLGenerator extends BaseGenerator {
         for (const node of descendants) {
             const rv = this.generateResolvedView(node);
             if (rv) { if (j++ === 0) output += '-- create views\n'; output += rv; }
+        }
+        for (const node of descendants) {
+            const vv = this.generateVersionedView(node);
+            if (vv) {
+                if (j++ === 0) output += '-- create views\n';
+                output += vv;
+                const objName = (this._ddl.objPrefix() + node.parseName()).toLowerCase();
+                output += `create index ${objName}_is_current_i on ${objName} (is_current);\n\n`;
+            }
         }
 
         // Table groups (TGROUP annotation)

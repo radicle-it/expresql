@@ -193,6 +193,11 @@ export class DdlNode implements IDdlNode {
                 if (maxLen < len) maxLen = len;
             }
         }
+        if (this.isOption('versioned')) {
+            maxLen = Math.max(maxLen, 'valid_from'.length);
+            const vtCol = (this.getOptionValue('versioned') ?? '').trim() || 'valid_to';
+            maxLen = Math.max(maxLen, vtCol.length);
+        }
         if (this._ctx.optionEQvalue('tenantid', true) && this.findChild('tenant_id') === null && !this.isOption('notenantid'))
             maxLen = Math.max(maxLen, 'tenant_id'.length);
         if (this.fks !== null) {

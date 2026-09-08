@@ -128,7 +128,7 @@ The four-layer split is justified when:
              ▼                            │
 ┌──────────────────────────────────┐      │
 │  AUDIT PACKAGE (optional)        │      │
-│  {entity}_audit                  │      │
+│  {entity}_aud                  │      │
 │  f_to_json, PRAGMA AUTONOMOUS_   │      │
 │  TRANSACTION, Level 2 CDC        │      │
 │  old_values + new_values JSON    │      │
@@ -553,7 +553,7 @@ Subsequent regenerations (e.g. new column added):
 | `{entity}_hks` body | **No** — contains custom logic | Developer |
 | `{entity}_svc` (spec + body) | Yes | Generator |
 | `{entity}_app` (spec + body) | Yes | Generator |
-| `{entity}_audit` (spec + body) | Yes | Generator |
+| `{entity}_aud` (spec + body) | Yes | Generator |
 | `app_audit_log` DAL/HKS/SVC | Yes | Generator |
 
 The hks body is the only package where "re-run = data loss." All others are idempotent — re-running regenerated output replaces the package with an equivalent or updated version.
@@ -932,9 +932,9 @@ END doctors_rst;
 
 ---
 
-## 8. Audit Package (`{entity}_audit`) — Level 2 CDC
+## 8. Audit Package (`{entity}_aud`) — Level 2 CDC
 
-When a table carries the `/auditlog` directive, the generator emits a fourth package — `{entity}_audit` — with Level 2 Change Data Capture: every INSERT, UPDATE, and DELETE records a JSON snapshot of the full row (`old_values`, `new_values`) via `PRAGMA AUTONOMOUS_TRANSACTION`. Audit is orchestrated by the SVC layer; the HKS layer remains a pure no-op placeholder throughout.
+When a table carries the `/auditlog` directive, the generator emits a fourth package — `{entity}_aud` — with Level 2 Change Data Capture: every INSERT, UPDATE, and DELETE records a JSON snapshot of the full row (`old_values`, `new_values`) via `PRAGMA AUTONOMOUS_TRANSACTION`. Audit is orchestrated by the SVC layer; the HKS layer remains a pure no-op placeholder throughout.
 
 **The `app_audit_log` table is owned by the developer, not auto-generated.** Define it explicitly with `/api`. The `old_values` and `new_values` CLOB columns are required for Level 2 CDC.
 
@@ -955,10 +955,10 @@ doctors /api /auditlog
 # settings = {"api": "layered", "auditcols": "yes"}
 ```
 
-**Generated `doctors_audit` package spec:**
+**Generated `doctors_aud` package spec:**
 
 ```sql
-CREATE OR REPLACE PACKAGE doctors_audit AS
+CREATE OR REPLACE PACKAGE doctors_aud AS
 
     g_enabled BOOLEAN := TRUE;   -- set FALSE to suppress audit (e.g. bulk import)
 
@@ -966,14 +966,14 @@ CREATE OR REPLACE PACKAGE doctors_audit AS
     PROCEDURE log_update (p_old_row IN doctors%ROWTYPE, p_new_row IN doctors%ROWTYPE);
     PROCEDURE log_delete (p_old_row IN doctors%ROWTYPE);
 
-END doctors_audit;
+END doctors_aud;
 /
 ```
 
-**Generated `doctors_audit` package body:**
+**Generated `doctors_aud` package body:**
 
 ```sql
-CREATE OR REPLACE PACKAGE BODY doctors_audit AS
+CREATE OR REPLACE PACKAGE BODY doctors_aud AS
 
     FUNCTION f_to_json (p_row IN doctors%ROWTYPE) RETURN CLOB IS
     BEGIN
@@ -1022,7 +1022,7 @@ CREATE OR REPLACE PACKAGE BODY doctors_audit AS
         p_log(p_operation => 'DELETE', p_id => p_old_row.id, p_old_values => f_to_json(p_old_row));
     END log_delete;
 
-END doctors_audit;
+END doctors_aud;
 /
 ```
 
@@ -1031,7 +1031,7 @@ END doctors_audit;
 ```sql
 -- create_rec — log after successful INSERT
 doctors_hks.after_insert(p_row => l_row);
-doctors_audit.log_insert(p_row => l_row);
+doctors_aud.log_insert(p_row => l_row);
 
 -- update_rec — snapshot before field assignment
 l_row     := doctors_dal.get_by_id(p_id => p_id);
@@ -1040,14 +1040,14 @@ l_row.name  := p_rec.name;
 l_row.email := p_rec.email;
 ...
 doctors_hks.after_update(p_row => l_row);
-doctors_audit.log_update(p_old_row => l_old_row, p_new_row => l_row);
+doctors_aud.log_update(p_old_row => l_old_row, p_new_row => l_row);
 
 -- delete_rec — fetch row BEFORE delete
 l_old_row := doctors_dal.get_by_id(p_id => p_id);
 doctors_hks.before_delete(p_id => p_id);
 doctors_dal.delete_row(p_id => p_id);
 doctors_hks.after_delete(p_id => p_id);
-doctors_audit.log_delete(p_old_row => l_old_row);
+doctors_aud.log_delete(p_old_row => l_old_row);
 ```
 
 **Package output order (when `/auditlog` is present):**
@@ -1060,7 +1060,7 @@ doctors_dal         (spec + body)
 doctors_hks         (spec + body)
 doctors_svc         (spec + body)
 doctors_app         (spec + body)   ← when ifc: apex
-doctors_audit       (spec + body)
+doctors_aud       (spec + body)
 ```
 
 ---
@@ -1217,8 +1217,8 @@ SELECT application_id, page_id, process_name, process_text
 | 1.1     | 2026-04-26 | Roberto Capancioni | Removed `t_result`; ORA-04068; AUTONOMOUS_TRANSACTION guidance; `dup_val_on_index`; grants; ORDS JSON guard; simplified error ranges; APEX dependency query |
 | 1.2     | 2026-04-26 | Roberto Capancioni | NOCOPY partial-state warning; APEX `p_md5` vs `row_version` conflict; explicit ROLLBACK in ORDS handler; atomicity policy formalised; comparison table; file naming convention; APEX Error Handling Function example; Oracle 23c future note |
 | 1.3     | 2026-04-26 | Roberto Capancioni | Cross-entity validation via DAL with direct-SQL fallback note; file extension convention (`.pks`/`.pkb` vs `.sql`); corrected `PRAGMA SERIALLY_REUSABLE` misconception |
-| 1.4     | 2026-04-27 | Roberto Capancioni | Audit layer: `/auditlog` directive generates `{entity}_audit` package with `PRAGMA AUTONOMOUS_TRANSACTION`; layer map, file naming table, and generator section updated |
-| 1.5     | 2026-04-27 | Roberto Capancioni | `app_audit_log` is now developer-owned; `_audit.p_log` calls `app_audit_log_svc.create_rec` |
+| 1.4     | 2026-04-27 | Roberto Capancioni | Audit layer: `/auditlog` directive generates `{entity}_aud` package with `PRAGMA AUTONOMOUS_TRANSACTION`; layer map, file naming table, and generator section updated |
+| 1.5     | 2026-04-27 | Roberto Capancioni | `app_audit_log` is now developer-owned; `_aud.p_log` calls `app_audit_log_svc.create_rec` |
 | 1.6     | 2026-05-05 | Roberto Capancioni | Four-layer architecture: IFC layer added (`_apx` / `_rst`); SVC switches from scalar params to `t_rec` record (business columns only, no PK/rowversion/audit — all trigger-managed); `x_version OUT` removed from SVC; hooks renamed to `_hks` throughout; `ifc` setting controls which IFC package is generated (default: `apex`); APX procedures: `get / ins / upd / del` with `p_`-prefix for APEX Invoke API auto-mapping; grants model updated — only IFC layer is public; `p_row_version` in APX `get`/`upd` only when `/rowversion` active; audit OUT params in APX `get` only when `auditcols: yes` active |
 | 1.7     | 2026-05-05 | Roberto Capancioni | DAL: `lock_by_id` function added (SELECT FOR UPDATE NOWAIT); `c_err_locked` constant (-20003); `resource_busy` exception with PRAGMA EXCEPTION_INIT(-54) declared at body level; §4.3 extended with check-then-act pattern, SVC usage example, and guidance on when to use `lock_by_id` vs `get_by_id`; §7.2.3 APEX error handler updated with -20003 mapping; §8 audit body corrected to `l_rec t_rec` pattern (was showing old scalar named-param call); §9 error range and `app_errors` package updated with `c_locked`; §6.2 rewritten — QuickSQL generates a single SQL block, not separate files; file management is a deployment discipline, not a generator feature; `_hks_impl.sql` naming is a developer convention, not enforced by QuickSQL |
 | 1.8     | 2026-08-15 | Roberto Capancioni | §9.1 added: `raise_application_error` messages for `c_err_stale_data`/`c_err_not_found`/`c_err_locked`/`dup_val_on_index` now carry a bracketed token (`[STALE_DATA]`, `[NOT_FOUND]`, `[LOCKED]`, `[DUPLICATE]`) so callers behind a wrapping layer (e.g. `APEX_EXEC`'s `p_dml_plsql_code`, which re-raises any custom-code exception as a generic `ORA-20987`) can classify the error from message text alone, without depending on a numeric `SQLCODE` substring that can collide with unrelated codes; generator updated in `src/oracle/plsql.ts` (`_generateDalBody`, `_generateSvcBody`) |

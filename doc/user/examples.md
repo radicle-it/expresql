@@ -21,6 +21,9 @@ This document collects end-to-end Quick SQL examples. Each scenario shows the QS
 - [15. Complete schema combining multiple features](#15-complete-schema-combining-multiple-features)
 - [16. Shared-schema multi-tenancy with `tenantid: yes`](#16-shared-schema-multi-tenancy-with-tenantid-yes)
 - [17. Schema migration with `toDiff`](#17-schema-migration-with-todiff)
+- [18. Versioned insert-only tables](#18-versioned-insert-only-tables)
+  - [18.1 With `/auditcols`, `/rowversion`, and `api: layered`](#181-with-auditcols-rowversion-and-api-layered)
+  - [18.2 Compile-time conflict detection: `/versioned` + `/immutable`](#182-compile-time-conflict-detection-versioned--immutable)
 
 ---
 
@@ -716,7 +719,7 @@ doctors /api /auditlog audit_log
 - `app_audit_log_hooks` — placeholder hooks for business logic
 - `app_audit_log_svc` — service layer calling dal + hooks; exposes `create_rec`, `get_rec`, `update_rec`, `delete_rec`
 - `app_doctors_dal`, `app_doctors_hooks`, `app_doctors_svc` — same three layers for `doctors`
-- `app_doctors_audit` — autonomous-transaction audit package that calls `app_audit_log_svc.create_rec` on every DML event
+- `app_doctors_aud` — autonomous-transaction audit package that calls `app_audit_log_svc.create_rec` on every DML event
 
 The layered pattern allows you to override `_hooks` without touching `_dal` or `_svc`, and to plug in audit logging transparently.
 
@@ -1119,3 +1122,165 @@ const result = toDiff(v1 + db23, v2 + db23);
 | `create_package` (spec) | 15 | CREATE OR REPLACE PACKAGE |
 | `create_view` | 16 | CREATE OR REPLACE VIEW |
 | `create_package` (body) | 17 | CREATE OR REPLACE PACKAGE BODY |
+
+---
+
+## 18. Versioned insert-only tables
+
+`/versioned` creates a **freeze-by-reference** table: rows are append-only and can only be "closed" by setting `valid_to` from NULL to a timestamp. Any document (e.g. an invoice) that stores an FK to a specific row continues to resolve the exact version used at that moment, even after newer versions are inserted.
+
+This is distinct from `/history` (which keeps a writable base table and a separate `_history` shadow for audit/CDC) — here the base table itself is insert-only and the FK always resolves the frozen row.
+
+**Input:**
+
+```quicksql
+party_profile /versioned
+  party_id      /fk party /nn
+  legal_name    vc255 /nn
+  vat_number    vc32
+  fiscal_addr   vc255
+
+tax_condition /versioned expiry_date
+  code          vc20 /nn /unique
+  rate          num(5,4) /nn
+  description   vc200
+```
+
+**Key generated DDL (columns, trigger, view, index):**
+
+```sql
+create table party_profile (
+    id            number default on null to_number(sys_guid(), ...)
+                  constraint party_profile_id_pk primary key,
+    party_id      number not null,
+    legal_name    varchar2(255 char) not null,
+    vat_number    varchar2(32 char),
+    fiscal_addr   varchar2(255 char),
+    valid_from    timestamp default systimestamp not null,
+    valid_to      timestamp,
+    is_current    number generated always as (case when valid_to is null then 1 end) virtual
+);
+
+-- Only valid_to may be updated; DELETE is always rejected.
+create or replace trigger trg_party_profile_versioned
+    before update or delete
+    on party_profile
+    for each row
+declare
+    c_del_err  constant pls_integer := -20056;
+    c_upd_err  constant pls_integer := -20057;
+begin
+    if deleting then
+        raise_application_error(c_del_err, '[VERSIONED] party_profile: delete is not permitted on a versioned (insert-only) table');
+    end if;
+    if :old.valid_to is not null then
+        raise_application_error(c_upd_err, '[VERSIONED] party_profile: this version row is already closed (valid_to is not null)');
+    end if;
+    if :new.valid_to is null then
+        raise_application_error(c_upd_err, '[VERSIONED] party_profile: valid_to must be set to a non-null timestamp to close the version');
+    end if;
+    if (   decode(:old.id,           :new.id,           0, 1)
+         + decode(:old.party_id,     :new.party_id,     0, 1)
+         + decode(:old.valid_from,   :new.valid_from,   0, 1)
+         + decode(:old.legal_name,   :new.legal_name,   0, 1)
+         + decode(:old.vat_number,   :new.vat_number,   0, 1)
+         + decode(:old.fiscal_addr,  :new.fiscal_addr,  0, 1)
+         ) > 0
+    then
+        raise_application_error(c_upd_err, '[VERSIONED] party_profile: only closing valid_to is permitted; other columns must not change');
+    end if;
+end trg_party_profile_versioned;
+/
+
+-- Current-version view, queryable via the indexed is_current column
+create or replace view party_profile_current as
+select *
+from party_profile
+where is_current = 1;
+
+-- Index on is_current (virtual column) — supports the _current view without full-table scan
+create index party_profile_is_current_i on party_profile (is_current);
+```
+
+The `is_current` virtual column (1 = open, 0 = closed) allows an ordinary B-tree index to support `_current` view queries efficiently, avoiding a full-table scan on `where valid_to is null`.
+
+The second table (`tax_condition /versioned expiry_date`) uses a custom column name for the end-of-validity timestamp instead of the default `valid_to`; `is_current` is generated as `case when expiry_date is null then 1 else 0 end` automatically.
+
+**Usage pattern — closing a version and inserting the successor:**
+
+```sql
+-- 1. Close the current version (the only UPDATE the trigger allows)
+update party_profile
+   set valid_to = systimestamp
+ where id = :old_version_id;
+
+-- 2. Insert the new version; caller stores the new id on the document
+insert into party_profile (party_id, legal_name, vat_number, fiscal_addr)
+values (:p_party_id, :new_name, :vat, :addr)
+returning id into :new_version_id;
+```
+
+---
+
+### 18.1 With `/auditcols`, `/rowversion`, and `api: layered`
+
+All three directives compose correctly with `/versioned`:
+
+```quicksql
+# api:    layered
+# prefix: md_
+
+party_profile /versioned /auditcols /rowversion /api
+  party_id        num /nn /fk parties
+  legal_name      vc255 /nn
+  fiscal_address  vc255
+  vat_number      vc32
+  tax_code        vc32
+```
+
+**Generated CREATE TABLE (abridged):**
+
+```sql
+create table md_party_profile (
+    id               number ...  constraint md_party_profile_id_pk primary key,
+    party_id         number not null,
+    legal_name       varchar2(255 char) not null,
+    fiscal_address   varchar2(255 char),
+    vat_number       varchar2(32 char),
+    tax_code         varchar2(32 char),
+    row_version      integer not null,
+    created          date not null,
+    created_by       varchar2(255 char) not null,
+    updated          date not null,
+    updated_by       varchar2(255 char) not null,
+    valid_from       timestamp default systimestamp not null,
+    valid_to         timestamp,
+    is_current       number generated always as (case when valid_to is null then 1 end) virtual
+);
+```
+
+**Interaction notes (§3.6 of the proposal):**
+
+| Combined directive | Behaviour |
+|---|---|
+| `/auditcols` | `updated`/`updated_by` are excluded from the trigger's column-change check — they legitimately update during the valid_to closure (the only UPDATE the trigger allows). |
+| `/rowversion` | `row_version` is also excluded from the check. Provides OCC on the single allowed UPDATE; of marginal utility but harmless. |
+| `api: layered` | Generates the full DAL → HKS → SVC stack. The generated `update_row` and `delete_row` in `_dal` are blocked by the trigger at runtime (ORA-20056/ORA-20057). The canonical DML is the two-step close-then-insert above. A dedicated `close_version(p_id, p_valid_to)` procedure in the DAL is a future enhancement. |
+| `tenantid: yes` | The `tenant_id` column behaves like any other "frozen" business column — it is included in the trigger's `DECODE` comparison and must not change. |
+
+---
+
+### 18.2 Compile-time conflict detection: `/versioned` + `/immutable`
+
+These two directives are contradictory: `/immutable` (Oracle Blockchain Table) blocks **all** updates — including the `valid_to` closure that `/versioned` requires. ExpreSQL detects this combination and reports a **warning** at compile time, so the editor highlights the conflict before you run any DDL.
+
+```quicksql
+logs /versioned /immutable   -- ← ExpreSQL warns: /immutable blocks valid_to closure
+  msg vc255
+```
+
+> Remove `/immutable` if you want insert-only semantics with a closeable `valid_to`. Use `/immutable` alone only for true append-only tables where no update of any kind is ever needed.
+
+---
+
+> **Before using in production:** the trigger-based insert-only contract should be verified against a real Oracle instance with the exact schema combination (auditcols, rowversion, layered TAPI) before replacing hand-written triggers — same principle of "verify, don't assume" applied throughout this project.

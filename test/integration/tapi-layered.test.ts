@@ -1154,14 +1154,14 @@ describe('audit logging — /auditlog directive', () => {
         expect(svcBody).toContain('doctors_aud.log_update(p_old_row => l_old_row, p_new_row => l_row)');
     });
 
-    test('svc delete_rec fetches l_old_row before delete when /auditlog', () => {
+    test('svc delete_rec fetches l_row before delete (always, not only when /auditlog)', () => {
         const out = ddl(DOCTORS_AUDITLOG_QSQL);
         const svcBody = segment(out,
             'create or replace package body doctors_svc',
             'end doctors_svc;');
-        expect(svcBody).toContain('l_old_row doctors%rowtype');
-        expect(svcBody).toContain('l_old_row := doctors_dal.get_by_id(p_id => p_id)');
-        const idxFetch  = svcBody.indexOf('l_old_row := doctors_dal.get_by_id');
+        expect(svcBody).toContain('l_row doctors%rowtype');
+        expect(svcBody).toContain('l_row := doctors_dal.get_by_id(p_id => p_id)');
+        const idxFetch  = svcBody.indexOf('l_row := doctors_dal.get_by_id');
         const idxDelete = svcBody.indexOf('doctors_dal.delete_row');
         expect(idxFetch).toBeLessThan(idxDelete);
     });
@@ -1171,7 +1171,7 @@ describe('audit logging — /auditlog directive', () => {
         const svcBody = segment(out,
             'create or replace package body doctors_svc',
             'end doctors_svc;');
-        expect(svcBody).toContain('doctors_aud.log_delete(p_old_row => l_old_row)');
+        expect(svcBody).toContain('doctors_aud.log_delete(p_old_row => l_row)');
     });
 
     test('without /auditlog, no _aud package is emitted', () => {
@@ -1382,4 +1382,195 @@ describe('layered TAPI — tenantid:yes', () => {
         expect(insertRow).toContain('p_row.tenant_id');
     });
 
+});
+
+// ── §4.15 Versioned layered TAPI — /versioned directive ──────────────────────
+
+const POLICIES_VERSIONED_QSQL = `\
+policies /api /versioned
+  code vc20 /nn
+  description vc400
+  row_version num /nn
+# settings = {"api": "layered"}`.trim();
+
+const POLICIES_VERSIONED_CUSTOM_COL_QSQL = `\
+policies /api /versioned=expires_at
+  code vc20 /nn
+  description vc400
+# settings = {"api": "layered"}`.trim();
+
+describe('versioned layered TAPI — /versioned directive', () => {
+
+    test('DAL spec exposes close_row instead of update_row and delete_row', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const dalSpec = segment(out, 'create or replace package policies_dal', 'end policies_dal;');
+        expect(dalSpec).toContain('procedure close_row');
+        expect(dalSpec).not.toContain('procedure update_row');
+        expect(dalSpec).not.toContain('procedure delete_row');
+    });
+
+    test('DAL spec close_row has p_id, p_valid_to, and p_row parameters', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const dalSpec = segment(out, 'create or replace package policies_dal', 'end policies_dal;');
+        expect(dalSpec).toContain('p_id');
+        expect(dalSpec).toContain('p_valid_to');
+        expect(dalSpec).toContain('p_row');
+        expect(dalSpec).toContain('policies.valid_to%type');
+    });
+
+    test('DAL body implements close_row with UPDATE SET valid_to', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const dalBody = segment(out, 'create or replace package body policies_dal', 'end policies_dal;');
+        const closeRow = segment(dalBody, 'procedure close_row', 'end close_row;');
+        expect(closeRow).toContain('update policies set');
+        expect(closeRow).toContain('valid_to = p_valid_to');
+    });
+
+    test('DAL body close_row has RETURNING clause including valid_to', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const dalBody = segment(out, 'create or replace package body policies_dal', 'end policies_dal;');
+        const closeRow = segment(dalBody, 'procedure close_row', 'end close_row;');
+        expect(closeRow).toContain('returning');
+        expect(closeRow).toContain('valid_to');
+        expect(closeRow).toContain('p_row.valid_to');
+    });
+
+    test('DAL body close_row checks row_version for optimistic locking', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const dalBody = segment(out, 'create or replace package body policies_dal', 'end policies_dal;');
+        const closeRow = segment(dalBody, 'procedure close_row', 'end close_row;');
+        expect(closeRow).toContain('and row_version = p_row.row_version');
+        expect(closeRow).toContain('if sql%rowcount = 0 then');
+        expect(closeRow).toContain('c_err_stale_data');
+    });
+
+    test('HKS spec exposes before_close and after_close instead of before_update/after_update/before_delete/after_delete', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const hksSpec = segment(out, 'create or replace package policies_hks', 'end policies_hks;');
+        expect(hksSpec).toContain('procedure before_close');
+        expect(hksSpec).toContain('procedure after_close');
+        expect(hksSpec).not.toContain('procedure before_update');
+        expect(hksSpec).not.toContain('procedure after_update');
+        expect(hksSpec).not.toContain('procedure before_delete');
+        expect(hksSpec).not.toContain('procedure after_delete');
+    });
+
+    test('HKS body has before_close and after_close no-ops', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const hksBody = segment(out, 'create or replace package body policies_hks', 'end policies_hks;');
+        expect(hksBody).toContain('procedure before_close');
+        expect(hksBody).toContain('procedure after_close');
+        expect(hksBody).toContain('begin null;');
+        expect(hksBody).not.toContain('procedure before_update');
+        expect(hksBody).not.toContain('procedure after_update');
+    });
+
+    test('SVC spec exposes close_version instead of update_rec and delete_rec', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const svcSpec = segment(out, 'create or replace package policies_svc', 'end policies_svc;');
+        expect(svcSpec).toContain('procedure close_version');
+        expect(svcSpec).not.toContain('procedure update_rec');
+        expect(svcSpec).not.toContain('procedure delete_rec');
+    });
+
+    test('SVC spec close_version has p_id, p_valid_to, and p_row_version parameters', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const svcSpec = segment(out, 'create or replace package policies_svc', 'end policies_svc;');
+        const closeVersion = segment(svcSpec, 'procedure close_version', ');');
+        expect(closeVersion).toContain('p_id');
+        expect(closeVersion).toContain('p_valid_to');
+        expect(closeVersion).toContain('p_row_version');
+        expect(closeVersion).toContain('policies.valid_to%type');
+    });
+
+    test('SVC body implements close_version calling dal.close_row with hook sequence', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const svcBody = segment(out, 'create or replace package body policies_svc', 'end policies_svc;');
+        const closeVersion = segment(svcBody, 'procedure close_version', 'end close_version;');
+        expect(closeVersion).toContain('policies_hks.validate');
+        expect(closeVersion).toContain("'close'");
+        expect(closeVersion).toContain('policies_hks.before_close');
+        expect(closeVersion).toContain('policies_dal.close_row');
+        expect(closeVersion).toContain('policies_hks.after_close');
+    });
+
+    test('SVC body close_version hook order: validate → before_close → close_row → after_close', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const svcBody = segment(out, 'create or replace package body policies_svc', 'end policies_svc;');
+        const closeVersion = segment(svcBody, 'procedure close_version', 'end close_version;');
+        expect(closeVersion.indexOf('policies_hks.validate'))
+            .toBeLessThan(closeVersion.indexOf('policies_hks.before_close'));
+        expect(closeVersion.indexOf('policies_hks.before_close'))
+            .toBeLessThan(closeVersion.indexOf('policies_dal.close_row'));
+        expect(closeVersion.indexOf('policies_dal.close_row'))
+            .toBeLessThan(closeVersion.indexOf('policies_hks.after_close'));
+    });
+
+    test('APP spec exposes close instead of upd and del', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const appSpec = segment(out, 'create or replace package policies_app', 'end policies_app;');
+        expect(appSpec).toContain('procedure close');
+        expect(appSpec).not.toContain('procedure upd');
+        expect(appSpec).not.toContain('procedure del');
+    });
+
+    test('APP body close delegates to svc.close_version', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const appBody = segment(out, 'create or replace package body policies_app', 'end policies_app;');
+        const closePr = segment(appBody, 'procedure close', 'end close;');
+        expect(closePr).toContain('policies_svc.close_version');
+        expect(closePr).toContain('p_id => p_id');
+        expect(closePr).toContain('p_valid_to => p_valid_to');
+        expect(closePr).toContain('p_row_version => p_row_version');
+    });
+
+    test('custom vtCol: /versioned=expires_at uses expires_at instead of valid_to', () => {
+        const out = ddl(POLICIES_VERSIONED_CUSTOM_COL_QSQL);
+        const dalSpec = segment(out, 'create or replace package policies_dal', 'end policies_dal;');
+        expect(dalSpec).toContain('p_expires_at');
+        expect(dalSpec).toContain('policies.expires_at%type');
+        expect(dalSpec).not.toContain('valid_to');
+    });
+
+    test('versioned table still emits insert_row in DAL spec', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const dalSpec = segment(out, 'create or replace package policies_dal', 'end policies_dal;');
+        expect(dalSpec).toContain('procedure insert_row');
+    });
+
+    test('versioned table still emits create_rec in SVC spec', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const svcSpec = segment(out, 'create or replace package policies_svc', 'end policies_svc;');
+        expect(svcSpec).toContain('procedure create_rec');
+    });
+
+    test('versioned trigger uses CASE (PL/SQL-compatible), not DECODE (SQL-only)', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        expect(out).not.toContain('decode(:old.');
+        expect(out).toContain('case when :old.');
+    });
+
+});
+
+describe('DAL t_id anchored to real PK column name (not hardcoded id)', () => {
+    test('table with explicit /pk uses real PK name in t_id', () => {
+        const out = ddl(`\
+custom_pk_table /api /pk order_ref
+  order_ref vc30 /pk
+  amount num
+# settings = {"api": "layered"}`);
+        const dalSpec = segment(out, 'create or replace package custom_pk_table_dal', 'end custom_pk_table_dal;');
+        expect(dalSpec).toContain('subtype t_id is custom_pk_table.order_ref%type');
+        expect(dalSpec).not.toContain('subtype t_id is custom_pk_table.id%type');
+    });
+
+    test('table with auto-generated PK uses generated PK name in t_id', () => {
+        const out = ddl(`\
+doctors /api
+  name vc200 /nn
+# settings = {"api": "layered", "genpk": true, "prefixPKwithTname": "yes"}`);
+        const dalSpec = segment(out, 'create or replace package doctors_dal', 'end doctors_dal;');
+        // With prefixPKwithTname the PK is doctor_id, not id
+        expect(dalSpec).toContain('subtype t_id is doctors.doctor_id%type');
+    });
 });

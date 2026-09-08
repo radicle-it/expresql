@@ -39,6 +39,14 @@ describe('singular', () => {
         expect(singular('s')).toBe('');
     });
 
+    test('words ending in -ss are already singular and must not be stripped', () => {
+        // address, class, access, process — all singular; stripping one s gives a wrong result
+        expect(singular('address')).toBe('address');
+        expect(singular('party_address')).toBe('party_address');
+        expect(singular('process')).toBe('process');
+        expect(singular('access')).toBe('access');
+    });
+
 });
 
 // ── canonicalObjectName ───────────────────────────────────────────────────────

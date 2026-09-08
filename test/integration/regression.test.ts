@@ -76,7 +76,8 @@ function assertTokensMatch(output: string, expected: string, strict: boolean, la
 }
 
 function checkNoError(msgList: unknown[], msgPrefix?: string): void {
-    for (const err of msgList as Array<{ message: string }>) {
+    for (const err of msgList as Array<{ message: string; severity?: string }>) {
+        if (err.severity === 'warning') continue;
         if (msgPrefix == null || err.message.startsWith(msgPrefix))
             throw new Error(`Unexpected error: "${err.message}"`);
     }

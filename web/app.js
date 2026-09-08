@@ -472,6 +472,25 @@ categories
 # settings = { prefix: "shop_", pk: identityDataType }`,
     },
     {
+        label: 'Versioned (freeze-by-reference)', desc: 'Insert-only rows — FK always resolves the exact version used',
+        qsql:
+`-- Every row is immutable except for closing valid_to (end-of-validity).
+-- FKs to a specific row ID freeze the exact version forever.
+party_profile /versioned
+  party_id     /fk parties /nn
+  legal_name   vc255 /nn
+  vat_number   vc32
+  fiscal_addr  vc255
+
+-- Custom valid_to column name
+tax_condition /versioned expiry_date
+  code         vc20 /nn /unique
+  rate         num(5,4) /nn /check 0,1
+  description  vc200
+
+# settings = { pk: identityDataType }`,
+    },
+    {
         label: 'Immutable + SODA + Vector', desc: 'Append-only ledger, document store, AI vector search',
         qsql:
 `-- Immutable audit ledger (no UPDATE or DELETE allowed)
