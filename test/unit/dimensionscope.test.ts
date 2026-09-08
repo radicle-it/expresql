@@ -179,20 +179,20 @@ describe('read paths filter in the WHERE clause; write paths do not', () => {
         const dalBody = segment(out, 'create or replace package body widgets_dal', 'end widgets_dal;');
         const fn = segment(dalBody, 'function get_by_id', 'end get_by_id;');
         expect(fn).toContain(
-            "select * into l_row from widgets where id = p_id and exists (select 1 from sec_my_scope s where s.dimension_type = 'company' and s.code = to_char(widgets.company_id));"
+            "select * into l_row from widgets where id = p_id and (widgets.company_id is null or exists (select 1 from sec_my_scope s where s.dimension_type = 'company' and s.code = to_char(widgets.company_id)));"
         );
     });
 
     test('lock_by_id', () => {
         const dalBody = segment(out, 'create or replace package body widgets_dal', 'end widgets_dal;');
         const fn = segment(dalBody, 'function lock_by_id', 'end lock_by_id;');
-        expect(fn).toContain("and  exists (select 1 from sec_my_scope s where s.dimension_type = 'company'");
+        expect(fn).toContain("and  (widgets.company_id is null or exists (select 1 from sec_my_scope s where s.dimension_type = 'company'");
     });
 
     test('get_all', () => {
         const dalBody = segment(out, 'create or replace package body widgets_dal', 'end widgets_dal;');
         const fn = segment(dalBody, 'function get_all', 'end get_all;');
-        expect(fn).toContain("open l_cur for select * from widgets where exists (select 1 from sec_my_scope");
+        expect(fn).toContain("open l_cur for select * from widgets where (widgets.company_id is null or exists (select 1 from sec_my_scope");
     });
 
     test('insert_row/update_row/delete_row do NOT gain a scope predicate (chk_rls stays authoritative)', () => {
@@ -234,6 +234,6 @@ projects /api
         const out = ddl(qsql);
         const dalBody = segment(out, 'create or replace package body projects_dal', 'end projects_dal;');
         const fn = segment(dalBody, 'function get_by_id', 'end get_by_id;');
-        expect(fn).toMatch(/dimension_type = 'company'.*and exists.*dimension_type = 'region'/s);
+        expect(fn).toMatch(/dimension_type = 'company'.*and \(projects\.region_id is null or exists.*dimension_type = 'region'/s);
     });
 });

@@ -10442,7 +10442,7 @@ var R = class {
 		return n;
 	}
 	_dimensionScopeConditions(e, t) {
-		return this._dimensionScopeColumns(e).map(({ col: e, dimType: n }) => `exists (select 1 from sec_my_scope s where s.dimension_type = '${n}' and s.code = to_char(${t}.${e}))`);
+		return this._dimensionScopeColumns(e).map(({ col: e, dimType: n }) => `(${t}.${e} is null or exists (select 1 from sec_my_scope s where s.dimension_type = '${n}' and s.code = to_char(${t}.${e})))`);
 	}
 	procDecl(e, t) {
 		let n = t === "get" ? "" : " default null", r = t === "get" ? "out" : " in", i = O + "procedure " + t + "_row (\n", a = e.getPkName(), o = e.getGenIdColName() === null ? e.findChild(e.getExplicitPkName()) : null, s = o ? o.getPlsqlType() : e.getPkType();
