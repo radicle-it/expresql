@@ -17,14 +17,18 @@
  *  3. `_svc` calls `chk_rbac` then `chk_rls` (when present) before
  *     `validate`, for insert/update/delete (and close, for /versioned
  *     tables) — same ordering for every operation.
- *  4. Read paths (`get_by_id`, `lock_by_id`, `get_all`, `get_by_<unique>`)
- *     filter directly in the WHERE clause via `exists (select 1 from
- *     sec_my_scope ...)` — an out-of-scope row never leaves the DAL, same
- *     NO_DATA_FOUND path as a genuinely missing id.
- *  5. Write paths do NOT filter in the WHERE clause (unlike tenantid): the
- *     explicit `chk_rls` check stays authoritative, raising rather than
- *     silently affecting 0 rows — matching this project's own already
- *     verified RLS behavior for company-scope writes.
+ *  4. A table with at least one configured dimension column also gets a
+ *     `<table>_rls` view (`select * from sec_pkg.secured_by_dimension(<table>)`)
+ *     — the same view any APEX region/report would read from. Read paths
+ *     (`get_by_id`, `lock_by_id`, `get_all`, `get_by_<unique>`) select FROM
+ *     THAT VIEW instead of the base table, rather than re-deriving their own
+ *     WHERE-clause filter: one filter, defined once, shared by every reader
+ *     — an out-of-scope row never leaves the DAL, same NO_DATA_FOUND path as
+ *     a genuinely missing id.
+ *  5. Write paths do NOT read from or filter through the view (unlike
+ *     tenantid): the explicit `chk_rls` check stays authoritative, raising
+ *     rather than silently affecting 0 rows — matching this project's own
+ *     already verified RLS behavior for company-scope writes.
  *  6. `validate('delete', ...)` now fires on every table (previously never
  *     called from delete_rec at all) — independent of dimensioncolumns.
  */
@@ -170,39 +174,65 @@ describe('delete_rec — always fetches the row; validate(\'delete\') now fires 
     });
 });
 
-// ── 5. Read paths — WHERE-clause scope filter, write paths — none (explicit check instead) ──
+// ── 5. Dimension-scope view + read paths select from it; write paths do not ──
 
-describe('read paths filter in the WHERE clause; write paths do not', () => {
+describe('<table>_rls view generated for a dimension-scoped table', () => {
+    test('view created for widgets (has company_id, matching dimensioncolumns)', () => {
+        const out = ddl(SCOPED_QSQL);
+        expect(out).toContain('create or replace view widgets_rls as\nselect * from sec_pkg.secured_by_dimension(widgets);');
+    });
+
+    test('NOT created for companies itself (dimensioncolumns configured, but no matching column on this table)', () => {
+        const out = ddl(SCOPED_QSQL);
+        expect(out).not.toContain('view companies_rls');
+    });
+
+    test('NOT created at all when no dimension column is configured', () => {
+        const out = ddl(UNSCOPED_QSQL);
+        expect(out).not.toContain('_rls');
+    });
+});
+
+describe('read paths select from <table>_rls; write paths do not', () => {
     const out = ddl(SCOPED_QSQL);
 
     test('get_by_id', () => {
         const dalBody = segment(out, 'create or replace package body widgets_dal', 'end widgets_dal;');
         const fn = segment(dalBody, 'function get_by_id', 'end get_by_id;');
-        expect(fn).toContain(
-            "select * into l_row from widgets where id = p_id and (widgets.company_id is null or exists (select 1 from sec_my_scope s where s.dimension_type = 'company' and s.code = to_char(widgets.company_id)));"
-        );
+        expect(fn).toContain('select * into l_row from widgets_rls where id = p_id;');
     });
 
     test('lock_by_id', () => {
         const dalBody = segment(out, 'create or replace package body widgets_dal', 'end widgets_dal;');
         const fn = segment(dalBody, 'function lock_by_id', 'end lock_by_id;');
-        expect(fn).toContain("and  (widgets.company_id is null or exists (select 1 from sec_my_scope s where s.dimension_type = 'company'");
+        expect(fn).toContain('from   widgets_rls\n');
+        expect(fn).toContain('where  id = p_id\n');
     });
 
     test('get_all', () => {
         const dalBody = segment(out, 'create or replace package body widgets_dal', 'end widgets_dal;');
         const fn = segment(dalBody, 'function get_all', 'end get_all;');
-        expect(fn).toContain("open l_cur for select * from widgets where (widgets.company_id is null or exists (select 1 from sec_my_scope");
+        expect(fn).toContain('open l_cur for select * from widgets_rls;');
     });
 
-    test('insert_row/update_row/delete_row do NOT gain a scope predicate (chk_rls stays authoritative)', () => {
+    test('unscoped table reads straight from the base table, no _rls involved', () => {
+        const unscoped = ddl(UNSCOPED_QSQL);
+        const dalBody = segment(unscoped, 'create or replace package body widgets_dal', 'end widgets_dal;');
+        const fn = segment(dalBody, 'function get_by_id', 'end get_by_id;');
+        expect(fn).toContain('select * into l_row from widgets where id = p_id;');
+    });
+
+    test('insert_row/update_row/delete_row do NOT read from _rls or reference sec_my_scope (chk_rls stays authoritative)', () => {
         const dalBody = segment(out, 'create or replace package body widgets_dal', 'end widgets_dal;');
         const insertRow = segment(dalBody, 'procedure insert_row', 'end insert_row;');
         const updateRow = segment(dalBody, 'procedure update_row', 'end update_row;');
         const deleteRow = segment(dalBody, 'procedure delete_row', 'end delete_row;');
         expect(insertRow).not.toContain('sec_my_scope');
+        expect(insertRow).not.toContain('widgets_rls');
         expect(updateRow).not.toContain('sec_my_scope');
+        expect(updateRow).not.toContain('widgets_rls');
         expect(deleteRow).not.toContain('sec_my_scope');
+        expect(deleteRow).not.toContain('widgets_rls');
     });
 });
 
@@ -230,10 +260,17 @@ projects /api
         expect(hksBody).toContain("require_dimension_scope(p_dimension_type => 'region', p_code => to_char(p_row.region_id))");
     });
 
-    test('get_by_id ANDs both scope predicates', () => {
+    test('a single _rls view covers both dimensions — secured_by_dimension itself does the per-column introspection at the DB side, not ExpreSQL', () => {
+        const out = ddl(qsql);
+        expect(out).toContain('create or replace view projects_rls as\nselect * from sec_pkg.secured_by_dimension(projects);');
+        // only ONE view for projects — ExpreSQL never emits a per-dimension predicate here
+        expect(out.match(/create or replace view projects_rls/g)?.length).toBe(1);
+    });
+
+    test('get_by_id reads from the single projects_rls view', () => {
         const out = ddl(qsql);
         const dalBody = segment(out, 'create or replace package body projects_dal', 'end projects_dal;');
         const fn = segment(dalBody, 'function get_by_id', 'end get_by_id;');
-        expect(fn).toMatch(/dimension_type = 'company'.*and \(projects\.region_id is null or exists.*dimension_type = 'region'/s);
+        expect(fn).toContain('select * into l_row from projects_rls where id = p_id;');
     });
 });

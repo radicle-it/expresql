@@ -600,12 +600,12 @@ view orders_v orders order_lines  -- view filtered by tenant_ctx.get_id; WITH RE
 # settings = { prefix: "app_", tenantid: yes, auditcols: yes, drop: yes, db: "23c", readonlyviews: yes }`,
     },
     {
-        label: 'Row-Level Scope (dimensioncolumns)', desc: 'chk_rbac (always) + chk_rls (when scoped) — scope by set membership, not a single tenant value',
+        label: 'Row-Level Scope (dimensioncolumns)', desc: 'chk_rbac (always) + chk_rls (when scoped) + a generated _rls view reads route through — scope by set membership, not a single tenant value',
         qsql:
 `companies /api
   name vc200 /nn
 
-invoices /api                     -- has company_id → gets chk_rls + WHERE-filtered reads
+invoices /api                     -- has company_id → gets chk_rls, invoices_rls view, reads via it
   company_id /fk companies /nn
   amount     num /nn
 

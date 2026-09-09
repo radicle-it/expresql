@@ -10441,9 +10441,6 @@ var R = class {
 		}
 		return n;
 	}
-	_dimensionScopeConditions(e, t) {
-		return this._dimensionScopeColumns(e).map(({ col: e, dimType: n }) => `(${t}.${e} is null or exists (select 1 from sec_my_scope s where s.dimension_type = '${n}' and s.code = to_char(${t}.${e})))`);
-	}
 	procDecl(e, t) {
 		let n = t === "get" ? "" : " default null", r = t === "get" ? "out" : " in", i = O + "procedure " + t + "_row (\n", a = e.getPkName(), o = e.getGenIdColName() === null ? e.findChild(e.getExplicitPkName()) : null, s = o ? o.getPlsqlType() : e.getPkType();
 		i += O + O + "p_" + a + "        in  " + s + n, this._hasSyntheticTenantId(e) && (i += ",\n" + O + O + "p_tenant_id   " + r + "  integer" + n);
@@ -10515,50 +10512,53 @@ var R = class {
 		}
 		return c += `${O}type t_cursor is ref cursor return ${t}%rowtype;\n`, c += `${O}function get_all return t_cursor;\n\n`, c += `${O}procedure insert_row (p_row in out nocopy ${t}%rowtype);\n\n`, a || (o ? (c += `${O}procedure close_row (\n`, c += `${O}${O}p_id       in     t_id,\n`, c += `${O}${O}p_${s.padEnd(10)} in     ${t}.${s}%type default systimestamp,\n`, c += `${O}${O}p_row      in out nocopy ${t}%rowtype\n`, c += `${O});\n\n`) : (c += `${O}procedure update_row (p_row in out nocopy ${t}%rowtype);\n\n`, c += `${O}procedure delete_row (p_id in t_id);\n\n`)), c += `${O}c_err_stale_data constant pls_integer := -20001;\n`, c += `${O}c_err_not_found  constant pls_integer := -20002;\n`, c += `${O}c_err_locked     constant pls_integer := -20003;\n\n`, c += `end ${n};\n/\n`, c;
 	}
+	_generateDimensionRlsView(e) {
+		if (this._dimensionScopeColumns(e).length === 0) return "";
+		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase();
+		return `create or replace view ${t}_rls as\nselect * from sec_pkg.secured_by_dimension(${t});\n/\n`;
+	}
 	_generateDalBody(e) {
-		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_dal", r = (e.getPkName() ?? "id").toLowerCase(), i = this._hasVersionCol(e), a = e.hasAuditCols(), o = this._svcCols(e), s = Object.keys(e.fks ?? {}), c = e.children.filter((e) => e.isOption("unique")), l = this._isAuditLogTarget(e), u = this._hasSyntheticTenantId(e), d = e.isOption("versioned"), f = (String(e.getOptionValue("versioned") ?? "").trim().replace(/^=/, "") || "valid_to").toLowerCase(), p = this._dimensionScopeConditions(e, t), m = `create or replace package body ${n} as\n\n`;
+		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_dal", r = (e.getPkName() ?? "id").toLowerCase(), i = this._hasVersionCol(e), a = e.hasAuditCols(), o = this._svcCols(e), s = Object.keys(e.fks ?? {}), c = e.children.filter((e) => e.isOption("unique")), l = this._isAuditLogTarget(e), u = this._hasSyntheticTenantId(e), d = e.isOption("versioned"), f = (String(e.getOptionValue("versioned") ?? "").trim().replace(/^=/, "") || "valid_to").toLowerCase(), p = this._dimensionScopeColumns(e).length > 0, m = `create or replace package body ${n} as\n\n`;
 		m += `${O}resource_busy exception;\n`, m += `${O}pragma exception_init(resource_busy, -54);\n\n`;
-		let h = this.ctx.objPrefix() + "tenant_ctx";
+		let h = this.ctx.objPrefix() + "tenant_ctx", g = p ? `${t}_rls` : t;
 		m += `${O}function get_by_id (p_id in t_id) return ${t}%rowtype is\n`, m += `${O}${O}l_row ${t}%rowtype;\n`, m += `${O}begin\n`;
 		{
-			let e = [...u ? [`tenant_id = ${h}.get_id`] : [], ...p].map((e) => ` and ${e}`).join("");
-			m += `${O}${O}select * into l_row from ${t} where ${r} = p_id${e};\n`;
+			let e = u ? ` and tenant_id = ${h}.get_id` : "";
+			m += `${O}${O}select * into l_row from ${g} where ${r} = p_id${e};\n`;
 		}
-		m += `${O}${O}return l_row;\n`, m += `${O}exception\n`, m += `${O}${O}when no_data_found then\n`, m += `${O}${O}${O}raise_application_error(c_err_not_found, '[NOT_FOUND] ${t}: record not found (id=' || p_id || ')');\n`, m += `${O}end get_by_id;\n\n`, m += `${O}function lock_by_id (p_id in t_id) return ${t}%rowtype is\n`, m += `${O}${O}l_row ${t}%rowtype;\n`, m += `${O}begin\n`, m += `${O}${O}select * into l_row\n`, m += `${O}${O}from   ${t}\n`, m += `${O}${O}where  ${r} = p_id\n`;
-		for (let e of [...u ? [`tenant_id = ${h}.get_id`] : [], ...p]) m += `${O}${O}  and  ${e}\n`;
-		m += `${O}${O}for update nowait;\n`, m += `${O}${O}return l_row;\n`, m += `${O}exception\n`, m += `${O}${O}when no_data_found then\n`, m += `${O}${O}${O}raise_application_error(c_err_not_found, '[NOT_FOUND] ${t}: record not found (id=' || p_id || ')');\n`, m += `${O}${O}when resource_busy then\n`, m += `${O}${O}${O}raise_application_error(c_err_locked, '[LOCKED] ${t}: record locked by another session');\n`, m += `${O}end lock_by_id;\n\n`;
+		m += `${O}${O}return l_row;\n`, m += `${O}exception\n`, m += `${O}${O}when no_data_found then\n`, m += `${O}${O}${O}raise_application_error(c_err_not_found, '[NOT_FOUND] ${t}: record not found (id=' || p_id || ')');\n`, m += `${O}end get_by_id;\n\n`, m += `${O}function lock_by_id (p_id in t_id) return ${t}%rowtype is\n`, m += `${O}${O}l_row ${t}%rowtype;\n`, m += `${O}begin\n`, m += `${O}${O}select * into l_row\n`, m += `${O}${O}from   ${g}\n`, m += `${O}${O}where  ${r} = p_id\n`, u && (m += `${O}${O}  and  tenant_id = ${h}.get_id\n`), m += `${O}${O}for update nowait;\n`, m += `${O}${O}return l_row;\n`, m += `${O}exception\n`, m += `${O}${O}when no_data_found then\n`, m += `${O}${O}${O}raise_application_error(c_err_not_found, '[NOT_FOUND] ${t}: record not found (id=' || p_id || ')');\n`, m += `${O}${O}when resource_busy then\n`, m += `${O}${O}${O}raise_application_error(c_err_locked, '[LOCKED] ${t}: record locked by another session');\n`, m += `${O}end lock_by_id;\n\n`;
 		for (let e of c) {
-			let n = e.parseName().toLowerCase(), r = [...u ? [`tenant_id = ${h}.get_id`] : [], ...p].map((e) => ` and ${e}`).join("");
-			m += `${O}function get_by_${n} (p_${n} in ${t}.${n}%type) return ${t}%rowtype is\n`, m += `${O}${O}l_row ${t}%rowtype;\n`, m += `${O}begin\n`, m += `${O}${O}select * into l_row from ${t} where ${n} = p_${n}${r};\n`, m += `${O}${O}return l_row;\n`, m += `${O}end get_by_${n};\n\n`;
+			let n = e.parseName().toLowerCase(), r = u ? ` and tenant_id = ${h}.get_id` : "";
+			m += `${O}function get_by_${n} (p_${n} in ${t}.${n}%type) return ${t}%rowtype is\n`, m += `${O}${O}l_row ${t}%rowtype;\n`, m += `${O}begin\n`, m += `${O}${O}select * into l_row from ${g} where ${n} = p_${n}${r};\n`, m += `${O}${O}return l_row;\n`, m += `${O}end get_by_${n};\n\n`;
 		}
 		m += `${O}function get_all return t_cursor is\n`, m += `${O}${O}l_cur t_cursor;\n`, m += `${O}begin\n`;
 		{
-			let e = [...u ? [`tenant_id = ${h}.get_id`] : [], ...p], n = e.length > 0 ? ` where ${e.join(" and ")}` : "";
-			m += `${O}${O}open l_cur for select * from ${t}${n};\n`;
+			let e = u ? ` where tenant_id = ${h}.get_id` : "";
+			m += `${O}${O}open l_cur for select * from ${g}${e};\n`;
 		}
 		m += `${O}${O}return l_cur;\n`, m += `${O}end get_all;\n\n`;
-		let g = [
+		let _ = [
 			...u ? ["tenant_id"] : [],
 			...s.map((e) => e.toLowerCase()),
 			...o.map((e) => e.parseName().toLowerCase())
-		], _ = [
+		], v = [
 			...u ? ["p_row.tenant_id"] : [],
 			...s.map((e) => `p_row.${e.toLowerCase()}`),
 			...o.map((e) => `p_row.${e.parseName().toLowerCase()}`)
 		];
-		if (m += `${O}procedure insert_row (p_row in out nocopy ${t}%rowtype) is\n`, m += `${O}begin\n`, u && (m += `${O}${O}p_row.tenant_id := ${h}.get_id;\n`), m += `${O}${O}insert into ${t} (\n`, m += `${O}${O}${O}` + g.join(`,\n${O}${O}${O}`) + "\n", m += `${O}${O}) values (\n`, m += `${O}${O}${O}` + _.join(`,\n${O}${O}${O}`) + "\n", m += `${O}${O})`, i) {
+		if (m += `${O}procedure insert_row (p_row in out nocopy ${t}%rowtype) is\n`, m += `${O}begin\n`, u && (m += `${O}${O}p_row.tenant_id := ${h}.get_id;\n`), m += `${O}${O}insert into ${t} (\n`, m += `${O}${O}${O}` + _.join(`,\n${O}${O}${O}`) + "\n", m += `${O}${O}) values (\n`, m += `${O}${O}${O}` + v.join(`,\n${O}${O}${O}`) + "\n", m += `${O}${O})`, i) {
 			let e = String(this.ctx.getOptionValue("createdcol") ?? "created"), t = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), n = [`${r}`, "row_version"], i = [`p_row.${r}`, "p_row.row_version"];
 			a && (n.push(e, t), i.push(`p_row.${e}`, `p_row.${t}`)), m += `\n${O}${O}returning ${n.join(", ")}\n`, m += `${O}${O}     into ${i.join(", ")}`;
 		} else m += `\n${O}${O}returning ${r}\n`, m += `${O}${O}     into p_row.${r}`;
 		m += ";\n", m += `${O}end insert_row;\n\n`;
-		let v = [...s.map((e) => `${e.toLowerCase()} = p_row.${e.toLowerCase()}`), ...o.map((e) => `${e.parseName().toLowerCase()} = p_row.${e.parseName().toLowerCase()}`)];
+		let y = [...s.map((e) => `${e.toLowerCase()} = p_row.${e.toLowerCase()}`), ...o.map((e) => `${e.parseName().toLowerCase()} = p_row.${e.parseName().toLowerCase()}`)];
 		if (!l) if (d) {
 			let e = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), n = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by");
 			m += `${O}procedure close_row (\n`, m += `${O}${O}p_id       in     t_id,\n`, m += `${O}${O}p_${f.padEnd(10)} in     ${t}.${f}%type default systimestamp,\n`, m += `${O}${O}p_row      in out nocopy ${t}%rowtype\n`, m += `${O}) is\n`, m += `${O}${O}l_id t_id := p_id;\n`, m += `${O}begin\n`, m += `${O}${O}update ${t} set\n`, m += `${O}${O}${O}${f} = p_${f}\n`, m += `${O}${O}where ${r} = l_id`, u && (m += `\n${O}${O}  and tenant_id = ${h}.get_id`), i && (m += `\n${O}${O}  and row_version = p_row.row_version`);
 			let o = [], s = [];
 			i && (o.push("row_version"), s.push("p_row.row_version")), a && (o.push(e, n), s.push(`p_row.${e}`, `p_row.${n}`)), o.push(f), s.push(`p_row.${f}`), m += `\n${O}${O}returning ${o.join(", ")}\n`, m += `${O}${O}     into ${s.join(", ")};\n`, i ? (m += `${O}${O}if sql%rowcount = 0 then\n`, m += `${O}${O}${O}declare l_dummy pls_integer;\n`, m += `${O}${O}${O}begin\n`, u ? m += `${O}${O}${O}${O}select 1 into l_dummy from ${t} where ${r} = l_id and tenant_id = ${h}.get_id;\n` : m += `${O}${O}${O}${O}select 1 into l_dummy from ${t} where ${r} = l_id;\n`, m += `${O}${O}${O}${O}raise_application_error(c_err_stale_data, '[STALE_DATA] row modified by another session. reload and retry.');\n`, m += `${O}${O}${O}exception\n`, m += `${O}${O}${O}${O}when no_data_found then\n`, m += `${O}${O}${O}${O}${O}raise_application_error(c_err_not_found, '[NOT_FOUND] record ' || l_id || ' does not exist.');\n`, m += `${O}${O}${O}end;\n`, m += `${O}${O}end if;\n`) : (m += `${O}${O}if sql%rowcount = 0 then\n`, m += `${O}${O}${O}raise_application_error(c_err_not_found, '[NOT_FOUND] record ' || l_id || ' does not exist.');\n`, m += `${O}${O}end if;\n`), m += `${O}end close_row;\n\n`;
 		} else {
-			if (m += `${O}procedure update_row (p_row in out nocopy ${t}%rowtype) is\n`, m += `${O}${O}l_id t_id;\n`, m += `${O}begin\n`, m += `${O}${O}l_id := p_row.${r};\n`, m += `${O}${O}update ${t} set\n`, m += `${O}${O}${O}` + v.join(`,\n${O}${O}${O}`) + "\n", m += `${O}${O}where ${r} = l_id`, u && (m += `\n${O}${O}  and tenant_id = ${h}.get_id`), i && (m += `\n${O}${O}  and row_version = p_row.row_version`), i) {
+			if (m += `${O}procedure update_row (p_row in out nocopy ${t}%rowtype) is\n`, m += `${O}${O}l_id t_id;\n`, m += `${O}begin\n`, m += `${O}${O}l_id := p_row.${r};\n`, m += `${O}${O}update ${t} set\n`, m += `${O}${O}${O}` + y.join(`,\n${O}${O}${O}`) + "\n", m += `${O}${O}where ${r} = l_id`, u && (m += `\n${O}${O}  and tenant_id = ${h}.get_id`), i && (m += `\n${O}${O}  and row_version = p_row.row_version`), i) {
 				let e = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), t = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), n = ["row_version"], r = ["p_row.row_version"];
 				a && (n.push(e, t), r.push(`p_row.${e}`, `p_row.${t}`)), m += `\n${O}${O}returning ${n.join(", ")}\n`, m += `${O}${O}     into ${r.join(", ")}`;
 			}
@@ -10698,8 +10698,8 @@ var R = class {
 	}
 	generateLayeredTAPI(e) {
 		if (e.inferType() !== "table" || e.children.length === 0) return "";
-		let t = this._hasAuditLog(e), n = String(this.ctx.getOptionValue("ifc") ?? "apex").toLowerCase(), r = this._generateDalSpec(e) + "\n" + this._generateDalBody(e) + "\n" + this._generateHksSpec(e) + "\n" + this._generateHksBody(e) + "\n" + this._generateSvcSpec(e) + "\n";
-		return t && (r += this._generateAuditSpec(e) + "\n"), r += this._generateSvcBody(e), t && (r += "\n" + this._generateAuditBody(e)), n === "apex" || n === "" ? r += "\n" + this._generateAppSpec(e) + "\n" + this._generateAppBody(e) : n === "rest" && (r += "\n" + this._generateRstSpec(e) + "\n" + this._generateRstBody(e)), r;
+		let t = this._hasAuditLog(e), n = String(this.ctx.getOptionValue("ifc") ?? "apex").toLowerCase(), r = this._generateDimensionRlsView(e), i = this._generateDalSpec(e) + "\n" + (r ? r + "\n" : "") + this._generateDalBody(e) + "\n" + this._generateHksSpec(e) + "\n" + this._generateHksBody(e) + "\n" + this._generateSvcSpec(e) + "\n";
+		return t && (i += this._generateAuditSpec(e) + "\n"), i += this._generateSvcBody(e), t && (i += "\n" + this._generateAuditBody(e)), n === "apex" || n === "" ? i += "\n" + this._generateAppSpec(e) + "\n" + this._generateAppBody(e) : n === "rest" && (i += "\n" + this._generateRstSpec(e) + "\n" + this._generateRstBody(e)), i;
 	}
 	_generateRstSpec(e) {
 		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase() + "_rst", n = e.parseName().toLowerCase(), r = e.isOption("versioned"), i = `create or replace package ${t} as\n\n`;
