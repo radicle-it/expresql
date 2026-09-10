@@ -629,9 +629,9 @@ var M = class {
 			let n = f(e, this.parseName()), r = O;
 			this.parent !== null && (r = " ".repeat(this.parent.maxChildNameLen()));
 			let i = this.getGeneralConstraint();
-			if (i !== null) return this.children !== null && 0 < this.children.length ? (t += O + "constraint " + f(this._ctx.objPrefix(), n, D.ck), t += "  check " + i + ",\n") : (t += " constraint " + f(this._ctx.objPrefix(), n, D.ck) + "\n", t += O + O + r + "check " + i), t;
+			if (i !== null) return this.children !== null && 0 < this.children.length ? (t += "    constraint " + f(this._ctx.objPrefix(), n, D.ck), t += "  check " + i + ",\n") : (t += " constraint " + f(this._ctx.objPrefix(), n, D.ck) + "\n", t += "        " + r + "check " + i), t;
 			let a = this.getValues("check");
-			t += " constraint " + f(this._ctx.objPrefix(), n, D.ck) + "\n", t += O + O + r + "check (" + this.parseName() + " in (" + a + "))";
+			t += " constraint " + f(this._ctx.objPrefix(), n, D.ck) + "\n", t += "        " + r + "check (" + this.parseName() + " in (" + a + "))";
 		}
 		return t;
 	}
@@ -1217,7 +1217,7 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				a === t.length - 1 && (l = c);
 			}
 			var u = e[l];
-			return n = n === void 0 ? !1 : n, n && (e.splice(l, 1), t.splice(l, 1)), u;
+			return n = n !== void 0 && n, n && (e.splice(l, 1), t.splice(l, 1)), u;
 		}, u.prototype.paragraph = function(e) {
 			e = d(e);
 			var t = e.sentences || this.natural({
@@ -12708,8 +12708,8 @@ var ct = class extends _e {
 	}
 	_genAuditColumns(e) {
 		if (!e.hasAuditCols()) return "";
-		let t = "timestamp", n = "", r = String(this._ddl.getOptionValue("createdcol") ?? "created"), i = String(this._ddl.getOptionValue("createdbycol") ?? "created_by"), a = String(this._ddl.getOptionValue("updatedcol") ?? "updated"), o = String(this._ddl.getOptionValue("updatedbycol") ?? "updated_by");
-		return n += O + r + O + " ".repeat(e.maxChildNameLen() - r.length) + t + " not null,\n", n += O + i + O + " ".repeat(e.maxChildNameLen() - i.length) + "varchar(255) not null,\n", n += O + a + O + " ".repeat(e.maxChildNameLen() - a.length) + t + " not null,\n", n += O + o + O + " ".repeat(e.maxChildNameLen() - o.length) + "varchar(255) not null,\n", n;
+		let t = "", n = String(this._ddl.getOptionValue("createdcol") ?? "created"), r = String(this._ddl.getOptionValue("createdbycol") ?? "created_by"), i = String(this._ddl.getOptionValue("updatedcol") ?? "updated"), a = String(this._ddl.getOptionValue("updatedbycol") ?? "updated_by");
+		return t += O + n + O + " ".repeat(e.maxChildNameLen() - n.length) + "timestamp not null,\n", t += O + r + O + " ".repeat(e.maxChildNameLen() - r.length) + "varchar(255) not null,\n", t += O + i + O + " ".repeat(e.maxChildNameLen() - i.length) + "timestamp not null,\n", t += O + a + O + " ".repeat(e.maxChildNameLen() - a.length) + "varchar(255) not null,\n", t;
 	}
 	_genAdditionalColumns(e) {
 		let t = "", n = this._ddl.additionalColumns();

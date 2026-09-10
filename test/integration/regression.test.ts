@@ -144,7 +144,12 @@ describe('DDL regression (TypeScript sources)', () => {
             }
 
             const cmpExt = tc.isERD ? '.erd' : tc.ext === '.json' ? '.esql' : '.sql';
-            let expected = fs.readFileSync(baseName + cmpExt, 'utf8');
+            // Strip a leading UTF-8 BOM: several .sql baselines carry one (likely
+            // saved by an editor that adds it by default), the lexer has no BOM
+            // handling and tokenizes it as a stray identifier — comparison against
+            // freshly generated output (which never has a BOM) then fails on the
+            // very first token even though the DDL itself matches.
+            let expected = fs.readFileSync(baseName + cmpExt, 'utf8').replace(/^﻿/, '');
 
             if (tc.isERD) {
                 // ERD output is JSON — compare semantically, not token-by-token
