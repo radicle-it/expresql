@@ -325,6 +325,19 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}${tab}raise_application_error(-20002, '${tbl}: record not found (id=' || p_id || ')');\n`;
         r += `${tab}end p_get_by_id;\n\n`;
 
+        // p_get_all — weak ref cursor (sys_refcursor): absorbed for the same reason as
+        // p_get_by_id above; a bulk read has no per-row business logic to gate on _svc/_hks.
+        r += `${tab}function p_get_all return sys_refcursor is\n`;
+        r += `${tab}${tab}l_cur sys_refcursor;\n`;
+        r += `${tab}begin\n`;
+        if (synTenantId) {
+            r += `${tab}${tab}open l_cur for select * from ${tbl} where tenant_id = ${tenantCtxPkg}.get_id;\n`;
+        } else {
+            r += `${tab}${tab}open l_cur for select * from ${tbl};\n`;
+        }
+        r += `${tab}${tab}return l_cur;\n`;
+        r += `${tab}end p_get_all;\n\n`;
+
         const insCols = [...(synTenantId ? ['tenant_id'] : []),
                          ...fkCols.map(f => f.toLowerCase()),
                          ...svcCols.map(c => c.parseName().toLowerCase())];
@@ -679,6 +692,8 @@ export class OraclePlsqlBuilder {
 
         r += `${tab}function get (p_id in ${tbl}.${pkNm}%type) return ${tbl}%rowtype;\n\n`;
 
+        r += `${tab}function get_all return sys_refcursor;\n\n`;
+
         r += `${tab}procedure create_rec (\n`;
         r += `${tab}${tab}p_rec in  t_rec,\n`;
         r += `${tab}${tab}x_id  out ${tbl}.${pkNm}%type\n`;
@@ -708,6 +723,7 @@ export class OraclePlsqlBuilder {
         const paramCols   = this._svcParamCols(node);
 
         const getById   = hasDal ? `${dal}.get_by_id`  : 'p_get_by_id';
+        const getAll    = hasDal ? `${dal}.get_all`     : 'p_get_all';
         const insertRow = hasDal ? `${dal}.insert_row`  : 'p_insert_row';
         const updateRow = hasDal ? `${dal}.update_row`  : 'p_update_row';
         const deleteRow = hasDal ? `${dal}.delete_row`  : 'p_delete_row';
@@ -724,6 +740,12 @@ export class OraclePlsqlBuilder {
         r += `${tab}begin\n`;
         r += `${tab}${tab}return ${getById}(p_id => p_id);\n`;
         r += `${tab}end get;\n\n`;
+
+        // get_all
+        r += `${tab}function get_all return sys_refcursor is\n`;
+        r += `${tab}begin\n`;
+        r += `${tab}${tab}return ${getAll};\n`;
+        r += `${tab}end get_all;\n\n`;
 
         // p_do_create — private
         r += `${tab}procedure p_do_create (\n`;
@@ -997,6 +1019,7 @@ export class OraclePlsqlBuilder {
         const rst = tbl + '_rst';
         let r = `create or replace package ${rst} as\n\n`;
         r += `${tab}procedure get;\n`;
+        r += `${tab}procedure get_all;\n`;
         r += `${tab}procedure ins;\n`;
         r += `${tab}procedure upd;\n`;
         r += `${tab}procedure del;\n\n`;
@@ -1049,6 +1072,28 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}));\n`;
         r += excTail + `${tab}end get;\n\n`;
 
+        // get_all
+        r += `${tab}procedure get_all is\n`;
+        r += `${tab}${tab}l_cur sys_refcursor;\n`;
+        r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+        r += `${tab}${tab}l_sep varchar2(1) := '';\n`;
+        r += `${tab}begin\n`;
+        r += `${tab}${tab}l_cur := ${hasSvc ? `${svc}.get_all` : 'p_get_all'};\n`;
+        r += `${tab}${tab}htp.p('[');\n`;
+        r += `${tab}${tab}loop\n`;
+        r += `${tab}${tab}${tab}fetch l_cur into l_row;\n`;
+        r += `${tab}${tab}${tab}exit when l_cur%notfound;\n`;
+        r += `${tab}${tab}${tab}htp.p(l_sep || json_object(\n`;
+        r += jsonCols.map(c => `${tab}${tab}${tab}${tab}'${c}' value l_row.${c}`).join(',\n') + '\n';
+        r += `${tab}${tab}${tab}${tab}returning clob\n`;
+        r += `${tab}${tab}${tab}));\n`;
+        r += `${tab}${tab}${tab}l_sep := ',';\n`;
+        r += `${tab}${tab}end loop;\n`;
+        r += `${tab}${tab}close l_cur;\n`;
+        r += `${tab}${tab}htp.p(']');\n`;
+        r += `${tab}${tab}:status := 200;\n`;
+        r += excTail + `${tab}end get_all;\n\n`;
+
         // ins
         r += `${tab}procedure ins is\n`;
         r += `${tab}${tab}l_body clob := :body_text;\n`;
@@ -1078,7 +1123,7 @@ export class OraclePlsqlBuilder {
             r += `${tab}${tab}l_id := l_row.${pkNm};\n`;
         }
         r += `${tab}${tab}:status := 201;\n`;
-        r += `${tab}${tab}htp.p(json_object('id' value l_id));\n`;
+        r += `${tab}${tab}htp.p(json_object('${pkNm}' value l_id));\n`;
         r += excTail + `${tab}end ins;\n\n`;
 
         // upd
@@ -1114,7 +1159,7 @@ export class OraclePlsqlBuilder {
             r += `${tab}${tab}${hkCall('after_update')}(p_row => l_row);\n`;
         }
         r += `${tab}${tab}:status := 200;\n`;
-        r += `${tab}${tab}htp.p(json_object('id' value :p_id));\n`;
+        r += `${tab}${tab}htp.p(json_object('${pkNm}' value :p_id));\n`;
         r += excTail + `${tab}end upd;\n\n`;
 
         // del
@@ -1128,7 +1173,7 @@ export class OraclePlsqlBuilder {
             r += `${tab}${tab}${hkCall('after_delete')}(p_id => :p_id);\n`;
         }
         r += `${tab}${tab}:status := 200;\n`;
-        r += `${tab}${tab}htp.p(json_object('id' value :p_id));\n`;
+        r += `${tab}${tab}htp.p(json_object('${pkNm}' value :p_id));\n`;
         r += excTail + `${tab}end del;\n\n`;
 
         r += `end ${rst};\n/\n`;

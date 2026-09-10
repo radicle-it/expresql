@@ -140,6 +140,40 @@ ORDS native, `json_object`/`json_value`/`json_exists`, DROP corretto per
   `lookup+hks`), `_rst` deve chiamare `_app` direttamente — da decidere e
   documentare esplicitamente, non implicito.
 
+**Fatto**. `_rst` su `tapi-ext` esisteva già (nato indipendentemente da
+`main`, con lo stesso schema finale: bind variabili ORDS `:p_id`/`:body_text`/
+`:status`, `json_object`/`json_value`/`json_exists`, handler eccezioni
+condiviso) — verificato *prima* di assumere una ricostruzione, come
+annunciato. La decisione su `lookup`/`lookup+hks` (senza `_svc`) era già
+risolta correttamente: `_rst` chiama le funzioni private assorbite
+(`p_get_by_id`/`p_insert_row`/ecc.) esattamente come `_app` fa per lo stesso
+tier — stesso principio di degradazione, stesso punto di generazione
+(`_generatePrivateDml`).
+
+Il confronto riga per riga con `main` a `f34c57f` ha però trovato due gap
+reali, non presenti nel piano originale perché `_rst` di `main` a quella data
+non conosceva ancora il sistema a tier:
+- **`get_all` mancava del tutto** — nessun endpoint di collezione, su nessun
+  tier. Aggiunto: `p_get_all` (nuova funzione privata assorbita,
+  `sys_refcursor`, stesso scoping tenant di `p_get_by_id`) in
+  `_generatePrivateDml`; `_svc` espone ora `get_all` pubblico (delega a
+  `_dal.get_all` quando presente, altrimenti `p_get_all` — stesso pattern già
+  usato per `get`); `_rst.get_all` chiama `_svc.get_all` quando `_svc` è
+  presente, altrimenti `p_get_all` direttamente (stesso pattern di
+  `_rst.get`). Nota: `hasDal` implica sempre `hasSvc` nel sistema a tier
+  attuale (`full`/`full+hks` sono l'unico sottoinsieme con `_dal`, ed sono
+  entrambi anche in `hasSvc`), quindi il caso "dal presente senza svc" non
+  esiste — la degradazione a due rami (`hasSvc` sì/no) in `_rst` è completa.
+- **Bug**: la chiave JSON di `ins`/`upd`/`del` era `'id'` letterale invece del
+  nome reale della colonna PK (`pkNm`) — su una tabella con PK definita
+  esplicitamente (es. `code vc20 /pk`), la risposta REST avrebbe restituito
+  `{"id": ...}` invece di `{"code": ...}`. Corretto in tutti e tre i punti.
+
+6 test nuovi in `tapi-layered.test.ts` (spec/body `get_all` per tier
+full/service/lookup, verifica che `_rst.get_all` non tocchi `_svc` quando
+assente, verifica chiave JSON su PK non standard). 862/862 verdi, build
+completa pulita.
+
 ### 4. Eliminare `p_id` duplicato su PK utente-definite
 Modello: `84e33ad`. Quando `pk: none`/`genpk: no` e la colonna PK è dichiarata
 a mano, non generare sia il parametro esplicito sia quello da `_svcParamCols()`.

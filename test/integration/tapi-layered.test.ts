@@ -1733,6 +1733,64 @@ describe('ifc setting — interface package selection', () => {
         expect(body).toContain('private DML');
     });
 
+    // get_all — model: main f34c57f, missing entirely from tapi-ext's original _rst.
+    // Degraded the same way as get/ins/upd/del: RST prefers svc.get_all when present,
+    // falls back to the absorbed p_get_all otherwise (added to _generatePrivateDml).
+
+    test('RST spec declares get_all procedure', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const spec = segment(out, 'create or replace package doctors_rst', 'end doctors_rst;');
+        expect(spec).toContain('procedure get_all;');
+    });
+
+    test('RST body get_all procedure calls doctors_svc.get_all and loops a cursor into a JSON array', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
+        const getAllProc = segment(body, 'procedure get_all is', 'end get_all;');
+        expect(getAllProc).toContain('doctors_svc.get_all');
+        expect(getAllProc).toContain('fetch l_cur into l_row');
+        expect(getAllProc).toContain("htp.p('[')");
+        expect(getAllProc).toContain("htp.p(']')");
+    });
+
+    test('ifc:"rest" with lookup tier (no svc): RST body get_all calls the absorbed p_get_all', () => {
+        const out = ddl(`doctors /api lookup\n  name vc200\n# settings = {"ifc": "rest"}`);
+        const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
+        expect(body).toContain('function p_get_all return sys_refcursor');
+        const getAllProc = segment(body, 'procedure get_all is', 'end get_all;');
+        expect(getAllProc).toContain('p_get_all');
+        expect(getAllProc).not.toContain('doctors_svc');
+    });
+
+    test('SVC spec/body expose get_all — delegates to DAL when present, absorbed p_get_all otherwise', () => {
+        const full = ddl(`doctors /api full\n  name vc200`);
+        const fullSpec = segment(full, 'create or replace package doctors_svc as', 'end doctors_svc;');
+        expect(fullSpec).toContain('function get_all return sys_refcursor;');
+        const fullBody = segment(full, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        const fullGetAll = segment(fullBody, 'function get_all return sys_refcursor is', 'end get_all;');
+        expect(fullGetAll).toContain('doctors_dal.get_all');
+
+        const service = ddl(`doctors /api service\n  name vc200`);
+        const serviceBody = segment(service, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        const serviceGetAll = segment(serviceBody, 'function get_all return sys_refcursor is', 'end get_all;');
+        expect(serviceGetAll).toContain('p_get_all');
+        expect(serviceGetAll).not.toContain('doctors_dal');
+    });
+
+    test('RST get_all/ins/upd/del JSON key uses the real PK column name, not a hardcoded "id"', () => {
+        const out = ddl(`products /api\n  code vc20 /nn /pk\n  name vc200 /nn\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const body = segment(out, 'create or replace package body products_rst', 'end products_rst;');
+        const getAllProc = segment(body, 'procedure get_all is', 'end get_all;');
+        expect(getAllProc).toContain("'code' value l_row.code");
+        expect(getAllProc).not.toContain("'id' value");
+        const insProc = segment(body, 'procedure ins is', 'end ins;');
+        expect(insProc).toContain("json_object('code' value l_id)");
+        const updProc = segment(body, 'procedure upd is', 'end upd;');
+        expect(updProc).toContain("json_object('code' value :p_id)");
+        const delProc = segment(body, 'procedure del is', 'end del;');
+        expect(delProc).toContain("json_object('code' value :p_id)");
+    });
+
 });
 
 // ── Dynamic column-name alignment in t_rec / _app parameter lists ────────────
