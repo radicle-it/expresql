@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ExpreSQL is an ESQL shorthand-to-DDL compiler. It takes indentation-based shorthand and produces relational DDL, ERD metadata, and PL/SQL scaffolding. Forked from Oracle's Quick SQL, rewritten in TypeScript with a multi-dialect architecture.
 
+## Active plan — read this first
+
+`tapi-ext` is the only branch going forward. `main` (and `origin/main`) diverged from the same fork point (`2de4d31`, 2026-05-07) and accumulated ~2 months of independent work (multi-tenant redesign, `ifc: rest`, `dimensioncolumns` row-level scope, and more) that never got merged here — and, verified live, cannot be cleanly merged (the two branches rewrote the same generator functions for incompatible reasons). That work is being **rebuilt from scratch on top of `tapi-ext`**, using `main`'s commits as a reference for *what* to achieve, not as something to cherry-pick or merge.
+
+**Start here**: `doc/development/TAPI-EXT-MAIN-UNIFICATION-PLAN.md` — the full task list, in order, with the reasoning behind each one and the tier-system design decisions each task needs to make explicit (this branch's `full+hks`/`full`/`service(+hks)`/`lookup(+hks)` tiers didn't exist when the corresponding feature was first built on `main`, so each port has to decide how the feature behaves on every tier, not just the default one). Task 0 in that plan (fix the 17 failing `regression.test.ts` fixtures) must be green before starting anything else. See also `doc/development/TAPI-LAYERED-ARCHITECTURE.md` for the tier system itself.
+
 ## Commands
 
 ```bash
