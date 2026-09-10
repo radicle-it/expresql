@@ -14,7 +14,7 @@ users
   username                       vc320
   home_latitude                  number
   home_longitude                 number
-  country                        vc80 /fk countries
+  country                        /fk countries
   address                        vc80
   city                           vc80
   state                          vc80
@@ -34,7 +34,7 @@ user_sources
   source_name                    vc100
   latitude                       number
   longitude                      number
-  country                        vc80 /fk countries
+  country                        /fk countries
   address                        vc80
   city                           vc80
   state                          vc80

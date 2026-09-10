@@ -297,7 +297,7 @@ export class expresql implements DdlContext {
         return expresql_version();
     }
 
-    // ── Static back-compat assignments (for quickSQL.toDDL() calling convention) ──
+    // ── Static back-compat assignments (for expresql.toDDL() calling convention) ──
     declare static toDDL:    typeof toDDL;
     declare static toERD:    typeof toERD;
     declare static toErrors: typeof toErrors;

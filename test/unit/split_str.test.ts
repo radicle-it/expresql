@@ -35,7 +35,7 @@ describe('split_str', () => {
         expect(split_str('+++', '+')).toEqual(['+', '+', '+']);
     });
 
-    test('real QuickSQL use-case: slashes and spaces', () => {
+    test('real ExpreSQL use-case: slashes and spaces', () => {
         const tokens = split_str('/nn /pk', '/ ');
         expect(tokens).toContain('/');
         expect(tokens).toContain('nn');

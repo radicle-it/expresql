@@ -5,7 +5,7 @@ delete globalThis.Buffer;
 // createRequire è necessario per caricare un CJS bundle da ESM e ottenere le named exports
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const bundle = require('../dist/quick-sql.mle.cjs');
+const bundle = require('../dist/expresql.mle.cjs');
 
 // Ripristina Buffer per l'ambiente Node
 globalThis.Buffer = origBuffer;

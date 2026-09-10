@@ -11,7 +11,7 @@
     <script>
         (function(){
             var params = new URLSearchParams(window.location.search);
-            var t = params.get('theme') || localStorage.getItem('qsql-theme') || 'light';
+            var t = params.get('theme') || localStorage.getItem('esql-theme') || 'light';
             document.documentElement.dataset.theme = t;
             var embedded = false;
             try { embedded = window.self !== window.top; } catch(e) { embedded = true; }
@@ -375,7 +375,7 @@ emp_v = departments employees
                         <tr><td><kbd>Esc</kbd></td><td>Close Help and Settings panels</td></tr>
                     </table>
                     <p class="hdw-note" style="margin-top:8px">DDL updates in real time on every keystroke. The ER diagram updates 350 ms after the last keypress.</p>
-                    <p class="hdw-note">QSQL text is auto-saved to localStorage and restored on next visit. Each schema tab has its own content.</p>
+                    <p class="hdw-note">ESQL text is auto-saved to localStorage and restored on next visit. Each schema tab has its own content.</p>
                 </div>
             </details>
         </div>
@@ -567,11 +567,11 @@ departments
                 <div class="hdw-content">
                     <p class="hdw-note">JavaScript / MLE public functions:</p>
                     <table class="ref">
-                        <tr><td><code>toDDL(qsql, optionsJson?)</code></td><td>Convert QSQL to Oracle DDL string</td></tr>
-                        <tr><td><code>toERD(qsql, optionsJson?)</code></td><td>Return ER diagram graph object</td></tr>
-                        <tr><td><code>toErrors(qsql)</code></td><td>Return array of <code>{from, to, message, severity}</code></td></tr>
-                        <tr><td><code>toDiff(oldQsql, newQsql, optionsJson?)</code></td><td>Compute incremental migration; returns <code>{sql, statements, warnings, summary}</code></td></tr>
-                        <tr><td><code>fromJSON(json)</code></td><td>Convert JSON document to QSQL string</td></tr>
+                        <tr><td><code>toDDL(esql, optionsJson?)</code></td><td>Convert ESQL to Oracle DDL string</td></tr>
+                        <tr><td><code>toERD(esql, optionsJson?)</code></td><td>Return ER diagram graph object</td></tr>
+                        <tr><td><code>toErrors(esql)</code></td><td>Return array of <code>{from, to, message, severity}</code></td></tr>
+                        <tr><td><code>toDiff(oldEsql, newEsql, optionsJson?)</code></td><td>Compute incremental migration; returns <code>{sql, statements, warnings, summary}</code></td></tr>
+                        <tr><td><code>fromJSON(json)</code></td><td>Convert JSON document to ESQL string</td></tr>
                         <tr><td><code>expresql_version()</code></td><td>Return library version string</td></tr>
                     </table>
                 </div>

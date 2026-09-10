@@ -1,5 +1,5 @@
 // Oracle-only bundle — re-exports the core API and registers only the Oracle dialect.
-// Use dist/quick-sql-oracle.js when targeting Oracle and want to exclude Db2 code.
+// Use dist/expresql-oracle.js when targeting Oracle and want to exclude Db2 code.
 export * from './ddl-core.js';
 export { default } from './ddl-core.js';
 

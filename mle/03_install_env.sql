@@ -18,6 +18,6 @@ IMPORTS (
 -- Verifica
 SELECT env_name, imports
 FROM   user_mle_envs
-WHERE  env_name = 'QUICKSQL_ENV';
+WHERE  env_name = 'EXPRESQL_ENV';
 
 PROMPT >>> install_env.sql completato.

@@ -381,10 +381,10 @@
         h('    <div class="hdw-pane" data-pane="api">');
         h('      <details class="hdw-sec" open><summary>JavaScript / MLE functions</summary><div class="hdw-content">');
         h('        <table class="ref">');
-        h('          <tr><td><code>toDDL(qsql, opts?)</code></td><td>Convert QSQL to Oracle DDL string</td></tr>');
-        h('          <tr><td><code>toERD(qsql, opts?)</code></td><td>Return ER diagram graph object</td></tr>');
+        h('          <tr><td><code>toDDL(esql, opts?)</code></td><td>Convert ESQL to Oracle DDL string</td></tr>');
+        h('          <tr><td><code>toERD(esql, opts?)</code></td><td>Return ER diagram graph object</td></tr>');
         h('          <tr><td><code>toDiff(old, new, opts?)</code></td><td>Compute incremental migration</td></tr>');
-        h('          <tr><td><code>fromJSON(json)</code></td><td>Convert JSON document to QSQL string</td></tr>');
+        h('          <tr><td><code>fromJSON(json)</code></td><td>Convert JSON document to ESQL string</td></tr>');
         h('        </table>');
         h('        <p class="hdw-note" style="margin-top:8px"><a href="doc/user/expresql-grammar.md" target="_blank">&rarr; Grammar Reference</a></p>');
         h('      </div></details>');

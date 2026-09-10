@@ -295,7 +295,7 @@ function iterate_tokens(sourceExpr: string, quotedStrings: boolean, extraOper: s
  * Tokenizes `input` into an array of LexerToken objects.
  *
  * @param input              - Source text to tokenize
- * @param keepWSandCOMMENTS  - When false (default for quicksql), whitespace and
+ * @param keepWSandCOMMENTS  - When false (default for expresql), whitespace and
  *                             comment tokens are stripped from the output
  * @param quotedStrings      - When true, single/double-quoted strings are kept
  *                             as single tokens

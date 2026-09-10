@@ -1,11 +1,11 @@
 ﻿-- Verifica stato oggetti expresql nel schema corrente
 SET SERVEROUTPUT ON
 
-SELECT 'MLE MODULE'   AS tipo, module_name   AS nome, status FROM user_mle_modules  WHERE module_name LIKE 'QUICKSQL%'
+SELECT 'MLE MODULE'   AS tipo, module_name   AS nome, status FROM user_mle_modules  WHERE module_name LIKE 'EXPRESQL%'
 UNION ALL
-SELECT 'MLE ENV',              env_name,      'N/A'          FROM user_mle_envs     WHERE env_name    LIKE 'QUICKSQL%'
+SELECT 'MLE ENV',              env_name,      'N/A'          FROM user_mle_envs     WHERE env_name    LIKE 'EXPRESQL%'
 UNION ALL
-SELECT 'PACKAGE',              object_name,   status         FROM user_objects       WHERE object_name LIKE 'QUICKSQL%' AND object_type IN ('PACKAGE','PACKAGE BODY')
+SELECT 'PACKAGE',              object_name,   status         FROM user_objects       WHERE object_name LIKE 'EXPRESQL%' AND object_type IN ('PACKAGE','PACKAGE BODY')
 UNION ALL
-SELECT 'FUNCTION',             object_name,   status         FROM user_objects       WHERE object_name LIKE 'QUICKSQL%' AND object_type = 'FUNCTION'
+SELECT 'FUNCTION',             object_name,   status         FROM user_objects       WHERE object_name LIKE 'EXPRESQL%' AND object_type = 'FUNCTION'
 ORDER BY 1, 2;

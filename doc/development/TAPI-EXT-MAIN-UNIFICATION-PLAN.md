@@ -382,7 +382,7 @@ finiscono in `-ss` (address, class, access); warning nuovo `/fk` con tipo
 esplicito ignorato silenziosamente; warning nuovo `/versioned` +
 `/immutable` contraddittori; `auditlog`/`versioned` aggiunti alla whitelist
 direttive di tabella (mancava `auditlog`, falso positivo di "typo"
-preesistente). Grammatica (`quick-sql-grammar.md`,
+preesistente). Grammatica (`expresql-grammar.md`,
 `railroad_diagram.md`) aggiornata per `/versioned`; documentazione
 `dimensioncolumns` rimandata al punto 9 come da piano.
 
@@ -393,7 +393,7 @@ modello. 936/936 verdi, build completa pulita.
 
 ### 9. Documentazione `dimensioncolumns`/`chk_rbac`/`chk_rls`
 Modello: `51bd5ae`. Stesso trattamento già dato a `tenantid` nella doc:
-sezione dedicata in `quick-sql-grammar.md`, riga nella tabella di copertura
+sezione dedicata in `expresql-grammar.md`, riga nella tabella di copertura
 in `DOCUMENTATION_SPEC.md`. Da scrivere DOPO il punto 8, includendo
 esplicitamente l'interazione con i tier (assente nella versione originale su
 `main`, che non aveva tier da documentare).
@@ -405,7 +405,7 @@ niente `_apx`, sistema a tier, `examples.md` numerato in modo indipendente
 - `DOCUMENTATION_SPEC.md`: riga `dimensioncolumns` nella tabella impostazioni
   (gruppo "Output e funzionalità", accanto ad `api`), descrizione adattata
   per menzionare l'assorbimento (`chk_rls` "in `_hks` (o assorbito)").
-- `quick-sql-grammar.md`: voce `dimensionColumns` nel TOC + sezione dedicata
+- `expresql-grammar.md`: voce `dimensionColumns` nel TOC + sezione dedicata
   dopo `tenantID` (stesso stile di `tenantRef`); sottosezione `chk_rbac and
   chk_rls (api: layered)` sotto la documentazione dei tier, esplicitamente
   estesa alla degradazione tier (menziona `p_chk_rbac`/`p_chk_rls` assorbiti
@@ -495,7 +495,7 @@ combacia col modello: `create or replace view invoices_rls as select * from
 sec_pkg.secured_by_dimension(invoices);` seguito da `select * into l_row
 from invoices_rls where id = p_id;` in `get_by_id`. Documentazione
 aggiornata negli stessi 4 punti del modello (`DOCUMENTATION_SPEC.md`,
-`quick-sql-grammar.md`, `examples.md` — testo ritrascritto da
+`expresql-grammar.md`, `examples.md` — testo ritrascritto da
 un'esecuzione reale, non copiato dal modello — e `web/app.js`), più la
 sezione tier-aware in `dimensionscope.test.ts` estesa con verifica che la
 vista precede sia `_dal` sia `_app` a seconda del tier.
@@ -532,7 +532,7 @@ condividono già una funzione comune). L'emissione della vista in
 3 test riscritti in `dimensionscope.test.ts` per il nuovo comportamento
 (vista passthrough anche per `companies`/tabelle senza `dimensioncolumns`
 affatto). Documentazione aggiornata negli stessi 3 punti del modello
-(`DOCUMENTATION_SPEC.md`, `quick-sql-grammar.md`, `examples.md`) — non
+(`DOCUMENTATION_SPEC.md`, `expresql-grammar.md`, `examples.md`) — non
 toccato `web/app.js`, come nello stash stesso (l'esempio in galleria non
 cambia concettualmente). 943/943 verdi, build completa pulita.
 
@@ -549,6 +549,130 @@ ExpreSQL (commit `bfead75`/`ac30e19`), fatta indipendentemente da quella di
 "quick-sql"/"QuickSQL" rimasti in commenti, nomi di file, doc — su entrambe
 le rinomine capita che qualcosa sfugga (è già successo, vedi il problema del
 punto 0).
+
+**Fatto** (con una domanda aperta per l'utente — vedi sotto). Grep esaustivo
+di "quick-sql"/"QuickSQL"/"quicksql" su tutto il repo, poi classificazione
+riferimento per riferimento: attribuzione legittima al progetto originale
+Oracle (da NON toccare, es. "ExpreSQL è un fork di Oracle Quick SQL") vs.
+residuo del nome vecchio del nostro stesso tool (da correggere).
+
+Corretti:
+- Commenti/JSDoc in 8 file sorgente (`ddl.ts`, `ddl-oracle.ts`, `ddl-db2.ts`,
+  `ddl-core.ts`, `lexer.ts`, `error-msgs.ts`, `factory.ts`, `types.ts`).
+- Descrizioni test in 4 file (`lexer.test.ts`, `split_str.test.ts`,
+  `tenantid.test.ts`, `benchmark.js`).
+- `examples/cli.js`: path di import rotto (`dist/quick-sql.js` non esiste
+  più, reale `dist/expresql.js`) — bug funzionale reale, non solo
+  cosmetico. Trovato durante la verifica anche un secondo bug preesistente,
+  indipendente dalla rinomina: `expresql.version` è una funzione, il
+  template literal la stringificava senza invocarla — corretto in
+  `expresql.version()`. Verificato con esecuzione reale (`node
+  examples/cli.js <fixture>`), non solo lettura del codice.
+- `examples/browser-module.html`: stesso path rotto, corretto (formato ESM,
+  coerente con la pipeline di build reale).
+- `examples/browser-umd.html`: nome corretto, ma **resta non funzionante**
+  — nessun bundle UMD viene più prodotto dalla pipeline attuale
+  (`vite.config.js` genera solo `formats: ['es']`). Segnalato, non deciso
+  qui se vada rimosso o se il target UMD debba essere ripristinato.
+- `examples/diagram-generator/index.html`: **non toccato deliberatamente**
+  — importa `DiagramPreview` da un bundle che non esiste più, e
+  `DiagramPreview` non è definito da nessuna parte nel codice sorgente
+  attuale. Correggere solo il nome del file avrebbe dato una falsa
+  impressione di funzionante.
+- `scripts/test-mle-compat.mjs`: path corretto
+  (`dist/quick-sql.mle.cjs` → `dist/expresql.mle.cjs`, che esiste
+  davvero). Eseguendolo è emerso un problema **separato e più profondo**:
+  il file contiene sintassi ESM (`export { ... }`) nonostante l'estensione
+  `.cjs` e lo scopo dichiarato (bundle CommonJS per Graal.js) — la pipeline
+  MLE (`npm run build:mle`) non è mai stata rieseguita in questa sessione
+  (ho usato solo `build:ddl`), quindi l'artefatto è probabilmente disallineato
+  rispetto a tutto il lavoro dei punti 1-13. Segnalato per il punto 15.
+- **`doc/user/quick-sql-grammar.md` → `doc/user/expresql-grammar.md`**
+  (rinominato con `git mv`): il contenuto del file era già intitolato
+  "ExpreSQL Grammar", ma il file non era mai stato rinominato. Grep su
+  "expresql-grammar" ha trovato **8 file che già si aspettavano questo nome
+  esatto** (link rotti fino a questo momento): `apex/expresql_plugin.pkb`,
+  `test/integration/features.test.ts`, `doc/development/DIFF-UI-SPEC.md`,
+  `doc/development/UI-UX-SPEC.md`, `doc/DOCUMENTATION_SPEC.md`,
+  `doc/development/TAPI-LAYERED-ARCHITECTURE.md`, `doc/user/examples.md`,
+  `doc/user/multitenant-design.md` — tutti ora risolvono correttamente.
+  Aggiornati anche i riferimenti nel presente piano.
+- `doc/user/examples.md`: un fence ` ```quicksql ` isolato (31 vs 1) —
+  incoerenza introdotta da me stesso al punto 9, corretta a
+  ` ```expresql `.
+- `doc/user/quick-erd.md`: `quickSQL.toERD(...)` → `expresql.toERD(...)`
+  (il nome del tool core). **Non toccato** deliberatamente `quickERD`/
+  `quick-erd`/"Quick ERD" — sotto-brand distinto per il visualizzatore ERD,
+  mai coinvolto nella rinomina di nessuno dei due branch, nessun
+  riferimento nel repo si aspetta un nome diverso.
+- `doc/development/EXTENSION-POINTS.md`: diagramma architetturale
+  concettuale, `QUICKSQL_PKG`/`QUICKSQL_SCHEMA_PKG` → `EXPRESQL_PKG`/
+  `EXPRESQL_SCHEMA_PKG`; "QSQL Editor Plugin" → "ESQL Editor Plugin".
+- `apex/expresql_plugin.pkb`: tabella di riferimento API user-facing,
+  `qsql`/"QSQL" → `esql`/"ESQL" (parametri illustrativi e descrizioni).
+- **`README.md`: errore di attribuzione reale**, non solo cosmetico —
+  "Oracle Corporation — original **ExpreSQL** engine" attribuiva a Oracle
+  la paternità del **nostro** nome di fork, invece del loro prodotto reale
+  (Quick SQL). Corretto in "original Quick SQL engine and QSQL shorthand
+  specification" — qui "QSQL" resta corretto perché descrive la sintassi
+  ORIGINALE di Oracle, non la nostra.
+- `mle/00_check.sql`, `mle/03_install_env.sql`, `mle/04_install_package.sql`:
+  `QUICKSQL_%`/`QUICKSQL_ENV`/`QUICKSQL_PKG` → `EXPRESQL_%`/`EXPRESQL_ENV`/
+  `EXPRESQL_PKG`. Questi 3 file sono scritti a mano (non rigenerati da
+  `scripts/generate-mle-sql.mjs`, che tocca solo `01_install_module.sql` e
+  `02_install_api_module.sql`) — verificata la convenzione corretta
+  (`expresql_*`) proprio sui file-fratelli generati, prima di applicare il
+  fix.
+- `index.html` (webapp live) + `web/app.js`: testo di aiuto/tabella API
+  user-facing "QSQL" → "ESQL"; chiave localStorage `qsql-theme` →
+  `esql-theme` (rischio basso: perdita silenziosa della sola preferenza
+  tema al primo accesso post-fix per utenti esistenti, non del lavoro
+  salvato). Ricompilato `web/app_all.js` con `npm run build:web` e
+  verificato che la chiave nuova sia presente nel bundle.
+- **23 fixture di test** `test/fixtures/{apex,bugs}/*.quicksql` →
+  `*.esql`: scoperta rilevante, non solo rinomina cosmetica. L'harness di
+  regressione (`regression.test.ts`) scopre i file solo per estensione
+  `.esql`/`.json` — questi 23 file (bug-repro reali con ID Oracle tipo
+  `Bug35637603`) erano **invisibili al test runner da sempre**, mai
+  eseguiti. Rinominati ed eseguiti: 22 passano invariati; 1
+  (`apex/medipay.esql`) falliva per il warning `fk_type_ignored` aggiunto
+  al punto 8 — la fixture aveva davvero una colonna `/fk` con tipo
+  esplicito ridondante (`country vc80 /fk countries`); rimosso il tipo
+  esplicito (come suggerito dal warning stesso) e verificato che il DDL
+  generato non cambi di un carattere — la conferma che il tipo era
+  realmente ignorato in silenzio. 965/965 verdi ora (partiva da 943).
+
+**Non toccati, con motivazione**:
+- `CHANGELOG.md`, `README.md` (righe di attribuzione corrette),
+  `CONTRIBUTING.md`, `package.json`, `SECURITY.md`, `LICENSE.txt` —
+  riferimenti legittimi al progetto Oracle originale.
+- `notes/ORACLE_MLE_INTEGRATION.md` — documento tecnico datato 2026-04-28,
+  ~600 righe, scritto prima della rinomina E prima che la pipeline MLE
+  attuale esistesse (descrive un bundle UMD da 338KB, `dist/quick-sql.umd.cjs`,
+  che non corrisponde più a nulla di reale — l'artefatto vero oggi è
+  `dist/expresql.mle.cjs`, tutt'altro formato). Va oltre un find-replace:
+  richiederebbe una revisione tecnica completa contro `scripts/build-mle.mjs`
+  reale, fuori scope per un controllo di rinomina.
+- `notes/newfeatures.md` — nota di richieste funzionalità informale e
+  storica (come `CHANGELOG.md`), trattata come snapshot temporale.
+- `doc/user/railroad_diagram.xhtml`/`.md` — diagramma SVG generato da tool
+  esterno, stesso principio già applicato ai punti 8 e 9: editare solo lo
+  specchio testuale lo lascerebbe incoerente con l'immagine.
+
+**Domanda aperta per l'utente, non decisa qui**: il nome `qsql` (minuscolo)
+è usato come convenzione di naming per variabili/parametri locali in modo
+estremamente pervasivo — centinaia di occorrenze in `src/`, `test/`,
+`web/tabs.js`, `web/app.js` (property `qsql:` su ~20 oggetti di esempio),
+oltre alle **chiavi di localStorage reali** in `web/state.js`
+(`LS_KEY = 'radicle-qsql-v1'`, più `LS_ERD_POS`/`LS_ERD_COL`/`LS_TABS`) che
+salvano gli schemi/tab/layout ERD degli utenti reali della webapp tra una
+sessione e l'altra. Rinominare queste chiavi resetterebbe silenziosamente
+il lavoro salvato di ogni utente esistente (i dati non vengono cancellati,
+restano orfani sotto la vecchia chiave, ma diventano inaccessibili
+dall'interfaccia). Questo è un cambiamento con impatto reale sugli utenti,
+non un residuo cosmetico — non deciso unilateralmente qui, vedi la domanda
+posta all'utente nella stessa sessione in cui è stato completato questo
+punto.
 
 ### 15. Validazione finale
 - `npm run test:ts` verde su tutta la suite.

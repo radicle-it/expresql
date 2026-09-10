@@ -149,7 +149,7 @@ function update() {
         btn.textContent      = theme === 'light' ? '🌙' : '☀';
         btn.title            = theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme';
         btn.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
-        try { localStorage.setItem('qsql-theme', theme); } catch (_) {}
+        try { localStorage.setItem('esql-theme', theme); } catch (_) {}
         applyErdTheme();
     }
 

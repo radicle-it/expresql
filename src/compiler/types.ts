@@ -140,7 +140,7 @@ export interface IDdlNode {
 
 /**
  * Contract every DDL generator must fulfil.
- * quicksql depends only on this interface, not on any concrete generator class.
+ * expresql depends only on this interface, not on any concrete generator class.
  */
 export interface DDLGenerator {
     generateFullDDL(): string;
@@ -150,7 +150,7 @@ export interface DDLGenerator {
 // ── DdlContext ─────────────────────────────────────────────────────────────────
 
 /**
- * The subset of `quicksql` that tree.ts / OracleDDLGenerator depend on.
+ * The subset of `expresql` that tree.ts / OracleDDLGenerator depend on.
  * `ddl.ts` implements this; `tree.ts` consumes it as the type of the `ddl`
  * closure variable — keeping the two files decoupled.
  */

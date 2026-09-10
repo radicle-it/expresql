@@ -178,9 +178,9 @@ describe('token positions', () => {
 
 });
 
-// ── Real QuickSQL patterns ────────────────────────────────────────────────────
+// ── Real ExpreSQL patterns ────────────────────────────────────────────────────
 
-describe('QuickSQL patterns', () => {
+describe('ExpreSQL patterns', () => {
 
     test('table with column shorthand: dept\\n    name vc32', () => {
         const tokens = lex('dept\n    name vc32');

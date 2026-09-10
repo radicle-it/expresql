@@ -13,7 +13,7 @@ interface ParsedNode {
     indexOf(key: string, flag?: boolean): number;
 }
 
-/** Minimal shape of the top-level quicksql instance passed to checkSyntax. */
+/** Minimal shape of the top-level expresql instance passed to checkSyntax. */
 interface ParsedContext {
     input:    string;
     forest:   ParsedNode[];

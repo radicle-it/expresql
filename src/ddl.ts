@@ -1,5 +1,5 @@
 // Full bundle — re-exports the core API and registers all built-in dialects.
-// Import this file (or dist/quick-sql.js) when you need both Oracle and Db2.
+// Import this file (or dist/expresql.js) when you need both Oracle and Db2.
 export * from './ddl-core.js';
 export { default } from './ddl-core.js';
 

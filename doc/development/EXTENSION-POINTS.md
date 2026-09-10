@@ -23,13 +23,13 @@ This document defines the extension points for the ExpreSQL platform. EX-1 is im
                  │ JSON / DDL strings
 ┌────────────────▼──────────────────────┐
 │  Tier 2 — Oracle MLE Module           │
-│  QUICKSQL_PKG (PL/SQL façade)         │
-│  QUICKSQL_SCHEMA_PKG (schema mgmt)    │
+│  EXPRESQL_PKG (PL/SQL façade)         │
+│  EXPRESQL_SCHEMA_PKG (schema mgmt)    │
 └────────────────┬──────────────────────┘
                  │ ORDS REST + SQL
 ┌────────────────▼──────────────────────┐
 │  Tier 3 — APEX Application            │
-│  QSQL Editor Plugin / ERD Viewer      │
+│  ESQL Editor Plugin / ERD Viewer      │
 └───────────────────────────────────────┘
 ```
 

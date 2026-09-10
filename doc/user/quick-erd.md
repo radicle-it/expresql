@@ -133,7 +133,7 @@ view emp_v departments employees
         <script src="./dist/quick-erd.umd.cjs"></script>
 
         <script>
-            new quickERD.Diagram( quickSQL.toERD(
+            new quickERD.Diagram( expresql.toERD(
 `
 departments
     name /nn

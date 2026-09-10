@@ -86,12 +86,12 @@ END expresql_pkg;
 -- Verifica compilazione
 SELECT object_name, object_type, status
 FROM   user_objects
-WHERE  object_name = 'QUICKSQL_PKG'
+WHERE  object_name = 'EXPRESQL_PKG'
 ORDER  BY object_type;
 
 SELECT name, type, line, text
 FROM   user_errors
-WHERE  name = 'QUICKSQL_PKG'
+WHERE  name = 'EXPRESQL_PKG'
 ORDER  BY type, line;
 
 PROMPT >>> install_package.sql completato.

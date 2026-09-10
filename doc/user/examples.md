@@ -1588,7 +1588,7 @@ Unlike `tenant_id`, a dimension column is never synthesized: it must already be 
 
 **Input:**
 
-```quicksql
+```expresql
 companies /api
   name vc200 /nn
 

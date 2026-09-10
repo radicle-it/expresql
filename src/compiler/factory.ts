@@ -16,7 +16,7 @@ const diffRegistry: Record<string, DiffGeneratorFactory> = {};
  * Call this once at startup before any toDDL() / toERD() calls.
  *
  * @example
- * import { registerGenerator } from 'quicksql';
+ * import { registerGenerator } from '@radicle-it/expresql';
  * registerGenerator('postgres', ctx => new PostgreSQLGenerator(ctx));
  */
 export function registerGenerator(dialect: string, factory: GeneratorFactory): void {
