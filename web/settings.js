@@ -42,6 +42,10 @@ export function writeSettings(s) {
     add('aienrichment',       s.aienrich);
     add('tenantid',           s.tenantid);
     addStr('tenantref',       s.tenantref);
+    // dimensioncolumns takes a nested object, not a scalar — the panel only inserts a
+    // literal placeholder to edit by hand in the textarea; it never round-trips values
+    // back into the checkbox (the settings-line regex parser below is not JSON-aware).
+    if (s.dimensioncolumns) p.push('dimensioncolumns: { company_id: "COMPANY" }');
     add('readonlyviews',      s.readonlyviews);
     add('drop',               s.drop);
     add('inserts',            s.inserts);
@@ -99,6 +103,9 @@ export function syncSettingsForm() {
     set('sett-aienrich',         'aienrichment');
     set('sett-tenantid',         'tenantid');
     set('sett-tenantref',        'tenantref');
+    // Always shows unchecked on reopen, even when a real dimensioncolumns block is
+    // already present — see note in writeSettings() above. Deliberate simplification.
+    set('sett-dimensioncolumns', 'dimensioncolumns');
     set('sett-readonlyviews',    'readonlyviews');
     set('sett-drop',             'drop');
     set('sett-inserts',          'inserts');
@@ -272,6 +279,7 @@ export function initSettingsPanel() {
             rowkey:           v('sett-rowkey'),    aienrich:        v('sett-aienrich'),
             tenantid:         v('sett-tenantid'),
             tenantref:        v('sett-tenantref'),
+            dimensioncolumns: v('sett-dimensioncolumns'),
             readonlyviews:    v('sett-readonlyviews'),
             drop:             v('sett-drop'),      inserts:         v('sett-inserts'),
             dv:               v('sett-dv'),        edit:            v('sett-edit'),

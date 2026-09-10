@@ -433,6 +433,25 @@ Modello: `db5ffd2`. Checkbox che inserisce un placeholder letterale
 bidirezionale — il parser delle impostazioni nel pannello non è JSON-aware).
 Adattare al pannello attuale di `tapi-ext` (già restilizzato).
 
+**Fatto**. Il pannello attuale di `tapi-ext` usa la stessa struttura
+`.sett-toggle`/`.sett-toggle-slider` del modello (non serviva adattamento di
+stile) — aggiunta riga `sett-dimensioncolumns` in `index.html` subito dopo
+`sett-tenantref`, prima di `sett-readonlyviews`; stessi tre punti di innesto
+in `settings.js` del modello (`writeSettings`: placeholder letterale se
+checked; `syncSettingsForm`: sempre non spuntato al riapertura, stesso
+commento esplicativo; oggetto passato a `writeSettings` nel click handler).
+Nessuna modifica a `parseSettings()` — stesso limite noto del modello (non
+JSON-aware), commentato identicamente.
+
+Verifica: nessun tool di automazione browser disponibile in questa sessione
+per un test interattivo dal vivo; verificato staticamente (`node --check`
+su `settings.js`) e per ragionamento diretto sul codice — la checkbox
+risulterà in modo affidabile non spuntata alla riapertura perché
+`parseSettings()`'s regex non riesce a estrarre un valore scalare pulito
+`'yes'` da un blocco `{ ... }` annidato, esattamente il comportamento
+voluto e documentato dal modello. Nessuna modifica al codice sorgente
+TypeScript. 936/936 invariati.
+
 ### 11. Fix: colonna di scope NULL trattata come condivisa/sempre visibile
 Modello: `960ddcc`. Il filtro anti-IDOR di lettura non gestiva il caso
 colonna dimensione NULL (riga condivisa) — restava invisibile a tutte le
