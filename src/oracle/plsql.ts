@@ -255,8 +255,13 @@ export class OraclePlsqlBuilder {
 
     /** SQL fragment(s) restricting rows to the caller's scope for each dimension column present on this table. */
     private _dimensionScopeConditions(node: IDdlNode, tbl: string): string[] {
+        // <col> is null: row shared across every value of that dimension (mirrors the
+        // existing, already-tested secured_by_company SQL_MACRO's "t.company_id is null =
+        // always visible" convention) — without this branch a legitimately shared row would
+        // never satisfy the exists() below (NULL never equals a code), making it invisible
+        // even to a session with full scope, or during an explicit bootstrap.
         return this._dimensionScopeColumns(node).map(({ col, dimType }) =>
-            `exists (select 1 from sec_my_scope s where s.dimension_type = '${dimType}' and s.code = to_char(${tbl}.${col}))`);
+            `(${tbl}.${col} is null or exists (select 1 from sec_my_scope s where s.dimension_type = '${dimType}' and s.code = to_char(${tbl}.${col})))`);
     }
 
     procDecl(node: IDdlNode, kind: string): string {

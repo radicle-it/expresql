@@ -458,6 +458,14 @@ colonna dimensione NULL (riga condivisa) — restava invisibile a tutte le
 sessioni perché NULL non uguaglia mai un codice di scope. Applicare dopo il
 punto 8, stesso filtro.
 
+**Fatto**. Fix puntuale in `_dimensionScopeConditions` — unico punto
+condiviso da `_generateDalBody` (hasDal) e `_generatePrivateDml` (!hasDal),
+quindi la correzione si propaga automaticamente a ogni tier senza toccare
+altri punti: `exists (...)` → `(<tbl>.<col> is null or exists (...))`, per
+ogni colonna di dimensione. 4 test esistenti aggiornati alla nuova forma
+generata + 1 nuovo test esplicito su questo comportamento. 937/937 verdi,
+build completa pulita.
+
 ### 12. Unificare la lettura: vista `<tabella>_rls` invece di WHERE ripetuto
 Modello: `2c42616`. Le funzioni di lettura (get_by_id/lock_by_id/get_all/
 get_by_<unique>) non ricostruiscono più il proprio filtro — leggono da una
