@@ -743,7 +743,23 @@ impatto limitato alla mancata copertura di test locale del bundle MLE.
 Lasciato come debito tecnico noto, da riprendere come attività
 indipendente se necessario.
 
-Confronto mirato fixture `tapi-ext` vs `main`: da eseguire.
+**Confronto mirato fixture `tapi-ext` vs `main`**: eseguito con un
+worktree read-only su `main` (mai modificato, rimosso a fine verifica),
+build DDL su entrambi i branch, confronto `toDDL()` diretto sulle 22
+fixture comuni tra `test/fixtures/{apex,bugs}` (stesso nome base,
+`.quicksql` su `main` vs `.esql` su `tapi-ext`). Risultato: **21/22
+identiche byte-per-byte**; l'unica differenza (`medipay`) è
+esclusivamente il riflesso, nel commento/riepilogo di intestazione della
+DDL generata, della modifica fixture già documentata e verificata al
+punto 14 (rimosso il tipo esplicito ridondante `vc80` su `country /fk
+countries`) — nessuna differenza nella struttura `CREATE TABLE` generata.
+Le due fixture che usano `/api` (`timecard`, `Bug35637611`) risultano
+anch'esse identiche: non specificano un tier esplicito e non esercitano
+nessuna delle feature tapi-ext-only (tenant, `/versioned`,
+`dimensioncolumns`), quindi il tier di default converge alla stessa forma
+di `main`. Nessuna regressione trovata.
+
+**Punto 15 completo.**
 
 ### 16. Decisione sul destino di `main` — rimandata
 Non eseguire ora. Solo dopo il punto 15, quando `tapi-ext` avrà parità
