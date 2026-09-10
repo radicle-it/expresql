@@ -70,7 +70,7 @@ function update() {
     updateCurLine();
 
     const curTab = state.tabs.find(t => t.id === state.activeSchemaTabId);
-    if (curTab) { curTab.qsql = src; saveTabs(); }
+    if (curTab) { curTab.esql = src; saveTabs(); }
 
     const delimMatch = DIFF_DELIMITER.exec(src);
 
@@ -338,7 +338,7 @@ document.addEventListener('keydown', (e) => {
 const EXAMPLES = [
     {
         label: 'Schema Migration (# ---)', desc: 'Incremental ALTER TABLE migration between two schema versions', cat: 'Migration',
-        qsql:
+        esql:
 `employees
    name vc100 /nn
    email vc200
@@ -360,7 +360,7 @@ departments
     },
     {
         label: 'HR — Human Resources', desc: 'Departments, employees, jobs', cat: 'Basic',
-        qsql:
+        esql:
 `departments /insert 3
    name /nn /upper
    location vc100
@@ -374,7 +374,7 @@ departments
     },
     {
         label: 'E-Commerce', desc: 'Customers, orders, products', cat: 'Basic',
-        qsql:
+        esql:
 `customers /insert 5
    name /nn
    email /lower /nn /unique
@@ -395,7 +395,7 @@ products /insert 20
     },
     {
         label: 'Blog', desc: 'Authors, posts, comments', cat: 'Basic',
-        qsql:
+        esql:
 `authors /insert 5
    name /nn
    email /lower /nn /unique
@@ -412,7 +412,7 @@ products /insert 20
     },
     {
         label: 'Healthcare', desc: 'Doctors, patients, appointments', cat: 'Basic',
-        qsql:
+        esql:
 `doctors /insert 8
    name /nn
    specialty vc100
@@ -431,7 +431,7 @@ patients /insert 20
     },
     {
         label: 'Project Management', desc: 'Teams, projects, tasks', cat: 'Basic',
-        qsql:
+        esql:
 `teams /insert 4
    name /nn
    budget num(12,2)
@@ -448,7 +448,7 @@ patients /insert 20
     },
     {
         label: 'Inventory', desc: 'Warehouses, categories, products', cat: 'Basic',
-        qsql:
+        esql:
 `warehouses /insert 3
    name /nn
    location vc100
@@ -464,7 +464,7 @@ patients /insert 20
     },
     {
         label: 'Star Schema', desc: 'Fact table with dimension tables (sales model)', cat: 'Advanced',
-        qsql:
+        esql:
 `sales /insert 10
    quantity int /nn
    amount   num(12,2) /nn
@@ -481,7 +481,7 @@ patients /insert 20
     },
     {
         label: 'JSON Duality Views (23ai)', desc: 'Relational data exposed as JSON documents', cat: '23ai',
-        qsql:
+        esql:
 `departments
    name vc200 /nn
    employees
@@ -495,7 +495,7 @@ dv dept_emp_dv departments employees
     },
     {
         label: 'Multi-lingual (/trans)', desc: 'Translated columns with _trans table and _resolved view', cat: 'Advanced',
-        qsql:
+        esql:
 `products
    name        vc200 /nn /trans
    description       /trans
@@ -508,7 +508,7 @@ categories
     },
     {
         label: 'Immutable + SODA + Vector', desc: 'Append-only ledger, document store, AI vector search', cat: '23ai',
-        qsql:
+        esql:
 `-- Immutable audit ledger (no UPDATE or DELETE allowed)
 transactions /immutable /insert 5
    amount    num(14,2) /nn
@@ -528,7 +528,7 @@ embeddings
     },
     {
         label: 'Oracle SQL Annotations', desc: 'DESCRIPTION, GROUP, custom key-value annotations', cat: 'Advanced',
-        qsql:
+        esql:
 `employees {DESCRIPTION 'HR workforce', Classification 'HR', GROUP 'PII'}
    full_name  vc200 /nn {DESCRIPTION 'Legal full name', Sensitivity 'Private'}
    email      vc200 /nn /unique /lower {DESCRIPTION 'Work email'}
@@ -539,7 +539,7 @@ embeddings
     },
     {
         label: 'Layered TAPI — tiers', desc: 'Six tiers: lookup → lookup+hks → service → service+hks → full → full+hks', cat: 'TAPI',
-        qsql:
+        esql:
 `-- lookup      → codes_app
 codes /api lookup
    code  vc20 /nn /unique
@@ -560,7 +560,7 @@ employees /api full+hks
     },
     {
         label: 'Layered TAPI — Audit Log', desc: '_aud package with PRAGMA AUTONOMOUS_TRANSACTION; log table defined in schema', cat: 'TAPI',
-        qsql:
+        esql:
 `app_audit_log /api full+hks
    entity     vc128 /nn
    entity_id  num /nn
@@ -578,7 +578,7 @@ employees /api full+hks /auditlog app_audit_log
     },
     {
         label: 'Layered TAPI — REST (ifc: rest)', desc: '_rst ORDS handler package: get/ins/upd/del with :body_text, :p_id, :status', cat: 'TAPI',
-        qsql:
+        esql:
 `employees /api full+hks
    name        vc100 /nn
    email       vc200 /nn /unique
@@ -588,7 +588,7 @@ employees /api full+hks /auditlog app_audit_log
     },
     {
         label: 'Multi-Tenant SaaS', desc: 'Shared schema with tenant_id isolation', cat: 'Multi-tenant',
-        qsql:
+        esql:
 `tenants /insert 2
   name      vc200 /nn
   plan_code /fk ref_subscription_plans /nn
@@ -617,7 +617,7 @@ order_lines /insert 50
     },
     {
         label: 'Multi-Tenant (auto)', desc: 'tenantid: yes — TENANT_ID, composite FK and auto-FK generated automatically', cat: 'Multi-tenant',
-        qsql:
+        esql:
 `subscription_plans /notenantid    -- supra-tenant lookup: no TENANT_ID
   code  vc20 /nn /pk
   name  vc100 /nn
@@ -647,7 +647,7 @@ order_lines                       -- /cascade → ON DELETE CASCADE on composite
     },
     {
         label: 'Row-Level Scope (dimensioncolumns)', desc: 'chk_rbac (always) + chk_rls (when scoped) + a generated _rls view reads route through — scope by set membership, not a single tenant value', cat: 'Multi-tenant',
-        qsql:
+        esql:
 `companies /api
   name vc200 /nn
 
@@ -694,7 +694,7 @@ const btnExamples   = document.getElementById('btn-examples');
             card.className = 'ex-card';
             card.innerHTML = `<strong>${ex.label}</strong><span>${ex.desc}</span>`;
             card.addEventListener('click', () => {
-                inputEl.value = ex.qsql;
+                inputEl.value = ex.esql;
                 examplesPanel.classList.remove('open');
                 state.lastErdPos = new Map();
                 state.collapsed.clear();

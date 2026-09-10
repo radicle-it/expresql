@@ -11,10 +11,10 @@ export function init({ update, capturePositions }) {
 
 // ── Persistence ───────────────────────────────────────────────────
 
-export function newTabData(name, qsql = '') {
+export function newTabData(name, esql = '') {
     return {
         id:   Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
-        name, qsql, pos: [], col: [],
+        name, esql, pos: [], col: [],
     };
 }
 
@@ -44,18 +44,18 @@ export function applyActiveTab() {
 // ── Initialisation (URL hash → LS_TABS → legacy LS_KEY → default) ─
 
 export function initTabs() {
-    let hashQsql = null, hashPos = null, hashCol = null;
+    let hashEsql = null, hashPos = null, hashCol = null;
     try {
         const hash = window.location.hash.slice(1);
         if (hash) {
             history.replaceState(null, '', window.location.pathname);
             if (hash.startsWith('v2:')) {
                 const data = JSON.parse(decodeURIComponent(hash.slice(3)));
-                hashQsql = data.q || '';
+                hashEsql = data.q || '';
                 hashPos  = data.p ? new Map(data.p) : new Map();
                 hashCol  = data.c ? new Set(data.c) : new Set();
             } else {
-                hashQsql = decodeURIComponent(hash);
+                hashEsql = decodeURIComponent(hash);
                 hashPos  = new Map(); hashCol = new Set();
             }
         }
@@ -74,7 +74,7 @@ export function initTabs() {
 
     if (!restored) {
         try {
-            const legacyQsql = localStorage.getItem(LS_KEY) || DEFAULT_ESQL;
+            const legacyEsql = localStorage.getItem(LS_KEY) || DEFAULT_ESQL;
             let legacyPos = [], legacyCol = [];
             try {
                 const sp = localStorage.getItem(LS_ERD_POS);
@@ -82,7 +82,7 @@ export function initTabs() {
                 const sc = localStorage.getItem(LS_ERD_COL);
                 if (sc) legacyCol = JSON.parse(sc);
             } catch (_) {}
-            const t = newTabData('Schema 1', legacyQsql);
+            const t = newTabData('Schema 1', legacyEsql);
             t.pos = legacyPos; t.col = legacyCol;
             state.tabs = [t]; state.activeSchemaTabId = t.id;
         } catch (_) {
@@ -91,10 +91,10 @@ export function initTabs() {
         }
     }
 
-    if (hashQsql !== null) {
+    if (hashEsql !== null) {
         const tab = state.tabs.find(t => t.id === state.activeSchemaTabId);
         if (tab) {
-            tab.esql = hashQsql;
+            tab.esql = hashEsql;
             tab.pos  = hashPos ? [...hashPos.entries()] : [];
             tab.col  = hashCol ? [...hashCol] : [];
         }

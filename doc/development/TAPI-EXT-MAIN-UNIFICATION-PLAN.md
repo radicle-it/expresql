@@ -674,6 +674,29 @@ non un residuo cosmetico — non deciso unilateralmente qui, vedi la domanda
 posta all'utente nella stessa sessione in cui è stato completato questo
 punto.
 
+**Risolta**: l'utente ha scelto esplicitamente "Rinomina le chiavi ora,
+accetta il reset". Applicato in `web/state.js`: `LS_KEY`/`LS_ERD_POS`/
+`LS_ERD_COL`/`LS_TABS` da `radicle-qsql-*` a `radicle-esql-*`. Estesa la
+rinomina, per coerenza interna, a tutti gli identificatori collegati nello
+stesso file/modulo (non solo alle chiavi persistite):
+- `web/tabs.js`: `newTabData(name, qsql = '')` → `newTabData(name, esql =
+  '')` — la property restituita era letteralmente `qsql`, ma **ogni altro
+  punto del file** (`saveActiveTab`, `applyActiveTab`, il ramo di ripristino
+  da `LS_TABS` in `initTabs`) legge/scrive `tab.esql`. Non era solo
+  cosmetico: era un'inconsistenza preesistente che rendeva `qsql` una
+  property morta/ombreggiata. Rinominate anche le variabili locali
+  `hashQsql`/`legacyQsql` → `hashEsql`/`legacyEsql` per coerenza.
+- `web/app.js`: **bug reale trovato e corretto** — `update()` faceva
+  `curTab.qsql = src` ad ogni tasto premuto, scrivendo su una property che
+  nessuno leggeva mai (tutto il resto usa `.esql`); il vero
+  aggiornamento di `tab.esql` avveniva solo al cambio tab tramite
+  `saveActiveTab()`. Corretto in `curTab.esql = src`. Rinominata anche la
+  property `qsql:` su tutti i ~18 oggetti dell'array `EXAMPLES` (galleria
+  esempi) in `esql:`, e il consumer `ex.qsql` → `ex.esql`.
+- Ricompilato `web/app_all.js` (`npm run build:web`): 0 occorrenze di
+  "qsql" residue nel bundle, 2 nuove chiavi `radicle-esql-*` presenti.
+- Suite completa rieseguita: 965/965 verdi, nessuna regressione.
+
 ### 15. Validazione finale
 - `npm run test:ts` verde su tutta la suite.
 - `npm run build` (tutti i target: DDL Oracle, DDL DB2, MLE, web) senza errori.

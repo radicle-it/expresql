@@ -1,10 +1,10 @@
 // Shared mutable state and constants.
 // All modules import this object and mutate its properties directly.
 
-export const LS_KEY     = 'radicle-qsql-v1';
-export const LS_ERD_POS = 'radicle-qsql-erd-pos-v1';
-export const LS_ERD_COL = 'radicle-qsql-erd-col-v1';
-export const LS_TABS    = 'radicle-qsql-tabs-v1';
+export const LS_KEY     = 'radicle-esql-v1';
+export const LS_ERD_POS = 'radicle-esql-erd-pos-v1';
+export const LS_ERD_COL = 'radicle-esql-erd-col-v1';
+export const LS_TABS    = 'radicle-esql-tabs-v1';
 
 export const DEFAULT_ESQL =
 `departments /insert 2
