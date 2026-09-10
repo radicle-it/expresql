@@ -247,6 +247,22 @@ Modello: `515ce36`. Un tipo esplicito (`vc1 /check Y,N`) non deve essere
 scavalcato dall'euristica boolean su colonne `is_*`/`*_yn`. Fix nella fase di
 inferenza tipo, indipendente dai tier.
 
+**Fatto**. Codice di `inferType()` su `tapi-ext` identico a `main` pre-fix
+(stessa Fase 4, stesse variabili `vcPos`/`occursBeforeOption('int', true)`/
+`vector` già presenti) — bug confermato presente: `is_overrun vc1 /nn /check
+Y,N` su db ≥ 23 produceva `boolean not null` senza check constraint,
+scartando silenziosamente il tipo e la direttiva espliciti dell'utente.
+Aggiunta la guardia `hasExplicitType` (vero se `vcPos > 0`, oppure `int`
+compare prima di un'opzione, oppure è stato rilevato un tipo `vector`) —
+l'euristica per nome (`is_*`/`*_yn`) viene saltata quando è vera. Il ramo
+`hasBoolKeyword` (`yn`/`boolean`/`bool` come parola chiave) resta invariato:
+è già una dichiarazione esplicita, deve sempre vincere.
+
+Aggiornato un test esistente che documentava il vecchio comportamento come
+atteso; aggiunto un test che conferma che `is_*` senza tipo esplicito
+continua a mappare a `boolean` nativo su db ≥ 23 (comportamento corretto,
+non toccato dal fix). 876/876 verdi, build completa pulita.
+
 ### 7. Messaggi di errore con prefisso classificabile + fix suffisso pacchetto IFC
 Modello: `6a31922`. Prefissare `raise_application_error` per
 `c_err_stale_data`/`c_err_not_found`/`c_err_locked`/`dup_val_on_index` con un
