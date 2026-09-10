@@ -1637,7 +1637,7 @@ begin
 end chk_rls;
 ```
 
-`chk_rbac` is generated on **every** table with `api: layered`, `invoices` and `companies` alike — always present, always empty by default (`begin null; end;`), exactly like `validate` and `before_insert` are today. It exists so a permission check, when one is actually needed, has one consistent, always-called place to live; fill it in by hand and it survives regeneration the same way hand-edited `before_*` bodies already do. `chk_rls` is generated **only** for `invoices` — `companies` gets no `chk_rls` at all, not even an empty stub, because there is nothing to check without a configured column. On tiers without `_hks` (`service`, `lookup`), both hooks are absorbed as private `p_chk_rbac`/`p_chk_rls` procedures in whichever package sits above the missing `_hks`, called the same way, in the same order — same degradation rule as every other hook.
+`chk_rbac` is generated on **every** table with `api: layered`, `invoices` and `companies` alike — always present, always empty by default (`begin null; end;`), exactly like `validate` and `before_insert` are today. It exists so a permission check, when one is actually needed, has one consistent, always-called place to live; fill it in by hand and it survives regeneration the same way hand-edited `before_*` bodies already do. `chk_rls` is generated **only** for `invoices` — `companies` gets no `chk_rls` at all, not even an empty stub, because there is nothing to check without a configured column. `companies` still gets its own `companies_rls` view though — `select * from companies`, unfiltered — and `companies_dal` reads from it exactly like `invoices_dal` reads from `invoices_rls`: the view exists on every table unconditionally, `chk_rls` only on the ones with something to check. On tiers without `_hks` (`service`, `lookup`), both hooks are absorbed as private `p_chk_rbac`/`p_chk_rls` procedures in whichever package sits above the missing `_hks`, called the same way, in the same order — same degradation rule as every other hook.
 
 **Call order in `invoices_svc`** (identical shape for insert/update/delete, and `close` on `/versioned` tables):
 
@@ -1686,5 +1686,5 @@ Before this setting, `validate()` never fired on delete at all, on any table —
 |---|---|---|
 | `chk_rbac` | Always, every table | Empty by default — a no-op until hand-filled |
 | `chk_rls` | Only if the table has a configured dimension column | Raises via `sec_pkg.require_dimension_scope` |
-| `<table>_rls` view + read paths reading from it | Only if the table has a configured dimension column | Row never returned; same `NOT_FOUND` as missing id |
+| `<table>_rls` view + read paths reading from it | Always, every table (filtered if a dimension column is configured, an unfiltered passthrough otherwise) | Row never returned when out of scope; same `NOT_FOUND` as missing id |
 | Write paths reading from `<table>_rls` | Never (unlike `tenantid`'s WHERE-clause enforcement) | N/A — `chk_rls` is authoritative instead |

@@ -11119,9 +11119,8 @@ var J = class {
 		return n;
 	}
 	_generateDimensionRlsView(e) {
-		if (this._dimensionScopeColumns(e).length === 0) return "";
 		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase();
-		return `create or replace view ${t}_rls as\nselect * from sec_pkg.secured_by_dimension(${t});\n/\n`;
+		return `create or replace view ${t}_rls as\nselect * from ${this._dimensionScopeColumns(e).length > 0 ? `sec_pkg.secured_by_dimension(${t})` : t};\n/\n`;
 	}
 	procDecl(e, t) {
 		let n = t === "get" ? "" : " default null", r = t === "get" ? "out" : " in", i = O + "procedure " + t + "_row (\n", a = e.getPkName(), o = e.getGenIdColName() === null ? e.findChild(e.getExplicitPkName()) : null, s = o ? o.getPlsqlType() : e.getPkType();
@@ -11190,7 +11189,7 @@ var J = class {
 		}
 	}
 	_generatePrivateDml(e) {
-		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = (e.getPkName() ?? "id").toLowerCase(), r = this._hasVersionCol(e), i = e.hasAuditCols(), a = this._svcCols(e), o = Object.keys(e.fks ?? {}), s = this._hasSyntheticTenantId(e), c = e.isOption("versioned"), l = (String(e.getOptionValue("versioned") ?? "").trim() || "valid_to").toLowerCase(), u = this.ctx.objPrefix() + "tenant_ctx", d = this._dimensionScopeColumns(e).length > 0 ? `${t}_rls` : t, f = `\n${O}-- private DML (absorbed from absent _dal)\n\n`;
+		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = (e.getPkName() ?? "id").toLowerCase(), r = this._hasVersionCol(e), i = e.hasAuditCols(), a = this._svcCols(e), o = Object.keys(e.fks ?? {}), s = this._hasSyntheticTenantId(e), c = e.isOption("versioned"), l = (String(e.getOptionValue("versioned") ?? "").trim() || "valid_to").toLowerCase(), u = this.ctx.objPrefix() + "tenant_ctx", d = `${t}_rls`, f = `\n${O}-- private DML (absorbed from absent _dal)\n\n`;
 		f += `${O}function p_get_by_id (p_id in ${t}.${n}%type) return ${t}%rowtype is\n`, f += `${O}${O}l_row ${t}%rowtype;\n`, f += `${O}begin\n`;
 		{
 			let e = s ? ` and tenant_id = ${u}.get_id` : "";
@@ -11247,7 +11246,7 @@ var J = class {
 	_generateDalBody(e) {
 		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_dal", r = (e.getPkName() ?? "id").toLowerCase(), i = this._hasVersionCol(e), a = e.hasAuditCols(), o = this._svcCols(e), s = Object.keys(e.fks ?? {}), c = e.children.filter((e) => e.isOption("unique")), l = e.isOption("versioned"), u = (String(e.getOptionValue("versioned") ?? "").trim() || "valid_to").toLowerCase(), d = `create or replace package body ${n} as\n\n`;
 		d += `${O}resource_busy exception;\n`, d += `${O}pragma exception_init(resource_busy, -54);\n\n`;
-		let f = this._hasSyntheticTenantId(e), p = this.ctx.objPrefix() + "tenant_ctx", m = this._dimensionScopeColumns(e).length > 0 ? `${t}_rls` : t;
+		let f = this._hasSyntheticTenantId(e), p = this.ctx.objPrefix() + "tenant_ctx", m = `${t}_rls`;
 		d += `${O}function get_by_id (p_id in t_id) return ${t}%rowtype is\n`, d += `${O}${O}l_row ${t}%rowtype;\n`, d += `${O}begin\n`;
 		{
 			let e = f ? ` and tenant_id = ${p}.get_id` : "";

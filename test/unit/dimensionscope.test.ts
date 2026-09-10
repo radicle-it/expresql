@@ -20,15 +20,18 @@
  *     calls `chk_rbac` then `chk_rls` (when present) before `validate`, for
  *     insert/update/delete (and close, for `/versioned` tables) — same
  *     ordering for every operation, on every tier.
- *  4. A table with at least one configured dimension column also gets a
- *     `<table>_rls` view (`select * from sec_pkg.secured_by_dimension(<table>)`)
- *     — the same view any APEX region/report would read from. Read paths
+ *  4. EVERY table gets a `<table>_rls` view, unconditionally — the
+ *     presentation layer (APEX regions, a future REST surface, this table's
+ *     own DAL) must never read a table directly, only a view, even with
+ *     nothing to filter. With a configured dimension column, the view is
+ *     `select * from sec_pkg.secured_by_dimension(<table>)`; without one,
+ *     it's a plain passthrough `select * from <table>`. Read paths
  *     (`get_by_id`, `lock_by_id`, `get_all`, `get_by_<unique>`, in `_dal` or
- *     the absorbed private DML on tiers without `_dal`) select FROM THAT VIEW
- *     instead of the base table, rather than re-deriving their own WHERE-
- *     clause filter: one filter, defined once, shared by every reader — an
- *     out-of-scope row never leaves the read path, same NO_DATA_FOUND path as
- *     a genuinely missing id.
+ *     the absorbed private DML on tiers without `_dal`) always select FROM
+ *     THAT VIEW instead of the base table, rather than re-deriving their own
+ *     WHERE-clause filter: one relation name, defined once, shared by every
+ *     reader — an out-of-scope row never leaves the read path, same
+ *     NO_DATA_FOUND path as a genuinely missing id.
  *  5. Write paths do NOT read from or filter through the view (unlike
  *     tenantid): the explicit `chk_rls` check stays authoritative, raising
  *     rather than silently affecting 0 rows.
@@ -36,19 +39,20 @@
  *     called from `delete_rec` at all) — independent of `dimensioncolumns`,
  *     see tapi-layered.test.ts for that coverage.
  *
- * Model: main commits c7e6c9b (chk_rbac/chk_rls, DAL/HKS/SVC-always world)
- * and 2c42616 (unify read-side filtering into the <table>_rls view — a real
- * duplication removed: the WHERE-clause text this generator built
- * independently had to keep re-deriving the same filter any project's own
- * secured_by_dimension-style macro already computes). tapi-ext's tier
- * system — an independent evolution main never had at either commit —
- * degrades the same mechanism the same way every other hook already does:
- * `p_chk_rbac`/`p_chk_rls` absorbed as private procedures when `_hks` is
- * absent, called directly by whichever package sits above it (`_svc`, or
- * `_app`/`_rst` on the `lookup` tier); the `_rls` view itself, and the read-
- * path redirection to it, is tier-independent — emitted once regardless of
- * whether `_dal` exists, since the absorbed private DML needs it exactly as
- * much as `_dal` does. Covered separately below, not in the model.
+ * Model: main commits c7e6c9b (chk_rbac/chk_rls, DAL/HKS/SVC-always world),
+ * 2c42616 (unify read-side filtering into the <table>_rls view), and an
+ * uncommitted WIP on main (git stash, not a real commit — see the plan doc's
+ * Task 13 note) that generalizes the view to every table unconditionally,
+ * not just dimension-scoped ones: the presentation layer must never read a
+ * table directly. tapi-ext's tier system — an independent evolution main
+ * never had at any of these points — degrades the same mechanism the same
+ * way every other hook already does: `p_chk_rbac`/`p_chk_rls` absorbed as
+ * private procedures when `_hks` is absent, called directly by whichever
+ * package sits above it (`_svc`, or `_app`/`_rst` on the `lookup` tier); the
+ * `_rls` view itself, and the read-path redirection to it, is
+ * tier-independent — emitted once regardless of whether `_dal` exists,
+ * since the absorbed private DML needs it exactly as much as `_dal` does.
+ * Covered separately below, not in the model.
  */
 
 import { describe, test, expect } from 'vitest';
@@ -183,14 +187,16 @@ describe('<table>_rls view generated for a dimension-scoped table', () => {
         expect(out).toContain('create or replace view widgets_rls as\nselect * from sec_pkg.secured_by_dimension(widgets);');
     });
 
-    test('NOT created for companies itself (dimensioncolumns configured, but no matching column on this table)', () => {
+    test('companies (no matching dimension column) still gets a passthrough view, not a filtered one', () => {
         const out = ddl(SCOPED_QSQL);
-        expect(out).not.toContain('view companies_rls');
+        expect(out).toContain('create or replace view companies_rls as\nselect * from companies;');
+        expect(out).not.toContain('view companies_rls as\nselect * from sec_pkg.secured_by_dimension');
     });
 
-    test('NOT created at all when no dimension column is configured', () => {
+    test('a table with no dimension column configured anywhere still gets a passthrough view', () => {
         const out = ddl(UNSCOPED_QSQL);
-        expect(out).not.toContain('_rls');
+        expect(out).toContain('create or replace view widgets_rls as\nselect * from widgets;');
+        expect(out).not.toContain('secured_by_dimension');
     });
 
     test('emitted once, ahead of every other layered package for that table', () => {
@@ -224,11 +230,11 @@ describe('read paths select from <table>_rls; write paths do not', () => {
         expect(fn).toContain('open l_cur for select * from widgets_rls;');
     });
 
-    test('unscoped table reads straight from the base table, no _rls involved', () => {
+    test('unscoped table still reads through its passthrough _rls view, never the base table', () => {
         const unscoped = ddl(UNSCOPED_QSQL);
         const dalBody = segment(unscoped, 'create or replace package body widgets_dal', 'end widgets_dal;');
         const fn = segment(dalBody, 'function get_by_id', 'end get_by_id;');
-        expect(fn).toContain('select * into l_row from widgets where id = p_id;');
+        expect(fn).toContain('select * into l_row from widgets_rls where id = p_id;');
     });
 
     test('insert_row/update_row/delete_row do NOT read from _rls or reference sec_my_scope (chk_rls stays authoritative)', () => {

@@ -254,18 +254,22 @@ export class OraclePlsqlBuilder {
     }
 
     /**
-     * Row-scope view for tables with a direct dimension column (dimensioncolumns),
-     * generated once here instead of re-derived as a WHERE-clause predicate in every
-     * read path: get_by_id/lock_by_id/get_all/get_by_<unique> (in _dal, or the
-     * absorbed private DML when _dal is absent) select from this view directly. One
-     * filter, defined once by the project's own sec_pkg.secured_by_dimension macro
-     * (the same one any APEX region/report reads through), instead of two places that
-     * had to independently agree on "which column is which dimension".
+     * Row-scope view for every table, generated once here instead of re-derived as a
+     * WHERE-clause predicate in every read path: get_by_id/lock_by_id/get_all/
+     * get_by_<unique> (in _dal, or the absorbed private DML when _dal is absent)
+     * always read from this view, never from the base table — the presentation layer
+     * must never read a table directly, only a view, even when there is no dimension
+     * column to filter. With a configured dimension column, the view filters via the
+     * project's own sec_pkg.secured_by_dimension macro (real column introspection,
+     * the same one any APEX region/report reads through); without one, it is a plain
+     * passthrough (select * from <table>) — same shape, same consumer, no
+     * special-casing needed by callers.
      */
     private _generateDimensionRlsView(node: IDdlNode): string {
-        if (this._dimensionScopeColumns(node).length === 0) return '';
         const tbl = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        return `create or replace view ${tbl}_rls as\nselect * from sec_pkg.secured_by_dimension(${tbl});\n/\n`;
+        const dimCols = this._dimensionScopeColumns(node);
+        const source = dimCols.length > 0 ? `sec_pkg.secured_by_dimension(${tbl})` : tbl;
+        return `create or replace view ${tbl}_rls as\nselect * from ${source};\n/\n`;
     }
 
     procDecl(node: IDdlNode, kind: string): string {
@@ -407,13 +411,12 @@ export class OraclePlsqlBuilder {
         const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
 
         const tenantCtxPkg = this.ctx.objPrefix() + 'tenant_ctx';
-        // Read paths select from <table>_rls instead of <table> when a dimension-scope
-        // view exists for it (see _generateDimensionRlsView) — one filter, defined once,
-        // shared with every other _rls consumer, instead of re-deriving a WHERE condition
-        // here. Never applies to insert/update/delete: chk_rls (or its absorbed
+        // Read paths always select from <table>_rls, never from <table> — the view exists
+        // unconditionally now (see _generateDimensionRlsView), filtering via
+        // secured_by_dimension when there's a dimension column, a plain passthrough
+        // otherwise. Never applies to insert/update/delete: chk_rls (or its absorbed
         // p_chk_rls form) stays the sole authority for writes.
-        const hasDimScope = this._dimensionScopeColumns(node).length > 0;
-        const dimSource   = hasDimScope ? `${tbl}_rls` : tbl;
+        const dimSource = `${tbl}_rls`;
 
         let r = `\n${tab}-- private DML (absorbed from absent _dal)\n\n`;
 
@@ -657,13 +660,16 @@ export class OraclePlsqlBuilder {
         // instead of duplicating a private function in every DAL — single point of configuration.
         const synTenantId  = this._hasSyntheticTenantId(node);
         const tenantCtxPkg = this.ctx.objPrefix() + 'tenant_ctx';
-        // Row-level scope: read paths select from <table>_rls instead of <table> when
-        // it exists (see _generateDimensionRlsView) — never in insert_row/update_row/
-        // delete_row/close_row, where the explicit chk_rls check in _hks (or the
-        // absorbed p_chk_rls) stays authoritative: an out-of-scope write raises, it
-        // never silently no-ops the way a WHERE-clause filter would.
-        const hasDimScope = this._dimensionScopeColumns(node).length > 0;
-        const dimSource   = hasDimScope ? `${tbl}_rls` : tbl;
+        // Read paths always select from <table>_rls, never from <table> — the view
+        // exists unconditionally now (see _generateDimensionRlsView), filtering via
+        // secured_by_dimension when there's a dimension column, a plain passthrough
+        // otherwise. One relation name, defined once, shared with every other _rls
+        // consumer (APEX regions included) — no conditional here to keep in sync.
+        // Never applies to insert_row/update_row/delete_row/close_row, where the
+        // explicit chk_rls check in _hks (or the absorbed p_chk_rls) stays
+        // authoritative: an out-of-scope write raises, it never silently no-ops the
+        // way a WHERE-clause filter would.
+        const dimSource = `${tbl}_rls`;
 
         // get_by_id — NO_DATA_FOUND propagates to the caller; tenant-scoped when active.
         // Out-of-scope rows never enter l_row: they fail the same NO_DATA_FOUND path as a
@@ -1772,9 +1778,11 @@ export class OraclePlsqlBuilder {
         const genRst = ifc === 'rest' || ifc === 'both';
 
         let r = '';
-        // Emitted once, ahead of every package — tier-independent: a dimension-scoped
-        // table needs its _rls view whether reads live in _dal or are absorbed into
-        // whichever package sits above the missing _dal (see _generateDimensionRlsView).
+        // Emitted once, ahead of every package, unconditionally (every table gets its
+        // _rls view now, not just dimension-scoped ones) and tier-independently:
+        // whether reads live in _dal or are absorbed into whichever package sits
+        // above the missing _dal, they need this view either way (see
+        // _generateDimensionRlsView).
         const rlsView = this._generateDimensionRlsView(node);
         if (rlsView) r += rlsView + '\n';
         if (hasDal) r += this._generateDalSpec(node) + '\n' + this._generateDalBody(node) + '\n';

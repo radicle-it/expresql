@@ -513,6 +513,35 @@ deve mai leggere una tabella direttamente, solo una vista — passthrough
 (`select * from <tabella>`) quando non c'è nulla da filtrare. Da rifare qui
 DOPO il punto 12, sulla vista unificata di `tapi-ext`.
 
+**Fatto**. Verificato che lo stash su `main` esistesse ancora
+(`stash@{0}: "wip before tapi-ext inspection"`) e ispezionato in sola
+lettura (`git stash show -p`, mai applicato) prima di ricostruirlo come
+lavoro nuovo su `tapi-ext`, come da regola del piano. `_generateDimensionRlsView`:
+rimosso l'`if (dimCols.length === 0) return ''` — genera sempre la vista,
+`select * from sec_pkg.secured_by_dimension(<tabella>)` se ci sono colonne
+di dimensione configurate, altrimenti passthrough `select * from
+<tabella>`. `_generateDalBody`/`_generatePrivateDml`: `dimSource` non è più
+condizionale (`hasDimScope ? ... : tbl`) ma sempre `<tabella>_rls` — stesso
+fix applicato a entrambe le funzioni per lo stesso motivo dei punti 11/12
+(unico punto condiviso... in questo caso due punti gemelli, uno per `_dal`
+presente uno per assente, mantenuti in sincronia a mano perché non
+condividono già una funzione comune). L'emissione della vista in
+`generateLayeredTAPI` restava già incondizionata rispetto al tier dal punto
+12 — non ha richiesto modifiche, solo il commento è stato aggiornato.
+
+3 test riscritti in `dimensionscope.test.ts` per il nuovo comportamento
+(vista passthrough anche per `companies`/tabelle senza `dimensioncolumns`
+affatto). Documentazione aggiornata negli stessi 3 punti del modello
+(`DOCUMENTATION_SPEC.md`, `quick-sql-grammar.md`, `examples.md`) — non
+toccato `web/app.js`, come nello stash stesso (l'esempio in galleria non
+cambia concettualmente). 943/943 verdi, build completa pulita.
+
+Con questo si chiude il lavoro core sul meccanismo `dimensioncolumns`/
+`_rls` avviato al punto 8 e affinato ai punti 11-13 — quattro passaggi
+incrementali fedeli all'evoluzione reale vista su `main`, ciascuno
+verificato con dump reale del generatore prima di scrivere documentazione o
+test.
+
 ### 14. Verifica incrociata della rinomina progetto
 Non una vera "attività di porting" — `tapi-ext` ha già la propria rinomina a
 ExpreSQL (commit `bfead75`/`ac30e19`), fatta indipendentemente da quella di
