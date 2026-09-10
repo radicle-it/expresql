@@ -398,6 +398,35 @@ in `DOCUMENTATION_SPEC.md`. Da scrivere DOPO il punto 8, includendo
 esplicitamente l'interazione con i tier (assente nella versione originale su
 `main`, che non aveva tier da documentare).
 
+**Fatto**. Portato il contenuto del modello in tutti i punti previsti,
+riposizionato secondo la struttura reale di `tapi-ext` (diversa da `main`:
+niente `_apx`, sistema a tier, `examples.md` numerato in modo indipendente
+— arrivato a 24 esempi propri, non i 18 di `main`):
+- `DOCUMENTATION_SPEC.md`: riga `dimensioncolumns` nella tabella impostazioni
+  (gruppo "Output e funzionalità", accanto ad `api`), descrizione adattata
+  per menzionare l'assorbimento (`chk_rls` "in `_hks` (o assorbito)").
+- `quick-sql-grammar.md`: voce `dimensionColumns` nel TOC + sezione dedicata
+  dopo `tenantID` (stesso stile di `tenantRef`); sottosezione `chk_rbac and
+  chk_rls (api: layered)` sotto la documentazione dei tier, esplicitamente
+  estesa alla degradazione tier (menziona `p_chk_rbac`/`p_chk_rls` assorbiti
+  quando `_hks` è assente — non presente nel modello); regola grammaticale
+  `individual_setting` estesa con l'alternativa a oggetto JSON.
+- `examples.md`: nuovo esempio (numerato 25, non 19 — la numerazione di
+  `tapi-ext` è già propria) con output DDL trascritto da una vera
+  esecuzione (non a memoria, stesso principio del modello), verificato che
+  il comportamento di lettura per `get_by_id` su `tapi-ext` NON abbia il
+  blocco `exception`/`NO_DATA_FOUND` esplicito che ha `main` (propaga
+  all'chiamante per design preesistente di `tapi-ext` — la trascrizione
+  riflette il comportamento reale, non quello del modello).
+- `web/app.js`: nuova voce nella gallery di esempi in-browser, categoria
+  `Multi-tenant` (`tapi-ext` ha un campo `cat` che il modello non aveva).
+- Non toccato `railroad_diagram.md`/`.xhtml` per lo stesso motivo del
+  modello — diagramma SVG generato da tool esterno, editare solo lo
+  specchio testuale lo lascerebbe incoerente con l'immagine.
+
+Nessun cambiamento al codice sorgente in questo punto — solo documentazione.
+936/936 verdi (invariato, come atteso).
+
 ### 10. Placeholder UI per `dimensioncolumns` nel pannello impostazioni
 Modello: `db5ffd2`. Checkbox che inserisce un placeholder letterale
 `dimensioncolumns: { company_id: "COMPANY" }` (non un vero round-trip

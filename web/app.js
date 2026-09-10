@@ -645,6 +645,18 @@ order_lines                       -- /cascade → ON DELETE CASCADE on composite
 
 # settings = { prefix: "app_", tenantid: yes, auditcols: yes, drop: yes, db: "23c" }`,
     },
+    {
+        label: 'Row-Level Scope (dimensioncolumns)', desc: 'chk_rbac (always) + chk_rls (when scoped) — scope by set membership, not a single tenant value', cat: 'Multi-tenant',
+        qsql:
+`companies /api
+  name vc200 /nn
+
+invoices /api                     -- has company_id → gets chk_rls + WHERE-filtered reads
+  company_id /fk companies /nn
+  amount     num /nn
+
+# settings = { api: "layered", dimensioncolumns: { company_id: "COMPANY" } }`,
+    },
 ];
 
 const examplesPanel = document.getElementById('examples-panel');

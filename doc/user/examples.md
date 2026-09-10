@@ -28,6 +28,7 @@ This document collects end-to-end ExpreSQL examples. Each scenario shows the QSQ
 - [22. IBM Db2 — basic DDL](#22-ibm-db2--basic-ddl)
 - [23. IBM Db2 — triggers and audit columns](#23-ibm-db2--triggers-and-audit-columns)
 - [24. IBM Db2 — layered TAPI with schema-based procedures](#24-ibm-db2--layered-tapi-with-schema-based-procedures)
+- [25. Row-level scope with `dimensioncolumns`, `chk_rbac` and `chk_rls`](#25-row-level-scope-with-dimensioncolumns-chk_rbac-and-chk_rls)
 
 ---
 
@@ -1576,3 +1577,98 @@ end @
 | `lookup` | `_rst` only (read-only REST) |
 
 Numeric aliases also work: `3h` = `full+hks`, `3` = `full`, `2` = `service`, `1` = `lookup`.
+
+---
+
+## 25. Row-level scope with `dimensioncolumns`, `chk_rbac` and `chk_rls`
+
+`tenantid: yes` scopes rows by **equality to a single session-bound value** — the classic one-tenant-per-session SaaS pattern. `dimensioncolumns` covers the different case where scope is **membership in a set** derived from role/group assignment (a caller may legitimately have access to more than one value at once) — e.g. a user with access to several companies, not exactly one. It assumes a `sec_my_scope(dimension_type, code)` view/table already exists, exposing `(dimension_type, code)` for every value the current session is allowed to see.
+
+Unlike `tenant_id`, a dimension column is never synthesized: it must already be a real column on the table (typically an explicit `/fk`) — `dimensioncolumns` only tells the generator which existing columns to treat as scope-bearing, and which dimension type each one represents.
+
+**Input:**
+
+```quicksql
+companies /api
+  name vc200 /nn
+
+invoices /api
+  company_id /fk companies /nn
+  amount     num /nn
+
+# settings = { api: "layered", dimensioncolumns: { company_id: "COMPANY" } }
+```
+
+`companies` has no column configured in the map, so it is generated exactly as a plain layered-API table would be — except every `_hks` package, scoped or not, now also gets a `chk_rbac` hook (see below). `invoices` has a `company_id` column matching the map, so it gets the full treatment.
+
+**Read paths filter directly in the WHERE clause** (`invoices_dal`):
+
+```sql
+function get_by_id (p_id in t_id) return invoices%rowtype is
+    l_row invoices%rowtype;
+begin
+    select * into l_row from invoices where id = p_id and exists (select 1 from sec_my_scope s where s.dimension_type = 'COMPANY' and s.code = to_char(invoices.company_id));
+    return l_row;
+end get_by_id;
+```
+
+An out-of-scope row never leaves the DAL: `NO_DATA_FOUND` propagates exactly as it would for a genuinely missing id, so a caller cannot tell "does not exist" apart from "not in your scope". `lock_by_id`, `get_all` and `get_by_<unique>` get the same predicate — and, on tiers without a separate `_dal` (`service`, `lookup`), so does the equivalent absorbed private DML (`p_get_by_id`/`p_get_all`). `insert_row`/`update_row`/`delete_row` do **not** — that's a deliberate difference from `tenantid`, explained below.
+
+**`chk_rbac` and `chk_rls`, in `invoices_hks`:**
+
+```sql
+procedure chk_rbac (
+    p_operation in varchar2,
+    p_row       in invoices%rowtype
+) is begin null; end chk_rbac;
+
+procedure chk_rls (p_row in invoices%rowtype) is
+begin
+    sec_pkg.require_dimension_scope(p_dimension_type => 'COMPANY', p_code => to_char(p_row.company_id));
+end chk_rls;
+```
+
+`chk_rbac` is generated on **every** table with `api: layered`, `invoices` and `companies` alike — always present, always empty by default (`begin null; end;`), exactly like `validate` and `before_insert` are today. It exists so a permission check, when one is actually needed, has one consistent, always-called place to live; fill it in by hand and it survives regeneration the same way hand-edited `before_*` bodies already do. `chk_rls` is generated **only** for `invoices` — `companies` gets no `chk_rls` at all, not even an empty stub, because there is nothing to check without a configured column. On tiers without `_hks` (`service`, `lookup`), both hooks are absorbed as private `p_chk_rbac`/`p_chk_rls` procedures in whichever package sits above the missing `_hks`, called the same way, in the same order — same degradation rule as every other hook.
+
+**Call order in `invoices_svc`** (identical shape for insert/update/delete, and `close` on `/versioned` tables):
+
+```sql
+procedure p_do_create (
+    p_rec in  t_rec,
+    l_row in out nocopy invoices%rowtype
+) is
+begin
+    l_row.company_id := p_rec.company_id;
+    l_row.amount := p_rec.amount;
+    invoices_hks.chk_rbac(p_operation => 'insert', p_row => l_row);
+    invoices_hks.chk_rls(p_row => l_row);
+    invoices_hks.validate(p_operation => 'insert', p_row => l_row);
+    invoices_hks.before_insert(p_row => l_row);
+    invoices_dal.insert_row(p_row => l_row);
+    invoices_hks.after_insert(p_row => l_row);
+end p_do_create;
+```
+
+`chk_rbac` and `chk_rls` always run *before* `validate`/`before_*` — an unauthorized caller never reaches business-validation logic that might have side effects of its own.
+
+**Why writes don't filter in the WHERE clause, unlike `tenantid`:** `tenantid`'s `update_row`/`delete_row` scope the WHERE clause to the current tenant and let a cross-tenant write silently affect 0 rows. For `dimensioncolumns`, the explicit `chk_rls` check stays authoritative instead — it raises rather than silently doing nothing. This isn't a style preference: it matches already-verified production behavior in the project this setting was built for, where a rejected write is expected to surface as an explicit error, not a quiet no-op.
+
+**`delete_rec` also always fetches the row first now, on every table** — independent of `dimensioncolumns`:
+
+```sql
+procedure delete_rec (p_id in invoices.id%type) is
+    l_row invoices%rowtype;
+begin
+    l_row := invoices_dal.get_by_id(p_id => p_id);
+    invoices_hks.chk_rbac(p_operation => 'delete', p_row => l_row);
+    invoices_hks.chk_rls(p_row => l_row);
+    invoices_hks.validate(p_operation => 'delete', p_row => l_row);
+    invoices_hks.before_delete(p_id => p_id);
+    invoices_dal.delete_row(p_id => p_id);
+    invoices_hks.after_delete(p_id => p_id);
+end delete_rec;
+```
+
+Before this setting, `validate()` never fired on delete at all, on any table — only `before_delete(p_id)` did, which cannot express a row-content-dependent business rule since it never receives the row. The same fix applies to the absorbed `del` path on the `lookup` tier (no `_svc`), which had the identical gap.
+
+**More than one dimension column** on the same table is supported without any special-casing — `dimensioncolumns: { company_id: "COMPANY", region_id: "REGION" }` generates a `chk_rls` that checks both, and read-path WHERE clauses `AND` every configured predicate together.

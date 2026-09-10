@@ -38,6 +38,7 @@
     - [resetsettings](#resetsettings)
     - [rowkey](#rowkey)
     - [tenantID](#tenantid)
+    - [dimensionColumns](#dimensioncolumns)
     - [rowVersion](#rowversion)
     - [schema](#schema)
     - [semantics](#semantics)
@@ -596,6 +597,29 @@ procedure delete_row (
 );
 ```
 
+#### chk_rbac and chk_rls (`api: layered`)
+
+When `api: layered` is active, every table gains a `chk_rbac(p_operation, p_row)` procedure — always generated, empty by default, called before `validate` on every insert/update/delete (and `close`, for `/versioned` tables). It exists so that a permission check, when one is actually needed for a given table/operation, has one consistent, always-called place to live, filled in by hand and preserved across regeneration exactly like `before_insert`/`before_update`. On tiers with `_hks` present, `chk_rbac` lives there; on tiers without it (`service`, `lookup`), it is absorbed as a private `p_chk_rbac` procedure in whichever package sits above the missing `_hks` — same degradation rule as every other hook.
+
+When [`dimensioncolumns`](#dimensioncolumns) additionally marks one or more of a table's columns as scope-bearing, that same table also gains a `chk_rls(p_row)` procedure (or the absorbed `p_chk_rls`, on tiers without `_hks`) — generated only for tables that actually have a configured column, calling `sec_pkg.require_dimension_scope` for each one. `chk_rbac` and `chk_rls` are two independent axes (row-level scope vs. fine-grained permission) — a table can have either, both, or neither.
+
+```expresql
+invoices /api
+  company_id /fk companies /nn
+  amount     num /nn
+
+# settings = { api: layered, dimensioncolumns: { company_id: "COMPANY" } }
+```
+
+Generated call order in `invoices_svc` (same shape for insert/update/delete/close):
+
+```sql
+invoices_hks.chk_rbac(p_operation => 'insert', p_row => l_row);
+invoices_hks.chk_rls(p_row => l_row);
+invoices_hks.validate(p_operation => 'insert', p_row => l_row);
+invoices_hks.before_insert(p_row => l_row);
+```
+
 ### auditcols
 
 **Possible Values**: `true`, `false`  
@@ -871,6 +895,38 @@ See [Multi-Tenant Design](./multitenant-design.md) for the full enterprise guide
 #### tenantid and API generation
 
 When `api: yes` (or `api: true`) is combined with `tenantid: yes`, the generated API procedures automatically include `p_tenant_id` so that every DML operation is scoped to the correct tenant. See [API and multi-tenancy](#api-and-multi-tenancy-tenantid-yes) for full details and examples.
+
+### dimensionColumns
+
+> **Dialect:** Oracle only, `api: layered`
+
+**Possible Values**: a JSON object mapping existing column names to a dimension type string, e.g. `{ company_id: "COMPANY" }`
+**Default Value**: `{}`
+
+Generalizes row-level scope beyond `tenantid` for the case where scope is **membership in a set** derived from role/group assignment (via a `sec_my_scope(dimension_type, code)` view/table you provide) rather than **equality to a single session-bound value**. Unlike `tenant_id`, a dimension column is never synthesized: it must already exist on the table (typically an explicit `/fk` column) — `dimensioncolumns` only tells the generator which of a table's own columns to treat as scope-bearing, and which dimension type each one represents.
+
+```expresql
+companies /api
+  name vc200 /nn
+
+invoices /api
+  company_id /fk companies /nn
+  amount     num /nn
+
+# settings = { api: "layered", dimensioncolumns: { company_id: "COMPANY" } }
+```
+
+For `invoices` (which has a `company_id` column matching the map), this generates:
+
+- **`chk_rls(p_row)`** (in `invoices_hks`, or absorbed as `p_chk_rls` on tiers without `_hks`) — calls `sec_pkg.require_dimension_scope(p_dimension_type => 'COMPANY', p_code => to_char(p_row.company_id))`. Called (together with `chk_rbac`, see [chk_rbac and chk_rls](#chk_rbac-and-chk_rls-api-layered)) before `validate`, for insert/update/delete/close — same ordering everywhere. An out-of-scope write raises rather than silently affecting 0 rows: the explicit check stays authoritative, unlike `tenantid`'s WHERE-clause enforcement on writes.
+- **Read-path filtering** — `get_by_id`, `lock_by_id`, `get_all` and `get_by_<unique>` (in `_dal`, or the absorbed private DML on tiers without `_dal`) add `and exists (select 1 from sec_my_scope s where s.dimension_type = 'COMPANY' and s.code = to_char(invoices.company_id))` directly to the WHERE clause. An out-of-scope row never leaves the read path — same `NO_DATA_FOUND` path as a genuinely missing id, so a caller cannot distinguish "does not exist" from "not in your scope".
+- **`companies` itself** gets no `chk_rls` at all (it has no column configured in the map) — `chk_rls` is only ever generated for tables that actually carry a configured dimension column, never as an empty stub.
+
+Every table with `api: layered`, scoped or not, also gets **`chk_rbac(p_operation, p_row)`** — see [chk_rbac and chk_rls](#chk_rbac-and-chk_rls-api-layered).
+
+A table can carry more than one dimension column (e.g. `{ company_id: "COMPANY", region_id: "REGION" }` on the same table): `chk_rls` checks each one, and the read-path WHERE clause ANDs every configured predicate together.
+
+**`delete_rec` (and the absorbed `del` path on tiers without `_svc`) also now always fetches the row first and calls `validate('delete', p_row)`** — independent of `dimensioncolumns`, on every table. Previously `validate()` never fired on delete at all; only `before_delete(p_id)` did, which cannot express row-content-dependent business rules since it never receives the row.
 
 ### tenantRef
 
@@ -1431,6 +1487,7 @@ individual_setting::=
       |'transcontext'
       |'updatedbycol'|'updatedcol'
       |'verbose' ) ':' (string_literal| 'true' | 'false')
+      | 'dimensioncolumns' ':' '{' identifier ':' string_literal ( ',' identifier ':' string_literal )* '}'
 ```
 
 [Syntax Railroad Diagram (interactive)](./railroad_diagram.xhtml) · [Syntax Railroad Diagram (Markdown)](./railroad_diagram.md)
