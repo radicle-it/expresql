@@ -474,6 +474,37 @@ tier senza `_dal` separato, la stessa vista esiste comunque (è un oggetto DB,
 non un package) — verificare che le procedure private embedded leggano da lì
 allo stesso modo.
 
+**Fatto**. `_dimensionScopeConditions` rimossa (come nel modello); nuova
+`_generateDimensionRlsView` — oggetto DB puro, non dipende da alcun package.
+Decisione tier: a differenza del modello (che la emette "subito prima del
+corpo DAL", presupponendo `_dal` sempre presente), qui viene emessa in
+**testa a `generateLayeredTAPI`, incondizionatamente rispetto al tier** —
+prima di qualunque package, che sia `_dal`, `_hks`, `_svc` o `_app`/`_rst` a
+seconda di chi arriva per primo. Necessario perché `_generatePrivateDml`
+(tier senza `_dal`) ha bisogno della vista esattamente quanto `_dal` stesso.
+`_generateDalBody` e `_generatePrivateDml` aggiornati identicamente:
+`dimSource = hasDimScope ? <tabella>_rls : <tabella>`, usato in FROM/select
+di get_by_id/lock_by_id/get_by_<unique>/get_all (sia la versione DAL sia
+quella assorbita `p_get_by_id`/`p_get_all`); `tenant_id` resta nel WHERE
+separatamente (il filtro dimensione vive ora solo nella vista). Scritture
+(insert_row/update_row/delete_row/close_row, comprese le versioni private)
+invariate — non leggono né filtrano mai tramite `_rls`.
+
+Verificato con dump reale del generatore (non a memoria) che l'output
+combacia col modello: `create or replace view invoices_rls as select * from
+sec_pkg.secured_by_dimension(invoices);` seguito da `select * into l_row
+from invoices_rls where id = p_id;` in `get_by_id`. Documentazione
+aggiornata negli stessi 4 punti del modello (`DOCUMENTATION_SPEC.md`,
+`quick-sql-grammar.md`, `examples.md` — testo ritrascritto da
+un'esecuzione reale, non copiato dal modello — e `web/app.js`), più la
+sezione tier-aware in `dimensionscope.test.ts` estesa con verifica che la
+vista precede sia `_dal` sia `_app` a seconda del tier.
+
+10 test riscritti/aggiunti in `dimensionscope.test.ts` per la nuova forma
+generata (vista + redirect di lettura), inclusa copertura esplicita per i
+tier degradati (`service`, `lookup`) assente nel modello. 943/943 verdi,
+build completa pulita.
+
 ### 13. Vista `_rls` sempre generata, anche senza colonne di dimensione
 Modello: il lavoro più recente, fatto ieri in questa sessione (non ancora
 committato su `main` al momento di questo piano — vedi `git stash` su

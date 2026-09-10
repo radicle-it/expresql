@@ -253,15 +253,19 @@ export class OraclePlsqlBuilder {
         return out;
     }
 
-    /** SQL fragment(s) restricting rows to the caller's scope for each dimension column present on this table. */
-    private _dimensionScopeConditions(node: IDdlNode, tbl: string): string[] {
-        // <col> is null: row shared across every value of that dimension (mirrors the
-        // existing, already-tested secured_by_company SQL_MACRO's "t.company_id is null =
-        // always visible" convention) — without this branch a legitimately shared row would
-        // never satisfy the exists() below (NULL never equals a code), making it invisible
-        // even to a session with full scope, or during an explicit bootstrap.
-        return this._dimensionScopeColumns(node).map(({ col, dimType }) =>
-            `(${tbl}.${col} is null or exists (select 1 from sec_my_scope s where s.dimension_type = '${dimType}' and s.code = to_char(${tbl}.${col})))`);
+    /**
+     * Row-scope view for tables with a direct dimension column (dimensioncolumns),
+     * generated once here instead of re-derived as a WHERE-clause predicate in every
+     * read path: get_by_id/lock_by_id/get_all/get_by_<unique> (in _dal, or the
+     * absorbed private DML when _dal is absent) select from this view directly. One
+     * filter, defined once by the project's own sec_pkg.secured_by_dimension macro
+     * (the same one any APEX region/report reads through), instead of two places that
+     * had to independently agree on "which column is which dimension".
+     */
+    private _generateDimensionRlsView(node: IDdlNode): string {
+        if (this._dimensionScopeColumns(node).length === 0) return '';
+        const tbl = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
+        return `create or replace view ${tbl}_rls as\nselect * from sec_pkg.secured_by_dimension(${tbl});\n/\n`;
     }
 
     procDecl(node: IDdlNode, kind: string): string {
@@ -403,7 +407,13 @@ export class OraclePlsqlBuilder {
         const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
 
         const tenantCtxPkg = this.ctx.objPrefix() + 'tenant_ctx';
-        const dimConds      = this._dimensionScopeConditions(node, tbl);
+        // Read paths select from <table>_rls instead of <table> when a dimension-scope
+        // view exists for it (see _generateDimensionRlsView) — one filter, defined once,
+        // shared with every other _rls consumer, instead of re-deriving a WHERE condition
+        // here. Never applies to insert/update/delete: chk_rls (or its absorbed
+        // p_chk_rls form) stays the sole authority for writes.
+        const hasDimScope = this._dimensionScopeColumns(node).length > 0;
+        const dimSource   = hasDimScope ? `${tbl}_rls` : tbl;
 
         let r = `\n${tab}-- private DML (absorbed from absent _dal)\n\n`;
 
@@ -411,9 +421,8 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
         r += `${tab}begin\n`;
         {
-            const extra = [...(synTenantId ? [`tenant_id = ${tenantCtxPkg}.get_id`] : []), ...dimConds]
-                .map(c => ` and ${c}`).join('');
-            r += `${tab}${tab}select * into l_row from ${tbl} where ${pkNm} = p_id${extra};\n`;
+            const extra = synTenantId ? ` and tenant_id = ${tenantCtxPkg}.get_id` : '';
+            r += `${tab}${tab}select * into l_row from ${dimSource} where ${pkNm} = p_id${extra};\n`;
         }
         r += `${tab}${tab}return l_row;\n`;
         r += `${tab}exception\n`;
@@ -427,9 +436,8 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}l_cur sys_refcursor;\n`;
         r += `${tab}begin\n`;
         {
-            const conds = [...(synTenantId ? [`tenant_id = ${tenantCtxPkg}.get_id`] : []), ...dimConds];
-            const where = conds.length > 0 ? ` where ${conds.join(' and ')}` : '';
-            r += `${tab}${tab}open l_cur for select * from ${tbl}${where};\n`;
+            const where = synTenantId ? ` where tenant_id = ${tenantCtxPkg}.get_id` : '';
+            r += `${tab}${tab}open l_cur for select * from ${dimSource}${where};\n`;
         }
         r += `${tab}${tab}return l_cur;\n`;
         r += `${tab}end p_get_all;\n\n`;
@@ -649,22 +657,23 @@ export class OraclePlsqlBuilder {
         // instead of duplicating a private function in every DAL — single point of configuration.
         const synTenantId  = this._hasSyntheticTenantId(node);
         const tenantCtxPkg = this.ctx.objPrefix() + 'tenant_ctx';
-        // Row-level scope: filtered in the WHERE clause (read paths only — never in
-        // insert_row/update_row/delete_row/close_row, where the explicit chk_rls check in
-        // _hks (or the absorbed p_chk_rls) stays authoritative: an out-of-scope write raises,
-        // it never silently no-ops the way a WHERE-clause filter would).
-        const dimConds = this._dimensionScopeConditions(node, tbl);
+        // Row-level scope: read paths select from <table>_rls instead of <table> when
+        // it exists (see _generateDimensionRlsView) — never in insert_row/update_row/
+        // delete_row/close_row, where the explicit chk_rls check in _hks (or the
+        // absorbed p_chk_rls) stays authoritative: an out-of-scope write raises, it
+        // never silently no-ops the way a WHERE-clause filter would.
+        const hasDimScope = this._dimensionScopeColumns(node).length > 0;
+        const dimSource   = hasDimScope ? `${tbl}_rls` : tbl;
 
-        // get_by_id — NO_DATA_FOUND propagates to the caller; tenant/dimension-scoped when active.
+        // get_by_id — NO_DATA_FOUND propagates to the caller; tenant-scoped when active.
         // Out-of-scope rows never enter l_row: they fail the same NO_DATA_FOUND path as a
         // genuinely missing id, indistinguishable from the caller's side (anti-IDOR).
         r += `${tab}function get_by_id (p_id in t_id) return ${tbl}%rowtype is\n`;
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
         r += `${tab}begin\n`;
         {
-            const extra = [...(synTenantId ? [`tenant_id = ${tenantCtxPkg}.get_id`] : []), ...dimConds]
-                .map(c => ` and ${c}`).join('');
-            r += `${tab}${tab}select * into l_row from ${tbl} where ${pkName} = p_id${extra};\n`;
+            const extra = synTenantId ? ` and tenant_id = ${tenantCtxPkg}.get_id` : '';
+            r += `${tab}${tab}select * into l_row from ${dimSource} where ${pkName} = p_id${extra};\n`;
         }
         r += `${tab}${tab}return l_row;\n`;
         r += `${tab}end get_by_id;\n\n`;
@@ -674,10 +683,9 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
         r += `${tab}begin\n`;
         r += `${tab}${tab}select * into l_row\n`;
-        r += `${tab}${tab}from   ${tbl}\n`;
+        r += `${tab}${tab}from   ${dimSource}\n`;
         r += `${tab}${tab}where  ${pkName} = p_id\n`;
-        for (const c of [...(synTenantId ? [`tenant_id = ${tenantCtxPkg}.get_id`] : []), ...dimConds])
-            r += `${tab}${tab}  and  ${c}\n`;
+        if (synTenantId) r += `${tab}${tab}  and  tenant_id = ${tenantCtxPkg}.get_id\n`;
         r += `${tab}${tab}for update nowait;\n`;
         r += `${tab}${tab}return l_row;\n`;
         r += `${tab}exception\n`;
@@ -688,15 +696,13 @@ export class OraclePlsqlBuilder {
         r += `${tab}end lock_by_id;\n\n`;
 
         // get_by_<unique_col> — one function per /unique column; NO_DATA_FOUND propagates.
-        // When tenantid/dimensioncolumns is active, the composite scope filter applies here too.
         for (const col of uniqueCols) {
             const cn = col.parseName().toLowerCase();
-            const extraWhere = [...(synTenantId ? [`tenant_id = ${tenantCtxPkg}.get_id`] : []), ...dimConds]
-                .map(c => ` and ${c}`).join('');
+            const extraWhere = synTenantId ? ` and tenant_id = ${tenantCtxPkg}.get_id` : '';
             r += `${tab}function get_by_${cn} (p_${cn} in ${tbl}.${cn}%type) return ${tbl}%rowtype is\n`;
             r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
             r += `${tab}begin\n`;
-            r += `${tab}${tab}select * into l_row from ${tbl} where ${cn} = p_${cn}${extraWhere};\n`;
+            r += `${tab}${tab}select * into l_row from ${dimSource} where ${cn} = p_${cn}${extraWhere};\n`;
             r += `${tab}${tab}return l_row;\n`;
             r += `${tab}end get_by_${cn};\n\n`;
         }
@@ -706,9 +712,8 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}l_cur t_cursor;\n`;
         r += `${tab}begin\n`;
         {
-            const conds = [...(synTenantId ? [`tenant_id = ${tenantCtxPkg}.get_id`] : []), ...dimConds];
-            const where = conds.length > 0 ? ` where ${conds.join(' and ')}` : '';
-            r += `${tab}${tab}open l_cur for select * from ${tbl}${where};\n`;
+            const where = synTenantId ? ` where tenant_id = ${tenantCtxPkg}.get_id` : '';
+            r += `${tab}${tab}open l_cur for select * from ${dimSource}${where};\n`;
         }
         r += `${tab}${tab}return l_cur;\n`;
         r += `${tab}end get_all;\n\n`;
@@ -1767,6 +1772,11 @@ export class OraclePlsqlBuilder {
         const genRst = ifc === 'rest' || ifc === 'both';
 
         let r = '';
+        // Emitted once, ahead of every package — tier-independent: a dimension-scoped
+        // table needs its _rls view whether reads live in _dal or are absorbed into
+        // whichever package sits above the missing _dal (see _generateDimensionRlsView).
+        const rlsView = this._generateDimensionRlsView(node);
+        if (rlsView) r += rlsView + '\n';
         if (hasDal) r += this._generateDalSpec(node) + '\n' + this._generateDalBody(node) + '\n';
         if (hasHks) r += this._generateHksSpec(node, hasDal) + '\n' + this._generateHksBody(node, hasDal) + '\n';
         if (hasSvc) {

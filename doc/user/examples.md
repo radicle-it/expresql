@@ -1601,18 +1601,27 @@ invoices /api
 
 `companies` has no column configured in the map, so it is generated exactly as a plain layered-API table would be — except every `_hks` package, scoped or not, now also gets a `chk_rbac` hook (see below). `invoices` has a `company_id` column matching the map, so it gets the full treatment.
 
-**Read paths filter directly in the WHERE clause** (`invoices_dal`):
+**A `<table>_rls` view is generated for `invoices`**, once, ahead of every other package for that table (so everything downstream — `invoices_dal`, or the absorbed private DML on tiers without `_dal` — compiles against an existing view, no separate migration step needed):
+
+```sql
+create or replace view invoices_rls as
+select * from sec_pkg.secured_by_dimension(invoices);
+```
+
+`sec_pkg.secured_by_dimension` is a function you provide (typically a `SQL_MACRO(TABLE)` that introspects the table's real columns and filters against your `sec_my_scope` source) — the same one any APEX region or report would read through. ExpreSQL only calls it; it never emits the filter predicate itself.
+
+**Read paths select from that view instead of the base table** (`invoices_dal`):
 
 ```sql
 function get_by_id (p_id in t_id) return invoices%rowtype is
     l_row invoices%rowtype;
 begin
-    select * into l_row from invoices where id = p_id and exists (select 1 from sec_my_scope s where s.dimension_type = 'COMPANY' and s.code = to_char(invoices.company_id));
+    select * into l_row from invoices_rls where id = p_id;
     return l_row;
 end get_by_id;
 ```
 
-An out-of-scope row never leaves the DAL: `NO_DATA_FOUND` propagates exactly as it would for a genuinely missing id, so a caller cannot tell "does not exist" apart from "not in your scope". `lock_by_id`, `get_all` and `get_by_<unique>` get the same predicate — and, on tiers without a separate `_dal` (`service`, `lookup`), so does the equivalent absorbed private DML (`p_get_by_id`/`p_get_all`). `insert_row`/`update_row`/`delete_row` do **not** — that's a deliberate difference from `tenantid`, explained below.
+An out-of-scope row never leaves the DAL: `NO_DATA_FOUND` propagates exactly as it would for a genuinely missing id, so a caller cannot tell "does not exist" apart from "not in your scope" — and it's the SAME filter every other reader of `invoices_rls` sees, not a second copy of the logic. `lock_by_id`, `get_all` and `get_by_<unique>` read from the view the same way — and, on tiers without a separate `_dal` (`service`, `lookup`), so does the equivalent absorbed private DML (`p_get_by_id`/`p_get_all`), reading from the same `invoices_rls` view. `insert_row`/`update_row`/`delete_row` do **not** — that's a deliberate difference from `tenantid`, explained below.
 
 **`chk_rbac` and `chk_rls`, in `invoices_hks`:**
 
@@ -1671,4 +1680,11 @@ end delete_rec;
 
 Before this setting, `validate()` never fired on delete at all, on any table — only `before_delete(p_id)` did, which cannot express a row-content-dependent business rule since it never receives the row. The same fix applies to the absorbed `del` path on the `lookup` tier (no `_svc`), which had the identical gap.
 
-**More than one dimension column** on the same table is supported without any special-casing — `dimensioncolumns: { company_id: "COMPANY", region_id: "REGION" }` generates a `chk_rls` that checks both, and read-path WHERE clauses `AND` every configured predicate together.
+**More than one dimension column** on the same table is supported without any special-casing on the write side — `dimensioncolumns: { company_id: "COMPANY", region_id: "REGION" }` generates a `chk_rls` that checks both. On the read side there is still only one `invoices_rls` view — ExpreSQL never emits a per-dimension predicate for it; `secured_by_dimension` itself is expected to introspect the table's columns and AND every dimension it finds, so a multi-dimension table needs no different treatment here than a single-dimension one.
+
+| Setting/hook | Generated when | Behavior on violation |
+|---|---|---|
+| `chk_rbac` | Always, every table | Empty by default — a no-op until hand-filled |
+| `chk_rls` | Only if the table has a configured dimension column | Raises via `sec_pkg.require_dimension_scope` |
+| `<table>_rls` view + read paths reading from it | Only if the table has a configured dimension column | Row never returned; same `NOT_FOUND` as missing id |
+| Write paths reading from `<table>_rls` | Never (unlike `tenantid`'s WHERE-clause enforcement) | N/A — `chk_rls` is authoritative instead |

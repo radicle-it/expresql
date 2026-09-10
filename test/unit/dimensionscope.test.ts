@@ -20,24 +20,35 @@
  *     calls `chk_rbac` then `chk_rls` (when present) before `validate`, for
  *     insert/update/delete (and close, for `/versioned` tables) — same
  *     ordering for every operation, on every tier.
- *  4. Read paths (`get_by_id`, `lock_by_id`, `get_all`, `get_by_<unique>`)
- *     filter directly in the WHERE clause via `exists (select 1 from
- *     sec_my_scope ...)` — an out-of-scope row never leaves the DAL (or the
- *     absorbed private DML on tiers without `_dal`), same NO_DATA_FOUND path
- *     as a genuinely missing id.
- *  5. Write paths do NOT filter in the WHERE clause (unlike tenantid): the
- *     explicit `chk_rls` check stays authoritative, raising rather than
- *     silently affecting 0 rows.
+ *  4. A table with at least one configured dimension column also gets a
+ *     `<table>_rls` view (`select * from sec_pkg.secured_by_dimension(<table>)`)
+ *     — the same view any APEX region/report would read from. Read paths
+ *     (`get_by_id`, `lock_by_id`, `get_all`, `get_by_<unique>`, in `_dal` or
+ *     the absorbed private DML on tiers without `_dal`) select FROM THAT VIEW
+ *     instead of the base table, rather than re-deriving their own WHERE-
+ *     clause filter: one filter, defined once, shared by every reader — an
+ *     out-of-scope row never leaves the read path, same NO_DATA_FOUND path as
+ *     a genuinely missing id.
+ *  5. Write paths do NOT read from or filter through the view (unlike
+ *     tenantid): the explicit `chk_rls` check stays authoritative, raising
+ *     rather than silently affecting 0 rows.
  *  6. `validate('delete', ...)` fires on every table (previously never
  *     called from `delete_rec` at all) — independent of `dimensioncolumns`,
  *     see tapi-layered.test.ts for that coverage.
  *
- * Model: main commit c7e6c9b (DAL/HKS/SVC-always world). tapi-ext's tier
- * system — an independent evolution main never had at that commit — degrades
- * the same mechanism the same way every other hook already does: absorbed as
- * `p_chk_rbac`/`p_chk_rls` private procedures when `_hks` is absent, called
- * directly by whichever package sits above it (`_svc`, or `_app`/`_rst` on
- * the `lookup` tier). Covered separately below, not in the model.
+ * Model: main commits c7e6c9b (chk_rbac/chk_rls, DAL/HKS/SVC-always world)
+ * and 2c42616 (unify read-side filtering into the <table>_rls view — a real
+ * duplication removed: the WHERE-clause text this generator built
+ * independently had to keep re-deriving the same filter any project's own
+ * secured_by_dimension-style macro already computes). tapi-ext's tier
+ * system — an independent evolution main never had at either commit —
+ * degrades the same mechanism the same way every other hook already does:
+ * `p_chk_rbac`/`p_chk_rls` absorbed as private procedures when `_hks` is
+ * absent, called directly by whichever package sits above it (`_svc`, or
+ * `_app`/`_rst` on the `lookup` tier); the `_rls` view itself, and the read-
+ * path redirection to it, is tier-independent — emitted once regardless of
+ * whether `_dal` exists, since the absorbed private DML needs it exactly as
+ * much as `_dal` does. Covered separately below, not in the model.
  */
 
 import { describe, test, expect } from 'vitest';
@@ -166,43 +177,71 @@ describe('_svc — chk_rbac/chk_rls precede validate, for every operation', () =
 
 // ── 4. Read paths — WHERE-clause scope filter, write paths — none (explicit check instead) ──
 
-describe('read paths filter in the WHERE clause; write paths do not', () => {
+describe('<table>_rls view generated for a dimension-scoped table', () => {
+    test('view created for widgets (has company_id, matching dimensioncolumns)', () => {
+        const out = ddl(SCOPED_QSQL);
+        expect(out).toContain('create or replace view widgets_rls as\nselect * from sec_pkg.secured_by_dimension(widgets);');
+    });
+
+    test('NOT created for companies itself (dimensioncolumns configured, but no matching column on this table)', () => {
+        const out = ddl(SCOPED_QSQL);
+        expect(out).not.toContain('view companies_rls');
+    });
+
+    test('NOT created at all when no dimension column is configured', () => {
+        const out = ddl(UNSCOPED_QSQL);
+        expect(out).not.toContain('_rls');
+    });
+
+    test('emitted once, ahead of every other layered package for that table', () => {
+        const out = ddl(SCOPED_QSQL);
+        const idxView = out.indexOf('create or replace view widgets_rls');
+        const idxDal  = out.indexOf('create or replace package widgets_dal');
+        expect(idxView).toBeGreaterThan(-1);
+        expect(idxView).toBeLessThan(idxDal);
+    });
+});
+
+describe('read paths select from <table>_rls; write paths do not', () => {
     const out = ddl(SCOPED_QSQL);
 
     test('get_by_id', () => {
         const dalBody = segment(out, 'create or replace package body widgets_dal', 'end widgets_dal;');
         const fn = segment(dalBody, 'function get_by_id', 'end get_by_id;');
-        expect(fn).toContain(
-            "select * into l_row from widgets where id = p_id and (widgets.company_id is null or exists (select 1 from sec_my_scope s where s.dimension_type = 'company' and s.code = to_char(widgets.company_id)));"
-        );
+        expect(fn).toContain('select * into l_row from widgets_rls where id = p_id;');
     });
 
     test('lock_by_id', () => {
         const dalBody = segment(out, 'create or replace package body widgets_dal', 'end widgets_dal;');
         const fn = segment(dalBody, 'function lock_by_id', 'end lock_by_id;');
-        expect(fn).toContain("and  (widgets.company_id is null or exists (select 1 from sec_my_scope s where s.dimension_type = 'company'");
+        expect(fn).toContain('from   widgets_rls\n');
+        expect(fn).toContain('where  id = p_id\n');
     });
 
     test('get_all', () => {
         const dalBody = segment(out, 'create or replace package body widgets_dal', 'end widgets_dal;');
         const fn = segment(dalBody, 'function get_all', 'end get_all;');
-        expect(fn).toContain("open l_cur for select * from widgets where (widgets.company_id is null or exists (select 1 from sec_my_scope");
+        expect(fn).toContain('open l_cur for select * from widgets_rls;');
     });
 
-    test('a NULL scope column is treated as shared, always visible (not IDOR-invisible)', () => {
-        const dalBody = segment(out, 'create or replace package body widgets_dal', 'end widgets_dal;');
+    test('unscoped table reads straight from the base table, no _rls involved', () => {
+        const unscoped = ddl(UNSCOPED_QSQL);
+        const dalBody = segment(unscoped, 'create or replace package body widgets_dal', 'end widgets_dal;');
         const fn = segment(dalBody, 'function get_by_id', 'end get_by_id;');
-        expect(fn).toContain('widgets.company_id is null or exists');
+        expect(fn).toContain('select * into l_row from widgets where id = p_id;');
     });
 
-    test('insert_row/update_row/delete_row do NOT gain a scope predicate (chk_rls stays authoritative)', () => {
+    test('insert_row/update_row/delete_row do NOT read from _rls or reference sec_my_scope (chk_rls stays authoritative)', () => {
         const dalBody = segment(out, 'create or replace package body widgets_dal', 'end widgets_dal;');
         const insertRow = segment(dalBody, 'procedure insert_row', 'end insert_row;');
         const updateRow = segment(dalBody, 'procedure update_row', 'end update_row;');
         const deleteRow = segment(dalBody, 'procedure delete_row', 'end delete_row;');
         expect(insertRow).not.toContain('sec_my_scope');
+        expect(insertRow).not.toContain('widgets_rls');
         expect(updateRow).not.toContain('sec_my_scope');
+        expect(updateRow).not.toContain('widgets_rls');
         expect(deleteRow).not.toContain('sec_my_scope');
+        expect(deleteRow).not.toContain('widgets_rls');
     });
 });
 
@@ -230,11 +269,17 @@ projects /api
         expect(hksBody).toContain("require_dimension_scope(p_dimension_type => 'region', p_code => to_char(p_row.region_id))");
     });
 
-    test('get_by_id ANDs both scope predicates', () => {
+    test('a single _rls view covers both dimensions — secured_by_dimension itself does the per-column introspection at the DB side, not ExpreSQL', () => {
+        const out = ddl(qsql);
+        expect(out).toContain('create or replace view projects_rls as\nselect * from sec_pkg.secured_by_dimension(projects);');
+        expect(out.match(/create or replace view projects_rls/g)?.length).toBe(1);
+    });
+
+    test('get_by_id reads from the single projects_rls view', () => {
         const out = ddl(qsql);
         const dalBody = segment(out, 'create or replace package body projects_dal', 'end projects_dal;');
         const fn = segment(dalBody, 'function get_by_id', 'end get_by_id;');
-        expect(fn).toMatch(/dimension_type = 'company'.*and \(projects\.region_id is null or exists.*dimension_type = 'region'/s);
+        expect(fn).toContain('select * into l_row from projects_rls where id = p_id;');
     });
 });
 
@@ -275,11 +320,14 @@ widgets /api service
         expect(doCreate).not.toContain('widgets_hks');
     });
 
-    test('absorbed p_get_by_id/p_get_all still carry the sec_my_scope WHERE filter', () => {
+    test('absorbed p_get_by_id/p_get_all read from widgets_rls, same as _dal would', () => {
         const out = ddl(qsql);
+        expect(out).toContain('create or replace view widgets_rls as\nselect * from sec_pkg.secured_by_dimension(widgets);');
         const svcBody = segment(out, 'create or replace package body widgets_svc', 'end widgets_svc;');
         const pGetById = segment(svcBody, 'function p_get_by_id', 'end p_get_by_id;');
-        expect(pGetById).toContain("exists (select 1 from sec_my_scope s where s.dimension_type = 'company'");
+        expect(pGetById).toContain('select * into l_row from widgets_rls where id = p_id;');
+        const pGetAll = segment(svcBody, 'function p_get_all', 'end p_get_all;');
+        expect(pGetAll).toContain('open l_cur for select * from widgets_rls;');
     });
 });
 
@@ -314,5 +362,16 @@ widgets /api lookup
         expect(delProc).toContain('l_row := p_get_by_id(p_id => p_id);');
         expect(delProc.indexOf('p_chk_rbac(')).toBeLessThan(delProc.indexOf('p_validate('));
         expect(delProc.indexOf('p_validate(')).toBeLessThan(delProc.indexOf('p_delete_row('));
+    });
+
+    test('absorbed p_get_by_id (called from del/get) reads from widgets_rls, and the view precedes _app', () => {
+        const out = ddl(qsql);
+        const idxView = out.indexOf('create or replace view widgets_rls');
+        const idxApp  = out.indexOf('create or replace package widgets_app');
+        expect(idxView).toBeGreaterThan(-1);
+        expect(idxView).toBeLessThan(idxApp);
+        const appBody = segment(out, 'create or replace package body widgets_app', 'end widgets_app;');
+        const pGetById = segment(appBody, 'function p_get_by_id', 'end p_get_by_id;');
+        expect(pGetById).toContain('select * into l_row from widgets_rls where id = p_id;');
     });
 });
