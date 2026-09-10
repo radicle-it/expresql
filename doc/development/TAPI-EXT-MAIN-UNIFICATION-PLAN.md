@@ -705,6 +705,46 @@ stesso file/modulo (non solo alle chiavi persistite):
   dove la struttura a tier cambia deliberatamente la forma generata — ogni
   altra differenza è una regressione da investigare.
 
+**Fatto** (parziale, con un item di debito tecnico rimandato). `npm run
+test:ts`: 965/965 verdi. `npm run build`: tutti i target completano senza
+errori, incluso `build:mle` (rieseguito per la prima volta in questa
+sessione, non solo `build:ddl`).
+
+**Investigato e rimandato deliberatamente**: il mismatch ESM/CJS di
+`dist/expresql.mle.cjs` segnalato al punto 14 **non è una regressione di
+questa sessione** — è identico byte-per-byte (a parte un BOM, bug
+preesistente indipendente) tra `tapi-ext` e `main`
+(`scripts/build-mle.mjs` su entrambi i branch si limita a copiare
+`dist/expresql.js`, un bundle ESM vero e proprio, sotto estensione
+`.cjs`, senza nessuna reale trasformazione di formato). Non c'è quindi
+nulla da "portare" da `main`: il bug esiste identico da prima della
+divergenza dei due branch.
+
+Root cause completa: `mle/01_install_module.sql` (il vero artefatto di
+deploy Oracle, generato da `scripts/generate-mle-sql.mjs` incorporando il
+contenuto di `dist/expresql.mle.cjs` dentro `CREATE OR REPLACE MLE MODULE
+... LANGUAGE JAVASCRIPT AS $QSQL$ ... $QSQL$`) **funziona correttamente in
+Oracle** nonostante l'estensione fuorviante: il motore MLE di Oracle
+(GraalJS) tratta il contenuto del modulo come un vero modulo ECMAScript
+indipendentemente dall'estensione del file sorgente — non è mai passato
+da un `require()` CommonJS. L'unico consumer realmente rotto è lo smoke
+test locale `scripts/test-mle-compat.mjs`, che chiama `require()` su un
+file `.cjs`: Node forza sempre il parsing CommonJS per estensione `.cjs`
+(sia con `require()` sia con `import()` dinamico), quindi fallisce su
+`export {...}` a prescindere da come lo si carica.
+
+Decisione dell'utente: non investire ora nel fix (richiederebbe scegliere
+tra più strategie non banali — rinominare l'artefatto in `.mjs` e
+aggiornare tutti i consumer, o trasformare davvero il bundle in CommonJS
+reale, o riscrivere lo smoke test per caricarlo come modulo ESM da un file
+temporaneo — su un file di build/test condiviso da entrambi i branch, non
+in scope per l'unificazione). Nessun impatto sul deploy Oracle reale;
+impatto limitato alla mancata copertura di test locale del bundle MLE.
+Lasciato come debito tecnico noto, da riprendere come attività
+indipendente se necessario.
+
+Confronto mirato fixture `tapi-ext` vs `main`: da eseguire.
+
 ### 16. Decisione sul destino di `main` — rimandata
 Non eseguire ora. Solo dopo il punto 15, quando `tapi-ext` avrà parità
 completa (e in più i tier), si decide se archiviare, rinominare o cancellare
