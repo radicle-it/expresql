@@ -89,11 +89,25 @@ insicuro — riscritti per asserire il nuovo; aggiunti 3 test nuovi (scoping
 DAL su read/write, generazione del pacchetto condiviso). 852/852 verdi,
 build completa pulita.
 
-### 2. Allineamento colonne dinamico in `t_rec`/parametri APX
+### 2. Allineamento colonne dinamico in `t_rec`/parametri `_app`
 Modello: `6020218`. `padEnd()` fisso → calcolato sulla lunghezza massima
 reale dei nomi colonna per tabella. Applicare ovunque `t_rec`/liste parametri
 vengono generate — per tier `full+hks` è un solo punto, per gli altri tier
 verificare che la stessa generazione (embedded o no) sia coperta.
+
+**Fatto**. `padEnd(20)` fisso in `_generateSvcSpec` (t_rec) e `padEnd(13)`
+fisso in `_generateAppSpec`/`_generateAppBody` (get/ins/upd) → larghezza
+calcolata per tabella (`Math.max(minimo, ...nomi.map(n => n.length + 1))`).
+`_rst` non ha bisogno dello stesso fix: usa bind variabili ORDS
+(`:p_id`/`:body_text`), nessuna lista di parametri PL/SQL da allineare —
+non esisteva nemmeno su `main` quando `6020218` fu scritto (`ifc: rest` è
+arrivato dopo, 19 luglio). Colto anche l'avviso dell'utente: rinominata la
+variabile locale `apx`→`app` in `_generateAppSpec`/`_generateAppBody`
+(generava già `_app` in output, ma la sorgente diceva ancora `apx`) e
+corretti due commenti che dicevano "APX parameter lists" invece di "_app
+parameter lists" — nessun residuo `apx`/`APX` rimasto nel file. 2 nuovi test
+(nome lungo forza un allineamento condiviso su tutta la lista, non solo sulla
+colonna lunga). 854/854 verdi, build completa pulita.
 
 ### 3. Estensione interfaccia: `ifc: rest`
 Modello: `3e3f3aa` + `ab0e37c` + `f34c57f` (19 luglio). Pacchetto `_rst` con

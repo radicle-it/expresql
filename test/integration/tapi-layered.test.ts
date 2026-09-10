@@ -1705,3 +1705,38 @@ describe('ifc setting — interface package selection', () => {
     });
 
 });
+
+// ── Dynamic column-name alignment in t_rec / _app parameter lists ────────────
+// A fixed padEnd(20)/padEnd(13) leaves a long column name flush against the next
+// token (only the single literal space from the template) while every shorter
+// name in the same list still gets its old, now-inconsistent padding — the
+// width must be computed per table from the actual longest name instead.
+
+const LONG_COL_QSQL = `\
+widgets /api
+  short vc10
+  workflow_correlation_id vc100
+# settings = {"api": "layered"}`.trim();
+
+describe('dynamic column alignment — t_rec / _app parameter lists', () => {
+
+    test('t_rec pads every field to the longest column name in this table, not a fixed 20', () => {
+        const out = ddl(LONG_COL_QSQL);
+        const spec = segment(out, 'create or replace package widgets_svc as', 'end widgets_svc;');
+        const tRec = segment(spec, 'type t_rec is record', ');');
+        // 'workflow_correlation_id' (23 chars) forces width 24 — 'short' must be
+        // padded to that same width, not left at its own short length.
+        expect(tRec).toMatch(/short {19}widgets\.short%type/);
+        expect(tRec).toMatch(/workflow_correlation_id widgets\.workflow_correlation_id%type/);
+    });
+
+    test('_app get/ins/upd pad every p_ parameter to the longest column name in this table, not a fixed 13', () => {
+        const out = ddl(LONG_COL_QSQL);
+        const spec = segment(out, 'create or replace package widgets_app as', 'end widgets_app;');
+        // Both p_ names line up on the same "out" column — proof the width is shared
+        // across the whole parameter list (computed from the longest name), not per-column.
+        expect(spec).toContain('p_short                    out widgets.short%type');
+        expect(spec).toContain('p_workflow_correlation_id  out widgets.workflow_correlation_id%type');
+    });
+
+});
