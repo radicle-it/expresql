@@ -598,8 +598,10 @@ export class OracleDDLGenerator extends BaseGenerator {
     generateImmutableTrigger(node: IDdlNode): string   { return this._plsql.generateImmutableTrigger(node); }
     generateTAPI(node: IDdlNode): string               { return this._plsql.generateTAPI(node); }
     generateLayeredTAPI(node: IDdlNode): string        { return this._plsql.generateLayeredTAPI(node); }
-    generateTenantCtxSpec(prefix: string): string      { return this._plsql.generateTenantCtxSpec(prefix); }
-    generateTenantCtxBody(prefix: string): string      { return this._plsql.generateTenantCtxBody(prefix); }
+    generateTenantCtxSpec(prefix: string): string       { return this._plsql.generateTenantCtxSpec(prefix); }
+    generateTenantCtxBody(prefix: string): string       { return this._plsql.generateTenantCtxBody(prefix); }
+    generateTenantBootstrapSpec(prefix: string): string { return this._plsql.generateTenantBootstrapSpec(prefix); }
+    generateTenantBootstrapBody(prefix: string): string { return this._plsql.generateTenantBootstrapBody(prefix); }
 
 
     generateFullDDL(): string {
@@ -683,14 +685,20 @@ export class OracleDDLGenerator extends BaseGenerator {
             const nodeApiVal = (node.getOptionValue('api') ?? '').trim().toLowerCase();
             const isNodeLayered = hasApiDir && (layeredTiers.includes(nodeApiVal) || globalLayered);
             if (isNodeLayered) {
-                // Emit the shared tenant-context package once, before the first layered
-                // table that can reference it — every tier (full/service/lookup, +hks or
+                // Emit the shared tenant-context packages once, before the first layered
+                // table that can reference them — every tier (full/service/lookup, +hks or
                 // not) calls <prefix>tenant_ctx.get_id from its DAL or absorbed private DML.
+                // Two packages, not one: tenant_ctx (get_id, safe to grant broadly) is kept
+                // separate from tenant_bootstrap (set_id/clear_id, must be the exact package
+                // named in CREATE CONTEXT ... USING, so it can be granted to a trusted
+                // bootstrap principal only — see generateTenantBootstrapSpec's doc comment.
                 if (!emittedTenantCtx && this._ddl.optionEQvalue('tenantid', true)) {
                     emittedTenantCtx = true;
                     if (j++ === 0) output += '-- APIs\n';
                     output += this.generateTenantCtxSpec(this._ddl.objPrefix()) + '\n';
                     output += this.generateTenantCtxBody(this._ddl.objPrefix()) + '\n';
+                    output += this.generateTenantBootstrapSpec(this._ddl.objPrefix()) + '\n';
+                    output += this.generateTenantBootstrapBody(this._ddl.objPrefix()) + '\n';
                 }
                 const tapi = this.generateLayeredTAPI(node);
                 if (tapi) { if (j++ === 0) output += '-- APIs\n'; output += tapi + '\n'; }

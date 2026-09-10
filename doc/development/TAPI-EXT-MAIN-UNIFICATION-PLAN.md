@@ -56,7 +56,8 @@ Sistemare il fallimento dei 17 test di `regression.test.ts` su `tapi-ext`
 verde.
 
 ### 1. Isolamento multi-tenant: seam nel DAL invece di parametro dal chiamante
-Modello: `aa6776c` + `0bca57a` + `433cb12` + `7de6b14` (14 luglio).
+Modello: `aa6776c` + `0bca57a` + `433cb12` + `7de6b14` (14 luglio) +
+`757cf4d` (16 luglio, split tenant_ctx/tenant_bootstrap — vedi nota "Fatto").
 - Package condiviso `<prefix>tenant_ctx` (get_id, set_id, clear_id) invece di
   `p_tenant_id` passato dal chiamante (insicuro: chiunque può falsificarlo).
 - Ogni filtro tenant nel DAL (get_by_id, lock_by_id, get_by_<col>, get_all,
@@ -88,6 +89,26 @@ esistenti in `tapi-layered.test.ts` asserivano il vecchio comportamento
 insicuro — riscritti per asserire il nuovo; aggiunti 3 test nuovi (scoping
 DAL su read/write, generazione del pacchetto condiviso). 852/852 verdi,
 build completa pulita.
+
+**Correzione (successiva, durante l'indagine del punto 3)**: il commit
+`7de6b14` usato come modello iniziale genera `tenant_ctx` come un unico
+package con `get_id`+`set_id`+`clear_id` insieme — ma non era l'ultima parola
+di `main` sullo stesso giorno. Il commit successivo `757cf4d` (stesso 16
+luglio, poche ore dopo, descritto come modifiche esterne dell'utente) divide
+il package in due, per un motivo di sicurezza reale: Oracle vincola
+`DBMS_SESSION.SET_CONTEXT`/`CLEAR_CONTEXT` per un namespace al solo package
+nominato in `CREATE CONTEXT <ns> USING <package>` (altrimenti ORA-01031),
+quindi quel package non può essere anche quello concesso ampiamente per la
+sola lettura — altrimenti chi ha `EXECUTE` su `get_id` ottiene anche la
+capacità di impersonare qualunque tenant via `set_id`. Ricostruito di
+conseguenza: `<prefix>tenant_ctx` ora contiene solo `get_id` (concedibile
+ampiamente al ruolo applicativo/APEX), `<prefix>tenant_bootstrap` è un nuovo
+package con `set_id`/`clear_id` (da concedere solo a un principal fidato —
+proprietario di un logon trigger o handler di autenticazione), emesso subito
+dopo `tenant_ctx` nello stesso punto di `generateFullDDL`. Test
+`tenant_ctx`/`tenant_bootstrap` in `tapi-layered.test.ts` riscritti di
+conseguenza (4 test, uno diviso in due + verifica ordine emissione + verifica
+commento `CREATE CONTEXT`). 857/857 verdi, build completa pulita.
 
 ### 2. Allineamento colonne dinamico in `t_rec`/parametri `_app`
 Modello: `6020218`. `padEnd()` fisso → calcolato sulla lunghezza massima

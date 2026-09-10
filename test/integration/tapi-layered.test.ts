@@ -1389,19 +1389,48 @@ describe('layered TAPI — tenantid:yes', () => {
         expect(getAll).toContain('where tenant_id = tenant_ctx.get_id');
     });
 
-    test('shared tenant_ctx package (get_id/set_id/clear_id) is generated once, before the first layered DAL', () => {
+    // tenant_ctx (get_id) and tenant_bootstrap (set_id/clear_id) are split into two packages:
+    // DBMS_SESSION.SET_CONTEXT/CLEAR_CONTEXT raise ORA-01031 unless called from the exact
+    // package named in CREATE CONTEXT ... USING, so that package can't also be the one
+    // granted broadly for the read-only get_id — otherwise granting get_id access also grants
+    // tenant impersonation. Model: main commit 757cf4d.
+
+    test('tenant_ctx package declares/implements ONLY get_id (no set_id/clear_id)', () => {
         const out = ddl(CUSTOMERS_TENANT_QSQL);
-        expect(out).toContain('create or replace package tenant_ctx as');
-        expect(out).toContain('function get_id return integer;');
-        expect(out).toContain('procedure set_id(p_tenant_id in integer);');
-        expect(out).toContain('procedure clear_id;');
-        expect(out).toContain('create or replace package body tenant_ctx as');
-        expect(out).toContain("sys_context('tenant_ctx', 'tenant_id')");
-        expect(out).toContain("dbms_session.set_context('tenant_ctx', 'tenant_id', to_char(p_tenant_id))");
-        expect(out).toContain("dbms_session.clear_context('tenant_ctx')");
-        // Emitted before the first DAL package that references it.
-        expect(out.indexOf('create or replace package tenant_ctx as'))
-            .toBeLessThan(out.indexOf('create or replace package customers_dal as'));
+        const spec = segment(out, 'create or replace package tenant_ctx as', 'end tenant_ctx;');
+        expect(spec).toContain('function get_id return integer;');
+        expect(spec).not.toContain('procedure set_id');
+        expect(spec).not.toContain('procedure clear_id');
+        const body = segment(out, 'create or replace package body tenant_ctx as', 'end tenant_ctx;');
+        expect(body).toContain("sys_context('tenant_ctx', 'tenant_id')");
+        expect(body).not.toContain('dbms_session.set_context');
+        expect(body).not.toContain('dbms_session.clear_context');
+    });
+
+    test('tenant_bootstrap package declares/implements set_id and clear_id against the tenant_ctx namespace', () => {
+        const out = ddl(CUSTOMERS_TENANT_QSQL);
+        const spec = segment(out, 'create or replace package tenant_bootstrap as', 'end tenant_bootstrap;');
+        expect(spec).toContain('procedure set_id(p_tenant_id in integer);');
+        expect(spec).toContain('procedure clear_id;');
+        const body = segment(out, 'create or replace package body tenant_bootstrap as', 'end tenant_bootstrap;');
+        expect(body).toContain("dbms_session.set_context('tenant_ctx', 'tenant_id', to_char(p_tenant_id));");
+        expect(body).toContain("dbms_session.clear_context('tenant_ctx');");
+    });
+
+    test('CREATE CONTEXT comment names tenant_bootstrap as the trusted package', () => {
+        const out = ddl(CUSTOMERS_TENANT_QSQL);
+        expect(out).toContain('create or replace context tenant_ctx using tenant_bootstrap');
+    });
+
+    test('tenant_ctx and tenant_bootstrap are generated once, before the first layered DAL, ctx before bootstrap', () => {
+        const out = ddl(CUSTOMERS_TENANT_QSQL);
+        const ctxPos  = out.indexOf('create or replace package tenant_ctx as');
+        const bootPos = out.indexOf('create or replace package tenant_bootstrap as');
+        const dalPos  = out.indexOf('create or replace package customers_dal as');
+        expect(ctxPos).toBeGreaterThan(-1);
+        expect(bootPos).toBeGreaterThan(-1);
+        expect(ctxPos).toBeLessThan(bootPos);
+        expect(bootPos).toBeLessThan(dalPos);
     });
 
     test('DAL body insert_row includes tenant_id in column list', () => {
