@@ -673,6 +673,17 @@ export class OraclePlsqlBuilder {
         return out;
     }
 
+    /**
+     * True when the user explicitly declared the PK column in the table definition
+     * (pk: none / genpk: no with e.g. `id vc100 /pk /nn`) rather than relying on an
+     * auto-generated key. _svcCols() does not exclude the PK by name — an explicit PK
+     * column is a real child node like any other — so paramCols/t_rec already carry it.
+     */
+    private _pkIsUserDefined(node: IDdlNode): boolean {
+        const pkNm = (node.getPkName() ?? 'id').toLowerCase();
+        return this._svcCols(node).some(c => c.parseName().toLowerCase() === pkNm);
+    }
+
     private _generateSvcSpec(node: IDdlNode): string {
         const tbl       = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
         const svc       = tbl + '_svc';
@@ -820,7 +831,12 @@ export class OraclePlsqlBuilder {
         const pkNm      = (node.getPkName() ?? 'id').toLowerCase();
         const hasVer    = this._hasVersionCol(node);
         const hasAudit  = node.hasAuditCols();
-        const paramCols = this._svcParamCols(node);
+        const paramCols       = this._svcParamCols(node);
+        const pkIsUserDefined = this._pkIsUserDefined(node);
+        // Flat parameter list excludes the PK — it is always handled via the explicit p_id
+        // parameter below, never duplicated as p_<pkNm> too (would collide when pkNm is "id",
+        // and is redundant information under two names otherwise).
+        const appCols         = paramCols.filter(({ name }) => name !== pkNm);
         const createdCol   = String(this.ctx.getOptionValue('createdcol')   ?? 'created');
         const createdByCol = String(this.ctx.getOptionValue('createdbycol') ?? 'created_by');
         const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
@@ -829,7 +845,7 @@ export class OraclePlsqlBuilder {
         // Column width computed per table instead of a fixed padEnd(13): a long name would
         // otherwise run directly into the %type anchor with no separator.
         const auditCols  = hasAudit ? [createdCol, createdByCol, updatedCol, updatedByCol] : [];
-        const appPadWidth = Math.max(13, ...paramCols.map(({ name }) => name.length + 1),
+        const appPadWidth = Math.max(13, ...appCols.map(({ name }) => name.length + 1),
                                           ...auditCols.map(n => n.length + 1));
 
         let r = `create or replace package ${app} as\n\n`;
@@ -837,7 +853,7 @@ export class OraclePlsqlBuilder {
         // get: loads one row into OUT params — APEX Invoke API maps them to page items
         r += `${tab}procedure get (\n`;
         r += `${tab}${tab}p_id          in  ${tbl}.${pkNm}%type`;
-        for (const { name } of paramCols)
+        for (const { name } of appCols)
             r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
         if (hasVer)
             r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
@@ -849,19 +865,21 @@ export class OraclePlsqlBuilder {
         }
         r += `\n${tab});\n\n`;
 
-        // ins: p_-prefixed params sourced from page items; p_id OUT → written to hidden item
+        // ins: for a user-defined PK, p_id is IN (caller supplies the key); for an
+        // auto-generated PK, p_id is OUT (server-generated key returned to the caller).
         r += `${tab}procedure ins (\n`;
         const insLines: string[] = [];
-        for (const { name, nullable } of paramCols)
+        if (pkIsUserDefined) insLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
+        for (const { name, nullable } of appCols)
             insLines.push(`${tab}${tab}p_${name.padEnd(appPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
-        insLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
+        if (!pkIsUserDefined) insLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
         r += insLines.join(',\n') + `\n${tab});\n\n`;
 
         // upd: p_row_version only when /rowversion is active
         r += `${tab}procedure upd (\n`;
         const updLines: string[] = [];
         updLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
-        for (const { name, nullable } of paramCols)
+        for (const { name, nullable } of appCols)
             updLines.push(`${tab}${tab}p_${name.padEnd(appPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
         if (hasVer) updLines.push(`${tab}${tab}p_row_version  in  ${tbl}.row_version%type`);
         r += updLines.join(',\n') + `\n${tab});\n\n`;
@@ -880,7 +898,9 @@ export class OraclePlsqlBuilder {
         const hasVer    = this._hasVersionCol(node);
         const hasAudit  = node.hasAuditCols();
         const hasUniq   = this._hasUniqueCol(node);
-        const paramCols = this._svcParamCols(node);
+        const paramCols       = this._svcParamCols(node);
+        const pkIsUserDefined = this._pkIsUserDefined(node);
+        const appCols         = paramCols.filter(({ name }) => name !== pkNm);
         const createdCol   = String(this.ctx.getOptionValue('createdcol')   ?? 'created');
         const createdByCol = String(this.ctx.getOptionValue('createdbycol') ?? 'created_by');
         const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
@@ -889,7 +909,7 @@ export class OraclePlsqlBuilder {
 
         // Column width computed per table instead of a fixed padEnd(13) — same reasoning as _generateAppSpec.
         const auditColsBody = hasAudit ? [createdCol, createdByCol, updatedCol, updatedByCol] : [];
-        const appPadWidth = Math.max(13, ...paramCols.map(({ name }) => name.length + 1),
+        const appPadWidth = Math.max(13, ...appCols.map(({ name }) => name.length + 1),
                                           ...auditColsBody.map(n => n.length + 1));
 
         let r = `create or replace package body ${app} as\n`;
@@ -904,7 +924,7 @@ export class OraclePlsqlBuilder {
         // get
         r += `\n${tab}procedure get (\n`;
         r += `${tab}${tab}p_id          in  ${tbl}.${pkNm}%type`;
-        for (const { name } of paramCols)
+        for (const { name } of appCols)
             r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
         if (hasVer)
             r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
@@ -919,7 +939,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}begin\n`;
         r += `${tab}${tab}if p_id is null then return; end if;  -- INSERT mode: leave OUT params null\n`;
         r += `${tab}${tab}l_row := ${hasSvc ? `${svc}.get(p_id => p_id)` : 'p_get_by_id(p_id => p_id)'};\n`;
-        for (const { name } of paramCols)
+        for (const { name } of appCols)
             r += `${tab}${tab}p_${name} := l_row.${name};\n`;
         if (hasVer) r += `${tab}${tab}p_row_version := l_row.row_version;\n`;
         if (hasAudit) {
@@ -930,29 +950,38 @@ export class OraclePlsqlBuilder {
         }
         r += `${tab}end get;\n\n`;
 
-        // ins
+        // ins — for a user-defined PK, p_id is IN (caller supplies the key);
+        //       for an auto-generated PK, p_id is OUT (server-generated key returned to the caller)
         r += `${tab}procedure ins (\n`;
         const insLines: string[] = [];
-        for (const { name, nullable } of paramCols)
+        if (pkIsUserDefined) insLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
+        for (const { name, nullable } of appCols)
             insLines.push(`${tab}${tab}p_${name.padEnd(appPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
-        insLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
+        if (!pkIsUserDefined) insLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
         r += insLines.join(',\n') + `\n${tab}) is\n`;
         if (hasSvc) {
             r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
+            if (pkIsUserDefined) r += `${tab}${tab}l_xid ${tbl}.${pkNm}%type;\n`;
             r += `${tab}begin\n`;
-            for (const { name } of paramCols)
+            for (const { name } of appCols)
                 r += `${tab}${tab}l_rec.${name} := p_${name};\n`;
-            r += `${tab}${tab}${svc}.create_rec(p_rec => l_rec, x_id => p_id);\n`;
+            if (pkIsUserDefined) {
+                r += `${tab}${tab}l_rec.${pkNm} := p_id;\n`;
+                r += `${tab}${tab}${svc}.create_rec(p_rec => l_rec, x_id => l_xid);\n`;
+            } else {
+                r += `${tab}${tab}${svc}.create_rec(p_rec => l_rec, x_id => p_id);\n`;
+            }
         } else {
             r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
             r += `${tab}begin\n`;
-            for (const { name } of paramCols)
+            for (const { name } of appCols)
                 r += `${tab}${tab}l_row.${name} := p_${name};\n`;
+            if (pkIsUserDefined) r += `${tab}${tab}l_row.${pkNm} := p_id;\n`;
             r += `${tab}${tab}${hkCall('validate')}(p_operation => 'insert', p_row => l_row);\n`;
             r += `${tab}${tab}${hkCall('before_insert')}(p_row => l_row);\n`;
             r += `${tab}${tab}p_insert_row(p_row => l_row);\n`;
             r += `${tab}${tab}${hkCall('after_insert')}(p_row => l_row);\n`;
-            r += `${tab}${tab}p_id := l_row.${pkNm};\n`;
+            if (!pkIsUserDefined) r += `${tab}${tab}p_id := l_row.${pkNm};\n`;
             if (hasUniq) {
                 r += `${tab}exception\n`;
                 r += `${tab}${tab}when dup_val_on_index then\n`;
@@ -965,14 +994,14 @@ export class OraclePlsqlBuilder {
         r += `${tab}procedure upd (\n`;
         const updLines: string[] = [];
         updLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
-        for (const { name, nullable } of paramCols)
+        for (const { name, nullable } of appCols)
             updLines.push(`${tab}${tab}p_${name.padEnd(appPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
         if (hasVer) updLines.push(`${tab}${tab}p_row_version  in  ${tbl}.row_version%type`);
         r += updLines.join(',\n') + `\n${tab}) is\n`;
         if (hasSvc) {
             r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
             r += `${tab}begin\n`;
-            for (const { name } of paramCols)
+            for (const { name } of appCols)
                 r += `${tab}${tab}l_rec.${name} := p_${name};\n`;
             r += `${tab}${tab}${svc}.update_rec(\n`;
             r += `${tab}${tab}${tab}p_id  => p_id,\n`;
@@ -983,7 +1012,7 @@ export class OraclePlsqlBuilder {
             r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
             r += `${tab}begin\n`;
             r += `${tab}${tab}l_row := p_get_by_id(p_id => p_id);\n`;
-            for (const { name } of paramCols)
+            for (const { name } of appCols)
                 r += `${tab}${tab}l_row.${name} := p_${name};\n`;
             if (hasVer) r += `${tab}${tab}l_row.row_version := p_row_version;\n`;
             r += `${tab}${tab}${hkCall('validate')}(p_operation => 'update', p_row => l_row);\n`;
@@ -1034,10 +1063,16 @@ export class OraclePlsqlBuilder {
         const rst       = tbl + '_rst';
         const pkNm      = (node.getPkName() ?? 'id').toLowerCase();
         const hasVer    = this._hasVersionCol(node);
-        const paramCols = this._svcParamCols(node);
+        const paramCols       = this._svcParamCols(node);
+        const pkIsUserDefined = this._pkIsUserDefined(node);
+        // jsonCols/rstCols exclude the PK from the generic loop — it is always the first
+        // json_object key (below) and, for ins, extracted from the body explicitly when
+        // user-defined; for upd it is deliberately NOT re-extracted from the body (immutable,
+        // comes only from :p_id — see the pkIsUserDefined branch in ins below).
+        const rstCols   = paramCols.filter(({ name }) => name !== pkNm);
         const hkCall    = (proc: string) => hasHks ? `${hk}.${proc}` : `p_${proc}`;
 
-        const jsonCols = [pkNm, ...paramCols.map(p => p.name)];
+        const jsonCols = [pkNm, ...rstCols.map(p => p.name)];
         if (hasVer) jsonCols.push('row_version');
 
         const excTail =
@@ -1110,12 +1145,14 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}${tab}return;\n`;
         r += `${tab}${tab}end if;\n`;
         if (hasSvc) {
-            for (const { name } of paramCols)
+            for (const { name } of rstCols)
                 r += `${tab}${tab}l_rec.${name} := json_value(l_body, '$.${name}');\n`;
+            if (pkIsUserDefined) r += `${tab}${tab}l_rec.${pkNm} := json_value(l_body, '$.${pkNm}');\n`;
             r += `${tab}${tab}${svc}.create_rec(p_rec => l_rec, x_id => l_id);\n`;
         } else {
-            for (const { name } of paramCols)
+            for (const { name } of rstCols)
                 r += `${tab}${tab}l_row.${name} := json_value(l_body, '$.${name}');\n`;
+            if (pkIsUserDefined) r += `${tab}${tab}l_row.${pkNm} := json_value(l_body, '$.${pkNm}');\n`;
             r += `${tab}${tab}${hkCall('validate')}(p_operation => 'insert', p_row => l_row);\n`;
             r += `${tab}${tab}${hkCall('before_insert')}(p_row => l_row);\n`;
             r += `${tab}${tab}p_insert_row(p_row => l_row);\n`;
@@ -1141,7 +1178,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}${tab}return;\n`;
         r += `${tab}${tab}end if;\n`;
         if (hasSvc) {
-            for (const { name } of paramCols)
+            for (const { name } of rstCols)
                 r += `${tab}${tab}l_rec.${name} := json_value(l_body, '$.${name}');\n`;
             r += `${tab}${tab}${svc}.update_rec(\n`;
             r += `${tab}${tab}${tab}p_id  => :p_id,\n`;
@@ -1150,7 +1187,7 @@ export class OraclePlsqlBuilder {
             r += `\n${tab}${tab});\n`;
         } else {
             r += `${tab}${tab}l_row := p_get_by_id(p_id => :p_id);\n`;
-            for (const { name } of paramCols)
+            for (const { name } of rstCols)
                 r += `${tab}${tab}l_row.${name} := json_value(l_body, '$.${name}');\n`;
             if (hasVer) r += `${tab}${tab}l_row.row_version := json_value(l_body, '$.row_version' returning ${tbl}.row_version%type);\n`;
             r += `${tab}${tab}${hkCall('validate')}(p_operation => 'update', p_row => l_row);\n`;

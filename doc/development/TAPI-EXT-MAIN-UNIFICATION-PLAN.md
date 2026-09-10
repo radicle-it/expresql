@@ -179,6 +179,36 @@ Modello: `84e33ad`. Quando `pk: none`/`genpk: no` e la colonna PK è dichiarata
 a mano, non generare sia il parametro esplicito sia quello da `_svcParamCols()`.
 Fix puntuale, verificare su tutti i tier che costruiscono la lista parametri.
 
+**Fatto**. Confermato il bug (verificato prima con un dump diretto): con PK
+dichiarata a mano e chiamata `id`, `_app`/`_rst` generavano sia il parametro
+`p_id` esplicito sia — dato che `_svcCols()` non esclude la PK per nome — un
+secondo `p_id` da `_svcParamCols()`, due parametri formali con lo stesso nome
+(errore di compilazione Oracle, PLS-00371). Con PK a nome diverso (es.
+`code`) non c'è collisione di nome ma la stessa ridondanza semantica
+(`p_id`/`p_code` che veicolano lo stesso valore sotto due nomi).
+
+Aggiunto `_pkIsUserDefined()`; filtrata la PK dalla lista piatta di parametri
+(`appCols` in `_generateAppSpec`/`Body`, `rstCols` in `_generateRstBody`) su
+get/ins/upd, su tutti i tier (`hasSvc`/`!hasSvc`). Per `ins`, quando la PK è
+utente-definita: in `_app`, `p_id` passa da OUT a IN (il chiamante fornisce
+la chiave), il corpo assegna `l_rec.pkNm := p_id` (o `l_row.pkNm := p_id` sul
+ramo assorbito) e una `l_xid` locale assorbe l'OUT di `create_rec`; in
+`_rst`, `l_rec.pkNm`/`l_row.pkNm` viene estratto esplicitamente dal body JSON
+(`json_value(l_body, '$.pkNm')`). Per `upd` la PK resta **volutamente non**
+riestratta da `p_<pkNm>`/dal body — è immutabile, viene sempre e solo da
+`p_id`/`:p_id` (decisione esplicita, non implicita, coerente con main). Il
+livello `_svc` (t_rec, `create_rec`/`update_rec`) resta invariato: non ha un
+parametro `p_id` esplicito parallelo con cui collidere, quindi non necessita
+del filtro. Bug collaterale corretto in `_generateAppBody`'s `upd` (ramo
+`!hasSvc`): il loop del corpo referenziava ancora `paramCols` non filtrato
+mentre la firma dichiarava solo `appCols` — avrebbe prodotto un riferimento a
+un parametro `p_<pkNm>` non dichiarato quando la PK è utente-definita.
+
+10 test nuovi in `tapi-layered.test.ts` (collisione di nome su `_app`
+get/ins/upd, propagazione `l_xid`/`l_rec.pkNm`, immutabilità della PK in
+`upd`, stesso comportamento su `_rst` per tier full/lookup, caso PK
+auto-generata invariato). 872/872 verdi, build completa pulita.
+
 ### 5. Fix lexer: `/check` con valori che iniziano per cifra ma non numerici
 Modello: `667ecfd`. `"2WAY"` classificato erroneamente come numerico dal
 lexer, valore emesso senza quote → DDL invalido. Fix nel lexer/generatore,

@@ -9749,7 +9749,7 @@ function he(e, t, n, r) {
 	}
 	return i;
 }
-var ge = class {
+var F = class {
 	constructor(e) {
 		this._ddl = e;
 	}
@@ -10030,25 +10030,25 @@ var ge = class {
 			values: s
 		};
 	}
-}, _e = {}, ve = {};
-function F(e, t) {
-	_e[e.toLowerCase()] = t;
+}, ge = {}, _e = {};
+function ve(e, t) {
+	ge[e.toLowerCase()] = t;
 }
 function ye(e) {
-	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = _e[t];
+	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = ge[t];
 	if (n == null) {
-		let e = Object.keys(_e).join(", ");
+		let e = Object.keys(ge).join(", ");
 		throw Error(`Unknown SQL dialect: "${t}". Registered dialects: ${e}`);
 	}
 	return n(e);
 }
 function be(e, t) {
-	ve[e.toLowerCase()] = t;
+	_e[e.toLowerCase()] = t;
 }
 function xe(e) {
-	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = ve[t];
+	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = _e[t];
 	if (n == null) {
-		let e = Object.keys(ve).join(", ");
+		let e = Object.keys(_e).join(", ");
 		throw Error(`Unknown SQL dialect for diff: "${t}". Registered dialects: ${e}`);
 	}
 	return n(e);
@@ -11191,6 +11191,10 @@ var J = class {
 		});
 		return t;
 	}
+	_pkIsUserDefined(e) {
+		let t = (e.getPkName() ?? "id").toLowerCase();
+		return this._svcCols(e).some((e) => e.parseName().toLowerCase() === t);
+	}
 	_generateSvcSpec(e) {
 		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_svc", r = (e.getPkName() ?? "id").toLowerCase(), i = this._hasVersionCol(e), a = this._svcParamCols(e), o = `create or replace package ${n} as\n\n`, s = Math.max(20, ...a.map(({ name: e }) => e.length + 1));
 		return o += `${O}type t_rec is record (\n`, o += a.map(({ name: e }) => `${O}${O}${e.padEnd(s)}${t}.${e}%type`).join(",\n") + "\n", o += `${O});\n\n`, o += `${O}function get (p_id in ${t}.${r}%type) return ${t}%rowtype;\n\n`, o += `${O}function get_all return sys_refcursor;\n\n`, o += `${O}procedure create_rec (\n`, o += `${O}${O}p_rec in  t_rec,\n`, o += `${O}${O}x_id  out ${t}.${r}%type\n`, o += `${O});\n\n`, o += `${O}procedure update_rec (\n`, o += `${O}${O}p_id  in ${t}.${r}%type,\n`, o += `${O}${O}p_rec in t_rec`, i && (o += `,\n${O}${O}p_row_version in ${t}.row_version%type`), o += `\n${O});\n\n`, o += `${O}procedure delete_rec (p_id in ${t}.${r}%type);\n\n`, o += `end ${n};\n/\n`, o;
@@ -11204,85 +11208,87 @@ var J = class {
 		return l && (y += `${O}${O}l_row.row_version := p_row_version;\n`), y += `${O}${O}${v("validate")}(p_operation => 'update', p_row => l_row);\n`, y += `${O}${O}${v("before_update")}(p_row => l_row);\n`, y += `${O}${O}${g}(p_row => l_row);\n`, y += `${O}${O}${v("after_update")}(p_row => l_row);\n`, d && (y += `${O}${O}${s}.log_update(p_old_row => l_old_row, p_new_row => l_row);\n`), y += `${O}end update_rec;\n\n`, y += `${O}procedure delete_rec (p_id in ${r}.${c}%type) is\n`, d && (y += `${O}${O}l_old_row ${r}%rowtype;\n`), y += `${O}begin\n`, d && (y += `${O}${O}l_old_row := ${p}(p_id => p_id);\n`), y += `${O}${O}${v("before_delete")}(p_id => p_id);\n`, y += `${O}${O}${_}(p_id => p_id);\n`, y += `${O}${O}${v("after_delete")}(p_id => p_id);\n`, d && (y += `${O}${O}${s}.log_delete(p_old_row => l_old_row);\n`), y += `${O}end delete_rec;\n\n`, y += `end ${o};\n/\n`, y;
 	}
 	_generateAppSpec(e) {
-		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_app", r = (e.getPkName() ?? "id").toLowerCase(), i = this._hasVersionCol(e), a = e.hasAuditCols(), o = this._svcParamCols(e), s = String(this.ctx.getOptionValue("createdcol") ?? "created"), c = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), l = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), u = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), d = a ? [
-			s,
-			c,
+		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_app", r = (e.getPkName() ?? "id").toLowerCase(), i = this._hasVersionCol(e), a = e.hasAuditCols(), o = this._svcParamCols(e), s = this._pkIsUserDefined(e), c = o.filter(({ name: e }) => e !== r), l = String(this.ctx.getOptionValue("createdcol") ?? "created"), u = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), d = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), f = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), p = a ? [
 			l,
-			u
-		] : [], f = Math.max(13, ...o.map(({ name: e }) => e.length + 1), ...d.map((e) => e.length + 1)), p = `create or replace package ${n} as\n\n`;
-		p += `${O}procedure get (\n`, p += `${O}${O}p_id          in  ${t}.${r}%type`;
-		for (let { name: e } of o) p += `,\n${O}${O}p_${e.padEnd(f)} out ${t}.${e}%type`;
-		i && (p += `,\n${O}${O}p_row_version  out ${t}.row_version%type`), a && (p += `,\n${O}${O}p_${s.padEnd(f)} out ${t}.${s}%type`, p += `,\n${O}${O}p_${c.padEnd(f)} out ${t}.${c}%type`, p += `,\n${O}${O}p_${l.padEnd(f)} out ${t}.${l}%type`, p += `,\n${O}${O}p_${u.padEnd(f)} out ${t}.${u}%type`), p += `\n${O});\n\n`, p += `${O}procedure ins (\n`;
-		let m = [];
-		for (let { name: e, nullable: n } of o) m.push(`${O}${O}p_${e.padEnd(f)} in  ${t}.${e}%type${n ? " default null" : ""}`);
-		m.push(`${O}${O}p_id           out ${t}.${r}%type`), p += m.join(",\n") + `\n${O});\n\n`, p += `${O}procedure upd (\n`;
-		let h = [];
-		h.push(`${O}${O}p_id           in  ${t}.${r}%type`);
-		for (let { name: e, nullable: n } of o) h.push(`${O}${O}p_${e.padEnd(f)} in  ${t}.${e}%type${n ? " default null" : ""}`);
-		return i && h.push(`${O}${O}p_row_version  in  ${t}.row_version%type`), p += h.join(",\n") + `\n${O});\n\n`, p += `${O}procedure del (p_id in ${t}.${r}%type);\n\n`, p += `end ${n};\n/\n`, p;
+			u,
+			d,
+			f
+		] : [], m = Math.max(13, ...c.map(({ name: e }) => e.length + 1), ...p.map((e) => e.length + 1)), h = `create or replace package ${n} as\n\n`;
+		h += `${O}procedure get (\n`, h += `${O}${O}p_id          in  ${t}.${r}%type`;
+		for (let { name: e } of c) h += `,\n${O}${O}p_${e.padEnd(m)} out ${t}.${e}%type`;
+		i && (h += `,\n${O}${O}p_row_version  out ${t}.row_version%type`), a && (h += `,\n${O}${O}p_${l.padEnd(m)} out ${t}.${l}%type`, h += `,\n${O}${O}p_${u.padEnd(m)} out ${t}.${u}%type`, h += `,\n${O}${O}p_${d.padEnd(m)} out ${t}.${d}%type`, h += `,\n${O}${O}p_${f.padEnd(m)} out ${t}.${f}%type`), h += `\n${O});\n\n`, h += `${O}procedure ins (\n`;
+		let g = [];
+		s && g.push(`${O}${O}p_id           in  ${t}.${r}%type`);
+		for (let { name: e, nullable: n } of c) g.push(`${O}${O}p_${e.padEnd(m)} in  ${t}.${e}%type${n ? " default null" : ""}`);
+		s || g.push(`${O}${O}p_id           out ${t}.${r}%type`), h += g.join(",\n") + `\n${O});\n\n`, h += `${O}procedure upd (\n`;
+		let _ = [];
+		_.push(`${O}${O}p_id           in  ${t}.${r}%type`);
+		for (let { name: e, nullable: n } of c) _.push(`${O}${O}p_${e.padEnd(m)} in  ${t}.${e}%type${n ? " default null" : ""}`);
+		return i && _.push(`${O}${O}p_row_version  in  ${t}.row_version%type`), h += _.join(",\n") + `\n${O});\n\n`, h += `${O}procedure del (p_id in ${t}.${r}%type);\n\n`, h += `end ${n};\n/\n`, h;
 	}
 	_generateAppBody(e, t, n, r) {
-		let i = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), a = i + "_svc", o = i + "_hks", s = i + "_app", c = (e.getPkName() ?? "id").toLowerCase(), l = this._hasVersionCol(e), u = e.hasAuditCols(), d = this._hasUniqueCol(e), f = this._svcParamCols(e), p = String(this.ctx.getOptionValue("createdcol") ?? "created"), m = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), h = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), g = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), _ = (e) => r ? `${o}.${e}` : `p_${e}`, v = u ? [
-			p,
-			m,
+		let i = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), a = i + "_svc", o = i + "_hks", s = i + "_app", c = (e.getPkName() ?? "id").toLowerCase(), l = this._hasVersionCol(e), u = e.hasAuditCols(), d = this._hasUniqueCol(e), f = this._svcParamCols(e), p = this._pkIsUserDefined(e), m = f.filter(({ name: e }) => e !== c), h = String(this.ctx.getOptionValue("createdcol") ?? "created"), g = String(this.ctx.getOptionValue("createdbycol") ?? "created_by"), _ = String(this.ctx.getOptionValue("updatedcol") ?? "updated"), v = String(this.ctx.getOptionValue("updatedbycol") ?? "updated_by"), y = (e) => r ? `${o}.${e}` : `p_${e}`, b = u ? [
 			h,
-			g
-		] : [], y = Math.max(13, ...f.map(({ name: e }) => e.length + 1), ...v.map((e) => e.length + 1)), b = `create or replace package body ${s} as\n`;
-		t || (b += this._generatePrivateDml(e), r || (b += this._generatePrivateHookStubs(e)), b += "\n"), b += `\n${O}procedure get (\n`, b += `${O}${O}p_id          in  ${i}.${c}%type`;
-		for (let { name: e } of f) b += `,\n${O}${O}p_${e.padEnd(y)} out ${i}.${e}%type`;
-		l && (b += `,\n${O}${O}p_row_version  out ${i}.row_version%type`), u && (b += `,\n${O}${O}p_${p.padEnd(y)} out ${i}.${p}%type`, b += `,\n${O}${O}p_${m.padEnd(y)} out ${i}.${m}%type`, b += `,\n${O}${O}p_${h.padEnd(y)} out ${i}.${h}%type`, b += `,\n${O}${O}p_${g.padEnd(y)} out ${i}.${g}%type`), b += `\n${O}) is\n`, b += `${O}${O}l_row ${i}%rowtype;\n`, b += `${O}begin\n`, b += `${O}${O}if p_id is null then return; end if;  -- INSERT mode: leave OUT params null\n`, b += `${O}${O}l_row := ${t ? `${a}.get(p_id => p_id)` : "p_get_by_id(p_id => p_id)"};\n`;
-		for (let { name: e } of f) b += `${O}${O}p_${e} := l_row.${e};\n`;
-		l && (b += `${O}${O}p_row_version := l_row.row_version;\n`), u && (b += `${O}${O}p_${p} := l_row.${p};\n`, b += `${O}${O}p_${m} := l_row.${m};\n`, b += `${O}${O}p_${h} := l_row.${h};\n`, b += `${O}${O}p_${g} := l_row.${g};\n`), b += `${O}end get;\n\n`, b += `${O}procedure ins (\n`;
-		let x = [];
-		for (let { name: e, nullable: t } of f) x.push(`${O}${O}p_${e.padEnd(y)} in  ${i}.${e}%type${t ? " default null" : ""}`);
-		if (x.push(`${O}${O}p_id           out ${i}.${c}%type`), b += x.join(",\n") + `\n${O}) is\n`, t) {
-			b += `${O}${O}l_rec ${a}.t_rec;\n`, b += `${O}begin\n`;
-			for (let { name: e } of f) b += `${O}${O}l_rec.${e} := p_${e};\n`;
-			b += `${O}${O}${a}.create_rec(p_rec => l_rec, x_id => p_id);\n`;
+			g,
+			_,
+			v
+		] : [], x = Math.max(13, ...m.map(({ name: e }) => e.length + 1), ...b.map((e) => e.length + 1)), S = `create or replace package body ${s} as\n`;
+		t || (S += this._generatePrivateDml(e), r || (S += this._generatePrivateHookStubs(e)), S += "\n"), S += `\n${O}procedure get (\n`, S += `${O}${O}p_id          in  ${i}.${c}%type`;
+		for (let { name: e } of m) S += `,\n${O}${O}p_${e.padEnd(x)} out ${i}.${e}%type`;
+		l && (S += `,\n${O}${O}p_row_version  out ${i}.row_version%type`), u && (S += `,\n${O}${O}p_${h.padEnd(x)} out ${i}.${h}%type`, S += `,\n${O}${O}p_${g.padEnd(x)} out ${i}.${g}%type`, S += `,\n${O}${O}p_${_.padEnd(x)} out ${i}.${_}%type`, S += `,\n${O}${O}p_${v.padEnd(x)} out ${i}.${v}%type`), S += `\n${O}) is\n`, S += `${O}${O}l_row ${i}%rowtype;\n`, S += `${O}begin\n`, S += `${O}${O}if p_id is null then return; end if;  -- INSERT mode: leave OUT params null\n`, S += `${O}${O}l_row := ${t ? `${a}.get(p_id => p_id)` : "p_get_by_id(p_id => p_id)"};\n`;
+		for (let { name: e } of m) S += `${O}${O}p_${e} := l_row.${e};\n`;
+		l && (S += `${O}${O}p_row_version := l_row.row_version;\n`), u && (S += `${O}${O}p_${h} := l_row.${h};\n`, S += `${O}${O}p_${g} := l_row.${g};\n`, S += `${O}${O}p_${_} := l_row.${_};\n`, S += `${O}${O}p_${v} := l_row.${v};\n`), S += `${O}end get;\n\n`, S += `${O}procedure ins (\n`;
+		let C = [];
+		p && C.push(`${O}${O}p_id           in  ${i}.${c}%type`);
+		for (let { name: e, nullable: t } of m) C.push(`${O}${O}p_${e.padEnd(x)} in  ${i}.${e}%type${t ? " default null" : ""}`);
+		if (p || C.push(`${O}${O}p_id           out ${i}.${c}%type`), S += C.join(",\n") + `\n${O}) is\n`, t) {
+			S += `${O}${O}l_rec ${a}.t_rec;\n`, p && (S += `${O}${O}l_xid ${i}.${c}%type;\n`), S += `${O}begin\n`;
+			for (let { name: e } of m) S += `${O}${O}l_rec.${e} := p_${e};\n`;
+			p ? (S += `${O}${O}l_rec.${c} := p_id;\n`, S += `${O}${O}${a}.create_rec(p_rec => l_rec, x_id => l_xid);\n`) : S += `${O}${O}${a}.create_rec(p_rec => l_rec, x_id => p_id);\n`;
 		} else {
-			b += `${O}${O}l_row ${i}%rowtype;\n`, b += `${O}begin\n`;
-			for (let { name: e } of f) b += `${O}${O}l_row.${e} := p_${e};\n`;
-			b += `${O}${O}${_("validate")}(p_operation => 'insert', p_row => l_row);\n`, b += `${O}${O}${_("before_insert")}(p_row => l_row);\n`, b += `${O}${O}p_insert_row(p_row => l_row);\n`, b += `${O}${O}${_("after_insert")}(p_row => l_row);\n`, b += `${O}${O}p_id := l_row.${c};\n`, d && (b += `${O}exception\n`, b += `${O}${O}when dup_val_on_index then\n`, b += `${O}${O}${O}raise_application_error(-20010, 'duplicate value on unique constraint.');\n`);
+			S += `${O}${O}l_row ${i}%rowtype;\n`, S += `${O}begin\n`;
+			for (let { name: e } of m) S += `${O}${O}l_row.${e} := p_${e};\n`;
+			p && (S += `${O}${O}l_row.${c} := p_id;\n`), S += `${O}${O}${y("validate")}(p_operation => 'insert', p_row => l_row);\n`, S += `${O}${O}${y("before_insert")}(p_row => l_row);\n`, S += `${O}${O}p_insert_row(p_row => l_row);\n`, S += `${O}${O}${y("after_insert")}(p_row => l_row);\n`, p || (S += `${O}${O}p_id := l_row.${c};\n`), d && (S += `${O}exception\n`, S += `${O}${O}when dup_val_on_index then\n`, S += `${O}${O}${O}raise_application_error(-20010, 'duplicate value on unique constraint.');\n`);
 		}
-		b += `${O}end ins;\n\n`, b += `${O}procedure upd (\n`;
-		let S = [];
-		S.push(`${O}${O}p_id           in  ${i}.${c}%type`);
-		for (let { name: e, nullable: t } of f) S.push(`${O}${O}p_${e.padEnd(y)} in  ${i}.${e}%type${t ? " default null" : ""}`);
-		if (l && S.push(`${O}${O}p_row_version  in  ${i}.row_version%type`), b += S.join(",\n") + `\n${O}) is\n`, t) {
-			b += `${O}${O}l_rec ${a}.t_rec;\n`, b += `${O}begin\n`;
-			for (let { name: e } of f) b += `${O}${O}l_rec.${e} := p_${e};\n`;
-			b += `${O}${O}${a}.update_rec(\n`, b += `${O}${O}${O}p_id  => p_id,\n`, b += `${O}${O}${O}p_rec => l_rec`, l && (b += `,\n${O}${O}${O}p_row_version => p_row_version`), b += `\n${O}${O});\n`;
+		S += `${O}end ins;\n\n`, S += `${O}procedure upd (\n`;
+		let w = [];
+		w.push(`${O}${O}p_id           in  ${i}.${c}%type`);
+		for (let { name: e, nullable: t } of m) w.push(`${O}${O}p_${e.padEnd(x)} in  ${i}.${e}%type${t ? " default null" : ""}`);
+		if (l && w.push(`${O}${O}p_row_version  in  ${i}.row_version%type`), S += w.join(",\n") + `\n${O}) is\n`, t) {
+			S += `${O}${O}l_rec ${a}.t_rec;\n`, S += `${O}begin\n`;
+			for (let { name: e } of m) S += `${O}${O}l_rec.${e} := p_${e};\n`;
+			S += `${O}${O}${a}.update_rec(\n`, S += `${O}${O}${O}p_id  => p_id,\n`, S += `${O}${O}${O}p_rec => l_rec`, l && (S += `,\n${O}${O}${O}p_row_version => p_row_version`), S += `\n${O}${O});\n`;
 		} else {
-			b += `${O}${O}l_row ${i}%rowtype;\n`, b += `${O}begin\n`, b += `${O}${O}l_row := p_get_by_id(p_id => p_id);\n`;
-			for (let { name: e } of f) b += `${O}${O}l_row.${e} := p_${e};\n`;
-			l && (b += `${O}${O}l_row.row_version := p_row_version;\n`), b += `${O}${O}${_("validate")}(p_operation => 'update', p_row => l_row);\n`, b += `${O}${O}${_("before_update")}(p_row => l_row);\n`, b += `${O}${O}p_update_row(p_row => l_row);\n`, b += `${O}${O}${_("after_update")}(p_row => l_row);\n`, d && (b += `${O}exception\n`, b += `${O}${O}when dup_val_on_index then\n`, b += `${O}${O}${O}raise_application_error(-20010, 'duplicate value on unique constraint.');\n`);
+			S += `${O}${O}l_row ${i}%rowtype;\n`, S += `${O}begin\n`, S += `${O}${O}l_row := p_get_by_id(p_id => p_id);\n`;
+			for (let { name: e } of m) S += `${O}${O}l_row.${e} := p_${e};\n`;
+			l && (S += `${O}${O}l_row.row_version := p_row_version;\n`), S += `${O}${O}${y("validate")}(p_operation => 'update', p_row => l_row);\n`, S += `${O}${O}${y("before_update")}(p_row => l_row);\n`, S += `${O}${O}p_update_row(p_row => l_row);\n`, S += `${O}${O}${y("after_update")}(p_row => l_row);\n`, d && (S += `${O}exception\n`, S += `${O}${O}when dup_val_on_index then\n`, S += `${O}${O}${O}raise_application_error(-20010, 'duplicate value on unique constraint.');\n`);
 		}
-		return b += `${O}end upd;\n\n`, b += `${O}procedure del (p_id in ${i}.${c}%type) is\n`, b += `${O}begin\n`, t ? b += `${O}${O}${a}.delete_rec(p_id => p_id);\n` : (b += `${O}${O}${_("before_delete")}(p_id => p_id);\n`, b += `${O}${O}p_delete_row(p_id => p_id);\n`, b += `${O}${O}${_("after_delete")}(p_id => p_id);\n`), b += `${O}end del;\n\n`, b += `end ${s};\n/\n`, b;
+		return S += `${O}end upd;\n\n`, S += `${O}procedure del (p_id in ${i}.${c}%type) is\n`, S += `${O}begin\n`, t ? S += `${O}${O}${a}.delete_rec(p_id => p_id);\n` : (S += `${O}${O}${y("before_delete")}(p_id => p_id);\n`, S += `${O}${O}p_delete_row(p_id => p_id);\n`, S += `${O}${O}${y("after_delete")}(p_id => p_id);\n`), S += `${O}end del;\n\n`, S += `end ${s};\n/\n`, S;
 	}
 	_generateRstSpec(e) {
 		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase() + "_rst", n = `create or replace package ${t} as\n\n`;
 		return n += `${O}procedure get;\n`, n += `${O}procedure get_all;\n`, n += `${O}procedure ins;\n`, n += `${O}procedure upd;\n`, n += `${O}procedure del;\n\n`, n += `end ${t};\n/\n`, n;
 	}
 	_generateRstBody(e, t, n, r) {
-		let i = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), a = i + "_svc", o = i + "_hks", s = i + "_rst", c = (e.getPkName() ?? "id").toLowerCase(), l = this._hasVersionCol(e), u = this._svcParamCols(e), d = (e) => r ? `${o}.${e}` : `p_${e}`, f = [c, ...u.map((e) => e.name)];
-		l && f.push("row_version");
-		let p = `${O}exception\n${O}${O}when others then\n${O}${O}${O}rollback;\n${O}${O}${O}:status := case sqlcode\n${O}${O}${O}${O}when -20001 then 409\n${O}${O}${O}${O}when -20002 then 404\n${O}${O}${O}${O}when -20003 then 409\n${O}${O}${O}${O}else              500\n${O}${O}${O}end;\n${O}${O}${O}htp.p(json_object('error_code' value sqlcode, 'message' value sqlerrm, 'detail' value dbms_utility.format_error_backtrace));\n`, m = `create or replace package body ${s} as\n`;
-		if (t || (m += this._generatePrivateDml(e), r || (m += this._generatePrivateHookStubs(e)), m += "\n"), m += `\n${O}procedure get is\n`, m += `${O}${O}l_row ${i}%rowtype;\n`, m += `${O}begin\n`, m += `${O}${O}l_row := ${t ? `${a}.get(p_id => :p_id)` : "p_get_by_id(p_id => :p_id)"};\n`, m += `${O}${O}:status := 200;\n`, m += `${O}${O}htp.p(json_object(\n`, m += f.map((e) => `${O}${O}${O}'${e}' value l_row.${e}`).join(",\n") + "\n", m += `${O}${O}${O}returning clob\n`, m += `${O}${O}));\n`, m += p + `${O}end get;\n\n`, m += `${O}procedure get_all is\n`, m += `${O}${O}l_cur sys_refcursor;\n`, m += `${O}${O}l_row ${i}%rowtype;\n`, m += `${O}${O}l_sep varchar2(1) := '';\n`, m += `${O}begin\n`, m += `${O}${O}l_cur := ${t ? `${a}.get_all` : "p_get_all"};\n`, m += `${O}${O}htp.p('[');\n`, m += `${O}${O}loop\n`, m += `${O}${O}${O}fetch l_cur into l_row;\n`, m += `${O}${O}${O}exit when l_cur%notfound;\n`, m += `${O}${O}${O}htp.p(l_sep || json_object(\n`, m += f.map((e) => `${O}${O}${O}${O}'${e}' value l_row.${e}`).join(",\n") + "\n", m += `${O}${O}${O}${O}returning clob\n`, m += `${O}${O}${O}));\n`, m += `${O}${O}${O}l_sep := ',';\n`, m += `${O}${O}end loop;\n`, m += `${O}${O}close l_cur;\n`, m += `${O}${O}htp.p(']');\n`, m += `${O}${O}:status := 200;\n`, m += p + `${O}end get_all;\n\n`, m += `${O}procedure ins is\n`, m += `${O}${O}l_body clob := :body_text;\n`, t ? m += `${O}${O}l_rec  ${a}.t_rec;\n` : m += `${O}${O}l_row  ${i}%rowtype;\n`, m += `${O}${O}l_id   ${i}.${c}%type;\n`, m += `${O}begin\n`, m += `${O}${O}if l_body is null or not json_exists(l_body, '$') then\n`, m += `${O}${O}${O}:status := 400;\n`, m += `${O}${O}${O}htp.p(json_object('message' value 'request body must be valid json'));\n`, m += `${O}${O}${O}return;\n`, m += `${O}${O}end if;\n`, t) {
-			for (let { name: e } of u) m += `${O}${O}l_rec.${e} := json_value(l_body, '$.${e}');\n`;
-			m += `${O}${O}${a}.create_rec(p_rec => l_rec, x_id => l_id);\n`;
+		let i = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), a = i + "_svc", o = i + "_hks", s = i + "_rst", c = (e.getPkName() ?? "id").toLowerCase(), l = this._hasVersionCol(e), u = this._svcParamCols(e), d = this._pkIsUserDefined(e), f = u.filter(({ name: e }) => e !== c), p = (e) => r ? `${o}.${e}` : `p_${e}`, m = [c, ...f.map((e) => e.name)];
+		l && m.push("row_version");
+		let h = `${O}exception\n${O}${O}when others then\n${O}${O}${O}rollback;\n${O}${O}${O}:status := case sqlcode\n${O}${O}${O}${O}when -20001 then 409\n${O}${O}${O}${O}when -20002 then 404\n${O}${O}${O}${O}when -20003 then 409\n${O}${O}${O}${O}else              500\n${O}${O}${O}end;\n${O}${O}${O}htp.p(json_object('error_code' value sqlcode, 'message' value sqlerrm, 'detail' value dbms_utility.format_error_backtrace));\n`, g = `create or replace package body ${s} as\n`;
+		if (t || (g += this._generatePrivateDml(e), r || (g += this._generatePrivateHookStubs(e)), g += "\n"), g += `\n${O}procedure get is\n`, g += `${O}${O}l_row ${i}%rowtype;\n`, g += `${O}begin\n`, g += `${O}${O}l_row := ${t ? `${a}.get(p_id => :p_id)` : "p_get_by_id(p_id => :p_id)"};\n`, g += `${O}${O}:status := 200;\n`, g += `${O}${O}htp.p(json_object(\n`, g += m.map((e) => `${O}${O}${O}'${e}' value l_row.${e}`).join(",\n") + "\n", g += `${O}${O}${O}returning clob\n`, g += `${O}${O}));\n`, g += h + `${O}end get;\n\n`, g += `${O}procedure get_all is\n`, g += `${O}${O}l_cur sys_refcursor;\n`, g += `${O}${O}l_row ${i}%rowtype;\n`, g += `${O}${O}l_sep varchar2(1) := '';\n`, g += `${O}begin\n`, g += `${O}${O}l_cur := ${t ? `${a}.get_all` : "p_get_all"};\n`, g += `${O}${O}htp.p('[');\n`, g += `${O}${O}loop\n`, g += `${O}${O}${O}fetch l_cur into l_row;\n`, g += `${O}${O}${O}exit when l_cur%notfound;\n`, g += `${O}${O}${O}htp.p(l_sep || json_object(\n`, g += m.map((e) => `${O}${O}${O}${O}'${e}' value l_row.${e}`).join(",\n") + "\n", g += `${O}${O}${O}${O}returning clob\n`, g += `${O}${O}${O}));\n`, g += `${O}${O}${O}l_sep := ',';\n`, g += `${O}${O}end loop;\n`, g += `${O}${O}close l_cur;\n`, g += `${O}${O}htp.p(']');\n`, g += `${O}${O}:status := 200;\n`, g += h + `${O}end get_all;\n\n`, g += `${O}procedure ins is\n`, g += `${O}${O}l_body clob := :body_text;\n`, t ? g += `${O}${O}l_rec  ${a}.t_rec;\n` : g += `${O}${O}l_row  ${i}%rowtype;\n`, g += `${O}${O}l_id   ${i}.${c}%type;\n`, g += `${O}begin\n`, g += `${O}${O}if l_body is null or not json_exists(l_body, '$') then\n`, g += `${O}${O}${O}:status := 400;\n`, g += `${O}${O}${O}htp.p(json_object('message' value 'request body must be valid json'));\n`, g += `${O}${O}${O}return;\n`, g += `${O}${O}end if;\n`, t) {
+			for (let { name: e } of f) g += `${O}${O}l_rec.${e} := json_value(l_body, '$.${e}');\n`;
+			d && (g += `${O}${O}l_rec.${c} := json_value(l_body, '$.${c}');\n`), g += `${O}${O}${a}.create_rec(p_rec => l_rec, x_id => l_id);\n`;
 		} else {
-			for (let { name: e } of u) m += `${O}${O}l_row.${e} := json_value(l_body, '$.${e}');\n`;
-			m += `${O}${O}${d("validate")}(p_operation => 'insert', p_row => l_row);\n`, m += `${O}${O}${d("before_insert")}(p_row => l_row);\n`, m += `${O}${O}p_insert_row(p_row => l_row);\n`, m += `${O}${O}${d("after_insert")}(p_row => l_row);\n`, m += `${O}${O}l_id := l_row.${c};\n`;
+			for (let { name: e } of f) g += `${O}${O}l_row.${e} := json_value(l_body, '$.${e}');\n`;
+			d && (g += `${O}${O}l_row.${c} := json_value(l_body, '$.${c}');\n`), g += `${O}${O}${p("validate")}(p_operation => 'insert', p_row => l_row);\n`, g += `${O}${O}${p("before_insert")}(p_row => l_row);\n`, g += `${O}${O}p_insert_row(p_row => l_row);\n`, g += `${O}${O}${p("after_insert")}(p_row => l_row);\n`, g += `${O}${O}l_id := l_row.${c};\n`;
 		}
-		if (m += `${O}${O}:status := 201;\n`, m += `${O}${O}htp.p(json_object('${c}' value l_id));\n`, m += p + `${O}end ins;\n\n`, m += `${O}procedure upd is\n`, m += `${O}${O}l_body clob := :body_text;\n`, t ? m += `${O}${O}l_rec  ${a}.t_rec;\n` : m += `${O}${O}l_row  ${i}%rowtype;\n`, m += `${O}begin\n`, m += `${O}${O}if l_body is null or not json_exists(l_body, '$') then\n`, m += `${O}${O}${O}:status := 400;\n`, m += `${O}${O}${O}htp.p(json_object('message' value 'request body must be valid json'));\n`, m += `${O}${O}${O}return;\n`, m += `${O}${O}end if;\n`, t) {
-			for (let { name: e } of u) m += `${O}${O}l_rec.${e} := json_value(l_body, '$.${e}');\n`;
-			m += `${O}${O}${a}.update_rec(\n`, m += `${O}${O}${O}p_id  => :p_id,\n`, m += `${O}${O}${O}p_rec => l_rec`, l && (m += `,\n${O}${O}${O}p_row_version => json_value(l_body, '$.row_version' returning ${i}.row_version%type)`), m += `\n${O}${O});\n`;
+		if (g += `${O}${O}:status := 201;\n`, g += `${O}${O}htp.p(json_object('${c}' value l_id));\n`, g += h + `${O}end ins;\n\n`, g += `${O}procedure upd is\n`, g += `${O}${O}l_body clob := :body_text;\n`, t ? g += `${O}${O}l_rec  ${a}.t_rec;\n` : g += `${O}${O}l_row  ${i}%rowtype;\n`, g += `${O}begin\n`, g += `${O}${O}if l_body is null or not json_exists(l_body, '$') then\n`, g += `${O}${O}${O}:status := 400;\n`, g += `${O}${O}${O}htp.p(json_object('message' value 'request body must be valid json'));\n`, g += `${O}${O}${O}return;\n`, g += `${O}${O}end if;\n`, t) {
+			for (let { name: e } of f) g += `${O}${O}l_rec.${e} := json_value(l_body, '$.${e}');\n`;
+			g += `${O}${O}${a}.update_rec(\n`, g += `${O}${O}${O}p_id  => :p_id,\n`, g += `${O}${O}${O}p_rec => l_rec`, l && (g += `,\n${O}${O}${O}p_row_version => json_value(l_body, '$.row_version' returning ${i}.row_version%type)`), g += `\n${O}${O});\n`;
 		} else {
-			m += `${O}${O}l_row := p_get_by_id(p_id => :p_id);\n`;
-			for (let { name: e } of u) m += `${O}${O}l_row.${e} := json_value(l_body, '$.${e}');\n`;
-			l && (m += `${O}${O}l_row.row_version := json_value(l_body, '$.row_version' returning ${i}.row_version%type);\n`), m += `${O}${O}${d("validate")}(p_operation => 'update', p_row => l_row);\n`, m += `${O}${O}${d("before_update")}(p_row => l_row);\n`, m += `${O}${O}p_update_row(p_row => l_row);\n`, m += `${O}${O}${d("after_update")}(p_row => l_row);\n`;
+			g += `${O}${O}l_row := p_get_by_id(p_id => :p_id);\n`;
+			for (let { name: e } of f) g += `${O}${O}l_row.${e} := json_value(l_body, '$.${e}');\n`;
+			l && (g += `${O}${O}l_row.row_version := json_value(l_body, '$.row_version' returning ${i}.row_version%type);\n`), g += `${O}${O}${p("validate")}(p_operation => 'update', p_row => l_row);\n`, g += `${O}${O}${p("before_update")}(p_row => l_row);\n`, g += `${O}${O}p_update_row(p_row => l_row);\n`, g += `${O}${O}${p("after_update")}(p_row => l_row);\n`;
 		}
-		return m += `${O}${O}:status := 200;\n`, m += `${O}${O}htp.p(json_object('${c}' value :p_id));\n`, m += p + `${O}end upd;\n\n`, m += `${O}procedure del is\n`, m += `${O}begin\n`, t ? m += `${O}${O}${a}.delete_rec(p_id => :p_id);\n` : (m += `${O}${O}${d("before_delete")}(p_id => :p_id);\n`, m += `${O}${O}p_delete_row(p_id => :p_id);\n`, m += `${O}${O}${d("after_delete")}(p_id => :p_id);\n`), m += `${O}${O}:status := 200;\n`, m += `${O}${O}htp.p(json_object('${c}' value :p_id));\n`, m += p + `${O}end del;\n\n`, m += `end ${s};\n/\n`, m;
+		return g += `${O}${O}:status := 200;\n`, g += `${O}${O}htp.p(json_object('${c}' value :p_id));\n`, g += h + `${O}end upd;\n\n`, g += `${O}procedure del is\n`, g += `${O}begin\n`, t ? g += `${O}${O}${a}.delete_rec(p_id => :p_id);\n` : (g += `${O}${O}${p("before_delete")}(p_id => :p_id);\n`, g += `${O}${O}p_delete_row(p_id => :p_id);\n`, g += `${O}${O}${p("after_delete")}(p_id => :p_id);\n`), g += `${O}${O}:status := 200;\n`, g += `${O}${O}htp.p(json_object('${c}' value :p_id));\n`, g += h + `${O}end del;\n\n`, g += `end ${s};\n/\n`, g;
 	}
 	_generateAuditSpec(e) {
 		let t = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), n = t + "_aud", r = `create or replace package ${n} as\n\n`;
@@ -11339,7 +11345,7 @@ var J = class {
 function nt(e) {
 	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
 }
-var Y = class extends ge {
+var Y = class extends F {
 	constructor(e, t) {
 		super(e), this._naming = t ?? D, this._view = new Qe(e, this._naming), this._plsql = new J(e, this._naming);
 	}
@@ -12596,7 +12602,7 @@ var at = class {
 function st(e) {
 	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
 }
-var ct = class extends ge {
+var ct = class extends F {
 	constructor(e, t) {
 		super(e), this._naming = t ?? D, this._plsql = new at(e, this._naming);
 	}
@@ -12888,6 +12894,6 @@ var ct = class extends ge {
 		return n;
 	}
 };
-F("oracle", (e) => new Y(e)), F("db2", (e) => new ct(e)), be("oracle", (e) => new it());
+ve("oracle", (e) => new Y(e)), ve("db2", (e) => new ct(e)), be("oracle", (e) => new it());
 //#endregion
-export { ge as BaseGenerator, xe as createDiffGenerator, W as default, W as expresql, G as expresql_version, We as fromJSON, be as registerDiffGenerator, F as registerGenerator, Ke as toDDL, Je as toDiff, Ge as toERD, qe as toErrors };
+export { F as BaseGenerator, xe as createDiffGenerator, W as default, W as expresql, G as expresql_version, We as fromJSON, be as registerDiffGenerator, ve as registerGenerator, Ke as toDDL, Je as toDiff, Ge as toERD, qe as toErrors };

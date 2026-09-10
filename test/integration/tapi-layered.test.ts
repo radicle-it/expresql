@@ -1827,3 +1827,117 @@ describe('dynamic column alignment — t_rec / _app parameter lists', () => {
     });
 
 });
+
+// ── User-defined PK (pk: none, genpk: no) — eliminate duplicate p_id ─────────
+// _svcCols() does not exclude the PK by name, so an explicitly-declared PK column
+// (`id vc100 /pk /nn`) already flows into paramCols/t_rec. _app/_rst used to also emit
+// a separate, always-present p_id — colliding (same formal parameter name, Oracle
+// rejects it) when the PK is literally named "id", and redundant under any other name.
+// Model: main commit 84e33ad.
+
+describe('user-defined PK — _app package (ifc: app)', () => {
+
+    const qsql = `
+party /api full+hks
+    id vc100 /pk /nn
+    party_ref vc200 /nn /unique
+# settings = { genpk: no, pk: none, api: layered, ifc: app }`;
+
+    test('_app spec get has p_id exactly once (IN only, not duplicated as OUT)', () => {
+        const out = ddl(qsql);
+        const spec = segment(out, 'create or replace package party_app as', 'end party_app;');
+        const getProc = segment(spec, 'procedure get', 'procedure ins');
+        expect(getProc.match(/\bp_id\b/g)?.length).toBe(1);
+    });
+
+    test('_app spec ins has p_id IN (user supplies the key), not OUT', () => {
+        const out = ddl(qsql);
+        const spec = segment(out, 'create or replace package party_app as', 'end party_app;');
+        const insProc = segment(spec, 'procedure ins', 'procedure upd');
+        expect(insProc).toContain('p_id           in  party.id%type');
+        expect(insProc).not.toContain('p_id           out');
+    });
+
+    test('_app spec upd has p_id exactly once (IN only, not duplicated)', () => {
+        const out = ddl(qsql);
+        const spec = segment(out, 'create or replace package party_app as', 'end party_app;');
+        const updProc = segment(spec, 'procedure upd', 'procedure del');
+        expect(updProc.match(/\bp_id\b/g)?.length).toBe(1);
+    });
+
+    test('_app body ins assigns l_rec.id from p_id and uses a local l_xid for create_rec OUT', () => {
+        const out = ddl(qsql);
+        const body = segment(out, 'create or replace package body party_app as', 'end party_app;');
+        const insProc = segment(body, 'procedure ins (', 'end ins;');
+        expect(insProc).toContain('l_xid');
+        expect(insProc).toContain('l_rec.id := p_id;');
+        expect(insProc).toContain('create_rec(p_rec => l_rec, x_id => l_xid)');
+    });
+
+    test('_app body upd does not reassign l_row.id from a body parameter (immutable, comes from p_id)', () => {
+        const out = ddl(`
+party /api service+hks
+    id vc100 /pk /nn
+    party_ref vc200 /nn /unique
+# settings = { genpk: no, pk: none, api: layered, ifc: app }`);
+        const body = segment(out, 'create or replace package body party_app as', 'end party_app;');
+        const updProc = segment(body, 'procedure upd (', 'end upd;');
+        expect(updProc).not.toContain('l_row.id := p_id');
+    });
+
+});
+
+describe('user-defined PK — _rst package (ifc: rest)', () => {
+
+    const qsql = `
+party /api full+hks
+    id vc100 /pk /nn
+    party_ref vc200 /nn /unique
+# settings = { genpk: no, pk: none, api: layered, ifc: rest }`;
+
+    test('get/get_all json_object emits the id key exactly once', () => {
+        const out = ddl(qsql);
+        const body = segment(out, 'create or replace package body party_rst', 'end party_rst;');
+        const getProc = segment(body, 'procedure get is', 'end get;');
+        expect(getProc.match(/'id' value/g)?.length).toBe(1);
+    });
+
+    test('ins extracts id from the request body when the PK is user-defined', () => {
+        const out = ddl(qsql);
+        const body = segment(out, 'create or replace package body party_rst', 'end party_rst;');
+        const insProc = segment(body, 'procedure ins is', 'end ins;');
+        expect(insProc).toContain("l_rec.id := json_value(l_body, '$.id');");
+    });
+
+    test('upd does not extract id from the request body (immutable, comes only from :p_id)', () => {
+        const out = ddl(qsql);
+        const body = segment(out, 'create or replace package body party_rst', 'end party_rst;');
+        const updProc = segment(body, 'procedure upd is', 'end upd;');
+        expect(updProc).not.toContain("l_rec.id := json_value(l_body, '$.id')");
+    });
+
+    test('lookup tier (no svc): ins extracts id from the body, upd does not', () => {
+        const out = ddl(`
+party /api lookup
+    id vc100 /pk /nn
+    party_ref vc200 /nn /unique
+# settings = { genpk: no, pk: none, ifc: rest }`);
+        const body = segment(out, 'create or replace package body party_rst', 'end party_rst;');
+        const insProc = segment(body, 'procedure ins is', 'end ins;');
+        expect(insProc).toContain("l_row.id := json_value(l_body, '$.id');");
+        const updProc = segment(body, 'procedure upd is', 'end upd;');
+        expect(updProc).not.toContain("l_row.id := json_value(l_body, '$.id')");
+    });
+
+});
+
+describe('auto-generated PK — unaffected by the user-defined-PK filter', () => {
+
+    test('_app ins still declares p_id OUT (server-generated key returned to the caller)', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered"}`);
+        const spec = segment(out, 'create or replace package doctors_app as', 'end doctors_app;');
+        const insProc = segment(spec, 'procedure ins', 'procedure upd');
+        expect(insProc).toContain('p_id           out doctors.id%type');
+    });
+
+});
