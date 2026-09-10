@@ -389,7 +389,14 @@ function ie(e, t, n, r, i, a) {
 function ae(e, t, n) {
 	return !!(0 <= n || e === "hiredate" || e.endsWith("_date") || e.startsWith("date_of_") || e.startsWith("created") || e.startsWith("updated") || 1 < t.length && t[1].value === "d");
 }
-var M = class {
+var oe = /^-?\d+(\.\d+)?$/;
+function se(e) {
+	return oe.test(e);
+}
+function ce(e, t) {
+	return e === "identifier" || e === "constant.numeric" && !se(t);
+}
+var le = class {
 	constructor(e, t, n, r) {
 		this.one2many2oneUnsupoorted = void 0, this.line = e, this.parent = n, this.children = [], n !== null && n.children.push(this), this.fks = null, this._ctx = r, this.comment = null;
 		function i(e) {
@@ -681,7 +688,7 @@ var M = class {
 		if (r === " ") {
 			for (let e = n + 1; e < this.src.length && this.src[e].value !== "/" && this.src[e].value !== "["; e++) {
 				let n = this.src[e].value;
-				this.src[e].type === "identifier" && n !== "null" && (n = "'" + n + "'"), n.charAt(0) === "`" && (n = n.substring(1, n.length - 1)), t.push(n);
+				ce(this.src[e].type, n) && n !== "null" && (n = "'" + n + "'"), n.charAt(0) === "`" && (n = n.substring(1, n.length - 1)), t.push(n);
 			}
 			return t;
 		}
@@ -692,9 +699,9 @@ var M = class {
 				a === "identifier" && i !== "null" && (i = "'" + i + "'"), t.push(i), i = null, a = null;
 				continue;
 			}
-			n === "(" || n === ")" || (n.charAt(0) === "`" ? n = n.substring(1, n.length - 1) : this.src[e].type === "identifier" && (a = "identifier"), i = i === null ? n : i + o + n);
+			n === "(" || n === ")" || (n.charAt(0) === "`" ? n = n.substring(1, n.length - 1) : ce(this.src[e].type, n) && (a = "identifier"), i = i === null ? n : i + o + n);
 		}
-		return a === "identifier" && (i = "'" + i + "'"), t.push(i), t;
+		return a === "identifier" && i !== "null" && (i = "'" + i + "'"), t.push(i), t;
 	}
 	getValues(e) {
 		let t = "", n = this.listValues(e);
@@ -806,7 +813,7 @@ var M = class {
 };
 //#endregion
 //#region src/compiler/parser.ts
-function oe(e) {
+function ue(e) {
 	let t = e.input, n = [], r = [], i = x(t + "\n", !0, !0, "`");
 	e.data = null;
 	let a = null, o = "";
@@ -818,19 +825,19 @@ function oe(e) {
 				o = "";
 				continue;
 			}
-			let t = new M(s.line - 1, o, null, e), i = !1;
+			let t = new le(s.line - 1, o, null, e), i = !1;
 			for (let a = 0; a < n.length; a++) {
 				let c = n[a];
 				if (t.apparentDepth() <= c.apparentDepth()) if (0 < a) {
 					let r = n[a - 1];
-					t = new M(s.line - 1, o, r, e), n[a] = t, n = n.slice(0, a + 1), i = !0;
+					t = new le(s.line - 1, o, r, e), n[a] = t, n = n.slice(0, a + 1), i = !0;
 					break;
 				} else n[0] = t, n = n.slice(0, 1), r.push(t), i = !0;
 			}
 			if (!i) {
 				if (0 < n.length) {
 					let r = n[n.length - 1];
-					t = new M(s.line - 1, o, r, e);
+					t = new le(s.line - 1, o, r, e);
 				}
 				n.push(t), t.apparentDepth() === 0 && r.push(t);
 			}
@@ -894,7 +901,7 @@ function oe(e) {
 }
 //#endregion
 //#region src/utils/translate.ts
-var se = [
+var de = [
 	"Sales",
 	"Finance",
 	"Delivery",
@@ -907,7 +914,7 @@ var se = [
 	"Specialist",
 	"Evangelist",
 	"Salesman"
-], ce = [
+], fe = [
 	"「販売」",
 	"「財務」",
 	"「配送」",
@@ -919,7 +926,7 @@ var se = [
 	"「アナリスト」",
 	"「スペシャリスト」",
 	"「エバンジェリスト」"
-], le = [
+], pe = [
 	"영업",
 	"금융",
 	"배송",
@@ -933,16 +940,16 @@ var se = [
 	"전도자",
 	"판매원"
 ];
-function ue(e, t) {
+function me(e, t) {
 	if (typeof t != "string") return t;
 	let n = e.substring(0, 2).toLowerCase();
 	if (n === "en") return t;
-	let r = t.startsWith("'") ? t.slice(1, -1) : t, i = se.indexOf(r);
-	return i < 0 ? t : n === "jp" && i < ce.length ? "'" + ce[i] + "'" : n === "kr" && i < le.length ? "'" + le[i] + "'" : t;
+	let r = t.startsWith("'") ? t.slice(1, -1) : t, i = de.indexOf(r);
+	return i < 0 ? t : n === "jp" && i < fe.length ? "'" + fe[i] + "'" : n === "kr" && i < pe.length ? "'" + pe[i] + "'" : t;
 }
 //#endregion
 //#region src/utils/sample.ts
-var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
+var he = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 	(function() {
 		var n = 9007199254740992, r = -n, i = "0123456789", a = "abcdefghijklmnopqrstuvwxyz", o = a.toUpperCase(), s = i + "abcdef";
 		function c(e) {
@@ -9674,10 +9681,10 @@ var de = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 		}), typeof importScripts < "u" && (chance = new u(), self.Chance = u), typeof window == "object" && typeof window.document == "object" && (window.Chance = u, window.chance = new u());
 	})();
 })))(), 1);
-function fe(e, t, n, r) {
-	let i = new de.default(N++), a = n.toUpperCase(), o = e.toUpperCase(), s = t.toUpperCase();
+function ge(e, t, n, r) {
+	let i = new he.default(M++), a = n.toUpperCase(), o = e.toUpperCase(), s = t.toUpperCase();
 	if (r != null && 0 < r.length) {
-		let e = r.length, t = r[Math.floor(P() * (e - 0)) + 0];
+		let e = r.length, t = r[Math.floor(N() * (e - 0)) + 0];
 		return !a.startsWith("INTEGER") && !a.startsWith("NUMBER") && !a.startsWith("DATE") && (!t.toLowerCase || t.toLowerCase() !== "null") && (!t.charAt || t.charAt(0) !== "q" && t.charAt(1) !== "'") && (t.charAt && t.charAt(0) === "'" && (t = t.substring(1, t.length - 1)), t = t.split("'").join("''"), t = "'" + t + "'"), t;
 	}
 	if (s === "NAME" && 0 <= o.indexOf("DEPARTMENT")) {
@@ -9687,7 +9694,7 @@ function fe(e, t, n, r) {
 			"Delivery",
 			"Manufacturing"
 		];
-		return "'" + e[Math.floor(P() * e.length)] + "'";
+		return "'" + e[Math.floor(N() * e.length)] + "'";
 	}
 	if (i[s.toLowerCase()] !== void 0 && s.indexOf("NAME") < 0) return "'" + i[s.toLowerCase()]() + "'";
 	if (s === "FIRST_NAME") return "'" + i.first() + "'";
@@ -9721,35 +9728,35 @@ function fe(e, t, n, r) {
 			"Evangelist",
 			"Salesman"
 		];
-		return "'" + e[Math.floor(P() * e.length)] + "'";
+		return "'" + e[Math.floor(N() * e.length)] + "'";
 	}
-	return a.startsWith("INTEGER") || a.startsWith("NUMBER") ? Math.floor(P() * 100) : a.startsWith("DATE") || a.startsWith("TIMESTAMP") ? "sysdate-" + Math.floor(P() * 100) : a === "BLOB" || a === "LONG" ? "null" : "'N/A'";
+	return a.startsWith("INTEGER") || a.startsWith("NUMBER") ? Math.floor(N() * 100) : a.startsWith("DATE") || a.startsWith("TIMESTAMP") ? "sysdate-" + Math.floor(N() * 100) : a === "BLOB" || a === "LONG" ? "null" : "'N/A'";
 }
-var N = 1;
-function pe() {
-	N = 1;
+var M = 1;
+function _e() {
+	M = 1;
 }
-function P() {
-	let e = Math.sin(N++) * 1e4;
+function N() {
+	let e = Math.sin(M++) * 1e4;
 	return e - Math.floor(e);
 }
 //#endregion
 //#region src/compiler/base-generator.ts
-function me(e) {
+function ve(e) {
 	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
 }
-function he(e, t, n, r) {
+function ye(e, t, n, r) {
 	let i = [];
 	if (typeof e != "object" || !e) return null;
 	let a = e[n];
 	a != null && t === r && i.push(a);
 	for (let t in e) {
-		let a = e[t], o = he(a, t, n, r);
+		let a = e[t], o = ye(a, t, n, r);
 		o !== null && (i = i.concat(o));
 	}
 	return i;
 }
-var F = class {
+var P = class {
 	constructor(e) {
 		this._ddl = e;
 	}
@@ -9945,7 +9952,7 @@ var F = class {
 		return t;
 	}
 	generateData(e, t) {
-		if (pe(), this._ddl.optionEQvalue("inserts", !1)) return "";
+		if (_e(), this._ddl.optionEQvalue("inserts", !1)) return "";
 		let n = this.inserts4tbl(e, t), r = this._orderedTableNodes(e), i = "";
 		for (let e of r) {
 			let t = n[this._ddl.objPrefix() + e.parseName()];
@@ -9982,14 +9989,14 @@ var F = class {
 			a ?? (a = this._ddl.find(t), a?.isMany2One?.() && !t.endsWith("_id") && (n = t, t = l(t) ?? t, r = "_id")), i += O + t + r + ",\n";
 		}
 		for (let t of e.regularColumns()) a != null && t.parseName() === "id" || t.isOption("pk") || (i += O + t.parseName() + ",\n");
-		if (i = me(i), i += ") values (\n", a != null) s = t + 1, i += O + s + ",\n";
+		if (i = ve(i), i += ") values (\n", a != null) s = t + 1, i += O + s + ",\n";
 		else if (o != null) {
-			let r = o, a = he(this._ddl.data, null, r, e.parseName()), c = -1;
+			let r = o, a = ye(this._ddl.data, null, r, e.parseName()), c = -1;
 			n != null && (c = n[r]), a != null && a[t] != null && (c = a[t]), c !== -1 && typeof c == "string" && (c = "'" + c + "'"), s = c === -1 ? t + 1 : c, i += O + s + ",\n";
 		}
 		for (let t in e.fks ?? {}) {
 			let a = e.fks[t], { type: o, values: c } = this._resolveFkSampleValues(e, t, a, n, s, r), u = String(this._ddl.getOptionValue("Data Language") ?? "EN");
-			i += O + String(ue(u, fe(r, (l(a) ?? a) + "_id", o, c))) + ",\n";
+			i += O + String(me(u, ge(r, (l(a) ?? a) + "_id", o, c))) + ",\n";
 		}
 		for (let t of e.regularColumns()) {
 			if (a != null && t.parseName() === "id" || t.parseName() === e.getExplicitPkName()) continue;
@@ -9998,10 +10005,10 @@ var F = class {
 				let e = n[s];
 				e != null && (o = [e]);
 			}
-			let c = String(this._ddl.getOptionValue("Data Language") ?? "EN"), l = fe(r, s, this.colType(t._inferTypeFull()), o);
-			i += O + String(ue(c, l)) + ",\n";
+			let c = String(this._ddl.getOptionValue("Data Language") ?? "EN"), l = ge(r, s, this.colType(t._inferTypeFull()), o);
+			i += O + String(me(c, l)) + ",\n";
 		}
-		return i = me(i), i += ");\n", i;
+		return i = ve(i), i += ");\n", i;
 	}
 	_resolveFkSampleValues(e, t, n, r, i, a) {
 		let o = this._ddl.find(n), s = [], c = "INTEGER";
@@ -10030,41 +10037,41 @@ var F = class {
 			values: s
 		};
 	}
-}, ge = {}, _e = {};
-function ve(e, t) {
-	ge[e.toLowerCase()] = t;
+}, F = {}, I = {};
+function L(e, t) {
+	F[e.toLowerCase()] = t;
 }
-function ye(e) {
-	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = ge[t];
+function be(e) {
+	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = F[t];
 	if (n == null) {
-		let e = Object.keys(ge).join(", ");
+		let e = Object.keys(F).join(", ");
 		throw Error(`Unknown SQL dialect: "${t}". Registered dialects: ${e}`);
 	}
 	return n(e);
 }
-function be(e, t) {
-	_e[e.toLowerCase()] = t;
+function xe(e, t) {
+	I[e.toLowerCase()] = t;
 }
-function xe(e) {
-	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = _e[t];
+function Se(e) {
+	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = I[t];
 	if (n == null) {
-		let e = Object.keys(_e).join(", ");
+		let e = Object.keys(I).join(", ");
 		throw Error(`Unknown SQL dialect for diff: "${t}". Registered dialects: ${e}`);
 	}
 	return n(e);
 }
 //#endregion
 //#region src/utils/json-to-qsql.ts
-function I(e) {
+function R(e) {
 	let t = "";
 	for (let n = 0; n < e; n++) t += "   ";
 	return t;
 }
-function Se(e, t) {
+function Ce(e, t) {
 	for (let n in e) if (JSON.stringify(e[n]) === JSON.stringify(t)) return !0;
 	return !1;
 }
-function L(e) {
+function z(e) {
 	let t = ["_id", "Id"];
 	if (e.id != null) return {
 		key: "id",
@@ -10079,12 +10086,12 @@ function L(e) {
 	}
 	return null;
 }
-function Ce(e) {
+function we(e) {
 	if (typeof e != "object" || !e) return !1;
 	for (let t in e) if (!(e[t] != null && typeof e[t] == "object")) return !0;
 	return !1;
 }
-function we(e) {
+function Te(e) {
 	let t = null;
 	outer: for (let n in e) if (n === "0") for (let r in e[n]) {
 		t = r;
@@ -10096,41 +10103,41 @@ function we(e) {
 	}
 	return t == null || t.toLowerCase() === "id" ? null : t.toLowerCase().endsWith("_id") ? t.substring(0, t.length - 3) : t.endsWith("Id") ? t.substring(0, t.length - 2) : null;
 }
-function Te(e, t, n) {
+function Ee(e, t, n) {
 	let r = !1, i = !1;
 	for (let a in e) for (let o = 0; o < a; o++) if (e[a][t] === e[o][t] && e[a][n] !== e[o][n] ? r = !0 : e[a][t] !== e[o][t] && e[a][n] === e[o][n] && (i = !0), r && i) return !0;
 	return !1;
 }
-function R(e) {
+function B(e) {
 	if (typeof e != "object" || !e) return "";
 	let t = "(";
 	for (let n in e) {
-		if (n === "0") return R(e[n]);
+		if (n === "0") return B(e[n]);
 		e[n] != null && typeof e[n] == "object" || (t += n + ",");
 	}
 	return t.lastIndexOf(",") === t.length - 1 && (t = t.substring(0, t.length - 1)), t + ")";
 }
-function Ee(e, t) {
+function De(e, t) {
 	let n = e, r = t, i = n.indexOf("(");
 	0 < i && (n = n.substring(0, i));
 	let a = r.indexOf("(");
 	return 0 < a && (r = r.substring(0, a)), n + "_" + r + "(" + n + "_id," + r + "_id)";
 }
-var De = class {
+var Oe = class {
 	constructor() {
 		this.tableContent = {}, this.notNormalized = [], this.tableSignatures = [], this.child2parent = {}, this.objCounts = {}, this.idSeq = 1;
 	}
 	output(e, t, n, r) {
 		if (r !== !1 && this.notNormalized.includes(e)) {
-			let r = Ee(this.parent(e) ?? "", e), i = this.tableContent[r];
+			let r = De(this.parent(e) ?? "", e), i = this.tableContent[r];
 			if (i != null) {
-				let a = "\n" + I(n) + this.tableName(r) + " /insert " + i.length;
-				if (Te(i, this.refIdName(this.parent(e) ?? ""), this.refIdName(e))) return a + this.output(e, t, n + 1, !1);
+				let a = "\n" + R(n) + this.tableName(r) + " /insert " + i.length;
+				if (Ee(i, this.refIdName(this.parent(e) ?? ""), this.refIdName(e))) return a + this.output(e, t, n + 1, !1);
 			}
 		}
-		let i = this.notNormalized.includes(e) ? ">" : "", a = "\n" + I(n) + i + this.tableName(e);
+		let i = this.notNormalized.includes(e) ? ">" : "", a = "\n" + R(n) + i + this.tableName(e);
 		if (typeof t == "number" && (a += " num", e.endsWith("_id") || e.endsWith("Id"))) return a += " /pk", a;
-		if (e === "id") return "\n" + I(n) + "id vc32 /pk";
+		if (e === "id") return "\n" + R(n) + "id vc32 /pk";
 		tofinal: if (typeof t == "object" && t) {
 			if (Array.isArray(t)) for (let i in t) {
 				if (1 <= i) break;
@@ -10147,10 +10154,10 @@ var De = class {
 					let a = l(e) ?? "", o = r.toLowerCase();
 					if (e != null && a + "_id" === o && 0 < n && (i = r), a + "_id" === o || !isNaN(r) && !Array.isArray(t)) continue;
 				}
-				let s = this.output(r + R(o), o, n + 1);
+				let s = this.output(r + B(o), o, n + 1);
 				a += s;
 			}
-			i !== "" && (a += "\n" + I(n) + i);
+			i !== "" && (a += "\n" + R(n) + i);
 		}
 		return a;
 	}
@@ -10161,8 +10168,8 @@ var De = class {
 			if (typeof a == "object" && a) {
 				let t = e, o = n;
 				if (isNaN(i)) {
-					t = i + R(a);
-					let e = L(r);
+					t = i + B(a);
+					let e = z(r);
 					e != null && (o = e);
 				}
 				this.flatten(t, a, o);
@@ -10171,15 +10178,15 @@ var De = class {
 		!this.notNormalized.includes(e) && n != null && Object.keys(r).length && (r[n.key] = n.value);
 		let i = 0 < Object.keys(r).length, a = this.tableContent[e];
 		if (i) {
-			if (a ??= [], Se(a, r) || a.push(r), this.notNormalized.includes(e)) {
+			if (a ??= [], Ce(a, r) || a.push(r), this.notNormalized.includes(e)) {
 				let t = this.parent(e);
 				if (t != null) {
-					let i = Ee(t, e), a = this.tableContent[i];
+					let i = De(t, e), a = this.tableContent[i];
 					a ??= [];
 					let o = {};
 					o[this.refIdName(t)] = n?.value;
-					let s = L(r);
-					s ??= (r.id = this.idSeq++, L(r)), o[this.refIdName(e)] = s.value, a.push(o), this.tableContent[i] = a;
+					let s = z(r);
+					s ??= (r.id = this.idSeq++, z(r)), o[this.refIdName(e)] = s.value, a.push(o), this.tableContent[i] = a;
 				}
 			}
 			this.tableContent[e] = a;
@@ -10191,12 +10198,12 @@ var De = class {
 			let r = t[n];
 			if (typeof r == "object" && r) {
 				let a = e;
-				if (isNaN(n)) a = n + R(r);
+				if (isNaN(n)) a = n + B(r);
 				else if (!Array.isArray(t)) continue;
 				a !== e && (this.child2parent[a] = e), this.duplicatesAndParents(a, r), i = !0;
 			}
 		}
-		Ce(t) && !this.tableSignatures.includes(e) && this.tableSignatures.push(e), i || (this.objCounts[n] = r + 1), 1 < this.objCounts[n] && !this.notNormalized.includes(e) && this.notNormalized.push(e);
+		we(t) && !this.tableSignatures.includes(e) && this.tableSignatures.push(e), i || (this.objCounts[n] = r + 1), 1 < this.objCounts[n] && !this.notNormalized.includes(e) && this.notNormalized.push(e);
 	}
 	parent(e) {
 		let t = this.child2parent[e];
@@ -10216,12 +10223,12 @@ var De = class {
 		return (l(this.tableName(e)) ?? this.tableName(e)) + "_id";
 	}
 };
-function Oe(e, t) {
-	let n = JSON.parse(e), r = we(n);
+function ke(e, t) {
+	let n = JSON.parse(e), r = Te(n);
 	r != null && (t = r), t ??= "root_tbl";
-	let i = new De();
-	i.duplicatesAndParents(t + R(n), n), i.flatten(t + R(n), n);
-	let a = i.output(t + R(n), n, 0);
+	let i = new Oe();
+	i.duplicatesAndParents(t + B(n), n), i.flatten(t + B(n), n);
+	let a = i.output(t + B(n), n, 0);
 	a += "\n\n#settings = { genpk: false, drop: true, pk: identityDataType, semantics: char }", a += "\n\n#flattened = \n";
 	let o = {};
 	for (let e in i.tableContent) o[i.tableName(e)] = i.tableContent[e];
@@ -10229,15 +10236,15 @@ function Oe(e, t) {
 }
 //#endregion
 //#region src/utils/error-msgs.ts
-var z = class {
+var V = class {
 	constructor(e, t, n, r) {
-		this.from = t, this.to = n ?? new B(t.line, t.depth + 1), this.message = e, this.severity = r ?? "error";
+		this.from = t, this.to = n ?? new H(t.line, t.depth + 1), this.message = e, this.severity = r ?? "error";
 	}
-}, B = class {
+}, H = class {
 	constructor(e, t) {
 		this.line = e, this.depth = t;
 	}
-}, ke = [
+}, Ae = [
 	"api",
 	"audit",
 	"auditcols",
@@ -10258,7 +10265,7 @@ var z = class {
 	"pk",
 	"cascade",
 	"setnull"
-], Ae = /* @__PURE__ */ "idx.index.indexed.unique.uk.check.constant.default.domain.hidden.invincible.values.upper.lower.nn.not.between.references.reference.cascade.setnull.fk.pk.trans.translation.translations".split("."), V = {
+], je = /* @__PURE__ */ "idx.index.indexed.unique.uk.check.constant.default.domain.hidden.invincible.values.upper.lower.nn.not.between.references.reference.cascade.setnull.fk.pk.trans.translation.translations".split("."), U = {
 	duplicateId: "Explicit ID column conflicts with genpk",
 	invalidDatatype: "Invalid Datatype",
 	undefinedObject: "Undefined Object: ",
@@ -10266,76 +10273,76 @@ var z = class {
 	tableDirectiveTypo: "Unknown Table directive",
 	columnDirectiveTypo: "Unknown Column directive"
 };
-function je(e) {
+function Me(e) {
 	let t = e, n = [], r = [];
 	for (let t = 0; t < e.forest.length; t++) e.forest[t].inferType() === "table" && (r = r.concat(e.forest[t].descendants()));
-	n = n.concat(Fe(r));
+	n = n.concat(Ie(r));
 	let i = t.descendants();
 	for (let e = 0; e < i.length; e++) {
 		let r = i[e];
 		if (t.optionEQvalue("genpk", !0) && i[e].parseName() === "id") {
 			let e = r.content.toLowerCase().indexOf("id");
-			n.push(new z(V.duplicateId, new B(r.line, e), new B(r.line, e + 2)));
+			n.push(new V(U.duplicateId, new H(r.line, e), new H(r.line, e + 2)));
 			continue;
 		}
 		let a = r.src[2];
 		if (2 < r.src.length && a.value === "-") {
 			let e = a.begin;
-			n.push(new z(V.invalidDatatype, new B(r.line, e), new B(r.line, e + 2)));
+			n.push(new V(U.invalidDatatype, new H(r.line, e), new H(r.line, e + 2)));
 			continue;
 		}
 		let o = r.src[1];
 		if (1 < r.src.length && o.value === "vc0") {
 			let e = o.begin;
-			n.push(new z(V.invalidDatatype, new B(r.line, e)));
+			n.push(new V(U.invalidDatatype, new H(r.line, e)));
 			continue;
 		}
-		n = n.concat(Ne(t, r)), n = n.concat(Pe(t, r)), n = n.concat(Me(t, r));
+		n = n.concat(Pe(t, r)), n = n.concat(Fe(t, r)), n = n.concat(Ne(t, r));
 	}
 	return n;
 }
-function Me(e, t) {
+function Ne(e, t) {
 	let n = t.inferType() === "table", r = [], i = t.src, a = !1;
 	for (let e = 1; e < i.length; e++) {
 		if (i[e].value === "/") {
 			a = !0;
 			continue;
 		}
-		a && (a = !1, n && ke.indexOf(i[e].value.toLowerCase()) < 0 && r.push(new z(V.tableDirectiveTypo, new B(t.line, i[e].begin), new B(t.line, i[e].begin + i[e].value.length))), !n && Ae.indexOf(i[e].value.toLowerCase()) < 0 && r.push(new z(V.columnDirectiveTypo, new B(t.line, i[e].begin), new B(t.line, i[e].begin + i[e].value.length))));
+		a && (a = !1, n && Ae.indexOf(i[e].value.toLowerCase()) < 0 && r.push(new V(U.tableDirectiveTypo, new H(t.line, i[e].begin), new H(t.line, i[e].begin + i[e].value.length))), !n && je.indexOf(i[e].value.toLowerCase()) < 0 && r.push(new V(U.columnDirectiveTypo, new H(t.line, i[e].begin), new H(t.line, i[e].begin + i[e].value.length))));
 	}
 	return r;
 }
-function Ne(e, t) {
+function Pe(e, t) {
 	let n = [];
 	if (t.inferType() === "view") {
 		let r = t.src;
-		for (let i = 2; i < r.length; i++) e.find(r[i].value) ?? n.push(new z(V.undefinedObject + r[i].value, new B(t.line, r[i].begin), new B(t.line, r[i].begin + r[i].value.length)));
+		for (let i = 2; i < r.length; i++) e.find(r[i].value) ?? n.push(new V(U.undefinedObject + r[i].value, new H(t.line, r[i].begin), new H(t.line, r[i].begin + r[i].value.length)));
 	}
 	return n;
 }
-function Pe(e, t) {
+function Fe(e, t) {
 	let n = [];
 	if (t.isOption("fk") || 0 < t.indexOf("reference", !0)) {
 		let r = t.indexOf("fk");
 		if (r < 0 && (r = t.indexOf("reference")), r++, t.src.length - 1 < r || t.src[r].value === "/") return n;
-		e.find(t.src[r].value) ?? n.push(new z(V.undefinedObject + t.src[r].value, new B(t.line, t.src[r].begin), new B(t.line, t.src[r].begin + t.src[r].value.length)));
+		e.find(t.src[r].value) ?? n.push(new V(U.undefinedObject + t.src[r].value, new H(t.line, t.src[r].begin), new H(t.line, t.src[r].begin + t.src[r].value.length)));
 	}
 	return n;
 }
-function Fe(e) {
-	let t = [], n = Ie(e);
+function Ie(e) {
+	let t = [], n = Le(e);
 	for (let r = 1; r < e.length; r++) {
-		let i = e[r], a = Le(i);
-		n !== null && a % n !== 0 && t.push(new z(V.misalignedAttribute + n, new B(i.line, a)));
+		let i = e[r], a = Re(i);
+		n !== null && a % n !== 0 && t.push(new V(U.misalignedAttribute + n, new H(i.line, a)));
 	}
 	return t;
 }
-function Ie(e) {
+function Le(e) {
 	let t = [];
-	for (let n = 0; n < e.length; n++) t[n] = Le(e[n]);
+	for (let n = 0; n < e.length; n++) t[n] = Re(e[n]);
 	let n = {};
 	for (let e = 0; e < t.length; e++) {
-		let r = Re(t, e);
+		let r = ze(t, e);
 		if (r != null) {
 			let i = t[e] - t[r];
 			n[i] = (n[i] ?? 0) + 1;
@@ -10348,23 +10355,23 @@ function Ie(e) {
 	}
 	return r;
 }
-function Le(e) {
+function Re(e) {
 	return e.src[0].begin;
 }
-function Re(e, t) {
+function ze(e, t) {
 	for (let n = t; 0 <= n; n--) if (e[n] < e[t]) return n;
 	return null;
 }
-var ze = {
-	findErrors: je,
-	messages: V
-}, Be = "identityDataType", H = "guid", Ve = "Timestamp with time zone", He = "Timestamp with local time zone";
-function Ue(e) {
+var Be = {
+	findErrors: Me,
+	messages: U
+}, Ve = "identityDataType", He = "guid", Ue = "Timestamp with time zone", We = "Timestamp with local time zone";
+function Ge(e) {
 	if (e == null) return null;
 	let t = typeof e == "string" ? e.toLowerCase() : e;
-	return t === "yes" || t === "y" || t === "true" || t === !0 ? !0 : t === "no" || t === "n" || t === "false" || t === !1 ? !1 : t === Be.toLowerCase() ? "identity" : t === H.toLowerCase() ? "guid" : t === Ve.toLowerCase() ? "tswtz" : t === He.toLowerCase() ? "tswltz" : typeof t == "string" ? t : String(t);
+	return t === "yes" || t === "y" || t === "true" || t === !0 ? !0 : t === "no" || t === "n" || t === "false" || t === !1 ? !1 : t === Ve.toLowerCase() ? "identity" : t === He.toLowerCase() ? "guid" : t === Ue.toLowerCase() ? "tswtz" : t === We.toLowerCase() ? "tswltz" : typeof t == "string" ? t : String(t);
 }
-var U = {
+var W = {
 	apex: {
 		label: "APEX",
 		value: "no",
@@ -10438,8 +10445,8 @@ var U = {
 		check: [
 			"DATE",
 			"TIMESTAMP",
-			Ve,
-			He
+			Ue,
+			We
 		]
 	},
 	db: {
@@ -10481,10 +10488,10 @@ var U = {
 	},
 	pk: {
 		label: "Primary Key Maintenance",
-		value: H,
+		value: He,
 		check: [
-			Be,
-			H,
+			Ve,
+			He,
 			"SEQ",
 			"NONE"
 		]
@@ -10559,15 +10566,15 @@ var U = {
 		value: "no",
 		check: ["yes", "no"]
 	}
-}, W = class {
+}, G = class {
 	constructor(e, t) {
-		this._ddl = null, this._erd = null, this._errors = null, this.postponedAlters = [], this.postponedAltersSet = /* @__PURE__ */ new Set(), this._labelToKey = {}, this.name2node = null, this.options = JSON.parse(JSON.stringify(U)), this.input = e;
+		this._ddl = null, this._erd = null, this._errors = null, this.postponedAlters = [], this.postponedAltersSet = /* @__PURE__ */ new Set(), this._labelToKey = {}, this.name2node = null, this.options = JSON.parse(JSON.stringify(W)), this.input = e;
 		for (let e in this.options) {
 			let t = this.options[e].label;
 			t != null && (this._labelToKey[t.toLowerCase()] = e);
 		}
 		let n = "";
-		e.toLowerCase().includes("overridesettings") && oe(this), t !== void 0 && this.optionEQvalue("overrideSettings", !1) && (n = "# settings = " + String(t) + "\n\n"), this.input = n + e, this.forest = oe(this);
+		e.toLowerCase().includes("overridesettings") && ue(this), t !== void 0 && this.optionEQvalue("overrideSettings", !1) && (n = "# settings = " + String(t) + "\n\n"), this.input = n + e, this.forest = ue(this);
 	}
 	getOptionValue(e) {
 		let t = e.toLowerCase(), n = this.options[t];
@@ -10578,7 +10585,7 @@ var U = {
 		return n?.value ?? null;
 	}
 	optionEQvalue(e, t) {
-		return Ue(this.getOptionValue(e)) == Ue(t);
+		return Ge(this.getOptionValue(e)) == Ge(t);
 	}
 	setOptionValue(e, t) {
 		let n = e.toLowerCase();
@@ -10596,12 +10603,12 @@ var U = {
 	}
 	nonDefaultOptions() {
 		let e = {};
-		for (let t in this.options) U[t] && !this.optionEQvalue(t, U[t].value) && (e[t] = this.options[t].value);
+		for (let t in this.options) W[t] && !this.optionEQvalue(t, W[t].value) && (e[t] = this.options[t].value);
 		return e;
 	}
 	unknownOptions() {
 		let e = [];
-		for (let t in this.options) U[t] ?? e.push(t);
+		for (let t in this.options) W[t] ?? e.push(t);
 		return e;
 	}
 	setOptions(e) {
@@ -10643,10 +10650,10 @@ var U = {
 		return e;
 	}
 	getERD() {
-		return this._erd ??= ye(this).generateERD(), this._erd;
+		return this._erd ??= be(this).generateERD(), this._erd;
 	}
 	getDDL() {
-		return this._ddl ??= ye(this).generateFullDDL() + this._makeFooter(), this._ddl;
+		return this._ddl ??= be(this).generateFullDDL() + this._makeFooter(), this._ddl;
 	}
 	_makeFooter() {
 		let e = (e) => e.replace(/\/\*/g, "--<--").replace(/\*\//g, "-->--").replace(/\/*\s*Non-default options:/g, ""), t = `-- Generated by Radicle ExpreSQL ${this.version()} ${(/* @__PURE__ */ new Date()).toLocaleString()}\n\n`;
@@ -10655,35 +10662,35 @@ var U = {
 		return t += "\n*/", t;
 	}
 	getErrors() {
-		return this._errors ??= ze.findErrors(this), this._errors;
+		return this._errors ??= Be.findErrors(this), this._errors;
 	}
 	version() {
-		return G();
+		return Ze();
 	}
 };
-function We(e, t) {
-	return Oe(e, t);
-}
-function Ge(e, t) {
-	return new W(e, t).getERD();
-}
 function Ke(e, t) {
-	return new W(e, t).getDDL();
+	return ke(e, t);
 }
 function qe(e, t) {
-	return new W(e, t).getErrors();
+	return new G(e, t).getERD();
 }
-function Je(e, t, n) {
-	let r = new W(t, n), i = new W(e, n);
-	return xe(r).compute(i, r);
+function Je(e, t) {
+	return new G(e, t).getDDL();
 }
-function G() {
+function Ye(e, t) {
+	return new G(e, t).getErrors();
+}
+function Xe(e, t, n) {
+	let r = new G(t, n), i = new G(e, n);
+	return Se(r).compute(i, r);
+}
+function Ze() {
 	return "2.0.0";
 }
-W.toDDL = Ke, W.toERD = Ge, W.toErrors = qe, W.toDiff = Je, W.fromJSON = We, W.version = G, W.lexer = x;
+G.toDDL = Je, G.toERD = qe, G.toErrors = Ye, G.toDiff = Xe, G.fromJSON = Ke, G.version = Ze, G.lexer = x;
 //#endregion
 //#region src/oracle/types.ts
-var Ye = "generated by default on null as identity";
+var Qe = "generated by default on null as identity";
 function K(e, t, n) {
 	switch (e.base) {
 		case "varchar": return `varchar2(${e.varcharLen ?? 4e3}${t})`;
@@ -10706,15 +10713,15 @@ function q(e) {
 	let t = e.getOptionValue("db");
 	return t != null && t.length > 0 && 23 <= (p(t) ?? 0);
 }
-function Xe(e, t, n) {
-	return t.optionEQvalue("pk", "identityDataType") ? Ye : t.optionEQvalue("pk", "seq") ? ("default on null " + e + n.seq + ".NEXTVAL ").toLowerCase() : t.optionEQvalue("pk", "guid") ? "default on null to_number(sys_guid(), 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX') " : "not null";
+function $e(e, t, n) {
+	return t.optionEQvalue("pk", "identityDataType") ? Qe : t.optionEQvalue("pk", "seq") ? ("default on null " + e + n.seq + ".NEXTVAL ").toLowerCase() : t.optionEQvalue("pk", "guid") ? "default on null to_number(sys_guid(), 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX') " : "not null";
 }
 //#endregion
 //#region src/oracle/view.ts
-function Ze(e) {
+function et(e) {
 	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
 }
-var Qe = class {
+var tt = class {
 	constructor(e, t) {
 		this.ctx = e, this.naming = t;
 	}
@@ -10729,7 +10736,7 @@ var Qe = class {
 		let t = this.ctx.objPrefix() + e.parseName(), n = e.src, r = this._buildViewSetup(e, n);
 		if (r === null) return "";
 		let i = "create or replace view " + t;
-		e.annotations !== null && (i += "\nannotations (" + e.annotations + ")"), i += " as\n", i += "select\n", i += this._buildViewColList(e, n, r.aliasMap, r.tblCache, r.colCnts, r.tblTransCols, r.maxLen), i = Ze(i);
+		e.annotations !== null && (i += "\nannotations (" + e.annotations + ")"), i += " as\n", i += "select\n", i += this._buildViewColList(e, n, r.aliasMap, r.tblCache, r.colCnts, r.tblTransCols, r.maxLen), i = et(i);
 		let { sortedTables: a, joinConditions: o } = this._sortViewTables(e, n, r.tblCache);
 		if (i += "from\n", i += this._buildViewFromClause(e, a, r.aliasMap, o, r.tblTransCols, r.tblCache), this.ctx.optionEQvalue("tenantid", !0) && a.length > 0) {
 			let e = r.tblCache[a[0]];
@@ -10937,7 +10944,7 @@ var Qe = class {
 		}
 		2 > o && (o = 2);
 		let c = "create table " + r + " (\n", u = O + " ".repeat(o - 2);
-		c += O + "id" + u + "number " + Xe(r, this.ctx, this.naming) + "\n", c += O + O + " ".repeat(o) + "constraint " + r + "_id" + this.naming.pk + " primary key,\n", u = O + " ".repeat(o - s.length), c += O + s + u + "number not null,\n", u = O + " ".repeat(o - 13), c += O + "language_code" + u + `varchar2(5${i}) not null,\n`;
+		c += O + "id" + u + "number " + $e(r, this.ctx, this.naming) + "\n", c += O + O + " ".repeat(o) + "constraint " + r + "_id" + this.naming.pk + " primary key,\n", u = O + " ".repeat(o - s.length), c += O + s + u + "number not null,\n", u = O + " ".repeat(o - 13), c += O + "language_code" + u + `varchar2(5${i}) not null,\n`;
 		for (let e of t) {
 			let t = "trans_" + e.parseName();
 			u = O + " ".repeat(o - t.length);
@@ -10972,10 +10979,10 @@ var Qe = class {
 };
 //#endregion
 //#region src/oracle/plsql.ts
-function $e(e) {
+function nt(e) {
 	return e.isOption("lower") ? "lower" : e.isOption("upper") ? "upper" : "";
 }
-function et(e) {
+function rt(e) {
 	let t = e.getExplicitPkName();
 	if (t == null || t.includes(",")) return null;
 	let n = e.findChild(t);
@@ -10999,7 +11006,7 @@ var J = class {
 		let i = !1, a = e.apexUser();
 		e.hasRowKey() && (r += "    :new.row_key := compress_int(row_key_seq.nextval);\n", i = !0);
 		for (let t of e.children) {
-			let e = $e(t);
+			let e = nt(t);
 			e !== "" && (r += "    :new." + t.parseName().toLowerCase() + " := " + e + "(:new." + t.parseName().toLowerCase() + ");\n", i = !0);
 		}
 		if (e.hasRowVersion() && (r += "    :new.row_version := 1;\n", i = !0), e.hasAuditCols()) {
@@ -11026,7 +11033,7 @@ var J = class {
 		o += "    before update\n    on " + a + "\n    for each row\nbegin\n";
 		let s = e.apexUser();
 		for (let t of e.children) {
-			let e = $e(t);
+			let e = nt(t);
 			e !== "" && (o += "    :new." + t.parseName().toLowerCase() + " := " + e + "(:new." + t.parseName().toLowerCase() + ");\n");
 		}
 		if (n && (o += "    :new.row_version := nvl(:old.row_version, 0) + 1;\n"), r) {
@@ -11050,7 +11057,7 @@ var J = class {
 		i += O + O + "p_" + a + "        in  " + s + n, this._hasSyntheticTenantId(e) && (i += ",\n" + O + O + "p_tenant_id   " + r + "  integer" + n);
 		for (let t in e.fks ?? {}) {
 			let a = e.fks[t], o = "integer", s = this.ctx.find(a);
-			s !== null && (o = et(s) ?? o), i += ",\n" + O + O + "P_" + t + "   " + r + "  " + o + n;
+			s !== null && (o = rt(s) ?? o), i += ",\n" + O + O + "P_" + t + "   " + r + "  " + o + n;
 		}
 		for (let t of e.regularColumns()) i += ",\n" + O + O + "P_" + t.parseName() + "   " + r + "  " + t.getPlsqlType() + n;
 		return i += "\n    )", i;
@@ -11341,19 +11348,19 @@ var J = class {
 		let t = (e + "tenant_ctx").toLowerCase(), n = (e + "tenant_bootstrap").toLowerCase(), r = `create or replace package body ${n} as\n\n`;
 		return r += `${O}procedure set_id(p_tenant_id in integer) is\n`, r += `${O}begin\n`, r += `${O}${O}dbms_session.set_context('${t}', 'tenant_id', to_char(p_tenant_id));\n`, r += `${O}end set_id;\n\n`, r += `${O}procedure clear_id is\n`, r += `${O}begin\n`, r += `${O}${O}dbms_session.clear_context('${t}');\n`, r += `${O}end clear_id;\n\n`, r += `end ${n};\n/\n`, r;
 	}
-}, tt = " not null";
-function nt(e) {
+}, it = " not null";
+function at(e) {
 	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
 }
-var Y = class extends F {
+var Y = class extends P {
 	constructor(e, t) {
-		super(e), this._naming = t ?? D, this._view = new Qe(e, this._naming), this._plsql = new J(e, this._naming);
+		super(e), this._naming = t ?? D, this._view = new tt(e, this._naming), this._plsql = new J(e, this._naming);
 	}
 	colType(e) {
 		return this._toOracleType(e);
 	}
 	_pkTypeModifier(e, t) {
-		return Xe(e, this._ddl, t ?? this._naming);
+		return $e(e, this._ddl, t ?? this._naming);
 	}
 	_globalOnDelete() {
 		let e = this._ddl.getOptionValue("ondelete") ?? "";
@@ -11463,7 +11470,7 @@ var Y = class extends F {
 				for (let t in e.children) {
 					let n = e.children[t];
 					if (r === n.parseName()) {
-						(n.isOption("nn") || n.isOption("notnull")) && (o = tt), n.isOption("cascade") ? a = " on delete cascade" : n.isOption("setnull") && (a = " on delete set null");
+						(n.isOption("nn") || n.isOption("notnull")) && (o = it), n.isOption("cascade") ? a = " on delete cascade" : n.isOption("setnull") && (a = " on delete set null");
 						break;
 					}
 				}
@@ -11637,7 +11644,7 @@ var Y = class extends F {
 		let n = this._ddl.getOptionValue("db"), r = n !== null && n.length > 0 && 23 <= (p(n) ?? 0), i = "";
 		e.isOption("immutable") && r && (i = "immutable ");
 		let a = e.getGenIdColName(), o = this._genSequence(e, t);
-		return o += this._genTableHeader(e, t, i, a), o += this._genTenantIdColumn(e), o += this._genFkColumns(e, t), o += this._genRowKeyColumn(e, t), o += this._genRegularColumns(e, t, a), o += this._genRowVersionColumn(e), o += this._genAuditColumns(e), o += this._genAdditionalColumns(e), o += e.genConstraint(), o = nt(o), o += this._genTableFooter(e, t, i, r), o += this._genMultiColFkAlters(e, t), o += this._genIndexes(e, t, r), this._genTenantIdFk(e, t), o += this._genComments(e, t), o += "\n", o;
+		return o += this._genTableHeader(e, t, i, a), o += this._genTenantIdColumn(e), o += this._genFkColumns(e, t), o += this._genRowKeyColumn(e, t), o += this._genRegularColumns(e, t, a), o += this._genRowVersionColumn(e), o += this._genAuditColumns(e), o += this._genAdditionalColumns(e), o += e.genConstraint(), o = at(o), o += this._genTableFooter(e, t, i, r), o += this._genMultiColFkAlters(e, t), o += this._genIndexes(e, t, r), this._genTenantIdFk(e, t), o += this._genComments(e, t), o += "\n", o;
 	}
 	generateDDL(e) {
 		if (e.inferType() === "view" || e.inferType() === "dv") return "";
@@ -11839,7 +11846,7 @@ var Y = class extends F {
 		}
 		return n;
 	}
-}, rt = {
+}, ot = {
 	drop_package: 1,
 	drop_view: 2,
 	drop_fk: 3,
@@ -11880,7 +11887,7 @@ function Z(e, t, n, r, i = !1) {
 	};
 	return r !== void 0 && (a.column = r), a;
 }
-var it = class {
+var st = class {
 	compute(e, t) {
 		let n = [], r = [], i = this._tableMap(e), a = this._tableMap(t), o = this._viewMap(e), s = this._viewMap(t), c = [];
 		for (let [e, t] of i) a.has(e) || c.push(t);
@@ -12318,7 +12325,7 @@ var it = class {
 		return [...e].sort((e, t) => this._step(e) - this._step(t));
 	}
 	_step(e) {
-		return e.kind === "create_package" ? e.sql.toLowerCase().includes("package body ") ? 17 : 15 : rt[e.kind] ?? 99;
+		return e.kind === "create_package" ? e.sql.toLowerCase().includes("package body ") ? 17 : 15 : ot[e.kind] ?? 99;
 	}
 	_summary(e, t, n, r) {
 		let i = 0, a = 0, o = 0;
@@ -12387,7 +12394,7 @@ function $(e, t) {
 	let i = n.findChild(r);
 	return i == null ? "integer" : Q(i._inferTypeFull());
 }
-var at = class {
+var ct = class {
 	constructor(e, t) {
 		this.ctx = e, this.naming = t;
 	}
@@ -12598,13 +12605,13 @@ var at = class {
 		}
 		return l += `    set p_result = json_object('${n}': p_${n});\n`, l += "end @\n\n", l += `create or replace procedure ${t}_rst.del (\n`, l += `    in  p_${n} ${r},\n`, l += "    out p_result  varchar(32000),\n", l += "    out p_status  integer\n", l += ")\nlanguage sql\nbegin\n", l += "    declare p_svc_status varchar(20);\n", l += "    declare continue handler for sqlexception\n", l += "    begin\n", l += "        get diagnostics exception 1 p_result = message_text;\n", l += "        set p_result = json_object('error': p_result);\n", l += "        set p_status = 500;\n", l += "    end;\n", l += "    set p_status = 200;\n", i ? l += `    call ${t}_svc.del(p_${n}, p_svc_status);\n` : (l += "    -- private delete (absorbed from absent _svc/_dal)\n", o && (l += `    call ${t}_hks.p_before_delete(p_${n});\n`), l += `    delete from ${t} where ${n} = p_${n};\n`), l += `    set p_result = json_object('${n}': p_${n}, 'deleted': 1);\n`, l += "end @\n\n", l;
 	}
-}, ot = " not null";
-function st(e) {
+}, lt = " not null";
+function ut(e) {
 	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
 }
-var ct = class extends F {
+var dt = class extends P {
 	constructor(e, t) {
-		super(e), this._naming = t ?? D, this._plsql = new at(e, this._naming);
+		super(e), this._naming = t ?? D, this._plsql = new ct(e, this._naming);
 	}
 	colType(e) {
 		return Q(e);
@@ -12700,7 +12707,7 @@ var ct = class extends F {
 				for (let t in e.children) {
 					let n = e.children[t];
 					if (r === n.parseName()) {
-						(n.isOption("nn") || n.isOption("notnull")) && (o = ot), n.isOption("cascade") ? a = " on delete cascade" : n.isOption("setnull") && (a = " on delete set null");
+						(n.isOption("nn") || n.isOption("notnull")) && (o = lt), n.isOption("cascade") ? a = " on delete cascade" : n.isOption("setnull") && (a = " on delete set null");
 						break;
 					}
 				}
@@ -12818,7 +12825,7 @@ var ct = class extends F {
 		}
 		e.lateInitFks();
 		let t = this._ddl.objPrefix() + e.parseName(), n = e.getGenIdColName(), r = this._genSequence(t);
-		return r += this._genTableHeader(e, t, n), r += this._genFkColumns(e, t), r += this._genRegularColumns(e, n), r += this._genRowVersionColumn(e), r += this._genAuditColumns(e), r += this._genAdditionalColumns(e), r += e.genConstraint(), r = st(r), r += this._genTableFooter(e, t), r += this._genMultiColFkAlters(e, t), r += this._genIndexes(e, t), r += this._genComments(e, t), r += "\n", r;
+		return r += this._genTableHeader(e, t, n), r += this._genFkColumns(e, t), r += this._genRegularColumns(e, n), r += this._genRowVersionColumn(e), r += this._genAuditColumns(e), r += this._genAdditionalColumns(e), r += e.genConstraint(), r = ut(r), r += this._genTableFooter(e, t), r += this._genMultiColFkAlters(e, t), r += this._genIndexes(e, t), r += this._genComments(e, t), r += "\n", r;
 	}
 	generateDDL(e) {
 		if (e.inferType() === "view") return "";
@@ -12894,6 +12901,6 @@ var ct = class extends F {
 		return n;
 	}
 };
-ve("oracle", (e) => new Y(e)), ve("db2", (e) => new ct(e)), be("oracle", (e) => new it());
+L("oracle", (e) => new Y(e)), L("db2", (e) => new dt(e)), xe("oracle", (e) => new st());
 //#endregion
-export { F as BaseGenerator, xe as createDiffGenerator, W as default, W as expresql, G as expresql_version, We as fromJSON, be as registerDiffGenerator, ve as registerGenerator, Ke as toDDL, Je as toDiff, Ge as toERD, qe as toErrors };
+export { P as BaseGenerator, Se as createDiffGenerator, G as default, G as expresql, Ze as expresql_version, Ke as fromJSON, xe as registerDiffGenerator, L as registerGenerator, Je as toDDL, Xe as toDiff, qe as toERD, Ye as toErrors };

@@ -214,6 +214,34 @@ Modello: `667ecfd`. `"2WAY"` classificato erroneamente come numerico dal
 lexer, valore emesso senza quote → DDL invalido. Fix nel lexer/generatore,
 indipendente dai tier.
 
+**Fatto**. Confermato il bug con un dump diretto prima di correggere:
+`/check 2WAY,3WAY` produceva `check (match_type in (2WAY,3WAY))` — DDL
+invalido, ORA-00907. La causa non è nel lexer (il nome del task era
+impreciso, il modello `667ecfd` la corregge in `node.ts`, non nel lexer): il
+lexer marca qualunque token che inizia per cifra come `constant.numeric`,
+anche quando il resto non è numerico (`2WAY`, `24H`, `1ST`); `listValues()`
+si fidava di quella classificazione senza verificarne il contenuto reale.
+Aggiunto `_isPureNumericLiteral()` (regex `^-?\d+(\.\d+)?$`) e
+`_isUnquotedNonNumericToken()` (identifier, oppure numeric-ma-non-realmente-
+numerico) — sostituiscono il controllo diretto `type === 'identifier'` nei
+due punti di `listValues()` (branch a separatore spazio, branch a
+separatore virgola/aggregato). Nessun tocco al lexer stesso, come da
+modello — comportamento di stringhe già quotate e literal backtick
+invariato.
+
+Durante la verifica trovata una piccola asimmetria non prevista dal modello:
+il branch a virgola già escludeva `'null'` dalla quotatura per il valore
+*durante* il loop (`aggrVal !== 'null'` prima del `continue` sul
+separatore) — evidentemente un fix precedente indipendente su `tapi-ext` —
+ma non per l'**ultimo** valore della lista, gestito dopo la fine del loop
+con uno statement separato privo dello stesso guard. Corretto per simmetria
+(stesso punto toccato dal modello `667ecfd`, che aggiunge esattamente questo
+guard lì).
+
+3 test nuovi in `small.test.ts` (quotatura valori tipo `2WAY`, valori
+numerici reali restano non quotati, `null` finale in lista a virgola resta
+non quotato). 875/875 verdi, build completa pulita.
+
 ### 6. Fix inferenza tipo: `vc`/`int`/`vector` espliciti vincono su euristica `is_`
 Modello: `515ce36`. Un tipo esplicito (`vc1 /check Y,N`) non deve essere
 scavalcato dall'euristica boolean su colonne `is_*`/`*_yn`. Fix nella fase di

@@ -87,6 +87,28 @@ function _nameImpliesDate(colName: string, src: LexerToken[], datePos: number): 
     return false;
 }
 
+// Matches only a genuine plain numeric literal (optional leading '-', digits, optional decimal
+// part).
+const NUMERIC_LITERAL_RE = /^-?\d+(\.\d+)?$/;
+function _isPureNumericLiteral(value: string): boolean {
+    return NUMERIC_LITERAL_RE.test(value);
+}
+
+// Used by listValues() to decide whether a bare /check or /values token needs quoting as a
+// string literal. Mirrors the original rule (quote when the lexer tagged the token 'identifier')
+// but ALSO catches a lexer misclassification: the lexer tags ANY token starting with a digit as
+// 'constant.numeric', even when the rest of the token isn't numeric at all (e.g. "2WAY", "3WAY",
+// "24H", "1ST"). That produced invalid, unquoted DDL for /check lists whose values happen to
+// start with a digit — check (status in (2WAY,3WAY)) instead of
+// check (status in ('2WAY','3WAY')), ORA-00907. Already-quoted string literals and backtick
+// pass-through literals are never tagged 'identifier' or (falsely) 'constant.numeric' by the
+// lexer, so they're unaffected by either branch here — only genuinely bare, unquoted tokens get
+// quoted, exactly as before.
+function _isUnquotedNonNumericToken(tokenType: string, value: string): boolean {
+    if (tokenType === 'identifier') return true;
+    return tokenType === 'constant.numeric' && !_isPureNumericLiteral(value);
+}
+
 // ── DdlNode class ─────────────────────────────────────────────────────────────
 
 export class DdlNode implements IDdlNode {
@@ -645,7 +667,7 @@ export class DdlNode implements IDdlNode {
         if (separator === ' ') {
             for (let i = from + 1; i < this.src.length && this.src[i].value !== '/' && this.src[i].value !== '['; i++) {
                 let value: string = this.src[i].value;
-                if (this.src[i].type === 'identifier' && value !== 'null') value = "'" + value + "'";
+                if (_isUnquotedNonNumericToken(this.src[i].type, value) && value !== 'null') value = "'" + value + "'";
                 if (value.charAt(0) === '`') value = value.substring(1, value.length - 1);
                 ret.push(value);
             }
@@ -665,10 +687,10 @@ export class DdlNode implements IDdlNode {
             }
             if (value === '(' || value === ')') continue;
             if (value.charAt(0) === '`') value = value.substring(1, value.length - 1);
-            else if (this.src[i].type === 'identifier') type = 'identifier';
+            else if (_isUnquotedNonNumericToken(this.src[i].type, value)) type = 'identifier';
             aggrVal = aggrVal === null ? value : aggrVal + spacer + value;
         }
-        if (type === 'identifier') aggrVal = "'" + aggrVal + "'";
+        if (type === 'identifier' && aggrVal !== 'null') aggrVal = "'" + aggrVal + "'";
         ret.push(aggrVal);
         return ret;
     }
