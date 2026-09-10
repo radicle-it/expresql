@@ -1,7 +1,7 @@
 ﻿# ExpreSQL — Layered TAPI Architecture Specification
 
 **Status**: Specification  
-**Version**: 1.9  
+**Version**: 1.10  
 **Author**: Roberto Capancioni — Radicle s.r.l.  
 **Date**: 2026-05-08  
 **Target Platform**: Oracle Database 19c, Oracle APEX 22.1+, ORDS 23+
@@ -1409,6 +1409,21 @@ END app_errors;
 /
 ```
 
+### 9.1 Bracketed classification tokens
+
+Every `raise_application_error` call generated for `c_err_stale_data`, `c_err_not_found`, `c_err_locked`, or the `dup_val_on_index` handler prefixes its message with a bracketed token — `[STALE_DATA]`, `[NOT_FOUND]`, `[LOCKED]`, `[DUPLICATE]` — matching the error it is paired with:
+
+```sql
+raise_application_error(c_err_stale_data, '[STALE_DATA] row modified by another session. reload and retry.');
+raise_application_error(c_err_not_found,  '[NOT_FOUND] doctors: record not found (id=' || p_id || ')');
+raise_application_error(c_err_locked,     '[LOCKED] doctors: record locked by another session');
+raise_application_error(-20010,           '[DUPLICATE] duplicate value on unique constraint.');
+```
+
+Reason: a wrapping layer (e.g. APEX_EXEC's `p_dml_plsql_code`) can re-raise any custom-code exception as a generic `ORA-20987`, discarding the original SQLCODE. A bracketed token lets a caller classify the error from message text alone, without depending on a numeric SQLCODE substring that can collide with unrelated codes.
+
+The convention applies uniformly across every tier, including the degraded/absorbed forms: `full`/`full+hks` emit it from `_dal`'s `lock_by_id`/`update_row` and `_svc`'s `create_rec`; `service`/`service+hks`/`lookup`/`lookup+hks` emit the identical wording from the private DML absorbed into whichever package sits above the missing `_dal` (`_generatePrivateDml`'s `p_get_by_id`/`p_update_row`) — same message, same bracketed token, different call site.
+
 ---
 
 ## 10. Grant Strategy
@@ -1550,3 +1565,4 @@ SELECT application_id, page_id, process_name, process_text
 | 1.7     | 2026-05-05 | Roberto Capancioni | DAL: `lock_by_id` function added (SELECT FOR UPDATE NOWAIT); `c_err_locked` constant (-20003); `resource_busy` exception with PRAGMA EXCEPTION_INIT(-54) declared at body level; §4.3 extended with check-then-act pattern, SVC usage example, and guidance on when to use `lock_by_id` vs `get_by_id`; §7.2.3 APEX error handler updated with -20003 mapping; §8 audit body corrected to `l_rec t_rec` pattern (was showing old scalar named-param call); §9 error range and `app_errors` package updated with `c_locked`; §6.2 rewritten — ExpreSQL generates a single SQL block, not separate files; file management is a deployment discipline, not a generator feature; `_hks_impl.sql` naming is a developer convention, not enforced by ExpreSQL |
 | 1.8     | 2026-05-08 | Roberto Capancioni | §3.4 Tier Model: 6-tier system (`lookup` `lookup+hks` `service` `service+hks` `full` `full+hks`) selects minimum package set per table; tier is the argument to `/api` on each table — `api` key removed from settings block; `+hks` suffix formalises developer-owned `_hks` body; cross-entity coupling constraint and tier selection guide added; `_audit` noted as orthogonal to tier; §3.4 Design Decisions renumbered to §3.5; §3 title "Four-Layer" → "Layered"; §7.1 and §8 settings examples updated; §11 TypeScript simplified with `hasDal`/`hasHks`/`hasSvc` flags and legacy numeric alias mapping |
 | 1.9     | 2026-05-08 | Roberto Capancioni | §3.4 Degradation rule: explicit principle — each layer calls the one below if present, absorbs it as private procedures if absent; cascading table and per-tier consequences added; `service+hks` complete body example showing private DML section; `lookup+hks` pattern described; `_rst` and `_audit` noted as orthogonal to tier in tier table; §6.3 `_hks` spec: `before/after_delete` parameter type is `_dal.t_id` when `_dal` is present, `table.id%TYPE` otherwise — documented with both variants; §6.4/§6.5 bodies updated with conditional type note; §7.1 `ifc` setting: three explicit values (`"apex"` / `"rest"` / `"both"`) replace the previous two-value implicit behaviour; §8 output order updated with `_rst` conditional line; §11 TypeScript: `getOption` → `getOptionValue`; `hasDal` passed to `_generateHksSpec` and `_generateHksBody`; `hasDal`/`hasHks` passed to `_generateSvcBody`; `hasSvc`/`hasDal` passed to `_generateApxBody` and `_generateRstBody`; IFC generation replaced with explicit three-way `ifc` switch |
+| 1.10    | 2026-09-10 | Roberto Capancioni | §9.1 added: `raise_application_error` messages for `c_err_stale_data`/`c_err_not_found`/`c_err_locked`/`dup_val_on_index` now carry a bracketed token (`[STALE_DATA]`, `[NOT_FOUND]`, `[LOCKED]`, `[DUPLICATE]`) so callers behind a wrapping layer (e.g. `APEX_EXEC`'s `p_dml_plsql_code`, which re-raises any custom-code exception as a generic `ORA-20987`) can classify the error from message text alone; applied uniformly across every tier, including the degraded/absorbed forms (`_generatePrivateDml`'s `p_get_by_id`/`p_update_row`) and every `dup_val_on_index` site in `_app`'s own `ins`/`upd`, not just `_svc.create_rec` — generator updated in `src/oracle/plsql.ts` |

@@ -322,7 +322,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}return l_row;\n`;
         r += `${tab}exception\n`;
         r += `${tab}${tab}when no_data_found then\n`;
-        r += `${tab}${tab}${tab}raise_application_error(-20002, '${tbl}: record not found (id=' || p_id || ')');\n`;
+        r += `${tab}${tab}${tab}raise_application_error(-20002, '[NOT_FOUND] ${tbl}: record not found (id=' || p_id || ')');\n`;
         r += `${tab}end p_get_by_id;\n\n`;
 
         // p_get_all — weak ref cursor (sys_refcursor): absorbed for the same reason as
@@ -396,10 +396,10 @@ export class OraclePlsqlBuilder {
             } else {
                 r += `${tab}${tab}${tab}${tab}select 1 into l_dummy from ${tbl} where ${pkNm} = l_id;\n`;
             }
-            r += `${tab}${tab}${tab}${tab}raise_application_error(-20001, 'row modified by another session. reload and retry.');\n`;
+            r += `${tab}${tab}${tab}${tab}raise_application_error(-20001, '[STALE_DATA] row modified by another session. reload and retry.');\n`;
             r += `${tab}${tab}${tab}exception\n`;
             r += `${tab}${tab}${tab}${tab}when no_data_found then\n`;
-            r += `${tab}${tab}${tab}${tab}${tab}raise_application_error(-20002, 'record ' || l_id || ' does not exist.');\n`;
+            r += `${tab}${tab}${tab}${tab}${tab}raise_application_error(-20002, '[NOT_FOUND] record ' || l_id || ' does not exist.');\n`;
             r += `${tab}${tab}${tab}end;\n`;
             r += `${tab}${tab}end if;\n`;
         }
@@ -505,9 +505,9 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}return l_row;\n`;
         r += `${tab}exception\n`;
         r += `${tab}${tab}when no_data_found then\n`;
-        r += `${tab}${tab}${tab}raise_application_error(c_err_not_found, '${tbl}: record not found (id=' || p_id || ')');\n`;
+        r += `${tab}${tab}${tab}raise_application_error(c_err_not_found, '[NOT_FOUND] ${tbl}: record not found (id=' || p_id || ')');\n`;
         r += `${tab}${tab}when resource_busy then\n`;
-        r += `${tab}${tab}${tab}raise_application_error(c_err_locked, '${tbl}: record locked by another session');\n`;
+        r += `${tab}${tab}${tab}raise_application_error(c_err_locked, '[LOCKED] ${tbl}: record locked by another session');\n`;
         r += `${tab}end lock_by_id;\n\n`;
 
         // get_by_<unique_col> — one function per /unique column; NO_DATA_FOUND propagates.
@@ -593,10 +593,10 @@ export class OraclePlsqlBuilder {
             } else {
                 r += `${tab}${tab}${tab}${tab}select 1 into l_dummy from ${tbl} where ${pkName} = l_id;\n`;
             }
-            r += `${tab}${tab}${tab}${tab}raise_application_error(c_err_stale_data, 'row modified by another session. reload and retry.');\n`;
+            r += `${tab}${tab}${tab}${tab}raise_application_error(c_err_stale_data, '[STALE_DATA] row modified by another session. reload and retry.');\n`;
             r += `${tab}${tab}${tab}exception\n`;
             r += `${tab}${tab}${tab}${tab}when no_data_found then\n`;
-            r += `${tab}${tab}${tab}${tab}${tab}raise_application_error(c_err_not_found, 'record ' || l_id || ' does not exist.');\n`;
+            r += `${tab}${tab}${tab}${tab}${tab}raise_application_error(c_err_not_found, '[NOT_FOUND] record ' || l_id || ' does not exist.');\n`;
             r += `${tab}${tab}${tab}end;\n`;
             r += `${tab}${tab}end if;\n`;
         }
@@ -785,7 +785,7 @@ export class OraclePlsqlBuilder {
         if (hasUniq) {
             r += `${tab}exception\n`;
             r += `${tab}${tab}when dup_val_on_index then\n`;
-            r += `${tab}${tab}${tab}raise_application_error(-20010, 'duplicate value on unique constraint.');\n`;
+            r += `${tab}${tab}${tab}raise_application_error(-20010, '[DUPLICATE] duplicate value on unique constraint.');\n`;
         }
         r += `${tab}end create_rec;\n\n`;
 
@@ -985,7 +985,7 @@ export class OraclePlsqlBuilder {
             if (hasUniq) {
                 r += `${tab}exception\n`;
                 r += `${tab}${tab}when dup_val_on_index then\n`;
-                r += `${tab}${tab}${tab}raise_application_error(-20010, 'duplicate value on unique constraint.');\n`;
+                r += `${tab}${tab}${tab}raise_application_error(-20010, '[DUPLICATE] duplicate value on unique constraint.');\n`;
             }
         }
         r += `${tab}end ins;\n\n`;
@@ -1022,7 +1022,7 @@ export class OraclePlsqlBuilder {
             if (hasUniq) {
                 r += `${tab}exception\n`;
                 r += `${tab}${tab}when dup_val_on_index then\n`;
-                r += `${tab}${tab}${tab}raise_application_error(-20010, 'duplicate value on unique constraint.');\n`;
+                r += `${tab}${tab}${tab}raise_application_error(-20010, '[DUPLICATE] duplicate value on unique constraint.');\n`;
             }
         }
         r += `${tab}end upd;\n\n`;

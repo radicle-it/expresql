@@ -1941,3 +1941,69 @@ describe('auto-generated PK — unaffected by the user-defined-PK filter', () =>
     });
 
 });
+
+// ── Hardened error messages — bracketed classification tokens ────────────────
+// A wrapping layer (e.g. APEX_EXEC's p_dml_plsql_code) can re-raise any custom-code
+// exception as a generic ORA-20987, discarding the original SQLCODE. A bracketed token
+// in the message text lets a caller classify the error from the message alone. Model:
+// main commit 6a31922. tapi-ext's degraded tiers (_generatePrivateDml's absorbed DML,
+// and the extra dup_val_on_index sites in _app's own ins/upd) didn't exist in main's DAL-
+// always world at that commit, so they're not in the model — hardened here for the same
+// reason, applying the same principle consistently across every tier.
+
+describe('hardened error messages — full+hks tier (DAL present)', () => {
+
+    const qsql = `doctors /api\n  name vc200 /nn\n  email vc200 /nn /unique\n  row_version num /nn\n# settings = {"api": "layered"}`;
+
+    test('DAL lock_by_id: [NOT_FOUND] and [LOCKED]', () => {
+        const out = ddl(qsql);
+        const dalBody = segment(out, 'create or replace package body doctors_dal', 'end doctors_dal;');
+        const lockById = segment(dalBody, 'function lock_by_id', 'end lock_by_id;');
+        expect(lockById).toContain("'[NOT_FOUND] doctors: record not found (id=' || p_id || ')'");
+        expect(lockById).toContain("'[LOCKED] doctors: record locked by another session'");
+    });
+
+    test('DAL update_row stale-data check: [STALE_DATA] and [NOT_FOUND]', () => {
+        const out = ddl(qsql);
+        const dalBody = segment(out, 'create or replace package body doctors_dal', 'end doctors_dal;');
+        const updateRow = segment(dalBody, 'procedure update_row', 'end update_row;');
+        expect(updateRow).toContain("'[STALE_DATA] row modified by another session. reload and retry.'");
+        expect(updateRow).toContain("'[NOT_FOUND] record ' || l_id || ' does not exist.'");
+    });
+
+    test('SVC create_rec dup_val_on_index: [DUPLICATE]', () => {
+        const out = ddl(qsql);
+        const svcBody = segment(out, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        const createRec = segment(svcBody, 'procedure create_rec', 'end create_rec;');
+        expect(createRec).toContain("'[DUPLICATE] duplicate value on unique constraint.'");
+    });
+
+});
+
+describe('hardened error messages — degraded tiers (private DML absorption)', () => {
+
+    test('service tier (no DAL): absorbed p_get_by_id uses [NOT_FOUND]', () => {
+        const out = ddl(`doctors /api service\n  name vc200 /nn`);
+        const svcBody = segment(out, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        const pGetById = segment(svcBody, 'function p_get_by_id', 'end p_get_by_id;');
+        expect(pGetById).toContain("'[NOT_FOUND] doctors: record not found (id=' || p_id || ')'");
+    });
+
+    test('service tier (no DAL): absorbed p_update_row stale-data check uses [STALE_DATA] and [NOT_FOUND]', () => {
+        const out = ddl(`doctors /api service\n  name vc200 /nn\n  row_version num /nn`);
+        const svcBody = segment(out, 'create or replace package body doctors_svc', 'end doctors_svc;');
+        const pUpdateRow = segment(svcBody, 'procedure p_update_row', 'end p_update_row;');
+        expect(pUpdateRow).toContain("'[STALE_DATA] row modified by another session. reload and retry.'");
+        expect(pUpdateRow).toContain("'[NOT_FOUND] record ' || l_id || ' does not exist.'");
+    });
+
+    test('lookup tier (no svc, no dal): _app ins/upd hasUniq handler uses [DUPLICATE]', () => {
+        const out = ddl(`doctors /api lookup\n  email vc200 /nn /unique`);
+        const appBody = segment(out, 'create or replace package body doctors_app', 'end doctors_app;');
+        const insProc = segment(appBody, 'procedure ins (', 'end ins;');
+        expect(insProc).toContain("'[DUPLICATE] duplicate value on unique constraint.'");
+        const updProc = segment(appBody, 'procedure upd (', 'end upd;');
+        expect(updProc).toContain("'[DUPLICATE] duplicate value on unique constraint.'");
+    });
+
+});

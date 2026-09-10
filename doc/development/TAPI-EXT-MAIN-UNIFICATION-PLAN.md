@@ -272,6 +272,34 @@ perché un layer chiamante (es. `APEX_EXEC`) rilancia l'eccezione come
 valle. Applicare in ogni punto che solleva questi errori, su ogni tier —
 incluse le procedure private embedded di `service`/`lookup`.
 
+**Fatto**. Il fix del suffisso pacchetto IFC (`_apx` → `_app`) era già stato
+applicato in una fase precedente di questo stesso lavoro di unificazione (su
+istruzione esplicita dell'utente durante il punto 2), quindi qui è servito
+solo il prefisso ai messaggi di errore. Il modello (`6a31922`) tocca 5 punti
+in `plsql.ts`, tutti nel mondo "DAL sempre presente" di `main` a quella data:
+`_dal.lock_by_id` (`[NOT_FOUND]`, `[LOCKED]`), `_dal.update_row` stale-data
+check (`[STALE_DATA]`, `[NOT_FOUND]` annidato), `_svc.create_rec`
+(`[DUPLICATE]`). Il sistema a tier di `tapi-ext` — evoluzione indipendente,
+non esistente su `main` a quella data — duplica esattamente lo stesso
+pattern di messaggi in altri 5 punti non coperti dal modello: le funzioni
+private assorbite in `_generatePrivateDml` (`p_get_by_id`: `[NOT_FOUND]`;
+`p_update_row` stale-data check: `[STALE_DATA]`/`[NOT_FOUND]`) e altri due
+handler `dup_val_on_index` in `_generateAppBody`'s `ins`/`upd` (ramo
+`!hasSvc`, tier `lookup`/`lookup+hks`) oltre a quello in `_svc.create_rec`.
+Applicato lo stesso principio ovunque, per coerenza — lasciare non protetti
+i percorsi assorbiti avrebbe riprodotto lo stesso tipo di inconsistenza già
+corretta ai punti 3 e 4. Il trigger di immutabilità (`co_immutable_err`,
+costanti nominate, non stringa inline) resta fuori scope, come su `main`.
+
+Aggiunta la sezione §9.1 a `TAPI-LAYERED-ARCHITECTURE.md` (v1.9 → v1.10) che
+documenta la convenzione, esplicitamente estesa alle forme degradate/
+assorbite — non presente nel modello (il doc di `main` a quel commit non
+conosceva ancora il sistema a tier).
+
+6 test nuovi in `tapi-layered.test.ts` (tier `full+hks`: DAL/SVC; tier
+degradati: `p_get_by_id`/`p_update_row` assorbiti, `_app` `dup_val_on_index`
+su tier `lookup`). 882/882 verdi, build completa pulita.
+
 ### 8. `/versioned` + `dimensioncolumns` (row-level scope)
 Modello: `c7e6c9b`, il più corposo. Due feature distinte arrivate nello
 stesso commit su `main`:
