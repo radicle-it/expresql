@@ -52,6 +52,7 @@ export function writeSettings(s) {
     add('dv',                 s.dv);
     add('editionable',        s.edit);
     add('api',                s.api);
+    add('ifc',                s.ifc);
     add('apex',               s.apex);
     add('compress',           s.compress);
     add('ondelete',           s.ondelete);
@@ -62,6 +63,7 @@ export function writeSettings(s) {
     addStr('createdbycol',    s.createdbycol);
     addStr('updatedcol',      s.updatedcol);
     addStr('updatedbycol',    s.updatedbycol);
+    addStr('usercontext',     s.usercontext);
     addStr('transcontext',    s.transcontext);
     add('overridesettings',   s.overridesettings);
     add('verbose',            s.verbose);
@@ -112,6 +114,7 @@ export function syncSettingsForm() {
     set('sett-dv',               'dv');
     set('sett-edit',             'editionable');
     set('sett-api',              'api');
+    set('sett-ifc',              'ifc');
     set('sett-apex',             'apex');
     set('sett-compress',         'compress');
     set('sett-ondelete',         'ondelete');
@@ -122,6 +125,7 @@ export function syncSettingsForm() {
     set('sett-createdbycol',     'createdbycol');
     set('sett-updatedcol',       'updatedcol');
     set('sett-updatedbycol',     'updatedbycol');
+    set('sett-usercontext',      'usercontext');
     set('sett-transcontext',     'transcontext');
     set('sett-overridesettings', 'overridesettings');
     set('sett-verbose',          'verbose');
@@ -283,12 +287,14 @@ export function initSettingsPanel() {
             readonlyviews:    v('sett-readonlyviews'),
             drop:             v('sett-drop'),      inserts:         v('sett-inserts'),
             dv:               v('sett-dv'),        edit:            v('sett-edit'),
-            api:              v('sett-api'),       apex:            v('sett-apex'),
+            api:              v('sett-api'),       ifc:             v('sett-ifc'),
+            apex:            v('sett-apex'),
             compress:         v('sett-compress'),
             ondelete:         v('sett-ondelete'),  longvc:          v('sett-longvc'),
             namelen:          v('sett-namelen'),   datalimit:       v('sett-datalimit'),
             createdcol:       v('sett-createdcol'),    createdbycol: v('sett-createdbycol'),
             updatedcol:       v('sett-updatedcol'),    updatedbycol: v('sett-updatedbycol'),
+            usercontext:      v('sett-usercontext'),
             transcontext:     v('sett-transcontext'),
             overridesettings: v('sett-overridesettings'),
             verbose:          v('sett-verbose'),

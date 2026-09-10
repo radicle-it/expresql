@@ -569,7 +569,7 @@ footer.status-error  { background: var(--error-bg); color: var(--error-text); bo
     position: relative; padding: 8px 14px 0; flex-shrink: 0;
 }
 .sett-search-icon {
-    position: absolute; left: 7px; top: 50%; transform: translateY(-50%);
+    position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
     font-size: 11px; pointer-events: none; opacity: 0.5;
 }
 #sett-search {

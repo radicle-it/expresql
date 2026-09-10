@@ -267,9 +267,13 @@ export class DdlNode implements IDdlNode {
     }
 
     apexUser(): string {
-        return this._ctx.optionEQvalue('apex', 'yes')
-            ? "coalesce(sys_context('APEX$SESSION','APP_USER'),user)"
-            : 'user';
+        const parts: string[] = [];
+        const uctx = String(this._ctx.getOptionValue('usercontext') ?? '').trim();
+        if (uctx) parts.push(`sys_context('${uctx}','USER')`);
+        if (this._ctx.optionEQvalue('apex', 'yes'))
+            parts.push("sys_context('APEX$SESSION','APP_USER')");
+        parts.push('user');
+        return parts.length === 1 ? 'user' : `coalesce(${parts.join(',')})`;
     }
 
     auditSysDateFn(): string {

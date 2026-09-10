@@ -489,7 +489,8 @@ var j = class {
 		return this.children.filter((e) => e.children.length === 0 && e.refId() === null);
 	}
 	apexUser() {
-		return this._ctx.optionEQvalue("apex", "yes") ? "coalesce(sys_context('APEX$SESSION','APP_USER'),user)" : "user";
+		let e = [], t = String(this._ctx.getOptionValue("usercontext") ?? "").trim();
+		return t && e.push(`sys_context('${t}','USER')`), this._ctx.optionEQvalue("apex", "yes") && e.push("sys_context('APEX$SESSION','APP_USER')"), e.push("user"), e.length === 1 ? "user" : `coalesce(${e.join(",")})`;
 	}
 	auditSysDateFn() {
 		return String(this._ctx.getOptionValue("auditdate") || this._ctx.getOptionValue("Date Data Type") || "").toLowerCase().indexOf("timestamp") >= 0 ? "systimestamp" : "sysdate";
@@ -10545,10 +10546,24 @@ var U = {
 		value: "no",
 		check: ["yes", "no"]
 	},
+	ifc: {
+		label: "TAPI Interface",
+		value: "app",
+		check: [
+			"app",
+			"rest",
+			"both",
+			"none"
+		]
+	},
 	compress: {
 		label: "Table Compression",
 		value: "no",
 		check: ["yes", "no"]
+	},
+	usercontext: {
+		label: "User Context Namespace",
+		value: ""
 	},
 	transcontext: {
 		label: "Translation Context",

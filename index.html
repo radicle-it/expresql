@@ -195,6 +195,16 @@
                 </select>
             </div>
             <div class="sett-row">
+                <label for="sett-ifc">TAPI interface</label>
+                <select id="sett-ifc">
+                    <option value="">— default (app) —</option>
+                    <option value="app">app</option>
+                    <option value="rest">rest</option>
+                    <option value="both">both</option>
+                    <option value="none">none</option>
+                </select>
+            </div>
+            <div class="sett-row">
                 <label for="sett-apex">APEX</label>
                 <label class="sett-toggle"><input type="checkbox" id="sett-apex"><span class="sett-toggle-slider"></span></label>
             </div>
@@ -247,6 +257,10 @@
             </div>
 
             <div class="sett-group">Advanced</div>
+            <div class="sett-row">
+                <label for="sett-usercontext">Audit user context namespace</label>
+                <input id="sett-usercontext" type="text" placeholder="MY_CTX">
+            </div>
             <div class="sett-row">
                 <label for="sett-transcontext">Translation context expression</label>
                 <input id="sett-transcontext" type="text" placeholder="sys_context('APP_CTX','LANG')">
