@@ -37,6 +37,9 @@ rischio aggiuntivo di introdurre bug sottili in un merge non banale.
   disallineamento estensione file (`.qsql`→`.esql`) rimasto a metà dalla
   rinomina propria di `tapi-ext`. Va chiuso prima di costruirci sopra, per
   ripartire da una baseline verde.
+  **Fatto** (`01c6e9b`) — causa reale trovata: BOM UTF-8 in 17 baseline
+  `.sql`, mai gestito dal lexer; risolto nel test harness invece che nei
+  singoli fixture. 849/849 verdi.
 
 ## Attività, in ordine
 
@@ -65,6 +68,26 @@ Modello: `aa6776c` + `0bca57a` + `433cb12` + `7de6b14` (14 luglio).
   — stesso principio, punto di generazione diverso.
 - UI: checkbox `readonlyviews` nel pannello impostazioni (adattare al pannello
   attuale di `tapi-ext`, che è stato restilizzato rispetto a quello di `main`).
+
+**Fatto**. `_generateDalBody` (tier `full`/`full+hks`) e `_generatePrivateDml`
+(tier `service`/`lookup`, procedure private embedded) applicano entrambe lo
+stesso scoping via `<prefix>tenant_ctx.get_id` su get_by_id/lock_by_id/
+get_by_<col>/get_all/insert_row/update_row (+ stale-data check)/delete_row —
+la decisione sui tier degradati era esplicita nel piano ed è stata applicata
+di conseguenza. `_svcParamCols` non espone più `tenant_id` al chiamante (era
+ancora nella forma insecura pre-luglio, dato che il sistema a tier è nato
+prima del redesign su `main`). Vista join (`name: v1 v2`) ora filtra su
+`tenant_ctx.get_id` quando la tabella driver ha `tenant_id` sintetico, più
+`WITH READ ONLY` quando `readonlyviews: yes` — funzionalità che su `tapi-ext`
+non esisteva affatto prima (`view.ts` non aveva alcuna logica tenant).
+Pacchetto condiviso `<prefix>tenant_ctx` (get_id/set_id/clear_id) emesso una
+sola volta, prima del primo package layered che lo referenzia. UI: checkbox
+`readonlyviews` nel pannello impostazioni attuale di `tapi-ext` (non
+riportato l'esempio dimostrativo in `web/app.js`, rimandabile). 3 test
+esistenti in `tapi-layered.test.ts` asserivano il vecchio comportamento
+insicuro — riscritti per asserire il nuovo; aggiunti 3 test nuovi (scoping
+DAL su read/write, generazione del pacchetto condiviso). 852/852 verdi,
+build completa pulita.
 
 ### 2. Allineamento colonne dinamico in `t_rec`/parametri APX
 Modello: `6020218`. `padEnd()` fisso → calcolato sulla lunghezza massima

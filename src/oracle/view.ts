@@ -45,10 +45,22 @@ export class OracleViewBuilder {
         const { sortedTables, joinConditions } = this._sortViewTables(node, chunks, setup.tblCache);
         ret += 'from\n';
         ret += this._buildViewFromClause(node, sortedTables, setup.aliasMap, joinConditions, setup.tblTransCols, setup.tblCache);
+        // Add tenant filter when tenantid is active and the primary driving table carries a synthetic tenant_id.
+        if (this.ctx.optionEQvalue('tenantid', true) && sortedTables.length > 0) {
+            const primaryTbl = setup.tblCache[sortedTables[0]];
+            const hasSynTenant = primaryTbl !== null &&
+                !primaryTbl.children.some(c => c.parseName().toLowerCase() === 'tenant_id');
+            if (hasSynTenant) {
+                const primaryAlias = setup.aliasMap[sortedTables[0]];
+                const tenantCtxPkg = (this.ctx.objPrefix() + 'tenant_ctx').toLowerCase();
+                ret += 'where ' + primaryAlias + '.tenant_id = ' + tenantCtxPkg + '.get_id\n';
+            }
+        }
         ret = ret.toLowerCase();
         if (ret.endsWith('\n')) ret = ret.trimEnd();
         if (!ret.endsWith('\n')) ret += '\n';
-        ret += '/\n';
+        if (this.ctx.optionEQvalue('readonlyviews', true)) ret += '\nwith read only';
+        ret += '\n/\n';
         return ret.toLowerCase();
     }
 

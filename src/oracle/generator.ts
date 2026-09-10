@@ -598,6 +598,8 @@ export class OracleDDLGenerator extends BaseGenerator {
     generateImmutableTrigger(node: IDdlNode): string   { return this._plsql.generateImmutableTrigger(node); }
     generateTAPI(node: IDdlNode): string               { return this._plsql.generateTAPI(node); }
     generateLayeredTAPI(node: IDdlNode): string        { return this._plsql.generateLayeredTAPI(node); }
+    generateTenantCtxSpec(prefix: string): string      { return this._plsql.generateTenantCtxSpec(prefix); }
+    generateTenantCtxBody(prefix: string): string      { return this._plsql.generateTenantCtxBody(prefix); }
 
 
     generateFullDDL(): string {
@@ -671,6 +673,7 @@ export class OracleDDLGenerator extends BaseGenerator {
 
         // TAPI
         j = 0;
+        let emittedTenantCtx = false;
         const globalLayered = this._ddl.optionEQvalue('api', 'layered');
         const layeredTiers  = ['full+hks', 'full', 'service+hks', 'service',
                                'lookup+hks', 'lookup', 'layered',
@@ -680,6 +683,15 @@ export class OracleDDLGenerator extends BaseGenerator {
             const nodeApiVal = (node.getOptionValue('api') ?? '').trim().toLowerCase();
             const isNodeLayered = hasApiDir && (layeredTiers.includes(nodeApiVal) || globalLayered);
             if (isNodeLayered) {
+                // Emit the shared tenant-context package once, before the first layered
+                // table that can reference it — every tier (full/service/lookup, +hks or
+                // not) calls <prefix>tenant_ctx.get_id from its DAL or absorbed private DML.
+                if (!emittedTenantCtx && this._ddl.optionEQvalue('tenantid', true)) {
+                    emittedTenantCtx = true;
+                    if (j++ === 0) output += '-- APIs\n';
+                    output += this.generateTenantCtxSpec(this._ddl.objPrefix()) + '\n';
+                    output += this.generateTenantCtxBody(this._ddl.objPrefix()) + '\n';
+                }
                 const tapi = this.generateLayeredTAPI(node);
                 if (tapi) { if (j++ === 0) output += '-- APIs\n'; output += tapi + '\n'; }
             } else {

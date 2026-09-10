@@ -10549,6 +10549,11 @@ var Y = {
 		label: "Tenant Reference Table",
 		value: ""
 	},
+	readonlyviews: {
+		label: "Read-Only Views",
+		value: "no",
+		check: ["yes", "no"]
+	},
 	verbose: {
 		label: "Verbose Output",
 		value: "no",

@@ -1325,11 +1325,12 @@ customers /api
 
 describe('layered TAPI — tenantid:yes', () => {
 
-    test('SVC spec t_rec type includes tenant_id field', () => {
+    test('SVC spec t_rec type excludes tenant_id — DAL enforces it via tenant_ctx, not the caller', () => {
         const out = ddl(CUSTOMERS_TENANT_QSQL);
         const spec = segment(out, 'create or replace package customers_svc as', 'end customers_svc;');
         expect(spec).toContain('type t_rec is record');
-        expect(spec).toContain('tenant_id');
+        const tRec = segment(spec, 'type t_rec is record', ');');
+        expect(tRec).not.toContain('tenant_id');
     });
 
     test('SVC spec t_rec type includes FK field (tenant_ref)', () => {
@@ -1347,11 +1348,12 @@ describe('layered TAPI — tenantid:yes', () => {
         expect(updateRec).toContain('t_rec');
     });
 
-    test('SVC body p_do_create assigns tenant_id from p_rec to l_row', () => {
+    test('SVC body p_do_create does not assign tenant_id — customers_dal.insert_row sets it from tenant_ctx', () => {
         const out = ddl(CUSTOMERS_TENANT_QSQL);
         const body = segment(out, 'create or replace package body customers_svc', 'end customers_svc;');
         const doCreate = segment(body, 'procedure p_do_create', 'end p_do_create;');
-        expect(doCreate).toContain('l_row.tenant_id := p_rec.tenant_id');
+        expect(doCreate).not.toContain('tenant_id');
+        expect(doCreate).toContain('customers_dal.insert_row(p_row => l_row)');
     });
 
     test('SVC body create_rec passes p_rec record to p_do_create', () => {
@@ -1361,11 +1363,45 @@ describe('layered TAPI — tenantid:yes', () => {
         expect(createRec).toContain('p_do_create(p_rec => p_rec');
     });
 
-    test('SVC body update_rec assigns tenant_id from p_rec to l_row', () => {
+    test('SVC body update_rec does not assign tenant_id — customers_dal.update_row scopes the WHERE via tenant_ctx', () => {
         const out = ddl(CUSTOMERS_TENANT_QSQL);
         const body = segment(out, 'create or replace package body customers_svc', 'end customers_svc;');
         const updateRec = segment(body, 'procedure update_rec', 'end update_rec;');
-        expect(updateRec).toContain('l_row.tenant_id := p_rec.tenant_id');
+        expect(updateRec).not.toContain('tenant_id');
+        expect(updateRec).toContain('customers_dal.update_row(p_row => l_row)');
+    });
+
+    test('DAL body update_row and delete_row scope the WHERE clause via tenant_ctx.get_id', () => {
+        const out = ddl(CUSTOMERS_TENANT_QSQL);
+        const dalBody = segment(out, 'create or replace package body customers_dal', 'end customers_dal;');
+        const updateRow = segment(dalBody, 'procedure update_row', 'end update_row;');
+        expect(updateRow).toContain('and tenant_id = tenant_ctx.get_id');
+        const deleteRow = segment(dalBody, 'procedure delete_row', 'end delete_row;');
+        expect(deleteRow).toContain('and tenant_id = tenant_ctx.get_id');
+    });
+
+    test('DAL body get_by_id and get_all are tenant-scoped via tenant_ctx.get_id', () => {
+        const out = ddl(CUSTOMERS_TENANT_QSQL);
+        const dalBody = segment(out, 'create or replace package body customers_dal', 'end customers_dal;');
+        const getById = segment(dalBody, 'function get_by_id', 'end get_by_id;');
+        expect(getById).toContain('and tenant_id = tenant_ctx.get_id');
+        const getAll = segment(dalBody, 'function get_all', 'end get_all;');
+        expect(getAll).toContain('where tenant_id = tenant_ctx.get_id');
+    });
+
+    test('shared tenant_ctx package (get_id/set_id/clear_id) is generated once, before the first layered DAL', () => {
+        const out = ddl(CUSTOMERS_TENANT_QSQL);
+        expect(out).toContain('create or replace package tenant_ctx as');
+        expect(out).toContain('function get_id return integer;');
+        expect(out).toContain('procedure set_id(p_tenant_id in integer);');
+        expect(out).toContain('procedure clear_id;');
+        expect(out).toContain('create or replace package body tenant_ctx as');
+        expect(out).toContain("sys_context('tenant_ctx', 'tenant_id')");
+        expect(out).toContain("dbms_session.set_context('tenant_ctx', 'tenant_id', to_char(p_tenant_id))");
+        expect(out).toContain("dbms_session.clear_context('tenant_ctx')");
+        // Emitted before the first DAL package that references it.
+        expect(out.indexOf('create or replace package tenant_ctx as'))
+            .toBeLessThan(out.indexOf('create or replace package customers_dal as'));
     });
 
     test('DAL body insert_row includes tenant_id in column list', () => {
