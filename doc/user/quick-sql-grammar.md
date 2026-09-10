@@ -124,6 +124,7 @@ A comment can appear between any keywords, parameters, or punctuation marks in a
 | `/rest` | REST-enable the table using Oracle REST Data Services (ORDS). | Oracle only |
 | `/rowversion` | Adds a `ROW_VERSION` column and a BEFORE UPDATE trigger that increments it. **Oracle:** `NUMBER`. **Db2:** `INTEGER`, SQL PL syntax. | All |
 | `/soda` | *(21c+)* Creates a SODA-compatible JSON document collection table. | Oracle only |
+| `/versioned [valid_to_col]` | Versioned insert-only table (freeze-by-reference). Adds `valid_from timestamp default systimestamp not null` and `valid_to timestamp` (or a custom column name) if not already declared, plus a virtual `is_current` column. Generates a `<table>_current` view (`where is_current = 1`) and a BEFORE UPDATE OR DELETE trigger that blocks all DELETEs, blocks any UPDATE that is not a plain `valid_to` closure, and verifies no other business column changed in the same statement. On a layered `/api` table, narrows the TAPI: DAL `close_row`, HKS `before_close`/`after_close`, SVC `close_version`, `_app`/`_rst` `close` — replacing `update_row`/`delete_row` and their callers throughout. Distinct from `/history` (a shadow table for CDC/audit); here the FK referencing a specific row always points to the exact historical version used at that moment. | Oracle only |
 | `/unique`, `/uk` | Table-level UNIQUE constraint. | All |
 | `/pk` | Explicit primary key constraint (composite on the table level). | All |
 | `{annotations}` | Oracle SQL Annotations on the table. `DESCRIPTION` generates `COMMENT ON TABLE`. See [Annotations](#annotations). | Oracle only |
@@ -1362,6 +1363,7 @@ tableDirective::= '/'
       |'rest'
       |'rowversion'
       |'soda'
+      |'versioned' identifier?
       |'unique'|'uk'
       |'pk'
       |'check'

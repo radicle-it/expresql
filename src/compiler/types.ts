@@ -156,7 +156,7 @@ export interface DDLGenerator {
  */
 export interface DdlContext {
     input:              string;
-    getOptionValue(key: string): string | number | boolean | null;
+    getOptionValue(key: string): string | number | boolean | Record<string, string> | null;
     optionEQvalue(key: string, value: unknown): boolean;
     objPrefix(withoutSchema?: string): string;
     semantics(): string;

@@ -52,7 +52,7 @@ class Offset {
 
 const tableDirectives = [
      'api'
-    ,'audit','auditcols'
+    ,'audit','auditcols','auditlog'
     ,'check'
     ,'colprefix'
     ,'compress','compressed'
@@ -63,6 +63,7 @@ const tableDirectives = [
     ,'rowkey'
     ,'rowversion'
     ,'soda'
+    ,'versioned'
     ,'unique','uk'
     ,'pk'
     ,'cascade','setnull'
@@ -136,9 +137,53 @@ function checkSyntax(parsed: ParsedContext): SyntaxError[] {
 
         ret = ret.concat(ref_error_in_view(ddl, node));
         ret = ret.concat(fk_ref_error(ddl, node));
+        ret = ret.concat(fk_type_ignored(node));
         ret = ret.concat(directive_typo(ddl, node));
     }
 
+    ret = ret.concat(versioned_immutable_conflict(ddl));
+
+    return ret;
+}
+
+function fk_type_ignored(node: ParsedNode): SyntaxError[] {
+    const ret: SyntaxError[] = [];
+    if (!node.isOption('fk') && node.indexOf('reference', true) <= 0) return ret;
+    const src = node.src;
+    // Find type token between column name (src[0]) and first '/'
+    const slashPos = src.findIndex(t => t.value === '/');
+    const typeTokens = slashPos > 1 ? src.slice(1, slashPos) : src.slice(1, 2);
+    const explicit = typeTokens.find(t => {
+        const v = t.value.toLowerCase();
+        return v.startsWith('vc') || v === 'varchar' || v === 'varchar2'
+            || v === 'char' || v === 'clob' || v === 'date' || v === 'bool' || v === 'boolean';
+    });
+    if (explicit) {
+        ret.push(new SyntaxError(
+            '/fk always references the target table\'s surrogate PK (number); the declared type \'' + explicit.value + '\' will be silently ignored — remove it or use a numeric type',
+            new Offset(node.line, explicit.begin),
+            new Offset(node.line, explicit.begin + explicit.value.length),
+            'warning'
+        ));
+    }
+    return ret;
+}
+
+function versioned_immutable_conflict(ddl: ParsedContext): SyntaxError[] {
+    const ret: SyntaxError[] = [];
+    for (const node of ddl.descendants()) {
+        if (node.inferType() !== 'table') continue;
+        if (!node.isOption('versioned') || !node.isOption('immutable')) continue;
+        const pos = node.indexOf('immutable');
+        if (pos >= 0 && pos < node.src.length) {
+            ret.push(new SyntaxError(
+                '/versioned and /immutable are contradictory: /immutable blocks the valid_to closure that /versioned requires',
+                new Offset(node.line, node.src[pos].begin),
+                new Offset(node.line, node.src[pos].begin + 'immutable'.length),
+                'warning'
+            ));
+        }
+    }
     return ret;
 }
 

@@ -157,7 +157,7 @@ referenced by:
 tableDirective
          ::= '/' ( 'api' | 'audit' | 'auditcols' | 'audit cols' | 'audit columns'
                   | 'auditlog' identifier? | 'colprefix' | 'compress' | 'compressed' | 'flashback' | 'fda' | 'history' | 'immutable'
-                  | 'insert' integer | 'rest' | 'rowversion' | 'soda' | 'unique' | 'uk' | 'pk' | 'check' | 'cascade' )
+                  | 'insert' integer | 'rest' | 'rowversion' | 'soda' | 'versioned' identifier? | 'unique' | 'uk' | 'pk' | 'check' | 'cascade' )
 ```
 
 referenced by:

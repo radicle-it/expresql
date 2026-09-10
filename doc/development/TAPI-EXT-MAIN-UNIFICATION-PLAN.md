@@ -318,6 +318,79 @@ stesso commit su `main`:
 - `/versioned` ha lo stesso problema per `close_row`: la vista `_current` e la
   procedura `close_row` presuppongono oggi la forma `full+hks`.
 
+**Fatto**. Entrambe le decisioni sono state prese nella stessa direzione:
+**compatibile con ogni tier**, seguendo lo stesso principio di degradazione
+già alla base di tutto questo lavoro di unificazione ("ogni layer chiama
+quello sotto se presente, lo assorbe come procedura privata se assente" —
+già applicato identicamente a tenant scoping, `get_all`, messaggi
+d'errore). Non è stata introdotta alcuna restrizione di tier per nessuna
+delle due feature — estendere la macchina di assorbimento già esistente
+non aggiunge complessità reale, applica lo stesso pattern già collaudato
+a una dimensione in più.
+
+**`/versioned`** — parte tier-indipendente (colonne `valid_from`/`valid_to`
+custom/`is_current` virtuale, vista `_current` + indice, trigger di
+versionamento che blocca DELETE e limita UPDATE alla sola chiusura di
+`valid_to`) ricostruita 1:1 dal modello. Parte TAPI, tier-aware:
+- `_dal` (hasDal): `close_row` sostituisce `update_row`+`delete_row`.
+- `_generatePrivateDml` (!hasDal): nuova `p_close_row` assorbita, stesso
+  schema di `close_row`, sostituisce `p_update_row`/`p_delete_row`.
+- `_hks` (hasHks): `before_close`/`after_close` sostituiscono
+  `before_update`/`after_update`/`before_delete`/`after_delete`.
+- `_generatePrivateHookStubs` (!hasHks): stessa sostituzione,
+  `p_before_close`/`p_after_close`.
+- `_svc`: `close_version` sostituisce `update_rec`+`delete_rec` — instrada
+  verso `hasDal ? dal.close_row : p_close_row` e
+  `hkCall('before_close')`/`hkCall('after_close')`, non hardcoded come nel
+  modello (che non aveva tier da instradare).
+- `_app`/`_rst`: `close` sostituisce `upd`+`del` — quando `hasSvc` chiama
+  `svc.close_version`; quando non c'è `_svc` (tier `lookup`), assorbe
+  direttamente `p_close_row` + hook privati, stesso pattern già usato per
+  `ins`/`upd`/`del` assorbiti.
+
+**`dimensioncolumns`** — `chk_rbac`/`chk_rls` vivono in `_hks` quando
+presente; quando `!hasHks`, assorbiti come `p_chk_rbac`/`p_chk_rls` in
+`_generatePrivateHookStubs` (`p_chk_rbac` sempre, `p_chk_rls` solo se
+configurato — stessa condizione di `_hks`), chiamati tramite lo stesso
+`hkCall()` già usato per `validate`/`before_insert`/ecc. — nessun nuovo
+meccanismo, lo stesso già esistente esteso a due hook in più. Ordine
+`chk_rbac` → `chk_rls` → `validate` applicato identicamente in tutti e 12 i
+punti che generano quella sequenza (`_svc`: insert/update/delete/close ×
+`_app`/`_rst` assorbiti sullo stesso set di operazioni per il tier
+`lookup`). Filtro di lettura anti-IDOR (`_dimensionScopeConditions`)
+applicato sia in `_generateDalBody` sia in `_generatePrivateDml`
+(get_by_id/lock_by_id/get_by_unique/get_all), rispecchiando esattamente il
+pattern già usato per `tenant_ctx.get_id` dal punto 1. Le scritture
+(insert_row/update_row/delete_row/close_row) restano **senza** filtro nel
+WHERE — resta autoritativo `chk_rls`, che solleva invece di no-oppare in
+silenzio, come nel modello.
+
+Corretto anche un bug reale scoperto durante l'implementazione: `delete_rec`
+non recuperava mai la riga né chiamava `validate('delete', ...)` — l'unica
+operazione su cui `validate()` non veniva mai invocato, su nessuna tabella,
+indipendentemente da `dimensioncolumns`. Applicato lo stesso fix anche al
+percorso assorbito in `_app`/`_rst` (tier `lookup`) per lo stesso principio
+di coerenza già seguito ai punti 3, 4, 7 — il modello non copre quel
+percorso (non esisteva su `main`).
+
+Bundle di fix minori dallo stesso commit modello, applicati per lo stesso
+criterio "ricostruire fedelmente" seguito in tutto questo piano: `subtype
+t_id` in `_generateDalSpec` ancorato al vero nome PK invece di `.id`
+hardcoded; NOT NULL propagato sulla colonna FK anche nel ramo ALTER TABLE
+postponed (mancava solo lì); `singular()` non tronca più parole che
+finiscono in `-ss` (address, class, access); warning nuovo `/fk` con tipo
+esplicito ignorato silenziosamente; warning nuovo `/versioned` +
+`/immutable` contraddittori; `auditlog`/`versioned` aggiunti alla whitelist
+direttive di tabella (mancava `auditlog`, falso positivo di "typo"
+preesistente). Grammatica (`quick-sql-grammar.md`,
+`railroad_diagram.md`) aggiornata per `/versioned`; documentazione
+`dimensioncolumns` rimandata al punto 9 come da piano.
+
+54 test nuovi (21 in `test/unit/dimensionscope.test.ts`, 19 in
+`tapi-layered.test.ts`, 14 in `small.test.ts`) — copertura tier `full+hks`
+fedele al modello, più degradazione `service`/`lookup` non presente nel
+modello. 936/936 verdi, build completa pulita.
+
 ### 9. Documentazione `dimensioncolumns`/`chk_rbac`/`chk_rls`
 Modello: `51bd5ae`. Stesso trattamento già dato a `tenantid` nella doc:
 sezione dedicata in `quick-sql-grammar.md`, riga nella tabella di copertura

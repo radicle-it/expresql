@@ -8,7 +8,8 @@ export function singular(name: string | null): string | null {
     const upper = name.toUpperCase();
     if (upper.endsWith('IES')) return name.substring(0, name.length - 3) + 'y';
     if (upper.endsWith('ES'))  return name.substring(0, name.length - 1);
-    if (upper.endsWith('S'))   return name.substring(0, name.length - 1);
+    // Don't strip -s from words ending in -ss (already singular: address, class, access, …)
+    if (upper.endsWith('S') && !upper.endsWith('SS')) return name.substring(0, name.length - 1);
     return name;
 }
 

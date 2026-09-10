@@ -4,7 +4,7 @@
  * Organized by feature area, not by bug number.
  */
 import { describe, test, expect, beforeEach } from 'vitest';
-import expresql, { toDDL }  from '../../src/ddl.js';
+import expresql, { toDDL, toErrors }  from '../../src/ddl.js';
 import { resetSeed }         from '../../src/utils/sample.js';
 
 beforeEach(() => { resetSeed(); });
@@ -953,6 +953,111 @@ describe('translation (/trans)', () => {
         expect(out).toContain('test_description    varchar2(4000');
         expect(out).toContain('test_number         number');
         expect(out).toContain('test_date           date');
+    });
+
+});
+
+describe('/versioned directive', () => {
+    const q = (s: string) => toDDL(s, '{}');
+
+    test('injects valid_from (not null) and valid_to (nullable)', () => {
+        const out = q('party_profile /versioned\n    legal_name vc255 /nn');
+        expect(out).toMatch(/valid_from\s+timestamp default systimestamp not null/);
+        expect(out).toMatch(/valid_to\s+timestamp[^(]/);
+        expect(out).not.toContain('valid_to  timestamp not null');
+    });
+
+    test('does not duplicate valid_from/valid_to when user declares them', () => {
+        const out = q('events /versioned\n    valid_from timestamp /nn\n    valid_to   timestamp\n    kind vc50');
+        expect(out).not.toContain('valid_from    timestamp default systimestamp');
+        expect(out).toContain('valid_from');
+        expect(out).toContain('valid_to');
+    });
+
+    test('injects is_current virtual column', () => {
+        const out = q('party_profile /versioned\n    legal_name vc255 /nn');
+        expect(out).toMatch(/is_current\s+number generated always as \(case when valid_to is null then 1 end\) virtual/);
+    });
+
+    test('generates _current view using is_current = 1 (indexed)', () => {
+        const out = q('party_profile /versioned\n    legal_name vc255');
+        expect(out).toContain('create or replace view party_profile_current as');
+        expect(out).toContain('where is_current = 1');
+        expect(out).not.toContain('where valid_to is null');
+    });
+
+    test('creates _is_current_i index', () => {
+        const out = q('party_profile /versioned\n    legal_name vc255');
+        expect(out).toContain('create index party_profile_is_current_i on party_profile (is_current)');
+    });
+
+    test('generates versioned trigger blocking DELETE', () => {
+        const out = q('party_profile /versioned\n    legal_name vc255 /nn');
+        expect(out).toContain('create or replace trigger trg_party_profile_versioned');
+        expect(out).toContain('before update or delete');
+        expect(out).toContain('-20056');
+        expect(out).toContain('delete is not permitted');
+    });
+
+    test('generates versioned trigger blocking bad UPDATE (business cols changed)', () => {
+        const out = q('party_profile /versioned\n    legal_name vc255 /nn');
+        expect(out).toContain('-20057');
+        expect(out).toContain('only closing valid_to is permitted');
+        expect(out).toContain('case when :old.legal_name = :new.legal_name or (:old.legal_name is null and :new.legal_name is null) then 0 else 1 end');
+    });
+
+    test('trigger checks already-closed guard (:old.valid_to is not null)', () => {
+        const out = q('snapshots /versioned\n    payload clob');
+        expect(out).toContain(':old.valid_to is not null');
+        expect(out).toContain(':new.valid_to is null');
+    });
+
+    test('custom valid_to column name via /versioned arg', () => {
+        const out = q('tax_rate /versioned expiry_date\n    rate num(5,4) /nn');
+        expect(out).toMatch(/expiry_date\s+timestamp[^(]/);
+        expect(out).toMatch(/is_current\s+number generated always as \(case when expiry_date is null then 1 end\) virtual/);
+        expect(out).toContain('where is_current = 1');
+        expect(out).not.toContain('where expiry_date is null');
+        expect(out).toContain(':old.expiry_date is not null');
+        expect(out).not.toContain('valid_to');
+    });
+
+    test('/versioned + /immutable reports a conflict warning', () => {
+        const errs = toErrors('logs /versioned /immutable\n    msg vc255') as Array<{message: string, severity: string}>;
+        const conflict = errs.find(e => e.message.includes('contradictory'));
+        expect(conflict).toBeDefined();
+        expect(conflict?.severity).toBe('warning');
+    });
+
+    test('/auditcols columns excluded from trigger column-change check', () => {
+        const out = toDDL('party_profile /versioned /auditcols\n    legal_name vc255 /nn', '{}');
+        expect(out).not.toContain(':old.updated,');
+        expect(out).not.toContain(':old.updated_by,');
+        expect(out).not.toContain(':old.is_current,');
+    });
+
+    test('/rowversion column excluded from trigger column-change check', () => {
+        const out = toDDL('party_profile /versioned /rowversion\n    legal_name vc255 /nn', '{}');
+        const start = out.indexOf('create or replace trigger trg_party_profile_versioned');
+        const end   = out.indexOf('\n/', start) + 2;
+        const trig  = start >= 0 ? out.slice(start, end) : '';
+        expect(trig).not.toContain(':old.row_version');
+    });
+
+    test('drop includes drop view _current before drop table', () => {
+        const out = toDDL('party_profile /versioned\n    legal_name vc255', '{"Include Drops":"yes"}');
+        const dropViewPos  = out.indexOf('drop view');
+        const dropTablePos = out.indexOf('drop table');
+        expect(dropViewPos).toBeGreaterThanOrEqual(0);
+        expect(out).toContain('drop view party_profile_current');
+        expect(dropViewPos).toBeLessThan(dropTablePos);
+    });
+
+    test('/fk with an ignored explicit type reports a warning', () => {
+        const errs = toErrors('orders\ncustomers\n    order_id vc20 /fk orders') as Array<{message: string, severity: string}>;
+        const warn = errs.find(e => e.message.includes('will be silently ignored'));
+        expect(warn).toBeDefined();
+        expect(warn?.severity).toBe('warning');
     });
 
 });

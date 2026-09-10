@@ -23,7 +23,7 @@ const tswltz           = 'Timestamp with local time zone';
 
 interface OptionDef {
     label:   string;
-    value:   string | number | boolean;
+    value:   string | number | boolean | Record<string, string>;
     check?:  string[];
 }
 
@@ -84,6 +84,7 @@ const defaultOptions: OptionsRecord = {
     ondelete:         { label: 'On Delete',                     value: '',        check: ['cascade','restrict','set null'] },
     tenantid:         { label: 'Tenant ID',                     value: 'no',      check: ['yes','no'] },
     tenantref:        { label: 'Tenant Reference Table',        value: '' },
+    dimensioncolumns: { label: 'Dimension Scope Columns',       value: {} as Record<string, string> },
     readonlyviews:    { label: 'Read-Only Views',                value: 'no',      check: ['yes','no'] },
     verbose:          { label: 'Verbose Output',                value: 'no',      check: ['yes','no'] },
 };
@@ -131,7 +132,7 @@ export class expresql implements DdlContext {
 
     // ── Option access ─────────────────────────────────────────────────────────
 
-    getOptionValue(kEy: string): string | number | boolean | null {
+    getOptionValue(kEy: string): string | number | boolean | Record<string, string> | null {
         const key    = kEy.toLowerCase();
         let   option = this.options[key];
         if (!(key in this.options)) {
@@ -151,7 +152,7 @@ export class expresql implements DdlContext {
         if (!(key in this.options)) {
             for (const x in this.options) {
                 if (this.options[x].label === kEy) {
-                    this.options[x].value = (value ?? '') as string | number | boolean;
+                    this.options[x].value = (value ?? '') as string | number | boolean | Record<string, string>;
                     return;
                 }
             }
@@ -159,10 +160,10 @@ export class expresql implements DdlContext {
         const v = value ?? '';
         let option = this.options[key];
         if (option == null) {
-            option = { label: key, value: v as string | number | boolean };
+            option = { label: key, value: v as string | number | boolean | Record<string, string> };
             this.options[key] = option;
         } else {
-            option.value = v as string | number | boolean;
+            option.value = v as string | number | boolean | Record<string, string>;
         }
     }
 
