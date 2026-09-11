@@ -489,7 +489,8 @@ var M = class {
 		return this.children.filter((e) => e.children.length === 0 && e.refId() === null);
 	}
 	apexUser() {
-		return this._ctx.optionEQvalue("apex", "yes") ? "coalesce(sys_context('APEX$SESSION','APP_USER'),user)" : "user";
+		let e = [], t = String(this._ctx.getOptionValue("usercontext") ?? "").trim();
+		return t && e.push(`sys_context('${t}','USER')`), this._ctx.optionEQvalue("apex", "yes") && e.push("sys_context('APEX$SESSION','APP_USER')"), e.push("user"), e.length === 1 ? "user" : `coalesce(${e.join(",")})`;
 	}
 	auditSysDateFn() {
 		return String(this._ctx.getOptionValue("auditdate") || this._ctx.getOptionValue("Date Data Type") || "").toLowerCase().indexOf("timestamp") >= 0 ? "systimestamp" : "sysdate";
@@ -10545,10 +10546,24 @@ var J = {
 		value: "no",
 		check: ["yes", "no"]
 	},
+	interface: {
+		label: "TAPI Interface",
+		value: "app",
+		check: [
+			"app",
+			"rest",
+			"both",
+			"none"
+		]
+	},
 	compress: {
 		label: "Table Compression",
 		value: "no",
 		check: ["yes", "no"]
+	},
+	usercontext: {
+		label: "User Context Namespace",
+		value: ""
 	},
 	transcontext: {
 		label: "Translation Context",
@@ -10797,7 +10812,7 @@ var Je = class {
 			"service+hks",
 			"full",
 			"full+hks"
-		].includes(t), a = String(this.ctx.getOptionValue("ifc") ?? "app").toLowerCase(), o = a === "app" || a === "apex" || a === "both" || a === "", s = a === "rest" || a === "both", c = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), l = (e.getPkName() ?? "id").toLowerCase(), u = "integer", d = "--#SET TERMINATOR @\n";
+		].includes(t), a = String(this.ctx.getOptionValue("interface") ?? "app").toLowerCase(), o = a === "app" || a === "apex" || a === "both" || a === "", s = a === "rest" || a === "both", c = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), l = (e.getPkName() ?? "id").toLowerCase(), u = "integer", d = "--#SET TERMINATOR @\n";
 		return d += `-- TAPI: ${c}  tier=${t}\n\n`, n && (d += `create schema ${c}_dal @\n\n`, d += this._generateDal(e, c, l, u)), r && (d += `create schema ${c}_hks @\n\n`, d += this._generateHks(e, c, l, u, n)), i && (d += `create schema ${c}_svc @\n\n`, d += this._generateSvc(e, c, l, u, n, r)), o && (d += `create schema ${c}_app @\n\n`, d += this._generateApp(e, c, l, u, i, n, r)), s && (d += `create schema ${c}_rst @\n\n`, d += this._generateRst(e, c, l, u, i, n, r)), d += "--#SET TERMINATOR ;\n", d;
 	}
 	_generateDal(e, t, n, r) {
@@ -11207,7 +11222,7 @@ var Ze = class extends R {
 					"service+hks",
 					"full",
 					"full+hks"
-				].includes(r), c = String(this._ddl.getOptionValue("ifc") ?? "app").toLowerCase(), l = c === "app" || c === "apex" || c === "both" || c === "", u = c === "rest" || c === "both";
+				].includes(r), c = String(this._ddl.getOptionValue("interface") ?? "app").toLowerCase(), l = c === "app" || c === "apex" || c === "both" || c === "", u = c === "rest" || c === "both";
 				a && (n += `drop schema ${t}_dal restrict;\n`), o && (n += `drop schema ${t}_hks restrict;\n`), s && (n += `drop schema ${t}_svc restrict;\n`), l && (n += `drop schema ${t}_app restrict;\n`), u && (n += `drop schema ${t}_rst restrict;\n`);
 			}
 		}

@@ -590,7 +590,7 @@ export class OracleDDLGenerator extends BaseGenerator {
                 const hasDal  = ['full', 'full+hks'].includes(tier);
                 const hasHks  = tier.endsWith('+hks');
                 const hasSvc  = ['service', 'service+hks', 'full', 'full+hks'].includes(tier);
-                const ifc     = String(this._ddl.getOptionValue('ifc') ?? 'app').toLowerCase();
+                const ifc     = String(this._ddl.getOptionValue('interface') ?? 'app').toLowerCase();
                 const genApp  = ifc === 'app' || ifc === 'apex' || ifc === 'both' || ifc === '';
                 const genRst  = ifc === 'rest' || ifc === 'both';
                 if (hasDal) ret += 'drop package ' + ifExists + objName + '_dal;\n';

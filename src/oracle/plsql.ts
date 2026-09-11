@@ -1773,7 +1773,7 @@ export class OraclePlsqlBuilder {
         const hasAudit = this._hasAuditLog(node);
 
         // 'apex' kept as backward-compat alias for 'app'
-        const ifc    = String(this.ctx.getOptionValue('ifc') ?? 'app').toLowerCase();
+        const ifc    = String(this.ctx.getOptionValue('interface') ?? 'app').toLowerCase();
         const genApp = ifc === 'app' || ifc === 'apex' || ifc === 'both' || ifc === '';
         const genRst = ifc === 'rest' || ifc === 'both';
 

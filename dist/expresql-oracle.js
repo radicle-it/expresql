@@ -489,7 +489,8 @@ var M = class {
 		return this.children.filter((e) => e.children.length === 0 && e.refId() === null);
 	}
 	apexUser() {
-		return this._ctx.optionEQvalue("apex", "yes") ? "coalesce(sys_context('APEX$SESSION','APP_USER'),user)" : "user";
+		let e = [], t = String(this._ctx.getOptionValue("usercontext") ?? "").trim();
+		return t && e.push(`sys_context('${t}','USER')`), this._ctx.optionEQvalue("apex", "yes") && e.push("sys_context('APEX$SESSION','APP_USER')"), e.push("user"), e.length === 1 ? "user" : `coalesce(${e.join(",")})`;
 	}
 	auditSysDateFn() {
 		return String(this._ctx.getOptionValue("auditdate") || this._ctx.getOptionValue("Date Data Type") || "").toLowerCase().indexOf("timestamp") >= 0 ? "systimestamp" : "sysdate";
@@ -10545,10 +10546,24 @@ var G = {
 		value: "no",
 		check: ["yes", "no"]
 	},
+	interface: {
+		label: "TAPI Interface",
+		value: "app",
+		check: [
+			"app",
+			"rest",
+			"both",
+			"none"
+		]
+	},
 	compress: {
 		label: "Table Compression",
 		value: "no",
 		check: ["yes", "no"]
+	},
+	usercontext: {
+		label: "User Context Namespace",
+		value: ""
 	},
 	transcontext: {
 		label: "Translation Context",
@@ -11460,7 +11475,7 @@ var X = class {
 			"service+hks",
 			"full",
 			"full+hks"
-		].includes(t), a = this._hasAuditLog(e), o = String(this.ctx.getOptionValue("ifc") ?? "app").toLowerCase(), s = o === "app" || o === "apex" || o === "both" || o === "", c = o === "rest" || o === "both", l = "", u = this._generateDimensionRlsView(e);
+		].includes(t), a = this._hasAuditLog(e), o = String(this.ctx.getOptionValue("interface") ?? "app").toLowerCase(), s = o === "app" || o === "apex" || o === "both" || o === "", c = o === "rest" || o === "both", l = "", u = this._generateDimensionRlsView(e);
 		return u && (l += u + "\n"), n && (l += this._generateDalSpec(e) + "\n" + this._generateDalBody(e) + "\n"), r && (l += this._generateHksSpec(e, n) + "\n" + this._generateHksBody(e, n) + "\n"), i && (l += this._generateSvcSpec(e) + "\n", a && (l += this._generateAuditSpec(e) + "\n"), l += this._generateSvcBody(e, n, r) + "\n", a && (l += this._generateAuditBody(e, n) + "\n")), s && (l += this._generateAppSpec(e) + "\n" + this._generateAppBody(e, i, n, r)), c && (s && (l += "\n"), l += this._generateRstSpec(e) + "\n" + this._generateRstBody(e, i, n, r)), l;
 	}
 	generateTAPI(e) {
@@ -11829,7 +11844,7 @@ var Z = class extends ve {
 					"service+hks",
 					"full",
 					"full+hks"
-				].includes(o), u = String(this._ddl.getOptionValue("ifc") ?? "app").toLowerCase(), d = u === "app" || u === "apex" || u === "both" || u === "", f = u === "rest" || u === "both";
+				].includes(o), u = String(this._ddl.getOptionValue("interface") ?? "app").toLowerCase(), d = u === "app" || u === "apex" || u === "both" || u === "", f = u === "rest" || u === "both";
 				s && (i += "drop package " + r + t + "_dal;\n"), c && (i += "drop package " + r + t + "_hks;\n"), l && (i += "drop package " + r + t + "_svc;\n"), e.isOption("auditlog") && l && (i += "drop package " + r + t + "_aud;\n"), d && (i += "drop package " + r + t + "_app;\n"), f && (i += "drop package " + r + t + "_rst;\n");
 			} else this._ddl.optionEQvalue("api", "yes") && (i += "drop package " + r + t + "_api;\n");
 			this._ddl.optionEQvalue("pk", "SEQ") && (i += "drop sequence " + r + t + this._naming.seq + ";\n");
@@ -12475,7 +12490,7 @@ var st = class {
 			"service+hks",
 			"full",
 			"full+hks"
-		].includes(i), c = String(t.getOptionValue("ifc") ?? "app").toLowerCase(), l = c === "app" || c === "apex" || c === "both" || c === "", u = c === "rest" || c === "both", d = [];
+		].includes(i), c = String(t.getOptionValue("interface") ?? "app").toLowerCase(), l = c === "app" || c === "apex" || c === "both" || c === "", u = c === "rest" || c === "both", d = [];
 		return a && d.push(`${n}_dal`), o && d.push(`${n}_hks`), s && d.push(`${n}_svc`), l && d.push(`${n}_app`), u && d.push(`${n}_rst`), e.isOption("auditlog") && s && d.push(`${n}_aud`), d;
 	}
 	_droppedPkgs(e, t, n, r, i, a) {

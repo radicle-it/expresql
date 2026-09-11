@@ -1060,7 +1060,7 @@ export class OracleDiffGenerator implements DiffGenerator {
         const hasDal  = ['full', 'full+hks'].includes(tier);
         const hasHks  = tier.endsWith('+hks');
         const hasSvc  = ['service', 'service+hks', 'full', 'full+hks'].includes(tier);
-        const ifc     = String(ctx.getOptionValue('ifc') ?? 'app').toLowerCase();
+        const ifc     = String(ctx.getOptionValue('interface') ?? 'app').toLowerCase();
         const genApp  = ifc === 'app' || ifc === 'apex' || ifc === 'both' || ifc === '';
         const genRst  = ifc === 'rest' || ifc === 'both';
 

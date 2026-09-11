@@ -10546,7 +10546,7 @@ var U = {
 		value: "no",
 		check: ["yes", "no"]
 	},
-	ifc: {
+	interface: {
 		label: "TAPI Interface",
 		value: "app",
 		check: [
@@ -11475,7 +11475,7 @@ var J = class {
 			"service+hks",
 			"full",
 			"full+hks"
-		].includes(t), a = this._hasAuditLog(e), o = String(this.ctx.getOptionValue("ifc") ?? "app").toLowerCase(), s = o === "app" || o === "apex" || o === "both" || o === "", c = o === "rest" || o === "both", l = "", u = this._generateDimensionRlsView(e);
+		].includes(t), a = this._hasAuditLog(e), o = String(this.ctx.getOptionValue("interface") ?? "app").toLowerCase(), s = o === "app" || o === "apex" || o === "both" || o === "", c = o === "rest" || o === "both", l = "", u = this._generateDimensionRlsView(e);
 		return u && (l += u + "\n"), n && (l += this._generateDalSpec(e) + "\n" + this._generateDalBody(e) + "\n"), r && (l += this._generateHksSpec(e, n) + "\n" + this._generateHksBody(e, n) + "\n"), i && (l += this._generateSvcSpec(e) + "\n", a && (l += this._generateAuditSpec(e) + "\n"), l += this._generateSvcBody(e, n, r) + "\n", a && (l += this._generateAuditBody(e, n) + "\n")), s && (l += this._generateAppSpec(e) + "\n" + this._generateAppBody(e, i, n, r)), c && (s && (l += "\n"), l += this._generateRstSpec(e) + "\n" + this._generateRstBody(e, i, n, r)), l;
 	}
 	generateTAPI(e) {
@@ -11844,7 +11844,7 @@ var Y = class extends P {
 					"service+hks",
 					"full",
 					"full+hks"
-				].includes(o), u = String(this._ddl.getOptionValue("ifc") ?? "app").toLowerCase(), d = u === "app" || u === "apex" || u === "both" || u === "", f = u === "rest" || u === "both";
+				].includes(o), u = String(this._ddl.getOptionValue("interface") ?? "app").toLowerCase(), d = u === "app" || u === "apex" || u === "both" || u === "", f = u === "rest" || u === "both";
 				s && (i += "drop package " + r + t + "_dal;\n"), c && (i += "drop package " + r + t + "_hks;\n"), l && (i += "drop package " + r + t + "_svc;\n"), e.isOption("auditlog") && l && (i += "drop package " + r + t + "_aud;\n"), d && (i += "drop package " + r + t + "_app;\n"), f && (i += "drop package " + r + t + "_rst;\n");
 			} else this._ddl.optionEQvalue("api", "yes") && (i += "drop package " + r + t + "_api;\n");
 			this._ddl.optionEQvalue("pk", "SEQ") && (i += "drop sequence " + r + t + this._naming.seq + ";\n");
@@ -12490,7 +12490,7 @@ var lt = class {
 			"service+hks",
 			"full",
 			"full+hks"
-		].includes(i), c = String(t.getOptionValue("ifc") ?? "app").toLowerCase(), l = c === "app" || c === "apex" || c === "both" || c === "", u = c === "rest" || c === "both", d = [];
+		].includes(i), c = String(t.getOptionValue("interface") ?? "app").toLowerCase(), l = c === "app" || c === "apex" || c === "both" || c === "", u = c === "rest" || c === "both", d = [];
 		return a && d.push(`${n}_dal`), o && d.push(`${n}_hks`), s && d.push(`${n}_svc`), l && d.push(`${n}_app`), u && d.push(`${n}_rst`), e.isOption("auditlog") && s && d.push(`${n}_aud`), d;
 	}
 	_droppedPkgs(e, t, n, r, i, a) {
@@ -12628,7 +12628,7 @@ var ut = class {
 			"service+hks",
 			"full",
 			"full+hks"
-		].includes(t), a = String(this.ctx.getOptionValue("ifc") ?? "app").toLowerCase(), o = a === "app" || a === "apex" || a === "both" || a === "", s = a === "rest" || a === "both", c = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), l = (e.getPkName() ?? "id").toLowerCase(), u = "integer", d = "--#SET TERMINATOR @\n";
+		].includes(t), a = String(this.ctx.getOptionValue("interface") ?? "app").toLowerCase(), o = a === "app" || a === "apex" || a === "both" || a === "", s = a === "rest" || a === "both", c = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), l = (e.getPkName() ?? "id").toLowerCase(), u = "integer", d = "--#SET TERMINATOR @\n";
 		return d += `-- TAPI: ${c}  tier=${t}\n\n`, n && (d += `create schema ${c}_dal @\n\n`, d += this._generateDal(e, c, l, u)), r && (d += `create schema ${c}_hks @\n\n`, d += this._generateHks(e, c, l, u, n)), i && (d += `create schema ${c}_svc @\n\n`, d += this._generateSvc(e, c, l, u, n, r)), o && (d += `create schema ${c}_app @\n\n`, d += this._generateApp(e, c, l, u, i, n, r)), s && (d += `create schema ${c}_rst @\n\n`, d += this._generateRst(e, c, l, u, i, n, r)), d += "--#SET TERMINATOR ;\n", d;
 	}
 	_generateDal(e, t, n, r) {
@@ -13038,7 +13038,7 @@ var pt = class extends P {
 					"service+hks",
 					"full",
 					"full+hks"
-				].includes(r), c = String(this._ddl.getOptionValue("ifc") ?? "app").toLowerCase(), l = c === "app" || c === "apex" || c === "both" || c === "", u = c === "rest" || c === "both";
+				].includes(r), c = String(this._ddl.getOptionValue("interface") ?? "app").toLowerCase(), l = c === "app" || c === "apex" || c === "both" || c === "", u = c === "rest" || c === "both";
 				a && (n += `drop schema ${t}_dal restrict;\n`), o && (n += `drop schema ${t}_hks restrict;\n`), s && (n += `drop schema ${t}_svc restrict;\n`), l && (n += `drop schema ${t}_app restrict;\n`), u && (n += `drop schema ${t}_rst restrict;\n`);
 			}
 		}
