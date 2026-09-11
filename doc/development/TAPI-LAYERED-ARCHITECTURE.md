@@ -68,16 +68,16 @@ employees /api full+hks /auditlog app_audit_log
 
 Generated extra package: `employees_aud` (autonomous-transaction CDC writer).
 
-### REST interface (`ifc` setting)
+### REST interface (`interface` setting)
 
-| `ifc` value | Interface package | Use case |
+| `interface` value | Interface package | Use case |
 | --- | --- | --- |
 | `app` (default; `apex` = alias) | `_app` | Oracle APEX |
 | `rest` | `_rst` | ORDS REST endpoints |
 | `both` | `_app` + `_rst` | Dual access |
 
 ```expresql
-# settings = { ifc: rest }
+# settings = { interface: rest }
 
 employees /api full+hks
   name vc100 /nn
@@ -254,7 +254,7 @@ Not every table justifies four separate packages. The tier is specified directly
 | `full` | `_dal` `_svc` `_app` | 3 |
 | `full+hks` | `_dal` `_hks` `_svc` `_app` | 4 |
 
-`_rst` is orthogonal to the tier — it is added when `ifc: "rest"` or `ifc: "both"` is set, regardless of tier. `_audit` is added when `/auditlog` is active on the table, regardless of tier.
+`_rst` is orthogonal to the tier — it is added when `interface: "rest"` or `interface: "both"` is set, regardless of tier. `_audit` is added when `/auditlog` is active on the table, regardless of tier.
 
 #### The `+hks` suffix — ownership boundary
 
@@ -281,7 +281,7 @@ doctors       /api full+hks    -- dal + hks + svc + apx
 lookup_types  /api lookup      -- apx only
 order_lines   /api service+hks -- svc + hks + apx
 
-# settings = { ifc: "apex", auditcols: yes, rowversion: yes }
+# settings = { interface: "apex", auditcols: yes, rowversion: yes }
 ```
 
 #### Tier selection guide
@@ -477,7 +477,7 @@ The interface layer does not attempt to be generic. Each technology (APEX, ORDS)
 - `_app`: parameters follow the `p_` naming convention; APEX Invoke API auto-maps them to page items of the same root name.
 - `_rst`: procedures parse JSON input and emit JSON output using Oracle SQL/JSON functions.
 
-Which IFC package is generated is controlled by the global setting `ifc` (default: `apex`). Multiple IFC packages can coexist for the same entity.
+Which IFC package is generated is controlled by the global setting `interface` (default: `apex`). Multiple IFC packages can coexist for the same entity.
 
 ---
 
@@ -995,18 +995,18 @@ The interface layer is the only layer that knows which technology is consuming t
 - Returns results in the form expected by the consumer.
 - Does not contain business logic. Any validation performed here is structural (e.g., "JSON body is present") — semantic validation belongs in the HKS layer.
 
-Which IFC packages are generated is controlled by the `ifc` setting:
+Which IFC packages are generated is controlled by the `interface` setting:
 
-| `ifc` value | Packages generated |
+| `interface` value | Packages generated |
 |---|---|
 | `"app"` (default; `"apex"` = alias) | `_app` only |
 | `"rest"` | `_rst` only |
 | `"both"` | `_app` + `_rst` |
 
 ```
-# settings = { ifc: "app" }     ← generates _app only (default; "apex" is an alias)
-# settings = { ifc: "rest" }    ← generates _rst only
-# settings = { ifc: "both" }    ← generates _app + _rst
+# settings = { interface: "app" }     ← generates _app only (default; "apex" is an alias)
+# settings = { interface: "rest" }    ← generates _rst only
+# settings = { interface: "both" }    ← generates _app + _rst
 ```
 
 ### 7.2 APEX Interface Package (`{entity}_app`)
@@ -1189,7 +1189,7 @@ END app_error_handler;
 
 ### 7.3 REST Interface Package (`{entity}_rst`)
 
-The `_rst` package is generated when `ifc: "rest"` or `ifc: "both"` is set. It wraps the same SVC layer as `_app`, translating between JSON and `t_rec`. It is typically called from ORDS resource module handlers.
+The `_rst` package is generated when `interface: "rest"` or `interface: "both"` is set. It wraps the same SVC layer as `_app`, translating between JSON and `t_rec`. It is typically called from ORDS resource module handlers.
 
 ```sql
 CREATE OR REPLACE PACKAGE BODY doctors_rst AS
@@ -1369,8 +1369,8 @@ app_audit_log_svc   (spec + body)
 doctors_dal         (spec + body)
 doctors_hks         (spec + body)
 doctors_svc         (spec + body)
-doctors_app         (spec + body)   ← when ifc: apex or both
-doctors_rst         (spec + body)   ← when ifc: rest or both
+doctors_app         (spec + body)   ← when interface: apex or both
+doctors_rst         (spec + body)   ← when interface: rest or both
 doctors_audit       (spec + body)
 ```
 
@@ -1463,7 +1463,7 @@ order_lines   /api service+hks
    order_id   num /fk orders /nn
    qty        num /nn
 
-# settings = { ifc: "both", auditcols: yes, rowversion: yes, semantics: "CHAR" }
+# settings = { interface: "both", auditcols: yes, rowversion: yes, semantics: "CHAR" }
 ```
 
 ```typescript
@@ -1492,8 +1492,8 @@ generateLayeredTAPI(node: IDdlNode): string {
     if (hasHks) r += this._generateHksSpec(node, hasDal) + '\n' + this._generateHksBody(node, hasDal) + '\n';
     if (hasSvc) r += this._generateSvcSpec(node) + '\n' + this._generateSvcBody(node, hasDal, hasHks) + '\n';
 
-    // IFC packages — controlled by the ifc setting, not by tier
-    const ifc = this.ctx.getOptionValue('ifc') ?? 'apex';
+    // IFC packages — controlled by the interface setting, not by tier
+    const ifc = this.ctx.getOptionValue('interface') ?? 'apex';
     if (ifc === 'apex' || ifc === 'both')
         r += this._generateApxSpec(node) + '\n' + this._generateApxBody(node, hasSvc, hasDal);
     if (ifc === 'rest' || ifc === 'both')
@@ -1561,8 +1561,8 @@ SELECT application_id, page_id, process_name, process_text
 | 1.3     | 2026-04-26 | Roberto Capancioni | Cross-entity validation via DAL with direct-SQL fallback note; file extension convention (`.pks`/`.pkb` vs `.sql`); corrected `PRAGMA SERIALLY_REUSABLE` misconception |
 | 1.4     | 2026-04-27 | Roberto Capancioni | Audit layer: `/auditlog` directive generates `{entity}_audit` package with `PRAGMA AUTONOMOUS_TRANSACTION`; layer map, file naming table, and generator section updated |
 | 1.5     | 2026-04-27 | Roberto Capancioni | `app_audit_log` is now developer-owned; `_audit.p_log` calls `app_audit_log_svc.create_rec` |
-| 1.6     | 2026-05-05 | Roberto Capancioni | Four-layer architecture: IFC layer added (`_app` / `_rst`); SVC switches from scalar params to `t_rec` record (business columns only, no PK/rowversion/audit — all trigger-managed); `x_version OUT` removed from SVC; hooks renamed to `_hks` throughout; `ifc` setting controls which IFC package is generated (default: `apex`); APX procedures: `get / ins / upd / del` with `p_`-prefix for APEX Invoke API auto-mapping; grants model updated — only IFC layer is public; `p_row_version` in APX `get`/`upd` only when `/rowversion` active; audit OUT params in APX `get` only when `auditcols: yes` active |
+| 1.6     | 2026-05-05 | Roberto Capancioni | Four-layer architecture: IFC layer added (`_app` / `_rst`); SVC switches from scalar params to `t_rec` record (business columns only, no PK/rowversion/audit — all trigger-managed); `x_version OUT` removed from SVC; hooks renamed to `_hks` throughout; `interface` setting controls which IFC package is generated (default: `apex`); APX procedures: `get / ins / upd / del` with `p_`-prefix for APEX Invoke API auto-mapping; grants model updated — only IFC layer is public; `p_row_version` in APX `get`/`upd` only when `/rowversion` active; audit OUT params in APX `get` only when `auditcols: yes` active |
 | 1.7     | 2026-05-05 | Roberto Capancioni | DAL: `lock_by_id` function added (SELECT FOR UPDATE NOWAIT); `c_err_locked` constant (-20003); `resource_busy` exception with PRAGMA EXCEPTION_INIT(-54) declared at body level; §4.3 extended with check-then-act pattern, SVC usage example, and guidance on when to use `lock_by_id` vs `get_by_id`; §7.2.3 APEX error handler updated with -20003 mapping; §8 audit body corrected to `l_rec t_rec` pattern (was showing old scalar named-param call); §9 error range and `app_errors` package updated with `c_locked`; §6.2 rewritten — ExpreSQL generates a single SQL block, not separate files; file management is a deployment discipline, not a generator feature; `_hks_impl.sql` naming is a developer convention, not enforced by ExpreSQL |
 | 1.8     | 2026-05-08 | Roberto Capancioni | §3.4 Tier Model: 6-tier system (`lookup` `lookup+hks` `service` `service+hks` `full` `full+hks`) selects minimum package set per table; tier is the argument to `/api` on each table — `api` key removed from settings block; `+hks` suffix formalises developer-owned `_hks` body; cross-entity coupling constraint and tier selection guide added; `_audit` noted as orthogonal to tier; §3.4 Design Decisions renumbered to §3.5; §3 title "Four-Layer" → "Layered"; §7.1 and §8 settings examples updated; §11 TypeScript simplified with `hasDal`/`hasHks`/`hasSvc` flags and legacy numeric alias mapping |
-| 1.9     | 2026-05-08 | Roberto Capancioni | §3.4 Degradation rule: explicit principle — each layer calls the one below if present, absorbs it as private procedures if absent; cascading table and per-tier consequences added; `service+hks` complete body example showing private DML section; `lookup+hks` pattern described; `_rst` and `_audit` noted as orthogonal to tier in tier table; §6.3 `_hks` spec: `before/after_delete` parameter type is `_dal.t_id` when `_dal` is present, `table.id%TYPE` otherwise — documented with both variants; §6.4/§6.5 bodies updated with conditional type note; §7.1 `ifc` setting: three explicit values (`"apex"` / `"rest"` / `"both"`) replace the previous two-value implicit behaviour; §8 output order updated with `_rst` conditional line; §11 TypeScript: `getOption` → `getOptionValue`; `hasDal` passed to `_generateHksSpec` and `_generateHksBody`; `hasDal`/`hasHks` passed to `_generateSvcBody`; `hasSvc`/`hasDal` passed to `_generateApxBody` and `_generateRstBody`; IFC generation replaced with explicit three-way `ifc` switch |
+| 1.9     | 2026-05-08 | Roberto Capancioni | §3.4 Degradation rule: explicit principle — each layer calls the one below if present, absorbs it as private procedures if absent; cascading table and per-tier consequences added; `service+hks` complete body example showing private DML section; `lookup+hks` pattern described; `_rst` and `_audit` noted as orthogonal to tier in tier table; §6.3 `_hks` spec: `before/after_delete` parameter type is `_dal.t_id` when `_dal` is present, `table.id%TYPE` otherwise — documented with both variants; §6.4/§6.5 bodies updated with conditional type note; §7.1 `interface` setting: three explicit values (`"apex"` / `"rest"` / `"both"`) replace the previous two-value implicit behaviour; §8 output order updated with `_rst` conditional line; §11 TypeScript: `getOption` → `getOptionValue`; `hasDal` passed to `_generateHksSpec` and `_generateHksBody`; `hasDal`/`hasHks` passed to `_generateSvcBody`; `hasSvc`/`hasDal` passed to `_generateApxBody` and `_generateRstBody`; IFC generation replaced with explicit three-way `interface` switch |
 | 1.10    | 2026-09-10 | Roberto Capancioni | §9.1 added: `raise_application_error` messages for `c_err_stale_data`/`c_err_not_found`/`c_err_locked`/`dup_val_on_index` now carry a bracketed token (`[STALE_DATA]`, `[NOT_FOUND]`, `[LOCKED]`, `[DUPLICATE]`) so callers behind a wrapping layer (e.g. `APEX_EXEC`'s `p_dml_plsql_code`, which re-raises any custom-code exception as a generic `ORA-20987`) can classify the error from message text alone; applied uniformly across every tier, including the degraded/absorbed forms (`_generatePrivateDml`'s `p_get_by_id`/`p_update_row`) and every `dup_val_on_index` site in `_app`'s own `ins`/`upd`, not just `_svc.create_rec` — generator updated in `src/oracle/plsql.ts` |

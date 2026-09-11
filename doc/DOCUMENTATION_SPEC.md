@@ -238,8 +238,10 @@ Le impostazioni si specificano con `# chiave: valore` oppure `# settings = { chi
 | `dv` | `true`, `false` | `false` | Abilita JSON Duality Views | **no** |
 | `editionable` | `true`, `false` | `false` | Oggetti PL/SQL EDITIONABLE | **no** |
 | `api` | `true`, `false`, `layered` | `false` | Genera TAPI package | sì |
+| `interface` | `app`, `rest`, `both`, `none` | `app` | Tipo di package interfaccia generato con `api: layered`: `app` = solo `_app`, `rest` = solo `_rst` (ORDS), `both` = entrambi, `none` = nessuno | sì |
 | `dimensioncolumns` | oggetto JSON `{ colonna: "TIPO_DIMENSIONE" }` | `{}` | Genera `chk_rls` in `_hks` (o assorbito) solo per le colonne mappate. Una vista `<tabella>_rls` è invece generata SEMPRE, su ogni tabella — `select * from sec_pkg.secured_by_dimension(<tabella>)` se ha colonne di dimensione configurate, altrimenti un passthrough non filtrato `select * from <tabella>` — e `_dal.get_by_id`/`lock_by_id`/`get_all`/`get_by_<unique>` (o l'equivalente assorbito) leggono sempre da quella vista, mai dalla tabella base; `chk_rbac` sempre generato su ogni tabella, a prescindere | sì |
 | `apex` | `true`, `false` | `false` | Usa `APEX$SESSION` per audit | sì |
+| `usercontext` | nome namespace Oracle (es. `MY_APP_CTX`) | — | Prepone `sys_context('NAMESPACE','USER')` alla catena coalesce nei trigger di audit, con priorità su APEX e su `USER`. Richiede un `CREATE CONTEXT` e un package nominato per `DBMS_SESSION.SET_CONTEXT`. | sì |
 | `compress` | `true`, `false` | `false` | Compressione su tutte le tabelle | sì |
 
 #### Gruppo: Controllo comportamento

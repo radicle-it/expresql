@@ -24,7 +24,7 @@ This document collects end-to-end ExpreSQL examples. Each scenario shows the QSQ
 - [18. Schema migration with `toDiff`](#18-schema-migration-with-todiff)
 - [19. Layered TAPI — per-table tier selection](#19-layered-tapi--per-table-tier-selection)
 - [20. Layered TAPI — degradation (absorbed layers)](#20-layered-tapi--degradation-absorbed-layers)
-- [21. Layered TAPI — REST interface (`ifc: rest`)](#21-layered-tapi--rest-interface-ifc-rest)
+- [21. Layered TAPI — REST interface (`interface: rest`)](#21-layered-tapi--rest-interface-interface-rest)
 - [22. IBM Db2 — basic DDL](#22-ibm-db2--basic-ddl)
 - [23. IBM Db2 — triggers and audit columns](#23-ibm-db2--triggers-and-audit-columns)
 - [24. IBM Db2 — layered TAPI with schema-based procedures](#24-ibm-db2--layered-tapi-with-schema-based-procedures)
@@ -1277,9 +1277,9 @@ procedure before_delete (p_id in departments_dal.t_id);
 
 ---
 
-## 21. Layered TAPI — REST interface (`ifc: rest`)
+## 21. Layered TAPI — REST interface (`interface: rest`)
 
-Use `ifc: rest` to generate ORDS handler packages (`_rst`) instead of application interface packages (`_app`). Use `ifc: both` to generate both.
+Use `interface: rest` to generate ORDS handler packages (`_rst`) instead of application interface packages (`_app`). Use `interface: both` to generate both.
 
 **Input:**
 
@@ -1289,7 +1289,7 @@ employees /api full+hks
   email       vc200 /nn /unique
   row_version num /nn
 
-# settings = { api: layered, ifc: rest }
+# settings = { api: layered, interface: rest }
 ```
 
 The generated `employees_rst` package:
@@ -1311,7 +1311,7 @@ end employees_rst;
 For dual access (APEX + REST simultaneously):
 
 ```expresql
-# settings = { ifc: both }
+# settings = { interface: both }
 
 employees /api full+hks
   name vc100 /nn

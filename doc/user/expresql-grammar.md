@@ -18,6 +18,7 @@
     - [apex](#apex)
     - [api](#api)
     - [auditcols](#auditcols)
+    - [usercontext](#usercontext)
     - [boolean](#boolean)
     - [compress](#compress)
     - [transcontext](#transcontext)
@@ -46,7 +47,7 @@
     - [updatedCol](#updatedcol)
     - [verbose](#verbose)
     - [inserts](#inserts)
-    - [ifc](#ifc)
+    - [interface](#interface)
     - [dv](#dv)
     - [editionable](#editionable)
     - [aienrichment](#aienrichment)
@@ -110,7 +111,7 @@ A comment can appear between any keywords, parameters, or punctuation marks in a
 <!-- markdownlint-disable MD013 -->
 | Directive | Description | Dialect |
 | --- | --- | --- |
-| `/api [tier]` | Generate layered Table API. The optional *tier* selects which layers are generated: `lookup`, `lookup+hks`, `service`, `service+hks`, `full`, `full+hks` (default). **Oracle:** generates PL/SQL packages (`_dal`, `_hks`, `_svc`, `_app`/`_rst`). **Db2:** generates schema-scoped SQL PL procedures (`_dal`, `_hks`, `_svc`, `_app`/`_rst`). Interface controlled by [`ifc`](#ifc). See [api](#api) setting. | All |
+| `/api [tier]` | Generate layered Table API. The optional *tier* selects which layers are generated: `lookup`, `lookup+hks`, `service`, `service+hks`, `full`, `full+hks` (default). **Oracle:** generates PL/SQL packages (`_dal`, `_hks`, `_svc`, `_app`/`_rst`). **Db2:** generates schema-scoped SQL PL procedures (`_dal`, `_hks`, `_svc`, `_app`/`_rst`). Interface controlled by [`interface`](#interface). See [api](#api) setting. | All |
 | `/audit` | Adds Oracle auditing (`AUDIT ALL ON <TABLE>`). On Db2, emits a comment recommending an IBM Db2 Audit Policy instead. | All *(Oracle feature)* |
 | `/auditcols`, `/audit cols` | Adds `CREATED`, `CREATED_BY`, `UPDATED`, `UPDATED_BY` columns and trigger logic. **Oracle:** `SYSDATE` / `v('APP_USER')`. **Db2:** `CURRENT TIMESTAMP` / `CURRENT USER`. | All |
 | `/auditlog [table]` | Generates an audit package with `PRAGMA AUTONOMOUS_TRANSACTION` that logs all DML to a developer-supplied audit table. The generated package calls `<log_table>_svc.create_rec` inside an autonomous transaction. | Oracle only |
@@ -454,7 +455,7 @@ The available settings are listed in the below sections.
 | `editionable` | | ✓ | Oracle EBR. |
 | `aienrichment` | | ✓ | Oracle 26ai metadata annotations. |
 | `genPK` | ✓ | | |
-| `ifc` | ✓ (`app`, `rest`, `both`) | ✓ (`app`, `rest`, `both`) | `app` and `rest` work for both dialects. `both` generates `_app` + `_rst` simultaneously. |
+| `interface` | ✓ (`app`, `rest`, `both`) | ✓ (`app`, `rest`, `both`) | `app` and `rest` work for both dialects. `both` generates `_app` + `_rst` simultaneously. |
 | `inserts` | ✓ | | |
 | `language` | ✓ | | |
 | `longVC` | ✓ | | |
@@ -472,6 +473,7 @@ The available settings are listed in the below sections.
 | `tenantID` | | ✓ | |
 | `tenantRef` | | ✓ | |
 | `transcontext` | | ✓ | Oracle application context for `/trans`. |
+| `usercontext` | | ✓ | Oracle application context namespace for audit column user identifier. |
 | `updatedByCol` | ✓ | | |
 | `updatedCol` | ✓ | | |
 | `verbose` | ✓ | | |
@@ -530,7 +532,7 @@ Numeric aliases: `1` = `lookup`, `1h` = `lookup+hks`, `2` = `service`, `2h` = `s
 
 **Degradation rule**: each layer calls the layer below when present; when a lower layer is absent, its logic is absorbed as private procedures. For example, a `service` tier SVC body embeds private `p_get_by_id`, `p_insert_row`, `p_update_row`, `p_delete_row` procedures instead of calling `_dal`.
 
-**Interface package**: controlled by the [`ifc`](#ifc) setting (`app`, `rest`, or `both`). Default is `app`, which generates `_app` (named-parameter procedures). Use `rest` to generate `_rst` (ORDS/HTTP handlers) instead, or `both` to generate both. `apex` is a backward-compatible alias for `app`.
+**Interface package**: controlled by the [`interface`](#interface) setting (`app`, `rest`, or `both`). Default is `app`, which generates `_app` (named-parameter procedures). Use `rest` to generate `_rst` (ORDS/HTTP handlers) instead, or `both` to generate both. `apex` is a backward-compatible alias for `app`.
 
 ```expresql
 -- default: log table is app_audit_log (with prefix applied)
@@ -627,6 +629,28 @@ invoices_hks.before_insert(p_row => l_row);
 
 Adds an additional created, created_by, updated and updated_by columns to every
 table created.
+
+### usercontext
+
+> **Dialect:** Oracle only
+
+**Default Value**: *(not set)*
+
+Namespace of an Oracle application context from which the user identifier is read for audit column population. When set, `sys_context('NAMESPACE','USER')` is prepended to the coalesce chain in audit triggers, taking priority over the APEX fallback (`sys_context('APEX$SESSION','APP_USER')`) and the bare Oracle `USER` pseudo-column.
+
+Only the namespace name is specified (e.g. `MY_APP_CTX`); the attribute name `'USER'` is hardcoded.
+
+When not set, the coalesce chain falls back to the APEX expression if `apex: yes` is active, or to the bare `USER` pseudo-column otherwise.
+
+```expresql
+# settings = { auditcols: yes, apex: yes, usercontext: MY_APP_CTX }
+```
+
+Generated audit assignment:
+
+```sql
+:new.created_by := coalesce(sys_context('MY_APP_CTX','USER'),sys_context('APEX$SESSION','APP_USER'),user);
+```
 
 ### boolean
 
@@ -733,7 +757,7 @@ employees
 - Triggers: Db2 SQL PL syntax — `REFERENCING NEW AS n [OLD AS o]`, `SET n.col = value`, `CURRENT TIMESTAMP`, `CURRENT USER`.  The statement terminator is changed to `@` via `--#SET TERMINATOR @`.
 - DROP: `DROP TABLE IF EXISTS` (no `CASCADE CONSTRAINTS`).
 - Layered TAPI (`/api`): schemas replace Oracle packages — each tier gets its own schema (`_dal`, `_hks`, `_svc`, `_app`, `_rst`) containing `CREATE OR REPLACE PROCEDURE` statements.
-- `ifc: app` (default) generates `_app` with named-parameter `get`/`ins`/`upd`/`del` procedures. `get` uses `SELECT … INTO` for per-column OUT params; `ins`/`upd`/`del` delegate to `_svc`. `ifc: rest` generates `_rst` with `GET DIAGNOSTICS`-based error handling and `json_object(…)` responses. `apex` is accepted as a backward-compatible alias for `app`.
+- `interface: app` (default) generates `_app` with named-parameter `get`/`ins`/`upd`/`del` procedures. `get` uses `SELECT … INTO` for per-column OUT params; `ins`/`upd`/`del` delegate to `_svc`. `interface: rest` generates `_rst` with `GET DIAGNOSTICS`-based error handling and `json_object(…)` responses. `apex` is accepted as a backward-compatible alias for `app`.
 
 ### drop
 
@@ -1026,7 +1050,7 @@ employees /insert 10
 
 The `/insert 10` directive is ignored and no INSERT statements are generated.
 
-### ifc
+### interface
 
 **Possible Values**: `app`, `rest`, `both` (`apex` is a backward-compatible alias for `app`)  
 **Default Value**: `app` (both dialects)
@@ -1048,7 +1072,7 @@ The `_rst` package (Oracle) uses ORDS bind variables (`:body_text`, `:p_id`, `:s
 The `_rst` package (Db2) uses SQL PL `GET DIAGNOSTICS` for error handling and returns `json_object(…)` results.
 
 ```expresql
-# settings = { ifc: rest }
+# settings = { interface: rest }
 
 employees /api full+hks
   name       vc100 /nn
@@ -1057,7 +1081,7 @@ employees /api full+hks
 ```
 
 ```expresql
-# settings = { ifc: both }
+# settings = { interface: both }
 
 employees /api
   name vc100 /nn

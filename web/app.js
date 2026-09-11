@@ -577,14 +577,14 @@ employees /api full+hks /auditlog app_audit_log
 # settings = {"auditcols": "yes"}`,
     },
     {
-        label: 'Layered TAPI — REST (ifc: rest)', desc: '_rst ORDS handler package: get/ins/upd/del with :body_text, :p_id, :status', cat: 'TAPI',
+        label: 'Layered TAPI — REST (interface: rest)', desc: '_rst ORDS handler package: get/ins/upd/del with :body_text, :p_id, :status', cat: 'TAPI',
         esql:
 `employees /api full+hks
    name        vc100 /nn
    email       vc200 /nn /unique
    row_version num /nn
 
-# settings = {"ifc": "rest"}`,
+# settings = {"interface": "rest"}`,
     },
     {
         label: 'Multi-Tenant SaaS', desc: 'Shared schema with tenant_id isolation', cat: 'Multi-tenant',

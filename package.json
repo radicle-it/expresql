@@ -1,6 +1,6 @@
 ﻿{
   "name": "@radicle-it/expresql",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "ExpreSQL — ESQL shorthand to DDL, ERD and PL/SQL scaffolding (fork of @oracle/quicksql)",
   "main": "./dist/expresql.js",
   "type": "module",
