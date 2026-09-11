@@ -495,11 +495,11 @@ var j = class {
 	auditSysDateFn() {
 		return String(this._ctx.getOptionValue("auditdate") || this._ctx.getOptionValue("Date Data Type") || "").toLowerCase().indexOf("timestamp") >= 0 ? "systimestamp" : "sysdate";
 	}
-	indexOf(e, t) {
-		let n = e.toLowerCase();
-		for (let e = 0; e < this.src.length; e++) {
-			let r = this.src[e].lowerValue;
-			if (t && r.indexOf(n) === 0 || n === r) return e;
+	indexOf(e, t, n = 0) {
+		let r = e.toLowerCase();
+		for (let e = n; e < this.src.length; e++) {
+			let n = this.src[e].lowerValue;
+			if (t && n.indexOf(r) === 0 || r === n) return e;
 		}
 		return -1;
 	}
@@ -549,7 +549,7 @@ var j = class {
 		0 < a && (i = a), a = this.indexOf("["), 0 < a && a < i && (i = a), a = this.indexOf("="), 0 < a && a < i && (i = a);
 		for (let t = 0; t < k.length; t++) {
 			let n = this.indexOf(k[t]);
-			if (n < 0 && (n = this.indexOf(k[t], !0)), 0 < n && n < i) return i = n, this.sugarcoatName(e, i);
+			if (n < 0 && (n = this.indexOf(k[t], !0)), n === 0 && (n = this.indexOf(k[t], !1, 1), n < 0 && (n = this.indexOf(k[t], !0, 1))), 0 < n && n < i) return i = n, this.sugarcoatName(e, i);
 		}
 		for (let t = e; t < i; t++) {
 			let n = this.src[t].lowerValue;
@@ -558,7 +558,7 @@ var j = class {
 		return this.sugarcoatName(e, i);
 	}
 	_inferTypeFull() {
-		let e = this.src, t = e[0].value, n = t.endsWith("_name") || t.startsWith("name") || t.startsWith("email") ? this._ctx.getOptionValue("namelen") || 255 : 4e3, r = this.indexOf("vc", !0);
+		let e = this.src, t = e[0].value, n = t.endsWith("_name") || t.startsWith("name") || t.startsWith("email") ? this._ctx.getOptionValue("namelen") || 255 : 4e3, r = this.indexOf("vc", !0, 1);
 		if (0 < r) {
 			let t = e[r].value.substring(2);
 			t === "" && this.indexOf("(") === r + 1 && (t = e[r + 2].value), n = ie(e, r, t === "" ? n : parseInt(t));
@@ -575,7 +575,7 @@ var j = class {
 		d && (this._ctx.getOptionValue("boolean") === "native" || this._ctx.getOptionValue("boolean") !== "yn" && g && g.length > 0 && 23 <= (p(g) ?? 0)) && (d = !1, i = "boolean");
 		let _ = i === "boolean";
 		this.indexOf("phone_number") === 0 && (i = "number");
-		let v, y = this.indexOf("num", !0);
+		let v, y = this.indexOf("num", !0, 1);
 		if (0 < y) {
 			i = "number";
 			let t = this.indexOf(")");
@@ -10043,11 +10043,11 @@ var P = class {
 			values: s
 		};
 	}
-}, F = {}, be = {};
-function xe(e, t) {
+}, F = {}, I = {};
+function be(e, t) {
 	F[e.toLowerCase()] = t;
 }
-function Se(e) {
+function xe(e) {
 	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = F[t];
 	if (n == null) {
 		let e = Object.keys(F).join(", ");
@@ -10055,29 +10055,29 @@ function Se(e) {
 	}
 	return n(e);
 }
-function Ce(e, t) {
-	be[e.toLowerCase()] = t;
+function Se(e, t) {
+	I[e.toLowerCase()] = t;
 }
-function we(e) {
-	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = be[t];
+function Ce(e) {
+	let t = String(e.getOptionValue("dialect") ?? "oracle").toLowerCase(), n = I[t];
 	if (n == null) {
-		let e = Object.keys(be).join(", ");
+		let e = Object.keys(I).join(", ");
 		throw Error(`Unknown SQL dialect for diff: "${t}". Registered dialects: ${e}`);
 	}
 	return n(e);
 }
 //#endregion
 //#region src/utils/json-to-qsql.ts
-function I(e) {
+function L(e) {
 	let t = "";
 	for (let n = 0; n < e; n++) t += "   ";
 	return t;
 }
-function Te(e, t) {
+function we(e, t) {
 	for (let n in e) if (JSON.stringify(e[n]) === JSON.stringify(t)) return !0;
 	return !1;
 }
-function L(e) {
+function Te(e) {
 	let t = ["_id", "Id"];
 	if (e.id != null) return {
 		key: "id",
@@ -10137,13 +10137,13 @@ var Ae = class {
 		if (r !== !1 && this.notNormalized.includes(e)) {
 			let r = ke(this.parent(e) ?? "", e), i = this.tableContent[r];
 			if (i != null) {
-				let a = "\n" + I(n) + this.tableName(r) + " /insert " + i.length;
+				let a = "\n" + L(n) + this.tableName(r) + " /insert " + i.length;
 				if (Oe(i, this.refIdName(this.parent(e) ?? ""), this.refIdName(e))) return a + this.output(e, t, n + 1, !1);
 			}
 		}
-		let i = this.notNormalized.includes(e) ? ">" : "", a = "\n" + I(n) + i + this.tableName(e);
+		let i = this.notNormalized.includes(e) ? ">" : "", a = "\n" + L(n) + i + this.tableName(e);
 		if (typeof t == "number" && (a += " num", e.endsWith("_id") || e.endsWith("Id"))) return a += " /pk", a;
-		if (e === "id") return "\n" + I(n) + "id vc32 /pk";
+		if (e === "id") return "\n" + L(n) + "id vc32 /pk";
 		tofinal: if (typeof t == "object" && t) {
 			if (Array.isArray(t)) for (let i in t) {
 				if (1 <= i) break;
@@ -10163,7 +10163,7 @@ var Ae = class {
 				let s = this.output(r + R(o), o, n + 1);
 				a += s;
 			}
-			i !== "" && (a += "\n" + I(n) + i);
+			i !== "" && (a += "\n" + L(n) + i);
 		}
 		return a;
 	}
@@ -10175,7 +10175,7 @@ var Ae = class {
 				let t = e, o = n;
 				if (isNaN(i)) {
 					t = i + R(a);
-					let e = L(r);
+					let e = Te(r);
 					e != null && (o = e);
 				}
 				this.flatten(t, a, o);
@@ -10184,15 +10184,15 @@ var Ae = class {
 		!this.notNormalized.includes(e) && n != null && Object.keys(r).length && (r[n.key] = n.value);
 		let i = 0 < Object.keys(r).length, a = this.tableContent[e];
 		if (i) {
-			if (a ??= [], Te(a, r) || a.push(r), this.notNormalized.includes(e)) {
+			if (a ??= [], we(a, r) || a.push(r), this.notNormalized.includes(e)) {
 				let t = this.parent(e);
 				if (t != null) {
 					let i = ke(t, e), a = this.tableContent[i];
 					a ??= [];
 					let o = {};
 					o[this.refIdName(t)] = n?.value;
-					let s = L(r);
-					s ??= (r.id = this.idSeq++, L(r)), o[this.refIdName(e)] = s.value, a.push(o), this.tableContent[i] = a;
+					let s = Te(r);
+					s ??= (r.id = this.idSeq++, Te(r)), o[this.refIdName(e)] = s.value, a.push(o), this.tableContent[i] = a;
 				}
 			}
 			this.tableContent[e] = a;
@@ -10694,10 +10694,10 @@ var U = {
 		return e;
 	}
 	getERD() {
-		return this._erd ??= Se(this).generateERD(), this._erd;
+		return this._erd ??= xe(this).generateERD(), this._erd;
 	}
 	getDDL() {
-		return this._ddl ??= Se(this).generateFullDDL() + this._makeFooter(), this._ddl;
+		return this._ddl ??= xe(this).generateFullDDL() + this._makeFooter(), this._ddl;
 	}
 	_makeFooter() {
 		let e = (e) => e.replace(/\/\*/g, "--<--").replace(/\*\//g, "-->--").replace(/\/*\s*Non-default options:/g, ""), t = `-- Generated by Radicle ExpreSQL ${this.version()} ${(/* @__PURE__ */ new Date()).toLocaleString()}\n\n`;
@@ -10726,7 +10726,7 @@ function Qe(e, t) {
 }
 function $e(e, t, n) {
 	let r = new W(t, n), i = new W(e, n);
-	return we(r).compute(i, r);
+	return Ce(r).compute(i, r);
 }
 function G() {
 	return "2.1.0";
@@ -13088,6 +13088,6 @@ var pt = class extends P {
 		return n;
 	}
 };
-xe("oracle", (e) => new Y(e)), xe("db2", (e) => new pt(e)), Ce("oracle", (e) => new lt());
+be("oracle", (e) => new Y(e)), be("db2", (e) => new pt(e)), Se("oracle", (e) => new lt());
 //#endregion
-export { P as BaseGenerator, we as createDiffGenerator, W as default, W as expresql, G as expresql_version, Ye as fromJSON, Ce as registerDiffGenerator, xe as registerGenerator, Ze as toDDL, $e as toDiff, Xe as toERD, Qe as toErrors };
+export { P as BaseGenerator, Ce as createDiffGenerator, W as default, W as expresql, G as expresql_version, Ye as fromJSON, Se as registerDiffGenerator, be as registerGenerator, Ze as toDDL, $e as toDiff, Xe as toERD, Qe as toErrors };

@@ -281,9 +281,9 @@ export class DdlNode implements IDdlNode {
         return auditDateType.toLowerCase().indexOf('timestamp') >= 0 ? 'systimestamp' : 'sysdate';
     }
 
-    indexOf(token: string, isPrefix?: boolean): number {
+    indexOf(token: string, isPrefix?: boolean, startFrom = 0): number {
         const lowerToken = token.toLowerCase();
-        for (let i = 0; i < this.src.length; i++) {
+        for (let i = startFrom; i < this.src.length; i++) {
             const lv = this.src[i].lowerValue;
             if (isPrefix && lv.indexOf(lowerToken) === 0) return i;
             else if (lowerToken === lv) return i;
@@ -383,6 +383,11 @@ export class DdlNode implements IDdlNode {
         for (let i = 0; i < datatypes.length; i++) {
             let pos = this.indexOf(datatypes[i]);
             if (pos < 0) pos = this.indexOf(datatypes[i], true);
+            // Name token itself is a datatype keyword (e.g. "num num"): search from pos 1
+            if (pos === 0) {
+                pos = this.indexOf(datatypes[i], false, 1);
+                if (pos < 0) pos = this.indexOf(datatypes[i], true, 1);
+            }
             if (0 < pos && pos < nameTo) {
                 nameTo = pos;
                 return this.sugarcoatName(nameFrom, nameTo);
@@ -408,7 +413,7 @@ export class DdlNode implements IDdlNode {
         let varcharLen: number = (colName.endsWith('_name') || colName.startsWith('name') || colName.startsWith('email'))
             ? (this._ctx.getOptionValue('namelen') as number) || 255
             : 4000;
-        const vcPos = this.indexOf('vc', true);
+        const vcPos = this.indexOf('vc', true, 1);  // skip name token at pos 0
         if (0 < vcPos) {
             let vcArg = src[vcPos].value.substring('vc'.length);
             if (vcArg === '') {
@@ -464,7 +469,7 @@ export class DdlNode implements IDdlNode {
         // Phase 5: phone_number + num(precision)
         if (this.indexOf('phone_number') === 0) base = 'number';
         let numericSpec: string | undefined;
-        const numFrom = this.indexOf('num', true);
+        const numFrom = this.indexOf('num', true, 1);  // skip name token at pos 0
         if (0 < numFrom) {
             base = 'number';
             const numTo = this.indexOf(')');

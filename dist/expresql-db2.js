@@ -495,11 +495,11 @@ var M = class {
 	auditSysDateFn() {
 		return String(this._ctx.getOptionValue("auditdate") || this._ctx.getOptionValue("Date Data Type") || "").toLowerCase().indexOf("timestamp") >= 0 ? "systimestamp" : "sysdate";
 	}
-	indexOf(e, t) {
-		let n = e.toLowerCase();
-		for (let e = 0; e < this.src.length; e++) {
-			let r = this.src[e].lowerValue;
-			if (t && r.indexOf(n) === 0 || n === r) return e;
+	indexOf(e, t, n = 0) {
+		let r = e.toLowerCase();
+		for (let e = n; e < this.src.length; e++) {
+			let n = this.src[e].lowerValue;
+			if (t && n.indexOf(r) === 0 || r === n) return e;
 		}
 		return -1;
 	}
@@ -549,7 +549,7 @@ var M = class {
 		0 < a && (i = a), a = this.indexOf("["), 0 < a && a < i && (i = a), a = this.indexOf("="), 0 < a && a < i && (i = a);
 		for (let t = 0; t < j.length; t++) {
 			let n = this.indexOf(j[t]);
-			if (n < 0 && (n = this.indexOf(j[t], !0)), 0 < n && n < i) return i = n, this.sugarcoatName(e, i);
+			if (n < 0 && (n = this.indexOf(j[t], !0)), n === 0 && (n = this.indexOf(j[t], !1, 1), n < 0 && (n = this.indexOf(j[t], !0, 1))), 0 < n && n < i) return i = n, this.sugarcoatName(e, i);
 		}
 		for (let t = e; t < i; t++) {
 			let n = this.src[t].lowerValue;
@@ -558,7 +558,7 @@ var M = class {
 		return this.sugarcoatName(e, i);
 	}
 	_inferTypeFull() {
-		let e = this.src, t = e[0].value, n = t.endsWith("_name") || t.startsWith("name") || t.startsWith("email") ? this._ctx.getOptionValue("namelen") || 255 : 4e3, r = this.indexOf("vc", !0);
+		let e = this.src, t = e[0].value, n = t.endsWith("_name") || t.startsWith("name") || t.startsWith("email") ? this._ctx.getOptionValue("namelen") || 255 : 4e3, r = this.indexOf("vc", !0, 1);
 		if (0 < r) {
 			let t = e[r].value.substring(2);
 			t === "" && this.indexOf("(") === r + 1 && (t = e[r + 2].value), n = re(e, r, t === "" ? n : parseInt(t));
@@ -575,7 +575,7 @@ var M = class {
 		d && (this._ctx.getOptionValue("boolean") === "native" || this._ctx.getOptionValue("boolean") !== "yn" && g && g.length > 0 && 23 <= (p(g) ?? 0)) && (d = !1, i = "boolean");
 		let _ = i === "boolean";
 		this.indexOf("phone_number") === 0 && (i = "number");
-		let v, y = this.indexOf("num", !0);
+		let v, y = this.indexOf("num", !0, 1);
 		if (0 < y) {
 			i = "number";
 			let t = this.indexOf(")");

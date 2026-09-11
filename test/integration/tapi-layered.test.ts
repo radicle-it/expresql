@@ -1644,42 +1644,42 @@ describe('degradation — HKS id type conditional on DAL presence', () => {
 
 });
 
-// ── §12 ifc setting — APEX / REST / both ─────────────────────────────────────
+// ── §12 interface setting — APEX / REST / both ─────────────────────────────────────
 
-describe('ifc setting — interface package selection', () => {
+describe('interface setting — interface package selection', () => {
 
-    test('ifc:"app" (default) emits _app but not _rst', () => {
+    test('interface:"app" (default) emits _app but not _rst', () => {
         const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered"}`);
         expect(out).toContain('create or replace package doctors_app');
         expect(out).not.toContain('create or replace package doctors_rst');
     });
 
-    test('ifc:"apex" is backward-compat alias for "app"', () => {
-        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "apex"}`);
+    test('interface:"apex" is backward-compat alias for "app"', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "interface": "apex"}`);
         expect(out).toContain('create or replace package doctors_app');
         expect(out).not.toContain('create or replace package doctors_rst');
     });
 
-    test('ifc:"rest" emits _rst but not _app', () => {
-        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+    test('interface:"rest" emits _rst but not _app', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "interface": "rest"}`);
         expect(out).toContain('create or replace package doctors_rst');
         expect(out).not.toContain('create or replace package doctors_app');
     });
 
-    test('ifc:"both" emits both _app and _rst', () => {
-        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "both"}`);
+    test('interface:"both" emits both _app and _rst', () => {
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "interface": "both"}`);
         expect(out).toContain('create or replace package doctors_app');
         expect(out).toContain('create or replace package doctors_rst');
     });
 
     test('RST spec declares get procedure (no parameters)', () => {
-        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "interface": "rest"}`);
         const spec = segment(out, 'create or replace package doctors_rst', 'end doctors_rst;');
         expect(spec).toContain('procedure get;');
     });
 
     test('RST spec declares ins, upd, del procedures', () => {
-        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "interface": "rest"}`);
         const spec = segment(out, 'create or replace package doctors_rst', 'end doctors_rst;');
         expect(spec).toContain('procedure ins;');
         expect(spec).toContain('procedure upd;');
@@ -1687,48 +1687,48 @@ describe('ifc setting — interface package selection', () => {
     });
 
     test('RST body get procedure uses :p_id bind variable', () => {
-        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "interface": "rest"}`);
         const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
         const getProc = segment(body, 'procedure get is', 'end get;');
         expect(getProc).toContain(':p_id');
     });
 
     test('RST body get procedure calls doctors_svc.get', () => {
-        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "interface": "rest"}`);
         const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
         const getProc = segment(body, 'procedure get is', 'end get;');
         expect(getProc).toContain('doctors_svc.get');
     });
 
     test('RST body get procedure uses htp.p to output JSON', () => {
-        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "interface": "rest"}`);
         const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
         const getProc = segment(body, 'procedure get is', 'end get;');
         expect(getProc).toContain('htp.p(');
     });
 
     test('RST body ins procedure uses :body_text bind variable', () => {
-        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "interface": "rest"}`);
         const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
         const insProc = segment(body, 'procedure ins is', 'end ins;');
         expect(insProc).toContain(':body_text');
     });
 
     test('RST body ins procedure calls doctors_svc.create_rec', () => {
-        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "interface": "rest"}`);
         const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
         const insProc = segment(body, 'procedure ins is', 'end ins;');
         expect(insProc).toContain('doctors_svc.create_rec');
     });
 
     test('RST body procedures set :status bind variable', () => {
-        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "interface": "rest"}`);
         const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
         expect(body).toContain(':status');
     });
 
-    test('ifc:"rest" with lookup tier (no svc): RST body absorbs private DML', () => {
-        const out = ddl(`doctors /api lookup\n  name vc200\n# settings = {"ifc": "rest"}`);
+    test('interface:"rest" with lookup tier (no svc): RST body absorbs private DML', () => {
+        const out = ddl(`doctors /api lookup\n  name vc200\n# settings = {"interface": "rest"}`);
         const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
         expect(body).toContain('private DML');
     });
@@ -1738,13 +1738,13 @@ describe('ifc setting — interface package selection', () => {
     // falls back to the absorbed p_get_all otherwise (added to _generatePrivateDml).
 
     test('RST spec declares get_all procedure', () => {
-        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "interface": "rest"}`);
         const spec = segment(out, 'create or replace package doctors_rst', 'end doctors_rst;');
         expect(spec).toContain('procedure get_all;');
     });
 
     test('RST body get_all procedure calls doctors_svc.get_all and loops a cursor into a JSON array', () => {
-        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const out = ddl(`doctors /api\n  name vc200\n# settings = {"api": "layered", "interface": "rest"}`);
         const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
         const getAllProc = segment(body, 'procedure get_all is', 'end get_all;');
         expect(getAllProc).toContain('doctors_svc.get_all');
@@ -1753,8 +1753,8 @@ describe('ifc setting — interface package selection', () => {
         expect(getAllProc).toContain("htp.p(']')");
     });
 
-    test('ifc:"rest" with lookup tier (no svc): RST body get_all calls the absorbed p_get_all', () => {
-        const out = ddl(`doctors /api lookup\n  name vc200\n# settings = {"ifc": "rest"}`);
+    test('interface:"rest" with lookup tier (no svc): RST body get_all calls the absorbed p_get_all', () => {
+        const out = ddl(`doctors /api lookup\n  name vc200\n# settings = {"interface": "rest"}`);
         const body = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
         expect(body).toContain('function p_get_all return sys_refcursor');
         const getAllProc = segment(body, 'procedure get_all is', 'end get_all;');
@@ -1778,7 +1778,7 @@ describe('ifc setting — interface package selection', () => {
     });
 
     test('RST get_all/ins/upd/del JSON key uses the real PK column name, not a hardcoded "id"', () => {
-        const out = ddl(`products /api\n  code vc20 /nn /pk\n  name vc200 /nn\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const out = ddl(`products /api\n  code vc20 /nn /pk\n  name vc200 /nn\n# settings = {"api": "layered", "interface": "rest"}`);
         const body = segment(out, 'create or replace package body products_rst', 'end products_rst;');
         const getAllProc = segment(body, 'procedure get_all is', 'end get_all;');
         expect(getAllProc).toContain("'code' value l_row.code");
@@ -1893,7 +1893,7 @@ describe('user-defined PK — _rst package (ifc: rest)', () => {
 party /api full+hks
     id vc100 /pk /nn
     party_ref vc200 /nn /unique
-# settings = { genpk: no, pk: none, api: layered, ifc: rest }`;
+# settings = { genpk: no, pk: none, api: layered, interface: rest }`;
 
     test('get/get_all json_object emits the id key exactly once', () => {
         const out = ddl(qsql);
@@ -1921,7 +1921,7 @@ party /api full+hks
 party /api lookup
     id vc100 /pk /nn
     party_ref vc200 /nn /unique
-# settings = { genpk: no, pk: none, ifc: rest }`);
+# settings = { genpk: no, pk: none, interface: rest }`);
         const body = segment(out, 'create or replace package body party_rst', 'end party_rst;');
         const insProc = segment(body, 'procedure ins is', 'end ins;');
         expect(insProc).toContain("l_row.id := json_value(l_body, '$.id');");
@@ -2132,7 +2132,7 @@ describe('versioned layered TAPI — full+hks tier', () => {
     });
 
     test('RST spec/body expose close instead of upd/del', () => {
-        const out = ddl(`policies /api /versioned\n  code vc20 /nn\n# settings = {"api": "layered", "ifc": "rest"}`);
+        const out = ddl(`policies /api /versioned\n  code vc20 /nn\n# settings = {"api": "layered", "interface": "rest"}`);
         const rstSpec = segment(out, 'create or replace package policies_rst as', 'end policies_rst;');
         expect(rstSpec).toContain('procedure close;');
         expect(rstSpec).not.toContain('procedure upd;');
@@ -2194,14 +2194,14 @@ describe('versioned layered TAPI — degraded tiers (absorbed close_row/close_ve
     });
 
     test('service tier ifc:rest: _rst close calls svc.close_version', () => {
-        const out = ddl('policies /api service /versioned\n  code vc20 /nn\n# settings = {"ifc": "rest"}');
+        const out = ddl('policies /api service /versioned\n  code vc20 /nn\n# settings = {"interface": "rest"}');
         const rstBody = segment(out, 'create or replace package body policies_rst', 'end policies_rst;');
         const closeProc = segment(rstBody, 'procedure close is', 'end close;');
         expect(closeProc).toContain('policies_svc.close_version');
     });
 
     test('lookup tier ifc:rest: _rst close absorbs p_close_row directly (no svc)', () => {
-        const out = ddl('policies /api lookup /versioned\n  code vc20 /nn\n# settings = {"ifc": "rest"}');
+        const out = ddl('policies /api lookup /versioned\n  code vc20 /nn\n# settings = {"interface": "rest"}');
         const rstBody = segment(out, 'create or replace package body policies_rst', 'end policies_rst;');
         expect(rstBody).toContain('procedure p_close_row');
         const closeProc = segment(rstBody, 'procedure close is', 'end close;');
@@ -2237,7 +2237,7 @@ describe('delete_rec / absorbed del now call validate(\'delete\', ...) — was n
     });
 
     test('_rst absorbed del (lookup tier) also fetches the row and calls validate before delete', () => {
-        const out = ddl('doctors /api lookup\n  name vc200 /nn\n# settings = {"ifc": "rest"}');
+        const out = ddl('doctors /api lookup\n  name vc200 /nn\n# settings = {"interface": "rest"}');
         const rstBody = segment(out, 'create or replace package body doctors_rst', 'end doctors_rst;');
         const delProc = segment(rstBody, 'procedure del is', 'end del;');
         expect(delProc).toContain('l_row := p_get_by_id(p_id => :p_id);');

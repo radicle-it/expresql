@@ -85,19 +85,19 @@ describe('§1 full+hks tier', () => {
     });
 
     test('RST get delegates to SVC', () => {
-        const out = ddl('employees /api full+hks\n  name\n# settings = {"ifc":"rest"}');
+        const out = ddl('employees /api full+hks\n  name\n# settings = {"interface":"rest"}');
         expect(out).toContain('call employees_svc.get(');
     });
 
     test('RST returns HTTP status codes', () => {
-        const out = ddl('employees /api full+hks\n  name\n# settings = {"ifc":"rest"}');
+        const out = ddl('employees /api full+hks\n  name\n# settings = {"interface":"rest"}');
         expect(out).toContain('set p_status = 200');
         expect(out).toContain('set p_status = 201');
         expect(out).toContain('set p_status = 500');
     });
 
     test('RST error handler uses GET DIAGNOSTICS', () => {
-        const out = ddl('employees /api full+hks\n  name\n# settings = {"ifc":"rest"}');
+        const out = ddl('employees /api full+hks\n  name\n# settings = {"interface":"rest"}');
         expect(out).toContain('get diagnostics exception 1 p_result = message_text');
     });
 
@@ -110,7 +110,7 @@ describe('§1 full+hks tier', () => {
     });
 
     test('JSON output uses json_object', () => {
-        const out = ddl('employees /api full+hks\n  name\n# settings = {"ifc":"rest"}');
+        const out = ddl('employees /api full+hks\n  name\n# settings = {"interface":"rest"}');
         expect(out).toContain('json_object(');
     });
 
@@ -188,7 +188,7 @@ describe('§5 lookup+hks tier (read-only + hooks)', () => {
     });
 
     test('RST get uses private get when no SVC/DAL', () => {
-        const out = ddl('employees /api lookup+hks\n  name\n# settings = {"ifc":"rest"}');
+        const out = ddl('employees /api lookup+hks\n  name\n# settings = {"interface":"rest"}');
         expect(out).toContain('private get (absorbed from absent _svc/_dal)');
     });
 
