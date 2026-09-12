@@ -564,6 +564,48 @@ employees /api full+hks /auditlog
   row_version num /nn
 ```
 
+#### Pessimistic locking — `p_lock` and `p_lock_timeout`
+
+The `get` procedure/function at every public layer (`_app`, `_rst`) and the service layer (`_svc`) accepts two optional parameters that control whether the fetched row is locked:
+
+<!-- markdownlint-disable MD013 -->
+| Parameter | Type | Default | Meaning |
+|---|---|---|---|
+| `p_lock` | `varchar2` | `'none'` | `'none'` — no lock; `'nowait'` — `FOR UPDATE NOWAIT`; `'wait'` — `FOR UPDATE WAIT n` |
+| `p_lock_timeout` | `number` | `5` | Seconds to wait when `p_lock = 'wait'`. Ignored for other modes. |
+<!-- markdownlint-enable MD013 -->
+
+```sql
+-- _app: fetch and lock immediately; fail fast if another session holds the row
+doctors_app.get(
+    p_id           => :P10_ID,
+    p_lock         => 'nowait',   -- 'none' (default), 'nowait', or 'wait'
+    p_lock_timeout => 5,          -- seconds; only used when p_lock = 'wait'
+    p_name         => :P10_NAME,
+    ...
+);
+
+-- _svc: fetch with a wait timeout (e.g. from a custom orchestration package)
+l_row := doctors_svc.get(p_id => p_doc_id, p_lock => 'wait', p_lock_timeout => 10);
+
+-- _rst: ORDS query parameters
+-- GET /doctors/42?lock=nowait
+-- GET /doctors/42?lock=wait&lock_timeout=10
+```
+
+**Lock modes:**
+
+- **`'none'`** (default) — optimistic; no database lock. The existing `row_version` OCC mechanism detects lost updates at write time. Use this for all standard CRUD.
+- **`'nowait'`** — `SELECT … FOR UPDATE NOWAIT`. Returns immediately with error `-20003` (`[LOCKED]`) if another session holds the row. Use when the caller cannot block (e.g. a non-blocking API endpoint).
+- **`'wait'`** — `SELECT … FOR UPDATE WAIT n` (via dynamic SQL, since Oracle requires a static literal in a static statement). Waits up to `p_lock_timeout` seconds before raising `-20003`. Use for interactive fetch-for-edit scenarios where a brief wait is acceptable.
+
+**Important:** the lock is held only for the duration of the current database transaction — it is released when the transaction commits or rolls back. For APEX this means the lock is released before the HTTP response leaves the server. Do not use pessimistic locking to hold a lock across separate HTTP requests; rely on `row_version` OCC for cross-request conflict detection.
+
+**Per-tier routing:**
+
+- `full` / `full+hks` — routes to `dal.lock_by_id` (nowait) or `dal.lock_by_id_wait` (wait), both generated in `_dal`.
+- `service` / `lookup` (absorbed tiers) — uses private `p_lock_by_id` / `p_lock_by_id_wait` functions generated inline in the package body; no `_dal` package involved.
+
 #### API and multi-tenancy (`tenantid: yes`)
 
 When `tenantid: yes` is active, every tenant-scoped table automatically receives a `tenant_id NUMBER NOT NULL` column. The API generator is aware of this and adds `p_tenant_id` to all four procedures:
@@ -1070,6 +1112,8 @@ The `_app` package exposes named IN/OUT parameters — no HTTP semantics.
 
 The `_rst` package (Oracle) uses ORDS bind variables (`:body_text`, `:p_id`, `:status`) and emits JSON via `htp.p`.  
 The `_rst` package (Db2) uses SQL PL `GET DIAGNOSTICS` for error handling and returns `json_object(…)` results.
+
+For `_rst`, the `get` handler reads `p_lock` and `p_lock_timeout` from ORDS query-param binds (`:lock` / `:lock_timeout`). Both default to `'none'` / `5` when absent. Example: `GET /doctors/42?lock=nowait` or `GET /doctors/42?lock=wait&lock_timeout=10`. See [Pessimistic locking](#pessimistic-locking--p_lock-and-p_lock_timeout) for the full parameter reference.
 
 ```expresql
 # settings = { interface: rest }

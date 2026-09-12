@@ -25,6 +25,7 @@ This document collects end-to-end ExpreSQL examples. Each scenario shows the QSQ
 - [19. Layered TAPI — per-table tier selection](#19-layered-tapi--per-table-tier-selection)
 - [20. Layered TAPI — degradation (absorbed layers)](#20-layered-tapi--degradation-absorbed-layers)
 - [21. Layered TAPI — REST interface (`interface: rest`)](#21-layered-tapi--rest-interface-interface-rest)
+- [22. Layered TAPI — pessimistic locking (`p_lock`)](#22-layered-tapi--pessimistic-locking-p_lock)
 - [22. IBM Db2 — basic DDL](#22-ibm-db2--basic-ddl)
 - [23. IBM Db2 — triggers and audit columns](#23-ibm-db2--triggers-and-audit-columns)
 - [24. IBM Db2 — layered TAPI with schema-based procedures](#24-ibm-db2--layered-tapi-with-schema-based-procedures)
@@ -1318,6 +1319,118 @@ employees /api full+hks
 ```
 
 This generates both `employees_app` (named-parameter interface) and `employees_rst` (ORDS handlers).
+
+---
+
+## 22. Layered TAPI — pessimistic locking (`p_lock`)
+
+The `get` procedure (`_app`) and function (`_svc`) accept an optional `p_lock` parameter that controls row-level locking mode. By default (`p_lock => 'none'`), `get` performs a plain SELECT — optimistic concurrency via `row_version` handles conflict detection at write time. Pass `'nowait'` or `'wait'` for pessimistic fetch-for-edit.
+
+**Input:**
+
+```expresql
+doctors /api full+hks
+  name      vc100 /nn
+  specialty vc100
+  email     vc200 /nn /unique
+  row_version num /nn
+
+# settings = { api: layered }
+```
+
+**Three lock modes — `_app`:**
+
+```sql
+-- Default: optimistic — no lock, row_version detects lost updates at write time.
+doctors_app.get(
+    p_id          => :P10_ID,
+    p_name        => :P10_NAME,
+    p_specialty   => :P10_SPECIALTY,
+    p_email       => :P10_EMAIL,
+    p_row_version => :P10_ROW_VERSION
+);
+
+-- nowait: FOR UPDATE NOWAIT — fails immediately if another session holds the lock.
+-- Raises c_err_locked (-20003) [LOCKED].
+doctors_app.get(
+    p_id          => :P10_ID,
+    p_lock        => 'nowait',
+    p_name        => :P10_NAME,
+    p_specialty   => :P10_SPECIALTY,
+    p_email       => :P10_EMAIL,
+    p_row_version => :P10_ROW_VERSION
+);
+
+-- wait: FOR UPDATE WAIT n — waits up to p_lock_timeout seconds (default 5).
+-- Raises c_err_locked (-20003) [LOCKED] if the wait expires.
+doctors_app.get(
+    p_id           => :P10_ID,
+    p_lock         => 'wait',
+    p_lock_timeout => 10,          -- wait up to 10 seconds
+    p_name         => :P10_NAME,
+    p_specialty    => :P10_SPECIALTY,
+    p_email        => :P10_EMAIL,
+    p_row_version  => :P10_ROW_VERSION
+);
+```
+
+**REST (`interface: rest`) — ORDS query parameters:**
+
+```http
+# Optimistic (default — no query param needed)
+GET /ords/schema/doctors/42
+
+# Pessimistic, fail-fast
+GET /ords/schema/doctors/42?lock=nowait
+
+# Pessimistic, wait up to 10 seconds
+GET /ords/schema/doctors/42?lock=wait&lock_timeout=10
+```
+
+**SVC callers (custom service logic):**
+
+```sql
+-- check-then-act pattern: lock the row before evaluating a business rule
+PROCEDURE transfer_patient (
+    p_doctor_id  IN doctors.id%TYPE,
+    p_new_specialty IN VARCHAR2
+) IS
+    l_row doctors%ROWTYPE;
+BEGIN
+    -- Lock immediately: fail if another session is editing this record
+    l_row := doctors_svc.get(p_id => p_doctor_id, p_lock => 'nowait');
+
+    IF l_row.specialty = p_new_specialty THEN
+        raise_application_error(-20050, 'Doctor is already in that specialty.');
+    END IF;
+
+    -- update_rec acquires OCC check via row_version (always passes after lock_by_id)
+    doctors_svc.update_rec(
+        p_id          => p_doctor_id,
+        p_rec         => doctors_svc.t_rec(name => l_row.name, specialty => p_new_specialty, email => l_row.email),
+        p_row_version => l_row.row_version
+    );
+END transfer_patient;
+```
+
+**Error handling — `[LOCKED]` response:**
+
+When `p_lock = 'nowait'` or `p_lock = 'wait'` and the lock cannot be acquired, the stack raises:
+
+```
+ORA-20003: [LOCKED] doctors: record locked by another session
+```
+
+In APEX, map this in the application Error Handling Function:
+
+```sql
+ELSIF p_error.ora_sqlcode = -20003 THEN
+    l_result.message := 'This record is currently being edited. Try again in a moment.';
+```
+
+In `_rst`, the `WHEN OTHERS` handler already maps `-20003` to HTTP `409 Conflict`.
+
+> **Lock scope**: the lock is held for the duration of the current database transaction and is released on `COMMIT` or `ROLLBACK`. It is **not** held across HTTP requests. For cross-request conflict detection, rely on `row_version` OCC. Use pessimistic locking only within a single transaction (e.g. check-then-act within one SVC procedure, or fetch-for-edit within one APEX page process).
 
 ---
 

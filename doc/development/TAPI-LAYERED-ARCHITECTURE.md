@@ -1,9 +1,9 @@
 ﻿# ExpreSQL — Layered TAPI Architecture Specification
 
 **Status**: Specification  
-**Version**: 1.10  
+**Version**: 1.11  
 **Author**: Roberto Capancioni — Radicle s.r.l.  
-**Date**: 2026-05-08  
+**Date**: 2026-09-12  
 **Target Platform**: Oracle Database 19c, Oracle APEX 22.1+, ORDS 23+
 
 ---
@@ -501,9 +501,11 @@ CREATE OR REPLACE PACKAGE doctors_dal AS
 
     -- Raises NO_DATA_FOUND if id does not exist.
     -- This is the only plain read function. Callers handle absence with WHEN no_data_found.
-    FUNCTION get_by_id  (p_id IN t_id) RETURN doctors%ROWTYPE;
+    FUNCTION get_by_id       (p_id IN t_id) RETURN doctors%ROWTYPE;
 
     -- Acquires a row-level lock (SELECT FOR UPDATE NOWAIT) and returns the row.
+    -- Fails immediately (fail-fast) if another session holds the lock. See lock_by_id_wait
+    -- for the timed variant.
     -- Use in SVC procedures that must perform a check-then-act sequence within
     -- a single transaction (e.g. deduct balance only if sufficient funds).
     -- Raises c_err_not_found if the row does not exist.
@@ -511,7 +513,15 @@ CREATE OR REPLACE PACKAGE doctors_dal AS
     -- The lock is released automatically when the calling transaction commits or rolls back.
     -- Do NOT use for cross-request locking (web forms) — the lock is transaction-scoped,
     -- not session-scoped, and will be released before the HTTP response is sent.
-    FUNCTION lock_by_id (p_id IN t_id) RETURN doctors%ROWTYPE;
+    FUNCTION lock_by_id      (p_id IN t_id) RETURN doctors%ROWTYPE;
+
+    -- Acquires a row-level lock (SELECT FOR UPDATE WAIT n) and returns the row.
+    -- Waits up to p_timeout seconds before raising c_err_locked.
+    -- Uses EXECUTE IMMEDIATE because FOR UPDATE WAIT requires a static integer literal
+    -- in embedded SQL — see §4.3 for rationale.
+    -- Raises c_err_not_found if the row does not exist.
+    -- Raises c_err_locked   if the timeout expires before the lock is granted.
+    FUNCTION lock_by_id_wait (p_id IN t_id, p_timeout IN NUMBER DEFAULT 5) RETURN doctors%ROWTYPE;
 
     FUNCTION get_by_email (p_email IN doctors.email%TYPE) RETURN doctors%ROWTYPE;
 
@@ -611,7 +621,30 @@ END lock_by_id;
 
 The `resource_busy` exception and its `PRAGMA EXCEPTION_INIT` are declared at the package body level (not inside the function), so they are shared by all body subprograms that might need them. The DAL translates ORA-00054 into the uniform `-20003` error code; callers never need to know the Oracle error number.
 
-**When to use `lock_by_id` vs `get_by_id`:**
+**`lock_by_id_wait` — pessimistic locking with timeout:**
+
+```sql
+FUNCTION lock_by_id_wait (p_id IN t_id, p_timeout IN NUMBER DEFAULT 5) RETURN doctors%ROWTYPE IS
+    l_row doctors%ROWTYPE;
+BEGIN
+    EXECUTE IMMEDIATE
+        'SELECT * FROM doctors_rls WHERE id = :1 FOR UPDATE WAIT '
+        || TRUNC(GREATEST(0, p_timeout))
+        INTO l_row USING p_id;
+    RETURN l_row;
+EXCEPTION
+    WHEN no_data_found THEN
+        raise_application_error(c_err_not_found,
+            '[NOT_FOUND] doctors: record not found (id=' || p_id || ')');
+    WHEN resource_busy THEN
+        raise_application_error(c_err_locked,
+            '[LOCKED] doctors: record locked by another session');
+END lock_by_id_wait;
+```
+
+Dynamic SQL is required because `FOR UPDATE WAIT n` requires a static integer literal in embedded SQL — the literal cannot be a bind variable. `TRUNC(GREATEST(0, p_timeout))` ensures `n` is a non-negative integer regardless of the caller-supplied value.
+
+**When to use `lock_by_id`, `lock_by_id_wait`, or `get_by_id`:**
 
 Use `lock_by_id` only in SVC procedures that implement a **check-then-act** pattern: a business rule is evaluated against a value read from the database, and a decision is made based on that value within the same transaction.
 
@@ -637,7 +670,9 @@ END deduct;
 
 Without the lock, two concurrent calls could both read `balance = 100`, both pass the `>= 80` check, both deduct, resulting in a negative balance. The `FOR UPDATE NOWAIT` guarantees the second caller waits (or gets `c_err_locked`) until the first transaction commits.
 
-For standard CRUD operations — where OCC via `row_version` is sufficient — always use `get_by_id`. `lock_by_id` adds latency (it escalates to row lock immediately) and reduces concurrency; it should appear only where the read-modify-write sequence is logically indivisible.
+- **`get_by_id`** (`p_lock = 'none'`): for standard CRUD where OCC via `row_version` is sufficient. Default. Adds no lock overhead.
+- **`lock_by_id`** (`p_lock = 'nowait'`): for check-then-act SVC procedures within a single transaction where a concurrent modification must fail immediately. Reduces concurrency — use only where the read-modify-write sequence is logically indivisible.
+- **`lock_by_id_wait`** (`p_lock = 'wait'`): for interactive fetch-for-edit at the presentation layer where a brief wait is preferable to an immediate failure. Use `p_lock_timeout` to control the maximum wait in seconds.
 
 **`lock_by_id` and `update_row` — row_version interaction:**
 
@@ -683,8 +718,16 @@ CREATE OR REPLACE PACKAGE doctors_svc AS
     -- ── Read ───────────────────────────────────────────────────────────────
 
     -- Returns the full %ROWTYPE including PK, row_version, and audit columns.
-    -- Raises NO_DATA_FOUND if not found.
-    FUNCTION get (p_id IN doctors.id%TYPE) RETURN doctors%ROWTYPE;
+    -- p_lock: 'none' (default, optimistic — routes to get_by_id),
+    --         'nowait' (FOR UPDATE NOWAIT — routes to lock_by_id),
+    --         'wait'   (FOR UPDATE WAIT n — routes to lock_by_id_wait).
+    -- p_lock_timeout: seconds to wait when p_lock = 'wait'. Ignored otherwise.
+    -- Raises c_err_not_found if not found; c_err_locked if lock cannot be acquired.
+    FUNCTION get (
+        p_id           IN doctors.id%TYPE,
+        p_lock         IN VARCHAR2 DEFAULT 'none',
+        p_lock_timeout IN NUMBER   DEFAULT 5
+    ) RETURN doctors%ROWTYPE;
 
     -- ── Write ──────────────────────────────────────────────────────────────
 
@@ -1026,18 +1069,23 @@ CREATE OR REPLACE PACKAGE doctors_app AS
 
     -- Loads a row into OUT parameters, which APEX maps back to page items.
     -- Call from an APEX "Fetch Row" process on page load.
-    -- p_row_version is present only when /rowversion is active on the table.
+    -- p_lock / p_lock_timeout: propagated to svc.get — see §5.2 for semantics.
+    --   Existing processes need no change for the optimistic ('none') case —
+    --   both params carry defaults and APEX Invoke API ignores unbound IN params.
+    -- p_row_version OUT is present only when /rowversion is active on the table.
     -- Audit OUT params are present only when auditcols: yes is active.
     PROCEDURE get (
-        p_id          IN  doctors.id%TYPE,
-        p_name        OUT doctors.name%TYPE,
-        p_specialty   OUT doctors.specialty%TYPE,
-        p_email       OUT doctors.email%TYPE,
-        p_row_version OUT doctors.row_version%TYPE,  -- only if /rowversion
-        p_created     OUT doctors.created%TYPE,       -- only if auditcols: yes
-        p_created_by  OUT doctors.created_by%TYPE,
-        p_updated     OUT doctors.updated%TYPE,
-        p_updated_by  OUT doctors.updated_by%TYPE
+        p_id           IN  doctors.id%TYPE,
+        p_lock         IN  VARCHAR2 DEFAULT 'none',
+        p_lock_timeout IN  NUMBER   DEFAULT 5,
+        p_name         OUT doctors.name%TYPE,
+        p_specialty    OUT doctors.specialty%TYPE,
+        p_email        OUT doctors.email%TYPE,
+        p_row_version  OUT doctors.row_version%TYPE,  -- only if /rowversion
+        p_created      OUT doctors.created%TYPE,       -- only if auditcols: yes
+        p_created_by   OUT doctors.created_by%TYPE,
+        p_updated      OUT doctors.updated%TYPE,
+        p_updated_by   OUT doctors.updated_by%TYPE
     );
 
     -- Creates a record from page item values.
@@ -1072,19 +1120,26 @@ END doctors_app;
 CREATE OR REPLACE PACKAGE BODY doctors_app AS
 
     PROCEDURE get (
-        p_id          IN  doctors.id%TYPE,
-        p_name        OUT doctors.name%TYPE,
-        p_specialty   OUT doctors.specialty%TYPE,
-        p_email       OUT doctors.email%TYPE,
-        p_row_version OUT doctors.row_version%TYPE,  -- only if /rowversion
-        p_created     OUT doctors.created%TYPE,       -- only if auditcols: yes
-        p_created_by  OUT doctors.created_by%TYPE,
-        p_updated     OUT doctors.updated%TYPE,
-        p_updated_by  OUT doctors.updated_by%TYPE
+        p_id           IN  doctors.id%TYPE,
+        p_lock         IN  VARCHAR2 DEFAULT 'none',
+        p_lock_timeout IN  NUMBER   DEFAULT 5,
+        p_name         OUT doctors.name%TYPE,
+        p_specialty    OUT doctors.specialty%TYPE,
+        p_email        OUT doctors.email%TYPE,
+        p_row_version  OUT doctors.row_version%TYPE,  -- only if /rowversion
+        p_created      OUT doctors.created%TYPE,       -- only if auditcols: yes
+        p_created_by   OUT doctors.created_by%TYPE,
+        p_updated      OUT doctors.updated%TYPE,
+        p_updated_by   OUT doctors.updated_by%TYPE
     ) IS
         l_row doctors%ROWTYPE;
     BEGIN
-        l_row         := doctors_svc.get(p_id => p_id);
+        IF p_id IS NULL THEN RETURN; END IF;
+        l_row         := doctors_svc.get(
+                             p_id           => p_id,
+                             p_lock         => p_lock,
+                             p_lock_timeout => p_lock_timeout
+                         );
         p_name        := l_row.name;
         p_specialty   := l_row.specialty;
         p_email       := l_row.email;
@@ -1234,11 +1289,80 @@ CREATE OR REPLACE PACKAGE BODY doctors_rst AS
             ));
     END ins;
 
-    -- upd, del, get follow the same pattern.
+    PROCEDURE get IS
+        l_row          doctors%ROWTYPE;
+        -- :lock and :lock_timeout map to ORDS query parameters.
+        -- REST caller passes them as ?lock=nowait or ?lock=wait&lock_timeout=10.
+        -- They default to 'none' / 5 when absent.
+        l_lock         VARCHAR2(10) := NVL(:lock, 'none');
+        l_lock_timeout NUMBER       := NVL(TO_NUMBER(:lock_timeout), 5);
+    BEGIN
+        l_row := doctors_svc.get(
+                     p_id           => :p_id,
+                     p_lock         => l_lock,
+                     p_lock_timeout => l_lock_timeout
+                 );
+        :status := 200;
+        HTP.p(JSON_OBJECT(
+            'id'          VALUE l_row.id,
+            'name'        VALUE l_row.name,
+            'specialty'   VALUE l_row.specialty,
+            'email'       VALUE l_row.email,
+            'row_version' VALUE l_row.row_version
+        ));
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            :status := CASE SQLCODE
+                WHEN -20002 THEN 404
+                WHEN -20003 THEN 409
+                ELSE              500
+            END;
+            HTP.p(JSON_OBJECT(
+                'error_code' VALUE SQLCODE,
+                'message'    VALUE SQLERRM,
+                'detail'     VALUE DBMS_UTILITY.FORMAT_ERROR_BACKTRACE
+            ));
+    END get;
+
+    -- ins, upd, del follow the same pattern.
 
 END doctors_rst;
 /
 ```
+
+---
+
+## 7.4 Pessimistic Locking at the Presentation Layer
+
+### The fetch-for-edit problem
+
+Standard CRUD uses optimistic concurrency control (OCC) via `row_version` for lost-update protection. The client fetches a row (getting `row_version = n`), displays it for editing, then submits the update carrying `row_version = n`. The DAL's `update_row` rejects the write if another session has already incremented the version. This is correct and efficient for most scenarios.
+
+Pessimistic locking acquires a row-level database lock at read time, preventing other sessions from modifying the row until the lock is released (at transaction end). It trades concurrency for a stronger guarantee: the "row was not modified" assertion becomes a database-enforced invariant, not a post-hoc detection.
+
+### When to use each mode
+
+| `p_lock` | Routes to | Use case |
+|---|---|---|
+| `'none'` (default) | `get_by_id` | Standard CRUD with OCC (`row_version`). Always the right default. |
+| `'nowait'` | `lock_by_id` | REST or APEX process where a concurrent lock should immediately return a 409/error rather than wait. Suitable for check-then-act SVC sequences and fast-fail REST handlers. |
+| `'wait'` | `lock_by_id_wait` | Interactive fetch-for-edit where a brief wait is preferable to an immediate failure. Use `p_lock_timeout` to cap the wait. Suitable for background jobs and batch processes where the resource is expected to free up quickly. |
+
+### Lock scope
+
+The lock acquired by `lock_by_id` or `lock_by_id_wait` is **transaction-scoped**. It is held from the moment the `SELECT FOR UPDATE` executes until the calling transaction commits or rolls back.
+
+**APEX**: the APEX framework auto-commits at the end of each page process (unless an explicit SAVEPOINT/ROLLBACK is in play). The lock is therefore released before the HTTP response is sent back to the browser. **Do not attempt to use pessimistic locking to hold a lock across two page loads** (e.g., lock on the page-load process and rely on it still being held at form submission) — the lock will be gone before the HTTP response reaches the browser. Use OCC (`row_version`) for cross-request conflict detection.
+
+**REST (ORDS)**: the lock is held for the duration of the ORDS handler's transaction. If the handler also performs DML, end it with an explicit `COMMIT`; the lock is released at that point. If the handler is read-only (fetch for display), the lock is released when the handler exits. Do not design REST workflows that expect a lock to persist across two HTTP requests — HTTP is stateless and ORDS does not support session-affinity locking.
+
+### Error mapping
+
+When a lock cannot be acquired, both `lock_by_id` and `lock_by_id_wait` raise `c_err_locked` (`-20003`). Callers should map this to a user-visible message:
+
+- **APEX**: the application-level Error Handling Function maps `-20003` to an inline message (see §7.2.3).
+- **REST**: the ORDS handler maps `-20003` to HTTP 409 Conflict.
 
 ---
 
@@ -1566,3 +1690,4 @@ SELECT application_id, page_id, process_name, process_text
 | 1.8     | 2026-05-08 | Roberto Capancioni | §3.4 Tier Model: 6-tier system (`lookup` `lookup+hks` `service` `service+hks` `full` `full+hks`) selects minimum package set per table; tier is the argument to `/api` on each table — `api` key removed from settings block; `+hks` suffix formalises developer-owned `_hks` body; cross-entity coupling constraint and tier selection guide added; `_audit` noted as orthogonal to tier; §3.4 Design Decisions renumbered to §3.5; §3 title "Four-Layer" → "Layered"; §7.1 and §8 settings examples updated; §11 TypeScript simplified with `hasDal`/`hasHks`/`hasSvc` flags and legacy numeric alias mapping |
 | 1.9     | 2026-05-08 | Roberto Capancioni | §3.4 Degradation rule: explicit principle — each layer calls the one below if present, absorbs it as private procedures if absent; cascading table and per-tier consequences added; `service+hks` complete body example showing private DML section; `lookup+hks` pattern described; `_rst` and `_audit` noted as orthogonal to tier in tier table; §6.3 `_hks` spec: `before/after_delete` parameter type is `_dal.t_id` when `_dal` is present, `table.id%TYPE` otherwise — documented with both variants; §6.4/§6.5 bodies updated with conditional type note; §7.1 `interface` setting: three explicit values (`"apex"` / `"rest"` / `"both"`) replace the previous two-value implicit behaviour; §8 output order updated with `_rst` conditional line; §11 TypeScript: `getOption` → `getOptionValue`; `hasDal` passed to `_generateHksSpec` and `_generateHksBody`; `hasDal`/`hasHks` passed to `_generateSvcBody`; `hasSvc`/`hasDal` passed to `_generateApxBody` and `_generateRstBody`; IFC generation replaced with explicit three-way `interface` switch |
 | 1.10    | 2026-09-10 | Roberto Capancioni | §9.1 added: `raise_application_error` messages for `c_err_stale_data`/`c_err_not_found`/`c_err_locked`/`dup_val_on_index` now carry a bracketed token (`[STALE_DATA]`, `[NOT_FOUND]`, `[LOCKED]`, `[DUPLICATE]`) so callers behind a wrapping layer (e.g. `APEX_EXEC`'s `p_dml_plsql_code`, which re-raises any custom-code exception as a generic `ORA-20987`) can classify the error from message text alone; applied uniformly across every tier, including the degraded/absorbed forms (`_generatePrivateDml`'s `p_get_by_id`/`p_update_row`) and every `dup_val_on_index` site in `_app`'s own `ins`/`upd`, not just `_svc.create_rec` — generator updated in `src/oracle/plsql.ts` |
+| 1.11    | 2026-09-12 | Roberto Capancioni | §4.2/§4.3: DAL `lock_by_id_wait(p_id, p_timeout DEFAULT 5)` added (FOR UPDATE WAIT n via EXECUTE IMMEDIATE — static integer literal constraint documented); §4.2: `lock_by_id` comment updated to reference the new wait variant; §4.3 "When to use" extended to three modes (none/nowait/wait); §5.2: SVC `get` gains `p_lock VARCHAR2 DEFAULT 'none'` and `p_lock_timeout NUMBER DEFAULT 5`, routes to the appropriate DAL function; §7.2.1/§7.2.2: APP `get` signature and body updated — `p_lock`/`p_lock_timeout` IN params added before the OUT params, body delegates to `svc.get`; §7.3: RST `get` procedure shown in full — reads `:lock`/`:lock_timeout` ORDS query-param binds, delegates to `svc.get`; §7.4 new: Pessimistic Locking at the Presentation Layer — fetch-for-edit problem, three-mode selection guide, lock scope and cross-request warning for APEX and REST |
