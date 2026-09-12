@@ -420,6 +420,9 @@ export class OraclePlsqlBuilder {
 
         let r = `\n${tab}-- private DML (absorbed from absent _dal)\n\n`;
 
+        r += `${tab}resource_busy exception;\n`;
+        r += `${tab}pragma exception_init(resource_busy, -54);\n\n`;
+
         r += `${tab}function p_get_by_id (p_id in ${tbl}.${pkNm}%type) return ${tbl}%rowtype is\n`;
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
         r += `${tab}begin\n`;
@@ -432,6 +435,45 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}when no_data_found then\n`;
         r += `${tab}${tab}${tab}raise_application_error(-20002, '[NOT_FOUND] ${tbl}: record not found (id=' || p_id || ')');\n`;
         r += `${tab}end p_get_by_id;\n\n`;
+
+        // p_lock_by_id — SELECT FOR UPDATE NOWAIT (pessimistic, fail-fast)
+        r += `${tab}function p_lock_by_id (p_id in ${tbl}.${pkNm}%type) return ${tbl}%rowtype is\n`;
+        r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+        r += `${tab}begin\n`;
+        r += `${tab}${tab}select * into l_row\n`;
+        r += `${tab}${tab}from   ${dimSource}\n`;
+        r += `${tab}${tab}where  ${pkNm} = p_id\n`;
+        if (synTenantId) r += `${tab}${tab}  and  tenant_id = ${tenantCtxPkg}.get_id\n`;
+        r += `${tab}${tab}for update nowait;\n`;
+        r += `${tab}${tab}return l_row;\n`;
+        r += `${tab}exception\n`;
+        r += `${tab}${tab}when no_data_found then\n`;
+        r += `${tab}${tab}${tab}raise_application_error(-20002, '[NOT_FOUND] ${tbl}: record not found (id=' || p_id || ')');\n`;
+        r += `${tab}${tab}when resource_busy then\n`;
+        r += `${tab}${tab}${tab}raise_application_error(-20003, '[LOCKED] ${tbl}: record locked by another session');\n`;
+        r += `${tab}end p_lock_by_id;\n\n`;
+
+        // p_lock_by_id_wait — SELECT FOR UPDATE WAIT n (pessimistic, with timeout)
+        // Dynamic SQL required because FOR UPDATE WAIT accepts only a static literal in embedded SQL.
+        r += `${tab}function p_lock_by_id_wait (p_id in ${tbl}.${pkNm}%type, p_timeout in number default 5) return ${tbl}%rowtype is\n`;
+        r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+        r += `${tab}begin\n`;
+        if (synTenantId) {
+            r += `${tab}${tab}execute immediate\n`;
+            r += `${tab}${tab}${tab}'select * from ${dimSource} where ${pkNm} = :1 and tenant_id = :2 for update wait ' || trunc(greatest(0, p_timeout))\n`;
+            r += `${tab}${tab}into l_row using p_id, ${tenantCtxPkg}.get_id;\n`;
+        } else {
+            r += `${tab}${tab}execute immediate\n`;
+            r += `${tab}${tab}${tab}'select * from ${dimSource} where ${pkNm} = :1 for update wait ' || trunc(greatest(0, p_timeout))\n`;
+            r += `${tab}${tab}into l_row using p_id;\n`;
+        }
+        r += `${tab}${tab}return l_row;\n`;
+        r += `${tab}exception\n`;
+        r += `${tab}${tab}when no_data_found then\n`;
+        r += `${tab}${tab}${tab}raise_application_error(-20002, '[NOT_FOUND] ${tbl}: record not found (id=' || p_id || ')');\n`;
+        r += `${tab}${tab}when resource_busy then\n`;
+        r += `${tab}${tab}${tab}raise_application_error(-20003, '[LOCKED] ${tbl}: record locked by another session');\n`;
+        r += `${tab}end p_lock_by_id_wait;\n\n`;
 
         // p_get_all — weak ref cursor (sys_refcursor): absorbed for the same reason as
         // p_get_by_id above; a bulk read has no per-row business logic to gate on _svc/_hks.
@@ -612,8 +654,9 @@ export class OraclePlsqlBuilder {
         const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
         let r = `create or replace package ${dal} as\n\n`;
         r += `${tab}subtype t_id is ${tbl}.${pkName}%type;\n\n`;
-        r += `${tab}function get_by_id  (p_id in t_id) return ${tbl}%rowtype;\n`;
-        r += `${tab}function lock_by_id (p_id in t_id) return ${tbl}%rowtype;\n\n`;
+        r += `${tab}function get_by_id       (p_id in t_id) return ${tbl}%rowtype;\n`;
+        r += `${tab}function lock_by_id      (p_id in t_id) return ${tbl}%rowtype;\n`;
+        r += `${tab}function lock_by_id_wait (p_id in t_id, p_timeout in number default 5) return ${tbl}%rowtype;\n\n`;
         for (const col of uniqueCols) {
             const cn = col.parseName().toLowerCase();
             r += `${tab}function get_by_${cn} (p_${cn} in ${tbl}.${cn}%type) return ${tbl}%rowtype;\n\n`;
@@ -700,6 +743,28 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}when resource_busy then\n`;
         r += `${tab}${tab}${tab}raise_application_error(c_err_locked, '[LOCKED] ${tbl}: record locked by another session');\n`;
         r += `${tab}end lock_by_id;\n\n`;
+
+        // lock_by_id_wait — SELECT FOR UPDATE WAIT n (pessimistic, with timeout)
+        // Dynamic SQL required because FOR UPDATE WAIT accepts only a static literal in embedded SQL.
+        r += `${tab}function lock_by_id_wait (p_id in t_id, p_timeout in number default 5) return ${tbl}%rowtype is\n`;
+        r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+        r += `${tab}begin\n`;
+        if (synTenantId) {
+            r += `${tab}${tab}execute immediate\n`;
+            r += `${tab}${tab}${tab}'select * from ${dimSource} where ${pkName} = :1 and tenant_id = :2 for update wait ' || trunc(greatest(0, p_timeout))\n`;
+            r += `${tab}${tab}into l_row using p_id, ${tenantCtxPkg}.get_id;\n`;
+        } else {
+            r += `${tab}${tab}execute immediate\n`;
+            r += `${tab}${tab}${tab}'select * from ${dimSource} where ${pkName} = :1 for update wait ' || trunc(greatest(0, p_timeout))\n`;
+            r += `${tab}${tab}into l_row using p_id;\n`;
+        }
+        r += `${tab}${tab}return l_row;\n`;
+        r += `${tab}exception\n`;
+        r += `${tab}${tab}when no_data_found then\n`;
+        r += `${tab}${tab}${tab}raise_application_error(c_err_not_found, '[NOT_FOUND] ${tbl}: record not found (id=' || p_id || ')');\n`;
+        r += `${tab}${tab}when resource_busy then\n`;
+        r += `${tab}${tab}${tab}raise_application_error(c_err_locked, '[LOCKED] ${tbl}: record locked by another session');\n`;
+        r += `${tab}end lock_by_id_wait;\n\n`;
 
         // get_by_<unique_col> — one function per /unique column; NO_DATA_FOUND propagates.
         for (const col of uniqueCols) {
@@ -979,7 +1044,11 @@ export class OraclePlsqlBuilder {
         r += paramCols.map(({ name }) => `${tab}${tab}${name.padEnd(tRecWidth)}${tbl}.${name}%type`).join(',\n') + '\n';
         r += `${tab});\n\n`;
 
-        r += `${tab}function get (p_id in ${tbl}.${pkNm}%type) return ${tbl}%rowtype;\n\n`;
+        r += `${tab}function get (\n`;
+        r += `${tab}${tab}p_id           in ${tbl}.${pkNm}%type,\n`;
+        r += `${tab}${tab}p_lock         in varchar2 default 'none',\n`;
+        r += `${tab}${tab}p_lock_timeout in number   default 5\n`;
+        r += `${tab}) return ${tbl}%rowtype;\n\n`;
 
         r += `${tab}function get_all return sys_refcursor;\n\n`;
 
@@ -1022,7 +1091,9 @@ export class OraclePlsqlBuilder {
         const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
         const dimCols     = this._dimensionScopeColumns(node);
 
-        const getById   = hasDal ? `${dal}.get_by_id`  : 'p_get_by_id';
+        const getById      = hasDal ? `${dal}.get_by_id`       : 'p_get_by_id';
+        const lockById     = hasDal ? `${dal}.lock_by_id`      : 'p_lock_by_id';
+        const lockByIdWait = hasDal ? `${dal}.lock_by_id_wait` : 'p_lock_by_id_wait';
         const getAll    = hasDal ? `${dal}.get_all`     : 'p_get_all';
         const insertRow = hasDal ? `${dal}.insert_row`  : 'p_insert_row';
         const updateRow = hasDal ? `${dal}.update_row`  : 'p_update_row';
@@ -1036,10 +1107,20 @@ export class OraclePlsqlBuilder {
         if (!hasHks) r += this._generatePrivateHookStubs(node);
         r += '\n';
 
-        // get
-        r += `${tab}function get (p_id in ${tbl}.${pkNm}%type) return ${tbl}%rowtype is\n`;
+        // get — routes to get_by_id / lock_by_id / lock_by_id_wait based on p_lock
+        r += `${tab}function get (\n`;
+        r += `${tab}${tab}p_id           in ${tbl}.${pkNm}%type,\n`;
+        r += `${tab}${tab}p_lock         in varchar2 default 'none',\n`;
+        r += `${tab}${tab}p_lock_timeout in number   default 5\n`;
+        r += `${tab}) return ${tbl}%rowtype is\n`;
         r += `${tab}begin\n`;
-        r += `${tab}${tab}return ${getById}(p_id => p_id);\n`;
+        r += `${tab}${tab}if p_lock = 'nowait' then\n`;
+        r += `${tab}${tab}${tab}return ${lockById}(p_id => p_id);\n`;
+        r += `${tab}${tab}elsif p_lock = 'wait' then\n`;
+        r += `${tab}${tab}${tab}return ${lockByIdWait}(p_id => p_id, p_timeout => p_lock_timeout);\n`;
+        r += `${tab}${tab}else\n`;
+        r += `${tab}${tab}${tab}return ${getById}(p_id => p_id);\n`;
+        r += `${tab}${tab}end if;\n`;
         r += `${tab}end get;\n\n`;
 
         // get_all
@@ -1174,7 +1255,9 @@ export class OraclePlsqlBuilder {
 
         // get: loads one row into OUT params — APEX Invoke API maps them to page items
         r += `${tab}procedure get (\n`;
-        r += `${tab}${tab}p_id          in  ${tbl}.${pkNm}%type`;
+        r += `${tab}${tab}p_id           in  ${tbl}.${pkNm}%type,\n`;
+        r += `${tab}${tab}p_lock         in  varchar2 default 'none',\n`;
+        r += `${tab}${tab}p_lock_timeout in  number   default 5`;
         for (const { name } of appCols)
             r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
         if (hasVer)
@@ -1256,9 +1339,11 @@ export class OraclePlsqlBuilder {
             r += '\n';
         }
 
-        // get
+        // get — p_lock ('none'|'nowait'|'wait') controls optimistic vs pessimistic fetch
         r += `\n${tab}procedure get (\n`;
-        r += `${tab}${tab}p_id          in  ${tbl}.${pkNm}%type`;
+        r += `${tab}${tab}p_id           in  ${tbl}.${pkNm}%type,\n`;
+        r += `${tab}${tab}p_lock         in  varchar2 default 'none',\n`;
+        r += `${tab}${tab}p_lock_timeout in  number   default 5`;
         for (const { name } of appCols)
             r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
         if (hasVer)
@@ -1273,7 +1358,17 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
         r += `${tab}begin\n`;
         r += `${tab}${tab}if p_id is null then return; end if;  -- INSERT mode: leave OUT params null\n`;
-        r += `${tab}${tab}l_row := ${hasSvc ? `${svc}.get(p_id => p_id)` : 'p_get_by_id(p_id => p_id)'};\n`;
+        if (hasSvc) {
+            r += `${tab}${tab}l_row := ${svc}.get(p_id => p_id, p_lock => p_lock, p_lock_timeout => p_lock_timeout);\n`;
+        } else {
+            r += `${tab}${tab}if p_lock = 'nowait' then\n`;
+            r += `${tab}${tab}${tab}l_row := p_lock_by_id(p_id => p_id);\n`;
+            r += `${tab}${tab}elsif p_lock = 'wait' then\n`;
+            r += `${tab}${tab}${tab}l_row := p_lock_by_id_wait(p_id => p_id, p_timeout => p_lock_timeout);\n`;
+            r += `${tab}${tab}else\n`;
+            r += `${tab}${tab}${tab}l_row := p_get_by_id(p_id => p_id);\n`;
+            r += `${tab}${tab}end if;\n`;
+        }
         for (const { name } of appCols)
             r += `${tab}${tab}p_${name} := l_row.${name};\n`;
         if (hasVer) r += `${tab}${tab}p_row_version := l_row.row_version;\n`;
@@ -1478,11 +1573,23 @@ export class OraclePlsqlBuilder {
             r += '\n';
         }
 
-        // get
+        // get — optional ?lock=nowait|wait and ?lock_timeout=n ORDS bind params
         r += `\n${tab}procedure get is\n`;
-        r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+        r += `${tab}${tab}l_row          ${tbl}%rowtype;\n`;
+        r += `${tab}${tab}l_lock         varchar2(10) := nvl(:lock, 'none');\n`;
+        r += `${tab}${tab}l_lock_timeout number       := nvl(to_number(:lock_timeout), 5);\n`;
         r += `${tab}begin\n`;
-        r += `${tab}${tab}l_row := ${hasSvc ? `${svc}.get(p_id => :p_id)` : 'p_get_by_id(p_id => :p_id)'};\n`;
+        if (hasSvc) {
+            r += `${tab}${tab}l_row := ${svc}.get(p_id => :p_id, p_lock => l_lock, p_lock_timeout => l_lock_timeout);\n`;
+        } else {
+            r += `${tab}${tab}if l_lock = 'nowait' then\n`;
+            r += `${tab}${tab}${tab}l_row := p_lock_by_id(p_id => :p_id);\n`;
+            r += `${tab}${tab}elsif l_lock = 'wait' then\n`;
+            r += `${tab}${tab}${tab}l_row := p_lock_by_id_wait(p_id => :p_id, p_timeout => l_lock_timeout);\n`;
+            r += `${tab}${tab}else\n`;
+            r += `${tab}${tab}${tab}l_row := p_get_by_id(p_id => :p_id);\n`;
+            r += `${tab}${tab}end if;\n`;
+        }
         r += `${tab}${tab}:status := 200;\n`;
         r += `${tab}${tab}htp.p(json_object(\n`;
         r += jsonCols.map(c => `${tab}${tab}${tab}'${c}' value l_row.${c}`).join(',\n') + '\n';

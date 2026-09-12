@@ -2245,3 +2245,140 @@ describe('delete_rec / absorbed del now call validate(\'delete\', ...) — was n
     });
 
 });
+
+// ── Lock parameter: pessimistic locking via get(p_lock) ───────────────────────
+
+describe('pessimistic lock — p_lock parameter on get', () => {
+
+    // DAL
+    test('DAL spec declares lock_by_id_wait with p_timeout default 5', () => {
+        const out = ddl('doctors /api\n  name vc200\n# settings = {"api": "layered"}');
+        const dalSpec = segment(out, 'create or replace package doctors_dal as', 'end doctors_dal;');
+        expect(dalSpec).toContain('function lock_by_id_wait (p_id in t_id, p_timeout in number default 5) return doctors%rowtype;');
+    });
+
+    test('DAL body lock_by_id_wait uses EXECUTE IMMEDIATE with FOR UPDATE WAIT', () => {
+        const out = ddl('doctors /api\n  name vc200\n# settings = {"api": "layered"}');
+        const dalBody = segment(out, 'create or replace package body doctors_dal as', 'end doctors_dal;');
+        const fn = segment(dalBody, 'function lock_by_id_wait', 'end lock_by_id_wait;');
+        expect(fn).toContain('execute immediate');
+        expect(fn).toContain('for update wait');
+        expect(fn).toContain('trunc(greatest(0, p_timeout))');
+    });
+
+    test('DAL body lock_by_id_wait handles no_data_found and resource_busy', () => {
+        const out = ddl('doctors /api\n  name vc200\n# settings = {"api": "layered"}');
+        const dalBody = segment(out, 'create or replace package body doctors_dal as', 'end doctors_dal;');
+        const fn = segment(dalBody, 'function lock_by_id_wait', 'end lock_by_id_wait;');
+        expect(fn).toContain('[NOT_FOUND]');
+        expect(fn).toContain('[LOCKED]');
+    });
+
+    // SVC spec
+    test('SVC spec get has p_lock and p_lock_timeout parameters', () => {
+        const out = ddl('doctors /api\n  name vc200\n# settings = {"api": "layered"}');
+        const svcSpec = segment(out, 'create or replace package doctors_svc as', 'end doctors_svc;');
+        const fn = segment(svcSpec, 'function get (', ') return doctors%rowtype;');
+        expect(fn).toContain("p_lock         in varchar2 default 'none'");
+        expect(fn).toContain('p_lock_timeout in number   default 5');
+    });
+
+    // SVC body routing
+    test('SVC body get routes p_lock=nowait to dal.lock_by_id (full tier)', () => {
+        const out = ddl('doctors /api\n  name vc200\n# settings = {"api": "layered"}');
+        const svcBody = segment(out, 'create or replace package body doctors_svc as', 'end doctors_svc;');
+        const fn = segment(svcBody, 'function get (', 'end get;');
+        expect(fn).toContain("if p_lock = 'nowait'");
+        expect(fn).toContain('return doctors_dal.lock_by_id(p_id => p_id);');
+    });
+
+    test('SVC body get routes p_lock=wait to dal.lock_by_id_wait (full tier)', () => {
+        const out = ddl('doctors /api\n  name vc200\n# settings = {"api": "layered"}');
+        const svcBody = segment(out, 'create or replace package body doctors_svc as', 'end doctors_svc;');
+        const fn = segment(svcBody, 'function get (', 'end get;');
+        expect(fn).toContain("elsif p_lock = 'wait'");
+        expect(fn).toContain('return doctors_dal.lock_by_id_wait(p_id => p_id, p_timeout => p_lock_timeout);');
+    });
+
+    test('SVC body get routes p_lock=none to dal.get_by_id (full tier)', () => {
+        const out = ddl('doctors /api\n  name vc200\n# settings = {"api": "layered"}');
+        const svcBody = segment(out, 'create or replace package body doctors_svc as', 'end doctors_svc;');
+        const fn = segment(svcBody, 'function get (', 'end get;');
+        expect(fn).toContain('return doctors_dal.get_by_id(p_id => p_id);');
+    });
+
+    // SVC body degraded (service tier): absorbed private lock functions
+    test('SVC body service tier routes p_lock=nowait to p_lock_by_id (absorbed)', () => {
+        const out = ddl('doctors /api service\n  name vc200');
+        const svcBody = segment(out, 'create or replace package body doctors_svc as', 'end doctors_svc;');
+        expect(svcBody).toContain('function p_lock_by_id ');
+        expect(svcBody).toContain('for update nowait');
+        const fn = segment(svcBody, 'function get (', 'end get;');
+        expect(fn).toContain("if p_lock = 'nowait'");
+        expect(fn).toContain('return p_lock_by_id(p_id => p_id);');
+    });
+
+    test('SVC body service tier routes p_lock=wait to p_lock_by_id_wait (absorbed)', () => {
+        const out = ddl('doctors /api service\n  name vc200');
+        const svcBody = segment(out, 'create or replace package body doctors_svc as', 'end doctors_svc;');
+        expect(svcBody).toContain('function p_lock_by_id_wait ');
+        const fn = segment(svcBody, 'function get (', 'end get;');
+        expect(fn).toContain("elsif p_lock = 'wait'");
+        expect(fn).toContain('return p_lock_by_id_wait(p_id => p_id, p_timeout => p_lock_timeout);');
+    });
+
+    // APP spec
+    test('APP spec get has p_lock and p_lock_timeout IN params', () => {
+        const out = ddl('doctors /api\n  name vc200\n# settings = {"api": "layered"}');
+        const appSpec = segment(out, 'create or replace package doctors_app as', 'end doctors_app;');
+        const fn = segment(appSpec, 'procedure get (', ');');
+        expect(fn).toContain("p_lock         in  varchar2 default 'none'");
+        expect(fn).toContain('p_lock_timeout in  number   default 5');
+    });
+
+    // APP body full tier: delegates to svc.get with lock params
+    test('APP body full tier delegates to svc.get with p_lock and p_lock_timeout', () => {
+        const out = ddl('doctors /api\n  name vc200\n# settings = {"api": "layered"}');
+        const appBody = segment(out, 'create or replace package body doctors_app as', 'end doctors_app;');
+        const fn = segment(appBody, 'procedure get (', 'end get;');
+        expect(fn).toContain('l_row := doctors_svc.get(p_id => p_id, p_lock => p_lock, p_lock_timeout => p_lock_timeout);');
+    });
+
+    // APP body lookup tier: absorbed, inline routing
+    test('APP body lookup tier uses absorbed p_lock_by_id for nowait', () => {
+        const out = ddl('doctors /api lookup\n  name vc200');
+        const appBody = segment(out, 'create or replace package body doctors_app as', 'end doctors_app;');
+        expect(appBody).toContain('function p_lock_by_id ');
+        const fn = segment(appBody, 'procedure get (', 'end get;');
+        expect(fn).toContain("if p_lock = 'nowait'");
+        expect(fn).toContain('l_row := p_lock_by_id(p_id => p_id);');
+    });
+
+    // RST get reads :lock and :lock_timeout binds, delegates to svc.get
+    test('RST body get declares l_lock and l_lock_timeout from ORDS binds', () => {
+        const out = ddl('doctors /api\n  name vc200\n# settings = {"api": "layered", "interface": "rest"}');
+        const rstBody = segment(out, 'create or replace package body doctors_rst as', 'end doctors_rst;');
+        const fn = segment(rstBody, 'procedure get is', 'end get;');
+        expect(fn).toContain("l_lock         varchar2(10) := nvl(:lock, 'none')");
+        expect(fn).toContain('l_lock_timeout number       := nvl(to_number(:lock_timeout), 5)');
+    });
+
+    test('RST body get delegates to svc.get with lock params', () => {
+        const out = ddl('doctors /api\n  name vc200\n# settings = {"api": "layered", "interface": "rest"}');
+        const rstBody = segment(out, 'create or replace package body doctors_rst as', 'end doctors_rst;');
+        const fn = segment(rstBody, 'procedure get is', 'end get;');
+        expect(fn).toContain('l_row := doctors_svc.get(p_id => :p_id, p_lock => l_lock, p_lock_timeout => l_lock_timeout);');
+    });
+
+    // RST lookup tier: absorbed inline routing
+    test('RST body lookup tier uses absorbed p_lock_by_id for nowait', () => {
+        const out = ddl('doctors /api lookup\n  name vc200\n# settings = {"interface": "rest"}');
+        const rstBody = segment(out, 'create or replace package body doctors_rst as', 'end doctors_rst;');
+        const fn = segment(rstBody, 'procedure get is', 'end get;');
+        expect(fn).toContain("if l_lock = 'nowait'");
+        expect(fn).toContain('l_row := p_lock_by_id(p_id => :p_id);');
+        expect(fn).toContain("elsif l_lock = 'wait'");
+        expect(fn).toContain('l_row := p_lock_by_id_wait(p_id => :p_id, p_timeout => l_lock_timeout);');
+    });
+
+});
