@@ -3,7 +3,7 @@ import type { Naming } from '../compiler/node.js';
 import type { DdlContext, IDdlNode } from '../compiler/types.js';
 import { OracleLegacyTapiBuilder } from './plsql/legacy-tapi.js';
 import { generateRestEnable } from './plsql/ords.js';
-import { hasSyntheticTenantId } from './plsql/table-analysis.js';
+import { OracleTableApiAnalyzer } from './plsql/table-model.js';
 import {
     generateTenantBootstrapBody,
     generateTenantBootstrapSpec,
@@ -19,6 +19,7 @@ import { OracleTriggerBuilder } from './plsql/triggers.js';
 export class OraclePlsqlBuilder {
     private triggers:   OracleTriggerBuilder;
     private legacyTapi: OracleLegacyTapiBuilder;
+    private tableApi:   OracleTableApiAnalyzer;
 
     constructor(
         private ctx: DdlContext,
@@ -26,6 +27,7 @@ export class OraclePlsqlBuilder {
     ) {
         this.triggers   = new OracleTriggerBuilder(ctx, naming);
         this.legacyTapi = new OracleLegacyTapiBuilder(ctx);
+        this.tableApi   = new OracleTableApiAnalyzer(ctx);
     }
 
     // Strip schema prefix from a qualified name — used in PL/SQL END clauses where
@@ -42,34 +44,6 @@ export class OraclePlsqlBuilder {
 
     // ── Table API (TAPI) ──────────────────────────────────────────────────────
 
-    /** True when tenant_id is injected synthetically (global tenantid:yes, not via FK hierarchy). */
-    private _hasSyntheticTenantId(node: IDdlNode): boolean {
-        return hasSyntheticTenantId(this.ctx, node);
-    }
-
-    /**
-     * Row-level scope columns declared via the global `dimensioncolumns` setting
-     * (map of column name → dimension type, e.g. `{ company_id: "COMPANY" }`).
-     * Unlike tenant_id, these columns are never synthesized: they must already
-     * exist on the table (typically an explicit `/fk` column) — this only
-     * detects which of a table's own columns are configured to carry scope.
-     * Returns one entry per matching column actually present on this table
-     * (usually zero or one today; the shape supports more than one dimension
-     * on the same table without any special-casing).
-     */
-    private _dimensionScopeColumns(node: IDdlNode): Array<{ col: string; dimType: string }> {
-        const configured = this.ctx.getOptionValue('dimensioncolumns') as Record<string, string> | null;
-        if (configured == null || typeof configured !== 'object') return [];
-        const out: Array<{ col: string; dimType: string }> = [];
-        for (const col of Object.keys(configured)) {
-            const cn = col.toLowerCase();
-            const present = Object.prototype.hasOwnProperty.call(node.fks ?? {}, cn)
-                || node.findChild(cn) !== null;
-            if (present) out.push({ col: cn, dimType: configured[col] });
-        }
-        return out;
-    }
-
     /**
      * Row-scope view for every table, generated once here instead of re-derived as a
      * WHERE-clause predicate in every read path: get_by_id/lock_by_id/get_all/
@@ -83,8 +57,9 @@ export class OraclePlsqlBuilder {
      * special-casing needed by callers.
      */
     private _generateDimensionRlsView(node: IDdlNode): string {
-        const tbl = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const dimCols = this._dimensionScopeColumns(node);
+        const model = this.tableApi.analyze(node);
+        const tbl = model.names.table;
+        const dimCols = model.dimensionScopes;
         const source = dimCols.length > 0 ? `sec_pkg.secured_by_dimension(${tbl})` : tbl;
         return `create or replace view ${tbl}_rls as\nselect * from ${source};\n/\n`;
     }
@@ -95,29 +70,17 @@ export class OraclePlsqlBuilder {
 
     // ── Layered TAPI ─────────────────────────────────────────────────────────
 
-    private _hasAuditLog(node: IDdlNode): boolean {
-        return node.isOption('auditlog');
-    }
-
-    private _hasVersionCol(node: IDdlNode): boolean {
-        return node.hasRowVersion() || node.children.some(
-            c => c.children.length === 0 && c.parseName().toLowerCase() === 'row_version'
-        );
-    }
-
     // /businesskey <col> — only meaningful alongside /versioned (enforced by
     // error-msgs.ts businesskey_checks). Returns '' when absent, invalid, or the
     // named column isn't actually declared on this table (same defensive stance
     // as an invalid /versioned custom column name would take: generate nothing
     // extra rather than reference a column that doesn't exist).
     private _businessKeyCol(node: IDdlNode): string {
-        if (!node.isOption('versioned') || !node.isOption('businesskey')) return '';
-        const col = (String(node.getOptionValue('businesskey') ?? '')).trim().toLowerCase();
-        return col !== '' && node.findChild(col) !== null ? col : '';
+        return this.tableApi.analyze(node).businessKeyColumn;
     }
 
     private _hasUniqueCol(node: IDdlNode): boolean {
-        return node.children.some(c => c.isOption('unique'));
+        return this.tableApi.analyze(node).columns.unique.length > 0;
     }
 
     // /bridge — only meaningful with exactly 2 /fk columns (enforced by
@@ -129,12 +92,7 @@ export class OraclePlsqlBuilder {
     // names (grant_role, not grant_role_id) — falls back to the bare column name
     // when it doesn't end in "_id" (not every FK column follows that convention).
     private _bridgeCols(node: IDdlNode): { left: string; right: string; rightLabel: string } | null {
-        if (!node.isOption('bridge')) return null;
-        const fkCols = Object.keys(node.fks ?? {});
-        if (fkCols.length !== 2) return null;
-        const [left, right] = fkCols;
-        const rightLabel = right.replace(/_id$/i, '') || right;
-        return { left, right, rightLabel };
+        return this.tableApi.analyze(node).bridge;
     }
 
     // /aggregate — only meaningful with at least one nested detail table (enforced
@@ -148,18 +106,7 @@ export class OraclePlsqlBuilder {
     // with no such FK is skipped (defensive: shouldn't happen for a properly
     // nested child, mirrors the same stance as an invalid /businesskey column).
     private _aggregateDetails(node: IDdlNode): Array<{ detailNode: IDdlNode; detailTbl: string; fkCol: string }> {
-        if (!node.isOption('aggregate')) return [];
-        const masterName = node.parseName().toLowerCase();
-        const out: Array<{ detailNode: IDdlNode; detailTbl: string; fkCol: string }> = [];
-        for (const child of node.children) {
-            if (child.children.length === 0) continue;
-            const fkCol = Object.keys(child.fks ?? {}).find(
-                fk => (child.fks![fk] ?? '').toLowerCase() === masterName
-            );
-            if (fkCol === undefined) continue;
-            out.push({ detailNode: child, detailTbl: (this.ctx.objPrefix() + child.parseName()).toLowerCase(), fkCol });
-        }
-        return out;
+        return this.tableApi.analyze(node).aggregateDetails;
     }
 
     // Tier flags for an arbitrary node (not necessarily the one plsql.ts's main
@@ -167,69 +114,25 @@ export class OraclePlsqlBuilder {
     // to know which layer of the *detail* table (not the master) to call, since
     // /api tier is a per-table setting and the two can differ.
     private _tierInfo(node: IDdlNode): { hasDal: boolean; hasHks: boolean; hasSvc: boolean } {
-        const tier = this._getTier(node);
-        return {
-            hasDal: tier === 'full' || tier === 'full+hks',
-            hasHks: tier.endsWith('+hks'),
-            hasSvc: tier === 'service' || tier === 'service+hks' || tier === 'full' || tier === 'full+hks',
-        };
-    }
-
-    // Non-PK, non-version regular columns used as SVC scalar parameters.
-    private _svcCols(node: IDdlNode): IDdlNode[] {
-        return node.children.filter(
-            c => c.children.length === 0 &&
-                 c.refId() === null &&
-                 c.parseName().toLowerCase() !== 'row_version'
-        );
-    }
-
-    // Parses /lockmode directive: 'nowait' | 'wait' | 'wait:n' | absent.
-    // Returns the default values to embed in generated get() signatures.
-    private _getLockDefaults(node: IDdlNode): { lock: string; timeout: number } {
-        const raw = String(node.getOptionValue('lockmode') ?? '').trim().toLowerCase();
-        if (!raw || raw === 'none') return { lock: 'none', timeout: 5 };
-        if (raw === 'nowait') return { lock: 'nowait', timeout: 5 };
-        if (raw === 'wait') return { lock: 'wait', timeout: 5 };
-        if (raw.startsWith('wait:')) {
-            const n = parseInt(raw.slice(5), 10);
-            return { lock: 'wait', timeout: isNaN(n) || n < 0 ? 5 : n };
-        }
-        return { lock: 'none', timeout: 5 };
-    }
-
-    // Normalises /api directive arg to a canonical tier name.
-    // An empty or absent argument defaults to 'full+hks' (backward-compatible with 'layered').
-    private _getTier(node: IDdlNode): string {
-        const apiArg = node.getOptionValue('api');
-        const rawArg = apiArg == null ? '' : String(apiArg).trim();
-        const raw    = rawArg === '' ? 'full+hks' : rawArg.toLowerCase();
-        switch (raw) {
-            case 'layered': case '3h': return 'full+hks';
-            case '3':                  return 'full';
-            case '2h':                 return 'service+hks';
-            case '2':                  return 'service';
-            case '1h':                 return 'lookup+hks';
-            case '1':                  return 'lookup';
-            default:                   return raw;
-        }
+        return this.tableApi.analyze(node).capabilities;
     }
 
     // Private DML procedures absorbed into a package body when _dal is absent.
     private _generatePrivateDml(node: IDdlNode): string {
-        const tbl         = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const pkNm        = (node.getPkName() ?? 'id').toLowerCase();
-        const hasVer      = this._hasVersionCol(node);
-        const hasAudit    = node.hasAuditCols();
-        const svcCols     = this._svcCols(node);
-        const fkCols      = Object.keys(node.fks ?? {});
-        const uniqueCols  = node.children.filter(c => c.isOption('unique'));
-        const synTenantId = this._hasSyntheticTenantId(node);
-        const isVersioned = node.isOption('versioned');
-        const isImmutable = node.isOption('immutable');
-        const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
+        const model       = this.tableApi.analyze(node);
+        const tbl         = model.names.table;
+        const pkNm        = model.names.pk;
+        const hasVer      = model.features.versionColumn;
+        const hasAudit    = model.features.auditColumns;
+        const svcCols     = model.columns.service;
+        const fkCols      = model.columns.foreignKeys;
+        const uniqueCols  = model.columns.unique;
+        const synTenantId = model.features.syntheticTenantId;
+        const isVersioned = model.features.versioned;
+        const isImmutable = model.features.immutable;
+        const vtCol       = model.versionToColumn;
 
-        const tenantCtxPkg = this.ctx.objPrefix() + 'tenant_ctx';
+        const tenantCtxPkg = model.names.tenantContext;
         // Read paths always select from <table>_rls, never from <table> — the view exists
         // unconditionally now (see _generateDimensionRlsView), filtering via
         // secured_by_dimension when there's a dimension column, a plain passthrough
@@ -523,11 +426,12 @@ export class OraclePlsqlBuilder {
 
     // Private no-op hook stubs — used inside a body when _hks is absent from the tier.
     private _generatePrivateHookStubs(node: IDdlNode): string {
-        const tbl  = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const pkNm = (node.getPkName() ?? 'id').toLowerCase();
-        const isVersioned = node.isOption('versioned');
-        const isImmutable = node.isOption('immutable');
-        const dimCols     = this._dimensionScopeColumns(node);
+        const model = this.tableApi.analyze(node);
+        const tbl  = model.names.table;
+        const pkNm = model.names.pk;
+        const isVersioned = model.features.versioned;
+        const isImmutable = model.features.immutable;
+        const dimCols     = model.dimensionScopes;
         let r = `\n${tab}-- private hook stubs (no external _hks)\n\n`;
         r += `${tab}procedure p_chk_rbac (p_operation in varchar2, p_row in ${tbl}%rowtype) is begin null; end p_chk_rbac;\n`;
         if (dimCols.length > 0) {
@@ -565,13 +469,14 @@ export class OraclePlsqlBuilder {
     }
 
     private _generateDalSpec(node: IDdlNode): string {
-        const tbl        = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const dal        = tbl + '_dal';
+        const model      = this.tableApi.analyze(node);
+        const tbl        = model.names.table;
+        const dal        = model.names.dal;
         const pkName      = (node.getPkName() ?? 'id').toLowerCase();
-        const uniqueCols = node.children.filter(c => c.isOption('unique'));
-        const isVersioned = node.isOption('versioned');
-        const isImmutable = node.isOption('immutable');
-        const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
+        const uniqueCols = model.columns.unique;
+        const isVersioned = model.features.versioned;
+        const isImmutable = model.features.immutable;
+        const vtCol       = model.versionToColumn;
         let r = `create or replace package ${dal} as\n\n`;
         r += `${tab}subtype t_id is ${tbl}.${pkName}%type;\n\n`;
         r += `${tab}function get_by_id       (p_id in t_id) return ${tbl}%rowtype;\n`;
@@ -623,17 +528,18 @@ export class OraclePlsqlBuilder {
     }
 
     private _generateDalBody(node: IDdlNode): string {
-        const tbl        = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const dal        = tbl + '_dal';
+        const model      = this.tableApi.analyze(node);
+        const tbl        = model.names.table;
+        const dal        = model.names.dal;
         const pkName     = (node.getPkName() ?? 'id').toLowerCase();
-        const hasVer     = this._hasVersionCol(node);
-        const hasAudit   = node.hasAuditCols();
-        const svcCols    = this._svcCols(node);
-        const fkCols     = Object.keys(node.fks ?? {});
-        const uniqueCols = node.children.filter(c => c.isOption('unique'));
-        const isVersioned = node.isOption('versioned');
-        const isImmutable = node.isOption('immutable');
-        const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
+        const hasVer     = model.features.versionColumn;
+        const hasAudit   = model.features.auditColumns;
+        const svcCols    = model.columns.service;
+        const fkCols     = model.columns.foreignKeys;
+        const uniqueCols = model.columns.unique;
+        const isVersioned = model.features.versioned;
+        const isImmutable = model.features.immutable;
+        const vtCol       = model.versionToColumn;
 
         let r = `create or replace package body ${dal} as\n\n`;
 
@@ -643,8 +549,8 @@ export class OraclePlsqlBuilder {
 
         // All tenant-aware queries delegate to the shared <prefix>tenant_ctx package
         // instead of duplicating a private function in every DAL — single point of configuration.
-        const synTenantId  = this._hasSyntheticTenantId(node);
-        const tenantCtxPkg = this.ctx.objPrefix() + 'tenant_ctx';
+        const synTenantId  = model.features.syntheticTenantId;
+        const tenantCtxPkg = model.names.tenantContext;
         // Read paths always select from <table>_rls, never from <table> — the view
         // exists unconditionally now (see _generateDimensionRlsView), filtering via
         // secured_by_dimension when there's a dimension column, a plain passthrough
@@ -931,13 +837,14 @@ export class OraclePlsqlBuilder {
     }
 
     private _generateHksSpec(node: IDdlNode, hasDal: boolean): string {
-        const tbl    = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const dal    = tbl + '_dal';
-        const pkg    = tbl + '_hks';
+        const model  = this.tableApi.analyze(node);
+        const tbl    = model.names.table;
+        const dal    = model.names.dal;
+        const pkg    = model.names.hooks;
         const idType = hasDal ? `${dal}.t_id` : `${tbl}.id%type`;
-        const isVersioned = node.isOption('versioned');
-        const isImmutable = node.isOption('immutable');
-        const dimCols     = this._dimensionScopeColumns(node);
+        const isVersioned = model.features.versioned;
+        const isImmutable = model.features.immutable;
+        const dimCols     = model.dimensionScopes;
         let r = `create or replace package ${pkg} as\n\n`;
         // chk_rbac — always declared, empty by default; a human fills it in with a
         // real sec_pkg.require_permission call only when a resource/action pair has
@@ -982,13 +889,14 @@ export class OraclePlsqlBuilder {
     }
 
     private _generateHksBody(node: IDdlNode, hasDal: boolean): string {
-        const tbl    = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const dal    = tbl + '_dal';
-        const pkg    = tbl + '_hks';
+        const model  = this.tableApi.analyze(node);
+        const tbl    = model.names.table;
+        const dal    = model.names.dal;
+        const pkg    = model.names.hooks;
         const idType = hasDal ? `${dal}.t_id` : `${tbl}.id%type`;
-        const isVersioned = node.isOption('versioned');
-        const isImmutable = node.isOption('immutable');
-        const dimCols     = this._dimensionScopeColumns(node);
+        const isVersioned = model.features.versioned;
+        const isImmutable = model.features.immutable;
+        const dimCols     = model.dimensionScopes;
         let r = `create or replace package body ${pkg} as\n`;
         r += `-- warning: this file is generated once and must not be overwritten\n\n`;
         r += `${tab}procedure chk_rbac (\n`;
@@ -1038,12 +946,7 @@ export class OraclePlsqlBuilder {
      * parameter would let any caller forge it.
      */
     private _svcParamCols(node: IDdlNode): Array<{ name: string; nullable: boolean }> {
-        const out: Array<{ name: string; nullable: boolean }> = [];
-        for (const fk of Object.keys(node.fks ?? {}))
-            out.push({ name: fk.toLowerCase(), nullable: true });
-        for (const col of this._svcCols(node))
-            out.push({ name: col.parseName().toLowerCase(), nullable: !col.isOption('nn') });
-        return out;
+        return this.tableApi.analyze(node).columns.parameters;
     }
 
     /**
@@ -1053,21 +956,21 @@ export class OraclePlsqlBuilder {
      * column is a real child node like any other — so paramCols/t_rec already carry it.
      */
     private _pkIsUserDefined(node: IDdlNode): boolean {
-        const pkNm = (node.getPkName() ?? 'id').toLowerCase();
-        return this._svcCols(node).some(c => c.parseName().toLowerCase() === pkNm);
+        return this.tableApi.analyze(node).pkIsUserDefined;
     }
 
     private _generateSvcSpec(node: IDdlNode): string {
-        const tbl       = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const svc       = tbl + '_svc';
-        const pkNm      = (node.getPkName() ?? 'id').toLowerCase();
-        const hasVer    = this._hasVersionCol(node);
-        const paramCols = this._svcParamCols(node);
-        const uniqueCols  = node.children.filter(c => c.isOption('unique'));
-        const isVersioned = node.isOption('versioned');
-        const isImmutable = node.isOption('immutable');
-        const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
-        const lockDef     = this._getLockDefaults(node);
+        const model       = this.tableApi.analyze(node);
+        const tbl         = model.names.table;
+        const svc         = model.names.service;
+        const pkNm        = model.names.pk;
+        const hasVer      = model.features.versionColumn;
+        const paramCols   = model.columns.parameters;
+        const uniqueCols  = model.columns.unique;
+        const isVersioned = model.features.versioned;
+        const isImmutable = model.features.immutable;
+        const vtCol       = model.versionToColumn;
+        const lockDef     = model.lockDefaults;
 
         let r = `create or replace package ${svc} as\n\n`;
 
@@ -1156,22 +1059,23 @@ export class OraclePlsqlBuilder {
     }
 
     private _generateSvcBody(node: IDdlNode, hasDal: boolean, hasHks: boolean): string {
-        const tbl         = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const dal         = tbl + '_dal';
-        const hk          = tbl + '_hks';
-        const svc         = tbl + '_svc';
-        const aud         = tbl + '_aud';
-        const pkNm        = (node.getPkName() ?? 'id').toLowerCase();
-        const hasVer      = this._hasVersionCol(node);
+        const model       = this.tableApi.analyze(node);
+        const tbl         = model.names.table;
+        const dal         = model.names.dal;
+        const hk          = model.names.hooks;
+        const svc         = model.names.service;
+        const aud         = model.names.audit;
+        const pkNm        = model.names.pk;
+        const hasVer      = model.features.versionColumn;
         const hasUniq     = this._hasUniqueCol(node);
-        const hasAuditLog = this._hasAuditLog(node);
-        const paramCols   = this._svcParamCols(node);
-        const uniqueCols  = node.children.filter(c => c.isOption('unique'));
-        const isVersioned = node.isOption('versioned');
-        const isImmutable = node.isOption('immutable');
-        const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
-        const dimCols     = this._dimensionScopeColumns(node);
-        const lockDef     = this._getLockDefaults(node);
+        const hasAuditLog = model.features.auditLog;
+        const paramCols   = model.columns.parameters;
+        const uniqueCols  = model.columns.unique;
+        const isVersioned = model.features.versioned;
+        const isImmutable = model.features.immutable;
+        const vtCol       = model.versionToColumn;
+        const dimCols     = model.dimensionScopes;
+        const lockDef     = model.lockDefaults;
 
         const getById      = hasDal ? `${dal}.get_by_id`       : 'p_get_by_id';
         const lockById     = hasDal ? `${dal}.lock_by_id`      : 'p_lock_by_id';
@@ -1425,17 +1329,18 @@ export class OraclePlsqlBuilder {
     }
 
     private _generateAppSpec(node: IDdlNode): string {
-        const tbl       = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const app       = tbl + '_app';
-        const pkNm      = (node.getPkName() ?? 'id').toLowerCase();
-        const hasVer    = this._hasVersionCol(node);
-        const hasAudit  = node.hasAuditCols();
-        const paramCols       = this._svcParamCols(node);
-        const uniqueCols      = node.children.filter(c => c.isOption('unique'));
-        const pkIsUserDefined = this._pkIsUserDefined(node);
-        const isVersioned     = node.isOption('versioned');
-        const isImmutable     = node.isOption('immutable');
-        const vtCol           = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
+        const model           = this.tableApi.analyze(node);
+        const tbl             = model.names.table;
+        const app             = model.names.app;
+        const pkNm            = model.names.pk;
+        const hasVer          = model.features.versionColumn;
+        const hasAudit        = model.features.auditColumns;
+        const paramCols       = model.columns.parameters;
+        const uniqueCols      = model.columns.unique;
+        const pkIsUserDefined = model.pkIsUserDefined;
+        const isVersioned     = model.features.versioned;
+        const isImmutable     = model.features.immutable;
+        const vtCol           = model.versionToColumn;
         // Flat parameter list excludes the PK — it is always handled via the explicit p_id
         // parameter below, never duplicated as p_<pkNm> too (would collide when pkNm is "id",
         // and is redundant information under two names otherwise).
@@ -1444,7 +1349,7 @@ export class OraclePlsqlBuilder {
         const createdByCol = String(this.ctx.getOptionValue('createdbycol') ?? 'created_by');
         const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
         const updatedByCol = String(this.ctx.getOptionValue('updatedbycol') ?? 'updated_by');
-        const lockDef      = this._getLockDefaults(node);
+        const lockDef      = model.lockDefaults;
 
         // Column width computed per table instead of a fixed padEnd(13): a long name would
         // otherwise run directly into the %type anchor with no separator.
@@ -1583,27 +1488,28 @@ export class OraclePlsqlBuilder {
     }
 
     private _generateAppBody(node: IDdlNode, hasSvc: boolean, _hasDal: boolean, hasHks: boolean): string {
-        const tbl       = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const svc       = tbl + '_svc';
-        const hk        = tbl + '_hks';
-        const app       = tbl + '_app';
-        const pkNm      = (node.getPkName() ?? 'id').toLowerCase();
-        const hasVer    = this._hasVersionCol(node);
-        const hasAudit  = node.hasAuditCols();
+        const model           = this.tableApi.analyze(node);
+        const tbl             = model.names.table;
+        const svc             = model.names.service;
+        const hk              = model.names.hooks;
+        const app             = model.names.app;
+        const pkNm            = model.names.pk;
+        const hasVer          = model.features.versionColumn;
+        const hasAudit        = model.features.auditColumns;
         const hasUniq   = this._hasUniqueCol(node);
-        const paramCols       = this._svcParamCols(node);
-        const uniqueCols      = node.children.filter(c => c.isOption('unique'));
-        const pkIsUserDefined = this._pkIsUserDefined(node);
-        const isVersioned     = node.isOption('versioned');
-        const isImmutable     = node.isOption('immutable');
-        const vtCol           = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
-        const dimCols         = this._dimensionScopeColumns(node);
+        const paramCols       = model.columns.parameters;
+        const uniqueCols      = model.columns.unique;
+        const pkIsUserDefined = model.pkIsUserDefined;
+        const isVersioned     = model.features.versioned;
+        const isImmutable     = model.features.immutable;
+        const vtCol           = model.versionToColumn;
+        const dimCols         = model.dimensionScopes;
         const appCols         = paramCols.filter(({ name }) => name !== pkNm);
         const createdCol   = String(this.ctx.getOptionValue('createdcol')   ?? 'created');
         const createdByCol = String(this.ctx.getOptionValue('createdbycol') ?? 'created_by');
         const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
         const updatedByCol = String(this.ctx.getOptionValue('updatedbycol') ?? 'updated_by');
-        const lockDef      = this._getLockDefaults(node);
+        const lockDef      = model.lockDefaults;
         const hkCall    = (proc: string) => hasHks ? `${hk}.${proc}` : `p_${proc}`;
 
         // Column width computed per table instead of a fixed padEnd(13) — same reasoning as _generateAppSpec.
@@ -1981,10 +1887,10 @@ export class OraclePlsqlBuilder {
     }
 
     private _generateRstSpec(node: IDdlNode): string {
-        const tbl = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const rst = tbl + '_rst';
-        const isVersioned = node.isOption('versioned');
-        const isImmutable = node.isOption('immutable');
+        const model = this.tableApi.analyze(node);
+        const rst = model.names.rest;
+        const isVersioned = model.features.versioned;
+        const isImmutable = model.features.immutable;
         let r = `create or replace package ${rst} as\n\n`;
         r += `${tab}procedure get;\n`;
         r += `${tab}procedure get_all;\n`;
@@ -2019,19 +1925,20 @@ export class OraclePlsqlBuilder {
     }
 
     private _generateRstBody(node: IDdlNode, hasSvc: boolean, _hasDal: boolean, hasHks: boolean): string {
-        const tbl       = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const svc       = tbl + '_svc';
-        const hk        = tbl + '_hks';
-        const rst       = tbl + '_rst';
-        const pkNm      = (node.getPkName() ?? 'id').toLowerCase();
-        const hasVer    = this._hasVersionCol(node);
-        const lockDef   = this._getLockDefaults(node);
-        const paramCols       = this._svcParamCols(node);
-        const pkIsUserDefined = this._pkIsUserDefined(node);
-        const isVersioned     = node.isOption('versioned');
-        const isImmutable     = node.isOption('immutable');
-        const vtCol           = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
-        const dimCols         = this._dimensionScopeColumns(node);
+        const model           = this.tableApi.analyze(node);
+        const tbl             = model.names.table;
+        const svc             = model.names.service;
+        const hk              = model.names.hooks;
+        const rst             = model.names.rest;
+        const pkNm            = model.names.pk;
+        const hasVer          = model.features.versionColumn;
+        const lockDef         = model.lockDefaults;
+        const paramCols       = model.columns.parameters;
+        const pkIsUserDefined = model.pkIsUserDefined;
+        const isVersioned     = model.features.versioned;
+        const isImmutable     = model.features.immutable;
+        const vtCol           = model.versionToColumn;
+        const dimCols         = model.dimensionScopes;
         // jsonCols/rstCols exclude the PK from the generic loop — it is always the first
         // json_object key (below) and, for ins, extracted from the body explicitly when
         // user-defined; for upd it is deliberately NOT re-extracted from the body (immutable,
@@ -2482,8 +2389,9 @@ export class OraclePlsqlBuilder {
     }
 
     private _generateAuditSpec(node: IDdlNode): string {
-        const tbl = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const aud = tbl + '_aud';
+        const model = this.tableApi.analyze(node);
+        const tbl = model.names.table;
+        const aud = model.names.audit;
         let r = `create or replace package ${aud} as\n\n`;
         r += `${tab}g_enabled boolean := true;\n\n`;
         r += `${tab}procedure log_insert (p_row     in ${tbl}%rowtype);\n`;
@@ -2494,16 +2402,17 @@ export class OraclePlsqlBuilder {
     }
 
     private _generateAuditBody(node: IDdlNode, hasDal: boolean): string {
-        const tbl      = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const dal      = tbl + '_dal';
-        const aud      = tbl + '_aud';
+        const model    = this.tableApi.analyze(node);
+        const tbl      = model.names.table;
+        const dal      = model.names.dal;
+        const aud      = model.names.audit;
         const pkName   = (node.getPkName() ?? 'id').toLowerCase();
         const auditLogName = String(node.getOptionValue('auditlog') || '').trim() || 'app_audit_log';
         const auditTbl = (this.ctx.objPrefix() + auditLogName).toLowerCase();
         const auditSvc = auditTbl + '_svc';
-        const hasVer   = this._hasVersionCol(node);
-        const fkCols   = Object.keys(node.fks ?? {}).map(f => f.toLowerCase());
-        const svcCols  = this._svcCols(node).map(c => c.parseName().toLowerCase());
+        const hasVer   = model.features.versionColumn;
+        const fkCols   = model.columns.foreignKeys.map(f => f.toLowerCase());
+        const svcCols  = model.columns.service.map(c => c.parseName().toLowerCase());
 
         // Detect whether the log table has old_values/new_values columns (Level 2 CDC).
         // Audit cols (DATE type: created/updated) are deliberately excluded from f_to_json
@@ -2513,7 +2422,7 @@ export class OraclePlsqlBuilder {
             .some(c => c.parseName().toLowerCase() === 'old_values');
         // Build the column list for f_to_json: pk + tenant_id + fks + business cols + row_version.
         // Audit metadata cols (created/updated) are excluded — they are DATE and not business state.
-        const synTenantId = this._hasSyntheticTenantId(node);
+        const synTenantId = model.features.syntheticTenantId;
         const jsonCols = [pkName, ...(synTenantId ? ['tenant_id'] : []), ...fkCols, ...svcCols];
         if (hasVer) jsonCols.push('row_version');
 
@@ -2599,16 +2508,11 @@ export class OraclePlsqlBuilder {
         if (node.inferType() !== 'table') return '';
         if (node.children.length === 0) return '';
 
-        const tier     = this._getTier(node);
-        const hasDal   = ['full', 'full+hks'].includes(tier);
-        const hasHks   = tier.endsWith('+hks');
-        const hasSvc   = ['service', 'service+hks', 'full', 'full+hks'].includes(tier);
-        const hasAudit = this._hasAuditLog(node);
-
-        // 'apex' kept as backward-compat alias for 'app'
-        const ifc    = String(this.ctx.getOptionValue('interface') ?? 'app').toLowerCase();
-        const genApp = ifc === 'app' || ifc === 'apex' || ifc === 'both' || ifc === '';
-        const genRst = ifc === 'rest' || ifc === 'both';
+        const model = this.tableApi.analyze(node);
+        const { hasDal, hasHks, hasSvc } = model.capabilities;
+        const hasAudit = model.features.auditLog;
+        const genApp = model.interfaces.app;
+        const genRst = model.interfaces.rest;
 
         let r = '';
         // Emitted once, ahead of every package, unconditionally (every table gets its
@@ -2656,11 +2560,11 @@ export class OraclePlsqlBuilder {
         const details = this._aggregateDetails(node);
         if (details.length === 0) return '';
 
-        const mTbl  = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
-        const mPkNm = (node.getPkName() ?? 'id').toLowerCase();
+        const model = this.tableApi.analyze(node);
+        const mTbl  = model.names.table;
+        const mPkNm = model.names.pk;
         const agg   = mTbl + '_agg';
-        const ifc   = String(this.ctx.getOptionValue('interface') ?? 'app').toLowerCase();
-        const genApp = ifc === 'app' || ifc === 'apex' || ifc === 'both' || ifc === '';
+        const genApp = model.interfaces.app;
 
         type Detail = {
             detailNode: IDdlNode; detailTbl: string; fkCol: string;
