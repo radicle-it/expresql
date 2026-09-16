@@ -2985,3 +2985,145 @@ describe('bridge — degraded tiers (absorbed private DML)', () => {
     });
 
 });
+
+// /aggregate — a nested table under a /aggregate-marked master gets its own
+// full, independent TAPI as always, PLUS a standalone <master>_agg package
+// (add_/remove_/list_ per detail) generated as an isolated second pass after
+// every table's own TAPI. Deliberately not wired into the master's own
+// _app/_rst — see plsql.ts's generateAggregatePackage doc comment.
+
+const ORDERS_QSQL = `\
+orders /api /aggregate
+  customer_id num /nn
+  status vc20 /nn
+  order_lines /api
+     sku vc50 /nn
+     qty num /nn
+     unit_price num(10,2) /nn
+# settings = {"api": "layered"}`.trim();
+
+describe('aggregate — full+hks tier', () => {
+
+    test('master and detail each still get their own complete, independent TAPI', () => {
+        const out = ddl(ORDERS_QSQL);
+        expect(out).toContain('create or replace package orders_svc');
+        expect(out).toContain('create or replace package order_lines_svc');
+        const detailSvcSpec = segment(out, 'create or replace package order_lines_svc', 'end order_lines_svc;');
+        expect(detailSvcSpec).toContain('procedure create_rec');
+        expect(detailSvcSpec).toContain('procedure update_rec');
+        expect(detailSvcSpec).toContain('procedure delete_rec');
+    });
+
+    test('_agg spec: add_/remove_/list_order_lines, keyed by p_master_id', () => {
+        const out = ddl(ORDERS_QSQL);
+        const aggSpec = segment(out, 'create or replace package orders_agg', 'end orders_agg;');
+        const addSig = segment(aggSpec, 'procedure add_order_lines (', ');');
+        expect(addSig).toContain('p_master_id    in  orders.id%type');
+        expect(addSig).toContain('p_sku          in  order_lines.sku%type');
+        expect(addSig).toContain('p_qty          in  order_lines.qty%type');
+        expect(addSig).toContain('p_unit_price   in  order_lines.unit_price%type');
+        expect(addSig).toContain('x_id           out order_lines.id%type');
+        expect(addSig).not.toContain('order_id');
+        const removeSig = segment(aggSpec, 'procedure remove_order_lines (', ');');
+        expect(removeSig).toContain('p_master_id in orders.id%type');
+        expect(removeSig).toContain('p_id in order_lines.id%type');
+        expect(aggSpec).toContain('function list_order_lines (p_master_id in orders.id%type) return sys_refcursor;');
+    });
+
+    test('_agg body: add_ builds t_rec, forces the FK to p_master_id, and calls the detail\'s own create_rec', () => {
+        const out = ddl(ORDERS_QSQL);
+        const aggBody = segment(out, 'create or replace package body orders_agg', 'end orders_agg;');
+        const addBody = segment(aggBody, 'procedure add_order_lines (', 'end add_order_lines;');
+        expect(addBody).toContain('l_rec order_lines_svc.t_rec;');
+        expect(addBody).toContain('l_rec.order_id := p_master_id;');
+        expect(addBody).toContain('l_rec.sku := p_sku;');
+        expect(addBody).toContain('order_lines_svc.create_rec(p_rec => l_rec, x_id => x_id);');
+    });
+
+    test('_agg body: remove_ checks ownership via the detail\'s _rls view before calling delete_rec', () => {
+        const out = ddl(ORDERS_QSQL);
+        const aggBody = segment(out, 'create or replace package body orders_agg', 'end orders_agg;');
+        const removeBody = segment(aggBody, 'procedure remove_order_lines (', 'end remove_order_lines;');
+        expect(removeBody).toContain('select order_id into l_owner from order_lines_rls where id = p_id;');
+        expect(removeBody).toContain('when no_data_found then');
+        expect(removeBody).toContain('[NOT_FOUND]');
+        expect(removeBody).toContain('if l_owner is null or l_owner != p_master_id then');
+        expect(removeBody).toContain('order_lines_svc.delete_rec(p_id => p_id);');
+    });
+
+    test('_agg body: list_ selects from the detail\'s _rls view filtered by the FK', () => {
+        const out = ddl(ORDERS_QSQL);
+        const aggBody = segment(out, 'create or replace package body orders_agg', 'end orders_agg;');
+        const listBody = segment(aggBody, 'function list_order_lines (p_master_id in orders.id%type) return sys_refcursor is', 'end list_order_lines;');
+        expect(listBody).toContain('open l_cur for select * from order_lines_rls where order_id = p_master_id;');
+    });
+
+    test('two nested details under one master both get add_/remove_/list_ in the same _agg package', () => {
+        const out = ddl(`orders /api /aggregate
+  customer_id num /nn
+  order_lines /api
+     sku vc50 /nn
+  order_notes /api
+     note vc200 /nn
+# settings = {"api": "layered"}`);
+        const aggSpec = segment(out, 'create or replace package orders_agg', 'end orders_agg;');
+        expect(aggSpec).toContain('procedure add_order_lines (');
+        expect(aggSpec).toContain('procedure add_order_notes (');
+        expect(aggSpec).toContain('function list_order_lines');
+        expect(aggSpec).toContain('function list_order_notes');
+    });
+
+});
+
+describe('aggregate — degraded tiers / edge cases', () => {
+
+    test('no /aggregate: no _agg package at all', () => {
+        const out = ddl('orders /api\n  customer_id num /nn\n  order_lines /api\n     sku vc50 /nn\n# settings = {"api": "layered"}');
+        expect(out).not.toContain('_agg');
+    });
+
+    test('/aggregate with no nested children: no _agg package (validated as a warning by errors.test.ts)', () => {
+        const out = ddl('orders /api /aggregate\n  customer_id num /nn\n  status vc20 /nn\n# settings = {"api": "layered"}');
+        expect(out).not.toContain('orders_agg');
+    });
+
+    test('lookup tier detail (no _svc): add_/remove_ call the detail\'s _app instead', () => {
+        const out = ddl('orders /api /aggregate\n  customer_id num /nn\n  order_lines /api lookup\n     sku vc50 /nn\n# settings = {"api": "layered"}');
+        const aggBody = segment(out, 'create or replace package body orders_agg', 'end orders_agg;');
+        const addBody = segment(aggBody, 'procedure add_order_lines (', 'end add_order_lines;');
+        expect(addBody).not.toContain('order_lines_svc');
+        expect(addBody).toContain('order_lines_app.ins(');
+        expect(addBody).toContain('p_order_id => p_master_id');
+        const removeBody = segment(aggBody, 'procedure remove_order_lines (', 'end remove_order_lines;');
+        expect(removeBody).toContain('order_lines_app.del(p_id => p_id);');
+    });
+
+    test('rest-only interface + lookup-tier detail: no _svc and no _app — add_/remove_ skipped, list_ still generated', () => {
+        const out = ddl('orders /api /aggregate\n  customer_id num /nn\n  order_lines /api lookup\n     sku vc50 /nn\n# settings = {"api": "layered", "interface": "rest"}');
+        const aggBody = segment(out, 'create or replace package body orders_agg', 'end orders_agg;');
+        expect(aggBody).not.toContain('procedure add_order_lines');
+        expect(aggBody).not.toContain('procedure remove_order_lines');
+        expect(aggBody).toContain('function list_order_lines');
+    });
+
+    test('/versioned detail: create_rec still exists so add_ works, but no delete_rec — remove_ is not generated', () => {
+        const out = ddl('orders /api /aggregate\n  customer_id num /nn\n  order_lines /api /versioned\n     sku vc50 /nn\n     valid_to dt\n# settings = {"api": "layered"}');
+        const aggSpec = segment(out, 'create or replace package orders_agg', 'end orders_agg;');
+        expect(aggSpec).toContain('procedure add_order_lines (');
+        expect(aggSpec).not.toContain('procedure remove_order_lines');
+        expect(aggSpec).toContain('function list_order_lines');
+    });
+
+    test('/immutable detail: add_ works, remove_ is not generated (append-only, no delete_rec)', () => {
+        const out = ddl('orders /api /aggregate\n  customer_id num /nn\n  order_lines /api /immutable\n     sku vc50 /nn\n# settings = {"api": "layered"}');
+        const aggSpec = segment(out, 'create or replace package orders_agg', 'end orders_agg;');
+        expect(aggSpec).toContain('procedure add_order_lines (');
+        expect(aggSpec).not.toContain('procedure remove_order_lines');
+    });
+
+    test('a plain (non-nested-table) column child is not treated as a detail', () => {
+        const out = ddl('orders /api /aggregate\n  customer_id num /nn\n  status vc20 /nn\n# settings = {"api": "layered"}');
+        expect(out).not.toContain('orders_agg');
+    });
+
+});

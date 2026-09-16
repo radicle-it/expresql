@@ -644,6 +644,22 @@ user_role /api /bridge
    role_id /fk roles /nn`,
     },
     {
+        label: 'Layered TAPI — master-detail aggregate (/aggregate)', desc: 'Standalone orders_agg package: add_/remove_/list_order_lines, calling straight into order_lines\' own _svc — the master\'s and detail\'s own TAPIs are untouched', cat: 'TAPI',
+        esql:
+`-- /aggregate needs at least one nested table underneath (order_lines here).
+-- Both orders and order_lines keep their own complete, independent TAPI as
+-- always; /aggregate additionally generates a standalone orders_agg package
+-- (not wired into orders_app/orders_rst) with add_/remove_/list_order_lines,
+-- built from order_lines' own writable columns minus its FK to orders.
+orders /api /aggregate
+   customer_id num /nn
+   status      vc20 /nn
+   order_lines /api
+      sku        vc50 /nn
+      qty        num /nn
+      unit_price num(10,2) /nn`,
+    },
+    {
         label: 'Multi-Tenant SaaS', desc: 'Shared schema with tenant_id isolation', cat: 'Multi-tenant',
         esql:
 `tenants /insert 2

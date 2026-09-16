@@ -154,6 +154,25 @@ describe('bridge directive checks', () => {
 
 });
 
+describe('aggregate directive checks', () => {
+
+    test('/aggregate with a nested detail table → no warning', () => {
+        const errors = toErrors(`orders /aggregate\n    customer_id\n    order_lines\n        sku`) as ErrorEntry[];
+        expect(errors.some(e => e.message.includes('/aggregate'))).toBe(false);
+    });
+
+    test('/aggregate with no nested table (plain columns only) → warning', () => {
+        const errors = toErrors(`orders /aggregate\n    customer_id\n    status`) as ErrorEntry[];
+        expect(errors.some(e => e.message.includes('/aggregate expects at least one nested detail table'))).toBe(true);
+    });
+
+    test('no /aggregate at all → no warning even without nested tables', () => {
+        const errors = toErrors(`orders\n    customer_id\n    status`) as ErrorEntry[];
+        expect(errors.some(e => e.message.includes('/aggregate'))).toBe(false);
+    });
+
+});
+
 describe('error message constants', () => {
 
     test('all expected message keys are present', () => {

@@ -33,6 +33,7 @@ This document collects end-to-end ExpreSQL examples. Each scenario shows the QSQ
 - [26. SCD2 business-key navigation with `/businesskey`](#26-scd2-business-key-navigation-with-businesskey)
 - [27. Natural-key reads with `/unique`: `get_by_<col>` through every layer](#27-natural-key-reads-with-unique-get_by_col-through-every-layer)
 - [28. N:M associative tables with `/bridge`](#28-nm-associative-tables-with-bridge)
+- [29. Master-detail / aggregate with `/aggregate`](#29-master-detail--aggregate-with-aggregate)
 
 ---
 
@@ -2172,3 +2173,111 @@ On `service`/`lookup` tiers (no `_svc`), the same idempotency is inlined directl
 | DDL | `create unique index ... unique (left, right)` | Makes a concurrent duplicate grant detectable at all |
 
 Deliberately out of scope (documented, not silently dropped): a set-based `replace_<label>(p_left, p_right_list)` that reconciles a whole set of grants in one call (would need a SQL collection type parameter — real complexity, left for when a concrete need emerges); no reverse direction (`list_<label>`-equivalent for the left side, e.g. "which users have this role" — same mechanism, just swapping which FK is "left").
+
+## 29. Master-detail / aggregate with `/aggregate`
+
+A nested table (`order_lines` indented under `orders`) already gets its own complete, independent TAPI — `order_lines_svc.create_rec`, `order_lines_app.ins`, and so on, exactly as if it were a standalone table. That is often enough. But when the detail's whole reason for existing is "a line of its master" (an order line without an order is meaningless), a caller working through the *order* — not the order line — wants to add/remove/list lines through the order's own vocabulary, without learning the detail table's name or orchestrating the FK by hand. `/aggregate` adds exactly that, as a small standalone package alongside the master and detail's already-complete TAPIs — it does not replace or narrow anything either of them already generates.
+
+**Input:**
+
+```expresql
+orders /api /aggregate
+  customer_id num /nn
+  status vc20 /nn
+  order_lines /api
+     sku vc50 /nn
+     qty num /nn
+     unit_price num(10,2) /nn
+```
+
+`/aggregate` requires at least one nested detail table under it (a warning otherwise — see `errors.test.ts`'s `aggregate directive checks`). Every direct nested-table child is treated as a detail; a detail's own nested children (two levels deep) are not — one level of nesting only. The master does not need `/api` for `/aggregate` to do anything: a nested table always gets its own full TAPI already, independent of the master's tier.
+
+**Generated `orders_agg` — a standalone package, not wired into `orders_app`/`orders_rst`:**
+
+```sql
+create or replace package orders_agg as
+
+    procedure add_order_lines (
+        p_master_id    in  orders.id%type,
+        p_sku          in  order_lines.sku%type,
+        p_qty          in  order_lines.qty%type,
+        p_unit_price   in  order_lines.unit_price%type,
+        x_id           out order_lines.id%type
+    );
+
+    procedure remove_order_lines (
+        p_master_id in orders.id%type,
+        p_id in order_lines.id%type
+    );
+
+    function list_order_lines (p_master_id in orders.id%type) return sys_refcursor;
+
+end orders_agg;
+```
+
+`add_order_lines`'s parameter list mirrors `order_lines_svc.t_rec` (the detail's own writable columns), minus the FK to `orders` — that column is fixed to `p_master_id`, never caller-supplied under its own name. `remove_order_lines` takes only `p_master_id` and the detail's own PK; `list_order_lines` takes just `p_master_id`.
+
+**Body — `add_` builds the detail's own `t_rec`, forces the FK, and calls the detail's own `create_rec`:**
+
+```sql
+create or replace package body orders_agg as
+
+    procedure add_order_lines (
+        p_master_id    in  orders.id%type,
+        p_sku          in  order_lines.sku%type,
+        p_qty          in  order_lines.qty%type,
+        p_unit_price   in  order_lines.unit_price%type,
+        x_id           out order_lines.id%type
+    ) is
+        l_rec order_lines_svc.t_rec;
+    begin
+        l_rec.order_id := p_master_id;
+        l_rec.sku := p_sku;
+        l_rec.qty := p_qty;
+        l_rec.unit_price := p_unit_price;
+        order_lines_svc.create_rec(p_rec => l_rec, x_id => x_id);
+    end add_order_lines;
+
+    procedure remove_order_lines (
+        p_master_id in orders.id%type,
+        p_id in order_lines.id%type
+    ) is
+        l_owner order_lines.order_id%type;
+    begin
+        begin
+            select order_id into l_owner from order_lines_rls where id = p_id;
+        exception
+            when no_data_found then
+                raise_application_error(-20002, '[NOT_FOUND] order_lines: record not found (id=' || p_id || ')');
+        end;
+        if l_owner is null or l_owner != p_master_id then
+            raise_application_error(-20002, '[NOT_FOUND] order_lines: id=' || p_id || ' does not belong to orders ' || p_master_id);
+        end if;
+        order_lines_svc.delete_rec(p_id => p_id);
+    end remove_order_lines;
+
+    function list_order_lines (p_master_id in orders.id%type) return sys_refcursor is
+        l_cur sys_refcursor;
+    begin
+        open l_cur for select * from order_lines_rls where order_id = p_master_id;
+        return l_cur;
+    end list_order_lines;
+
+end orders_agg;
+```
+
+`remove_order_lines` is an ownership check, not just a delete: it reads the row's own FK value through `order_lines_rls` (the same read path every other layer already uses) and raises `[NOT_FOUND]` — not `[FORBIDDEN]` or similar — both when the row doesn't exist at all and when it exists but belongs to a *different* order, so a caller can't distinguish "wrong id" from "someone else's line" by the error alone.
+
+**Layer selection — `_svc` preferred, `_app` as fallback:** `generateAggregatePackage` calls the detail's own `_svc.create_rec`/`delete_rec` when the detail's tier has one. On a `lookup`/`lookup+hks` detail (no `_svc`), it calls `<detail>_app.ins`/`.del` instead — the same business logic, since `_app` itself already routes through the detail's hooks and private DML. If the detail has *neither* (an `interface: "rest"`-only script, where a lookup-tier table has no `_app` either — only a JSON-based `_rst`), `add_`/`remove_` are skipped for that detail entirely (with a generated comment explaining why); `list_` is unaffected, since it is a plain `select` against `_rls` regardless of tier.
+
+**Narrowed details:** a `/versioned` or `/immutable` detail has no `delete_rec` at all (by design — see §8 and §26), so `remove_<detail>` is not generated for it; `add_<detail>` still is, since `create_rec` is untouched by either directive.
+
+| Layer | New package | Notes |
+|---|---|---|
+| `<master>_agg` (new, standalone) | `add_<detail>`, `remove_<detail>`, `list_<detail>` per nested detail | Calls the detail's own `_svc`/`_app`, never duplicates its logic |
+| master's own `_dal`/`_hks`/`_svc`/`_app`/`_rst` | unchanged | `/aggregate` does not touch the master's own generation at all |
+| detail's own `_dal`/`_hks`/`_svc`/`_app`/`_rst` | unchanged | A nested table's TAPI was always fully independent; still is |
+
+Why a separate package instead of adding `add_<detail>`/`remove_<detail>` directly onto `orders_app`/`orders_rst`: the main TAPI-emission loop visits tables in tree order (parent, then its nested children), so by the time a master's own `_app` would be generated, the detail's `_svc`/`_app` do not exist yet in the script — referencing them inline would be a forward reference that fails to compile. `orders_agg` is generated in a deliberately separate pass, after every table's own TAPI, so both sides of every reference already exist.
+
+Deliberately out of scope (documented, not silently dropped): multi-level nesting (a detail that is itself a master, e.g. `orders → order_lines → line_serials`); bulk/replace-style operations (`replace_<detail>(p_master_id, p_line_list)` reconciling a whole set of lines in one call); wiring `add_`/`remove_`/`list_` into the master's own `_app`/`_rst` (kept as a standalone package instead, for the compile-order reason above).

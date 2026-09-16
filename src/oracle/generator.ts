@@ -648,6 +648,7 @@ export class OracleDDLGenerator extends BaseGenerator {
     generateVersionedTrigger(node: IDdlNode): string   { return this._plsql.generateVersionedTrigger(node); }
     generateTAPI(node: IDdlNode): string               { return this._plsql.generateTAPI(node); }
     generateLayeredTAPI(node: IDdlNode): string        { return this._plsql.generateLayeredTAPI(node); }
+    generateAggregatePackage(node: IDdlNode): string   { return this._plsql.generateAggregatePackage(node); }
     generateTenantCtxSpec(prefix: string): string       { return this._plsql.generateTenantCtxSpec(prefix); }
     generateTenantCtxBody(prefix: string): string       { return this._plsql.generateTenantCtxBody(prefix); }
     generateTenantBootstrapSpec(prefix: string): string { return this._plsql.generateTenantBootstrapSpec(prefix); }
@@ -761,6 +762,18 @@ export class OracleDDLGenerator extends BaseGenerator {
                 const tapi = this.generateTAPI(node);
                 if (tapi) { if (j++ === 0) output += '-- APIs\n'; output += tapi + '\n'; }
             }
+        }
+
+        // /aggregate — a deliberately isolated second pass, run only after every
+        // table's own TAPI has been emitted above: a master's _agg package calls
+        // straight into its detail's _svc/_app, and tree pre-order only guarantees
+        // a detail comes after its parent, not that the parent's own package block
+        // is the detail's immediate predecessor — so this cannot be folded into the
+        // loop above without risking a forward reference to a package that Oracle
+        // hasn't compiled yet.
+        for (const node of descendants) {
+            const agg = this.generateAggregatePackage(node);
+            if (agg) { if (j++ === 0) output += '-- APIs\n'; output += agg + '\n'; }
         }
 
         // Views

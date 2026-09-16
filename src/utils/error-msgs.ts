@@ -12,6 +12,7 @@ interface ParsedNode {
     isOption(key: string): boolean;
     indexOf(key: string, flag?: boolean): number;
     getOptionValue(option: string): string | null;
+    children: ParsedNode[];
 }
 
 /** Minimal shape of the top-level expresql instance passed to checkSyntax. */
@@ -67,6 +68,7 @@ const tableDirectives = [
     ,'versioned'
     ,'businesskey'
     ,'bridge'
+    ,'aggregate'
     ,'unique','uk'
     ,'pk'
     ,'cascade','setnull'
@@ -147,6 +149,7 @@ function checkSyntax(parsed: ParsedContext): SyntaxError[] {
     ret = ret.concat(versioned_immutable_conflict(ddl));
     ret = ret.concat(businesskey_checks(ddl));
     ret = ret.concat(bridge_checks(ddl));
+    ret = ret.concat(aggregate_checks(ddl));
 
     return ret;
 }
@@ -236,6 +239,26 @@ function bridge_checks(ddl: ParsedContext): SyntaxError[] {
                 `/bridge expects exactly 2 /fk columns (found ${fkCount}) — the two sides of the N:M relationship`,
                 new Offset(node.line, node.src[pos].begin),
                 new Offset(node.line, node.src[pos].begin + 'bridge'.length),
+                'warning'
+            ));
+        }
+    }
+    return ret;
+}
+
+function aggregate_checks(ddl: ParsedContext): SyntaxError[] {
+    const ret: SyntaxError[] = [];
+    for (const node of ddl.descendants()) {
+        if (node.inferType() !== 'table') continue;
+        if (!node.isOption('aggregate')) continue;
+        const pos = node.indexOf('aggregate');
+        if (pos < 0 || pos >= node.src.length) continue;
+        const hasNestedDetail = node.children.some(c => c.children.length > 0);
+        if (!hasNestedDetail) {
+            ret.push(new SyntaxError(
+                '/aggregate expects at least one nested detail table (a table indented under this one) — none found',
+                new Offset(node.line, node.src[pos].begin),
+                new Offset(node.line, node.src[pos].begin + 'aggregate'.length),
                 'warning'
             ));
         }

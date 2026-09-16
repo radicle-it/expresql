@@ -408,6 +408,7 @@ emp_v = departments employees
                         <tr><td>name /api</td><td>Generate Table API (TAPI package)</td></tr>
                         <tr><td>name /api /auditlog [<em>log_table</em>]</td><td>Layered TAPI + audit package with <code>PRAGMA AUTONOMOUS_TRANSACTION</code></td></tr>
                         <tr><td>name /api /bridge</td><td>N:M associative table (needs exactly 2 /fk columns): adds grant_/revoke_/has_/list_&lt;label&gt; alongside (not instead of) the generic CRUD, plus a composite unique constraint</td></tr>
+                        <tr><td>name /aggregate</td><td>Master-detail: needs at least one nested table. Generates a standalone &lt;master&gt;_agg package with add_/remove_/list_&lt;detail&gt;, calling straight into each detail's own _svc/_app — the master's and detail's own TAPIs are untouched</td></tr>
                         <tr><td>name /colprefix <em>pfx</em></td><td>Prefix all columns of this table with <em>pfx</em></td></tr>
                         <tr><td>name /compress</td><td>CREATE TABLE … COMPRESS</td></tr>
                         <tr><td>name /flashback <em>archive</em></td><td>Enable Flashback Data Archive (optional archive name)</td></tr>

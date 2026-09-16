@@ -111,6 +111,7 @@ A comment can appear between any keywords, parameters, or punctuation marks in a
 <!-- markdownlint-disable MD013 -->
 | Directive | Description | Dialect |
 | --- | --- | --- |
+| `/aggregate` | Marks a table as the master of a master-detail/aggregate relationship. Requires at least one nested detail table — a table indented under this one (warning otherwise); does not require `/api` on the master itself, but each detail keeps its own, fully independent TAPI regardless (nested tables already generate one). Generates a standalone `<master>_agg` package — not wired into the master's own `_app`/`_rst`, called directly like a `_svc` package is — with, per detail: `add_<detail>` (flat IN parameters mirroring the detail's own insertable columns minus its FK to the master, `p_master_id` IN, `x_id` OUT — builds the detail's own `t_rec` with the FK forced to `p_master_id`, then calls the detail's `create_rec`), `remove_<detail>` (looks up the detail row's FK value via `<detail>_rls`, raises `[NOT_FOUND]` if it doesn't belong to `p_master_id`, then calls the detail's `delete_rec`), and `list_<detail>` (a `select * from <detail>_rls where <fk> = p_master_id` cursor). Prefers the detail's own `_svc` when present, falls back to `_app`; if the detail has neither (`interface: rest`-only combined with a `lookup`/`lookup+hks` tier), `add_`/`remove_` are skipped for that detail (with a generated comment) but `list_` is still generated. `remove_<detail>` is omitted entirely when the detail is `/versioned` or `/immutable` (no `delete_rec` exists to call). One level of nesting only — a detail that is itself a master is out of scope; so are bulk/replace-style operations. | Oracle only |
 | `/api [tier]` | Generate layered Table API. The optional *tier* selects which layers are generated: `lookup`, `lookup+hks`, `service`, `service+hks`, `full`, `full+hks` (default). **Oracle:** generates PL/SQL packages (`_dal`, `_hks`, `_svc`, `_app`/`_rst`). **Db2:** generates schema-scoped SQL PL procedures (`_dal`, `_hks`, `_svc`, `_app`/`_rst`). Interface controlled by [`interface`](#interface). See [api](#api) setting. | All |
 | `/audit` | Adds Oracle auditing (`AUDIT ALL ON <TABLE>`). On Db2, emits a comment recommending an IBM Db2 Audit Policy instead. | All *(Oracle feature)* |
 | `/auditcols`, `/audit cols` | Adds `CREATED`, `CREATED_BY`, `UPDATED`, `UPDATED_BY` columns and trigger logic. **Oracle:** `SYSDATE` / `v('APP_USER')`. **Db2:** `CURRENT TIMESTAMP` / `CURRENT USER`. | All |
@@ -1509,7 +1510,8 @@ indentation::= INDENT | DEDENT | SAMELEVEL
 relationship::= '>' | '<'
 
 tableDirective::= '/'
-       ('api'
+       ('aggregate'
+      |'api'
       |'audit'|'auditcols'|'audit cols'|'audit columns'
       |'auditlog' identifier?
       |'bridge'
