@@ -2439,3 +2439,148 @@ describe('/lockmode directive — per-table lock default', () => {
     });
 
 });
+
+// ── /immutable directive — layered TAPI narrowing ─────────────────────────────
+// Same narrowing principle as /versioned (see above), applied to the append-only case:
+// /immutable's own BEFORE UPDATE OR DELETE trigger (generateImmutableTrigger) already
+// blocks writes at the DB level — this narrows the generated TAPI itself so the
+// unreachable update/delete procedures are never generated in the first place, instead
+// of being generated and always failing at runtime against that trigger. Unlike
+// /versioned, there is no replacement operation (no close/close_version/close_row):
+// insert/get are the only writes an immutable table's TAPI exposes.
+
+const EVENTS_IMMUTABLE_QSQL = `\
+events /api /immutable
+  code vc20 /nn
+  payload vc400
+# settings = {"api": "layered"}`.trim();
+
+describe('immutable layered TAPI — full+hks tier', () => {
+
+    test('DAL spec exposes insert_row/get_by_id but no update_row, delete_row, or close_row', () => {
+        const out = ddl(EVENTS_IMMUTABLE_QSQL);
+        const dalSpec = segment(out, 'create or replace package events_dal', 'end events_dal;');
+        expect(dalSpec).toContain('procedure insert_row');
+        expect(dalSpec).toContain('function get_by_id');
+        expect(dalSpec).not.toContain('procedure update_row');
+        expect(dalSpec).not.toContain('procedure delete_row');
+        expect(dalSpec).not.toContain('procedure close_row');
+    });
+
+    test('DAL body has no update_row/delete_row implementation', () => {
+        const out = ddl(EVENTS_IMMUTABLE_QSQL);
+        const dalBody = segment(out, 'create or replace package body events_dal', 'end events_dal;');
+        expect(dalBody).toContain('procedure insert_row');
+        expect(dalBody).not.toContain('procedure update_row');
+        expect(dalBody).not.toContain('procedure delete_row');
+        expect(dalBody).not.toContain('procedure close_row');
+    });
+
+    test('HKS spec/body expose only before_insert/after_insert — no update/delete/close hooks', () => {
+        const out = ddl(EVENTS_IMMUTABLE_QSQL);
+        const hksSpec = segment(out, 'create or replace package events_hks', 'end events_hks;');
+        expect(hksSpec).toContain('procedure before_insert');
+        expect(hksSpec).toContain('procedure after_insert');
+        expect(hksSpec).not.toContain('procedure before_update');
+        expect(hksSpec).not.toContain('procedure after_update');
+        expect(hksSpec).not.toContain('procedure before_delete');
+        expect(hksSpec).not.toContain('procedure after_delete');
+        expect(hksSpec).not.toContain('procedure before_close');
+        expect(hksSpec).not.toContain('procedure after_close');
+        const hksBody = segment(out, 'create or replace package body events_hks', 'end events_hks;');
+        expect(hksBody).toContain('procedure after_insert');
+        expect(hksBody).not.toContain('procedure before_update');
+        expect(hksBody).not.toContain('procedure before_close');
+    });
+
+    test('SVC spec/body expose only create_rec — no update_rec, delete_rec, or close_version', () => {
+        const out = ddl(EVENTS_IMMUTABLE_QSQL);
+        const svcSpec = segment(out, 'create or replace package events_svc', 'end events_svc;');
+        expect(svcSpec).toContain('procedure create_rec');
+        expect(svcSpec).not.toContain('procedure update_rec');
+        expect(svcSpec).not.toContain('procedure delete_rec');
+        expect(svcSpec).not.toContain('procedure close_version');
+        const svcBody = segment(out, 'create or replace package body events_svc', 'end events_svc;');
+        expect(svcBody).toContain('procedure create_rec');
+        expect(svcBody).not.toContain('procedure update_rec');
+        expect(svcBody).not.toContain('procedure delete_rec');
+        expect(svcBody).not.toContain('procedure close_version');
+    });
+
+    test('APP spec/body expose only get/ins — no upd, del, or close', () => {
+        const out = ddl(EVENTS_IMMUTABLE_QSQL);
+        const appSpec = segment(out, 'create or replace package events_app', 'end events_app;');
+        expect(appSpec).toContain('procedure get');
+        expect(appSpec).toContain('procedure ins');
+        expect(appSpec).not.toContain('procedure upd');
+        expect(appSpec).not.toContain('procedure del');
+        expect(appSpec).not.toContain('procedure close');
+        const appBody = segment(out, 'create or replace package body events_app', 'end events_app;');
+        expect(appBody).toContain('procedure ins');
+        expect(appBody).not.toContain('procedure upd');
+        expect(appBody).not.toContain('procedure del');
+        expect(appBody).not.toContain('procedure close');
+    });
+
+    test('RST spec/body expose only get/get_all/ins — no upd, del, or close', () => {
+        const out = ddl(`events /api /immutable\n  code vc20 /nn\n# settings = {"api": "layered", "interface": "rest"}`);
+        const rstSpec = segment(out, 'create or replace package events_rst as', 'end events_rst;');
+        expect(rstSpec).toContain('procedure ins;');
+        expect(rstSpec).not.toContain('procedure upd;');
+        expect(rstSpec).not.toContain('procedure del;');
+        expect(rstSpec).not.toContain('procedure close;');
+        const rstBody = segment(out, 'create or replace package body events_rst', 'end events_rst;');
+        expect(rstBody).toContain('procedure ins is');
+        expect(rstBody).not.toContain('procedure upd is');
+        expect(rstBody).not.toContain('procedure del is');
+        expect(rstBody).not.toContain('procedure close is');
+    });
+
+});
+
+describe('immutable layered TAPI — degraded tiers (no absorbed update/delete)', () => {
+
+    test('service tier (no DAL, no HKS): SVC absorbs p_insert_row + p_after_insert stub only, no update/delete/close', () => {
+        const out = ddl('events /api service /immutable\n  code vc20 /nn');
+        const svcBody = segment(out, 'create or replace package body events_svc', 'end events_svc;');
+        expect(svcBody).toContain('procedure p_insert_row');
+        expect(svcBody).toContain('procedure p_after_insert');
+        expect(svcBody).not.toContain('procedure p_update_row');
+        expect(svcBody).not.toContain('procedure p_delete_row');
+        expect(svcBody).not.toContain('procedure p_close_row');
+        expect(svcBody).not.toContain('procedure p_before_update');
+        expect(svcBody).not.toContain('procedure p_after_delete');
+        expect(svcBody).not.toContain('procedure p_before_close');
+    });
+
+    test('lookup tier (no DAL, no HKS, no SVC): _app absorbs only insert-related private DML/hooks', () => {
+        const out = ddl('events /api lookup /immutable\n  code vc20 /nn');
+        const appBody = segment(out, 'create or replace package body events_app', 'end events_app;');
+        expect(appBody).toContain('procedure p_insert_row');
+        expect(appBody).toContain('procedure p_after_insert');
+        expect(appBody).not.toContain('procedure p_update_row');
+        expect(appBody).not.toContain('procedure p_delete_row');
+        expect(appBody).not.toContain('procedure p_close_row');
+        const appSpec = segment(out, 'create or replace package events_app as', 'end events_app;');
+        expect(appSpec).not.toContain('procedure upd');
+        expect(appSpec).not.toContain('procedure del');
+        expect(appSpec).not.toContain('procedure close');
+    });
+
+    test('service tier ifc:rest: _rst spec/body have no upd/del/close', () => {
+        const out = ddl('events /api service /immutable\n  code vc20 /nn\n# settings = {"interface": "rest"}');
+        const rstSpec = segment(out, 'create or replace package events_rst as', 'end events_rst;');
+        expect(rstSpec).not.toContain('procedure upd;');
+        expect(rstSpec).not.toContain('procedure del;');
+        expect(rstSpec).not.toContain('procedure close;');
+    });
+
+    test('lookup tier ifc:rest: _rst absorbs only p_insert_row, no p_update_row/p_delete_row', () => {
+        const out = ddl('events /api lookup /immutable\n  code vc20 /nn\n# settings = {"interface": "rest"}');
+        const rstBody = segment(out, 'create or replace package body events_rst', 'end events_rst;');
+        expect(rstBody).toContain('procedure p_insert_row');
+        expect(rstBody).not.toContain('procedure p_update_row');
+        expect(rstBody).not.toContain('procedure p_delete_row');
+    });
+
+});

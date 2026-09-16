@@ -455,6 +455,53 @@ create table contract_versions_history (
 );
 ```
 
+**`/immutable` on a layered `/api` table — narrowed TAPI:**
+
+```expresql
+audit_log /api /immutable
+  entity    vc128 /nn
+  entity_id num /nn
+  operation vc10 /nn
+  payload   clob
+```
+
+`audit_log_app` (and `_dal`/`_hks`/`_svc`, and `_rst` if `interface: rest`)
+exposes only `get`/`ins` — no `upd`, no `del`, and no replacement like
+`/versioned`'s `close`. Nothing is generated where update/delete would
+normally go, not just blocked at runtime:
+
+```sql
+create or replace package audit_log_app as
+
+    procedure get (
+        p_id           in  audit_log.id%type,
+        p_lock         in  varchar2 default 'none',
+        p_lock_timeout in  number   default 5,
+        p_entity       out audit_log.entity%type,
+        p_entity_id    out audit_log.entity_id%type,
+        p_operation    out audit_log.operation%type,
+        p_payload      out audit_log.payload%type
+    );
+
+    procedure ins (
+        p_entity    in  audit_log.entity%type,
+        p_entity_id in  audit_log.entity_id%type,
+        p_operation in  audit_log.operation%type,
+        p_payload   in  audit_log.payload%type default null,
+        p_id        out audit_log.id%type
+    );
+
+end audit_log_app;
+/
+```
+
+`/versioned` (above) and `/immutable` cannot both be declared on the same
+table — see [Table Directives](expresql-grammar.md#table-directives) — but
+they share this one narrowing mechanism: an operation the data model
+doesn't support (update a closed version; update or delete an append-only
+row) is absent from the generated API, not merely rejected by it at
+runtime.
+
 ---
 
 ## 9. SODA document collection

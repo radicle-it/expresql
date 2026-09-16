@@ -437,6 +437,7 @@ export class OraclePlsqlBuilder {
         const fkCols      = Object.keys(node.fks ?? {});
         const synTenantId = this._hasSyntheticTenantId(node);
         const isVersioned = node.isOption('versioned');
+        const isImmutable = node.isOption('immutable');
         const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
 
         const tenantCtxPkg = this.ctx.objPrefix() + 'tenant_ctx';
@@ -595,6 +596,12 @@ export class OraclePlsqlBuilder {
                 r += `${tab}${tab}end if;\n`;
             }
             r += `${tab}end p_close_row;\n\n`;
+        } else if (isImmutable) {
+            // No p_update_row/p_delete_row at all — the same narrowing /versioned applies
+            // to close_row, applied here to the append-only case: /immutable's DB-level
+            // trigger already blocks update/delete, but leaving update_row/delete_row in
+            // the TAPI would let a caller reach a guaranteed-to-fail statement instead of
+            // never being offered the operation in the first place.
         } else {
             const setCols = [...fkCols.map(f => `${f.toLowerCase()} = p_row.${f.toLowerCase()}`),
                              ...svcCols.map(c => `${c.parseName().toLowerCase()} = p_row.${c.parseName().toLowerCase()}`)];
@@ -648,6 +655,7 @@ export class OraclePlsqlBuilder {
         const tbl  = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
         const pkNm = (node.getPkName() ?? 'id').toLowerCase();
         const isVersioned = node.isOption('versioned');
+        const isImmutable = node.isOption('immutable');
         const dimCols     = this._dimensionScopeColumns(node);
         let r = `\n${tab}-- private hook stubs (no external _hks)\n\n`;
         r += `${tab}procedure p_chk_rbac (p_operation in varchar2, p_row in ${tbl}%rowtype) is begin null; end p_chk_rbac;\n`;
@@ -664,6 +672,9 @@ export class OraclePlsqlBuilder {
             r += `${tab}procedure p_before_close (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n\n`;
             r += `${tab}procedure p_after_insert (p_row in ${tbl}%rowtype) is begin null; end;\n`;
             r += `${tab}procedure p_after_close  (p_row in ${tbl}%rowtype) is begin null; end;\n\n`;
+        } else if (isImmutable) {
+            // Insert-only: no before_update/before_delete/after_update/after_delete stubs.
+            r += `${tab}procedure p_after_insert (p_row in ${tbl}%rowtype) is begin null; end;\n\n`;
         } else {
             r += `${tab}procedure p_before_update (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n`;
             r += `${tab}procedure p_before_delete (p_id in ${tbl}.${pkNm}%type) is begin null; end;\n`;
@@ -680,6 +691,7 @@ export class OraclePlsqlBuilder {
         const pkName      = (node.getPkName() ?? 'id').toLowerCase();
         const uniqueCols = node.children.filter(c => c.isOption('unique'));
         const isVersioned = node.isOption('versioned');
+        const isImmutable = node.isOption('immutable');
         const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
         let r = `create or replace package ${dal} as\n\n`;
         r += `${tab}subtype t_id is ${tbl}.${pkName}%type;\n\n`;
@@ -699,6 +711,8 @@ export class OraclePlsqlBuilder {
             r += `${tab}${tab}p_${vtCol.padEnd(10)} in     ${tbl}.${vtCol}%type default systimestamp,\n`;
             r += `${tab}${tab}p_row      in out nocopy ${tbl}%rowtype\n`;
             r += `${tab});\n\n`;
+        } else if (isImmutable) {
+            // No update_row/delete_row — append-only.
         } else {
             r += `${tab}procedure update_row (p_row in out nocopy ${tbl}%rowtype);\n\n`;
             r += `${tab}procedure delete_row (p_id in t_id);\n\n`;
@@ -720,6 +734,7 @@ export class OraclePlsqlBuilder {
         const fkCols     = Object.keys(node.fks ?? {});
         const uniqueCols = node.children.filter(c => c.isOption('unique'));
         const isVersioned = node.isOption('versioned');
+        const isImmutable = node.isOption('immutable');
         const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
 
         let r = `create or replace package body ${dal} as\n\n`;
@@ -895,6 +910,9 @@ export class OraclePlsqlBuilder {
                 r += `${tab}${tab}end if;\n`;
             }
             r += `${tab}end close_row;\n\n`;
+        } else if (isImmutable) {
+            // No update_row/delete_row — append-only (see _generatePrivateDml for the same
+            // narrowing on degraded tiers).
         } else {
             // update_row — PK excluded from SET; optimistic locking when row_version present.
             // l_id is extracted before the UPDATE to avoid 'id = p_row.id' after the SET keyword,
@@ -951,6 +969,7 @@ export class OraclePlsqlBuilder {
         const pkg    = tbl + '_hks';
         const idType = hasDal ? `${dal}.t_id` : `${tbl}.id%type`;
         const isVersioned = node.isOption('versioned');
+        const isImmutable = node.isOption('immutable');
         const dimCols     = this._dimensionScopeColumns(node);
         let r = `create or replace package ${pkg} as\n\n`;
         // chk_rbac — always declared, empty by default; a human fills it in with a
@@ -976,6 +995,8 @@ export class OraclePlsqlBuilder {
             r += `${tab}procedure before_close (p_row in out nocopy ${tbl}%rowtype);\n\n`;
             r += `${tab}procedure after_insert (p_row in ${tbl}%rowtype);\n`;
             r += `${tab}procedure after_close  (p_row in ${tbl}%rowtype);\n\n`;
+        } else if (isImmutable) {
+            r += `${tab}procedure after_insert (p_row in ${tbl}%rowtype);\n\n`;
         } else {
             r += `${tab}procedure before_update (p_row in out nocopy ${tbl}%rowtype);\n`;
             r += `${tab}procedure before_delete (p_id in ${idType});\n\n`;
@@ -993,6 +1014,7 @@ export class OraclePlsqlBuilder {
         const pkg    = tbl + '_hks';
         const idType = hasDal ? `${dal}.t_id` : `${tbl}.id%type`;
         const isVersioned = node.isOption('versioned');
+        const isImmutable = node.isOption('immutable');
         const dimCols     = this._dimensionScopeColumns(node);
         let r = `create or replace package body ${pkg} as\n`;
         r += `-- warning: this file is generated once and must not be overwritten\n\n`;
@@ -1016,6 +1038,8 @@ export class OraclePlsqlBuilder {
             r += `${tab}procedure before_close (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n\n`;
             r += `${tab}procedure after_insert (p_row in ${tbl}%rowtype)           is begin null; end;\n`;
             r += `${tab}procedure after_close  (p_row in ${tbl}%rowtype)           is begin null; end;\n\n`;
+        } else if (isImmutable) {
+            r += `${tab}procedure after_insert (p_row in ${tbl}%rowtype) is begin null; end;\n\n`;
         } else {
             r += `${tab}procedure before_update (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n`;
             r += `${tab}procedure before_delete (p_id in ${idType}) is begin null; end;\n\n`;
@@ -1061,6 +1085,7 @@ export class OraclePlsqlBuilder {
         const hasVer    = this._hasVersionCol(node);
         const paramCols = this._svcParamCols(node);
         const isVersioned = node.isOption('versioned');
+        const isImmutable = node.isOption('immutable');
         const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
         const lockDef     = this._getLockDefaults(node);
 
@@ -1093,6 +1118,8 @@ export class OraclePlsqlBuilder {
             r += `${tab}${tab}p_${vtCol.padEnd(10)} in     ${tbl}.${vtCol}%type default systimestamp`;
             if (hasVer) r += `,\n${tab}${tab}p_row_version in ${tbl}.row_version%type`;
             r += `\n${tab});\n\n`;
+        } else if (isImmutable) {
+            // No update_rec/delete_rec — append-only.
         } else {
             r += `${tab}procedure update_rec (\n`;
             r += `${tab}${tab}p_id  in ${tbl}.${pkNm}%type,\n`;
@@ -1118,6 +1145,7 @@ export class OraclePlsqlBuilder {
         const hasAuditLog = this._hasAuditLog(node);
         const paramCols   = this._svcParamCols(node);
         const isVersioned = node.isOption('versioned');
+        const isImmutable = node.isOption('immutable');
         const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
         const dimCols     = this._dimensionScopeColumns(node);
         const lockDef     = this._getLockDefaults(node);
@@ -1212,6 +1240,9 @@ export class OraclePlsqlBuilder {
             r += `${tab}${tab}${closeRow}(p_id => p_id, p_${vtCol} => l_row.${vtCol}, p_row => l_row);\n`;
             r += `${tab}${tab}${hkCall('after_close')}(p_row => l_row);\n`;
             r += `${tab}end close_version;\n\n`;
+        } else if (isImmutable) {
+            // No update_rec/delete_rec — append-only (see _generatePrivateDml/_generateDalBody
+            // for the same narrowing at the layers below).
         } else {
             // update_rec
             r += `${tab}procedure update_rec (\n`;
@@ -1266,6 +1297,7 @@ export class OraclePlsqlBuilder {
         const paramCols       = this._svcParamCols(node);
         const pkIsUserDefined = this._pkIsUserDefined(node);
         const isVersioned     = node.isOption('versioned');
+        const isImmutable     = node.isOption('immutable');
         const vtCol           = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
         // Flat parameter list excludes the PK — it is always handled via the explicit p_id
         // parameter below, never duplicated as p_<pkNm> too (would collide when pkNm is "id",
@@ -1320,6 +1352,8 @@ export class OraclePlsqlBuilder {
             closeLines.push(`${tab}${tab}p_${vtCol.padEnd(appPadWidth)} in     ${tbl}.${vtCol}%type default systimestamp`);
             if (hasVer) closeLines.push(`${tab}${tab}p_row_version  in     ${tbl}.row_version%type`);
             r += closeLines.join(',\n') + `\n${tab});\n\n`;
+        } else if (isImmutable) {
+            // No upd/del — append-only.
         } else {
             // upd: p_row_version only when /rowversion is active
             r += `${tab}procedure upd (\n`;
@@ -1348,6 +1382,7 @@ export class OraclePlsqlBuilder {
         const paramCols       = this._svcParamCols(node);
         const pkIsUserDefined = this._pkIsUserDefined(node);
         const isVersioned     = node.isOption('versioned');
+        const isImmutable     = node.isOption('immutable');
         const vtCol           = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
         const dimCols         = this._dimensionScopeColumns(node);
         const appCols         = paramCols.filter(({ name }) => name !== pkNm);
@@ -1484,6 +1519,8 @@ export class OraclePlsqlBuilder {
                 r += `${tab}${tab}${hkCall('after_close')}(p_row => l_row);\n`;
             }
             r += `${tab}end close;\n\n`;
+        } else if (isImmutable) {
+            // No upd/del — append-only.
         } else {
             // upd
             r += `${tab}procedure upd (\n`;
@@ -1550,12 +1587,15 @@ export class OraclePlsqlBuilder {
         const tbl = (this.ctx.objPrefix() + node.parseName()).toLowerCase();
         const rst = tbl + '_rst';
         const isVersioned = node.isOption('versioned');
+        const isImmutable = node.isOption('immutable');
         let r = `create or replace package ${rst} as\n\n`;
         r += `${tab}procedure get;\n`;
         r += `${tab}procedure get_all;\n`;
         r += `${tab}procedure ins;\n`;
         if (isVersioned) {
             r += `${tab}procedure close;\n\n`;
+        } else if (isImmutable) {
+            // No upd/del — append-only.
         } else {
             r += `${tab}procedure upd;\n`;
             r += `${tab}procedure del;\n\n`;
@@ -1575,6 +1615,7 @@ export class OraclePlsqlBuilder {
         const paramCols       = this._svcParamCols(node);
         const pkIsUserDefined = this._pkIsUserDefined(node);
         const isVersioned     = node.isOption('versioned');
+        const isImmutable     = node.isOption('immutable');
         const vtCol           = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
         const dimCols         = this._dimensionScopeColumns(node);
         // jsonCols/rstCols exclude the PK from the generic loop — it is always the first
@@ -1726,6 +1767,8 @@ export class OraclePlsqlBuilder {
             r += `${tab}${tab}htp.p(json_object('${pkNm}' value :p_id));\n`;
             r += excTail;
             r += `${tab}end close;\n\n`;
+        } else if (isImmutable) {
+            // No upd/del — append-only.
         } else {
             // upd
             r += `${tab}procedure upd is\n`;

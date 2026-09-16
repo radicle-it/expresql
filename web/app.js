@@ -587,6 +587,19 @@ employees /api full+hks /auditlog app_audit_log
 # settings = {"interface": "rest"}`,
     },
     {
+        label: 'Layered TAPI — Immutable (append-only)', desc: 'No update_row/delete_row/update_rec/delete_rec/upd/del anywhere in the TAPI — only get/ins, DB writes blocked by the /immutable trigger too', cat: 'TAPI',
+        esql:
+`-- /immutable narrows the TAPI the same way /versioned does (see other TAPI
+-- examples): update/delete are not generated at all, not merely blocked at
+-- runtime — audit_log_dal/_hks/_svc/_app only ever expose insert_row/get_by_id,
+-- before_insert/after_insert, create_rec, and get/ins.
+audit_log /api /immutable
+   entity     vc128 /nn
+   entity_id  num /nn
+   operation  vc10 /nn
+   payload    clob`,
+    },
+    {
         label: 'Multi-Tenant SaaS', desc: 'Shared schema with tenant_id isolation', cat: 'Multi-tenant',
         esql:
 `tenants /insert 2
