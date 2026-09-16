@@ -388,7 +388,7 @@ export class Db2DDLGenerator extends BaseGenerator {
                 ret += `drop sequence if exists ${objName}${this._naming.seq};\n`;
             // Drop TAPI schemas if layered API was generated
             const hasApiDir  = node.trimmedContent().toLowerCase().includes('/api');
-            const apiVal     = (node.getOptionValue('api') ?? '').trim().toLowerCase();
+            const apiVal     = String(node.getOptionValue('api') ?? '').trim().toLowerCase();
             const tierNames  = ['full+hks', 'full', 'service+hks', 'service', 'lookup+hks', 'lookup'];
             const isLayered  = hasApiDir && (tierNames.includes(apiVal) || apiVal === '' || apiVal === 'layered');
             if (isLayered) {

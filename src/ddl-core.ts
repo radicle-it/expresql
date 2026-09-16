@@ -331,7 +331,7 @@ export function toDiff(
     oldQsql: string,
     newQsql: string,
     options?: unknown,
-): import('./diff-types.js').DiffResult {
+): import('./compiler/diff-types.js').DiffResult {
     const newCtx = new expresql(newQsql, options);
     const oldCtx = new expresql(oldQsql, options);
     return createDiffGenerator(newCtx).compute(oldCtx, newCtx);

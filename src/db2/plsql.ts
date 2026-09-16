@@ -1,4 +1,3 @@
-import { tab } from '../compiler/node.js';
 import type { Naming } from '../compiler/node.js';
 import type { DdlContext, IDdlNode } from '../compiler/types.js';
 import { toDb2Type } from './types.js';
@@ -233,7 +232,7 @@ export class Db2PlsqlBuilder {
 
     // ── HKS stubs ─────────────────────────────────────────────────────────────
 
-    private _generateHks(node: IDdlNode, tbl: string, pkNm: string, pkType: string, hasDal: boolean): string {
+    private _generateHks(_node: IDdlNode, tbl: string, pkNm: string, pkType: string, hasDal: boolean): string {
         const idType = hasDal ? `${tbl}_dal.t_id` : pkType;
         let out = '';
 

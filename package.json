@@ -24,6 +24,7 @@
     "test": "./test/regression_test.js",
     "test:ts": "vitest run",
     "test:ts:watch": "vitest",
+    "typecheck": "tsc --noEmit",
     "lint:markdown": "markdownlint-cli2 *.md, doc/**/*.md",
     "lint": "run-p lint:*",
     "example-cli": "./examples/cli.js",

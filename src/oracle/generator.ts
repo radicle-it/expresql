@@ -287,7 +287,7 @@ export class OracleDDLGenerator extends BaseGenerator {
         }
     }
 
-    _genRowKeyColumn(node: IDdlNode, objName: string): string {
+    _genRowKeyColumn(node: IDdlNode, _objName: string): string {
         if (!node.hasRowKey()) return '';
         const cstObjName = this._ddl.objPrefix('no schema') + node.parseName();
         const pad = tab + ' '.repeat(node.maxChildNameLen() - 'ROW_KEY'.length);
@@ -593,7 +593,7 @@ export class OracleDDLGenerator extends BaseGenerator {
                 ret += 'drop view ' + ifExists + objName + '_current;\n';
             ret += 'drop table ' + ifExists + objName + ' cascade constraints;\n';
             const hasApiDir = node.trimmedContent().toLowerCase().includes('/api');
-            const apiVal    = (node.getOptionValue('api') ?? '').trim().toLowerCase();
+            const apiVal    = String(node.getOptionValue('api') ?? '').trim().toLowerCase();
             const tierNames = ['full+hks', 'full', 'service+hks', 'service',
                                'lookup+hks', 'lookup', 'layered',
                                '3h', '3', '2h', '2', '1h', '1'];

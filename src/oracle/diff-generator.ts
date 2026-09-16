@@ -355,7 +355,6 @@ export class OracleDiffGenerator implements DiffGenerator {
         node: IDdlNode, ctx: DdlContext,
     ): { type: 'surrogate' | 'business' | 'none'; columns: string[]; constraintName: string } {
         const tbl       = node.parseName();
-        const objName   = ctx.objPrefix() + tbl;
         const cstObjName = ctx.objPrefix('no schema') + tbl;
         const expName   = node.getExplicitPkName() as string | null;
 
@@ -1040,7 +1039,7 @@ export class OracleDiffGenerator implements DiffGenerator {
         const hasDir = node.trimmedContent().toLowerCase().includes('/api');
         if (!hasDir) return 'none';
         // If /api is present on the node, it's layered (any tier argument)
-        const apiVal = node.getOptionValue('api')?.trim().toLowerCase() ?? '';
+        const apiVal = String(node.getOptionValue('api') ?? '').trim().toLowerCase();
         const isLayeredTier = ['full+hks', 'full', 'service+hks', 'service',
                                'lookup+hks', 'lookup', 'layered',
                                '3h', '3', '2h', '2', '1h', '1'].includes(apiVal);
@@ -1054,7 +1053,7 @@ export class OracleDiffGenerator implements DiffGenerator {
 
     private _layeredPkgNames(node: IDdlNode, ctx: DdlContext): string[] {
         const obj     = ctx.objPrefix() + node.parseName();
-        const raw     = (node.getOptionValue('api') ?? 'full+hks').trim().toLowerCase();
+        const raw     = String(node.getOptionValue('api') ?? 'full+hks').trim().toLowerCase();
         const tier    = raw === 'layered' || raw === '3h' ? 'full+hks'
                       : raw === '3'                       ? 'full'
                       : raw === '2h'                      ? 'service+hks'
