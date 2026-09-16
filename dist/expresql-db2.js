@@ -10269,6 +10269,7 @@ var W = class {
 	"soda",
 	"versioned",
 	"businesskey",
+	"bridge",
 	"unique",
 	"uk",
 	"pk",
@@ -10285,7 +10286,7 @@ var W = class {
 function ke(e) {
 	let t = e, n = [], r = [];
 	for (let t = 0; t < e.forest.length; t++) e.forest[t].inferType() === "table" && (r = r.concat(e.forest[t].descendants()));
-	n = n.concat(Ie(r));
+	n = n.concat(Le(r));
 	let i = t.descendants();
 	for (let e = 0; e < i.length; e++) {
 		let r = i[e];
@@ -10306,9 +10307,9 @@ function ke(e) {
 			n.push(new W(K.invalidDatatype, new G(r.line, e)));
 			continue;
 		}
-		n = n.concat(Pe(t, r)), n = n.concat(Fe(t, r)), n = n.concat(Ae(r)), n = n.concat(Ne(t, r));
+		n = n.concat(Fe(t, r)), n = n.concat(Ie(t, r)), n = n.concat(Ae(r)), n = n.concat(Pe(t, r));
 	}
-	return n = n.concat(je(t)), n = n.concat(Me(t)), n;
+	return n = n.concat(je(t)), n = n.concat(Me(t)), n = n.concat(Ne(t)), n;
 }
 function Ae(e) {
 	let t = [];
@@ -10343,7 +10344,18 @@ function Me(e) {
 	}
 	return t;
 }
-function Ne(e, t) {
+function Ne(e) {
+	let t = [];
+	for (let n of e.descendants()) {
+		if (n.inferType() !== "table" || !n.isOption("bridge")) continue;
+		let e = n.indexOf("bridge");
+		if (e < 0 || e >= n.src.length) continue;
+		let r = n.descendants().filter((e) => e.isOption("fk") || 0 < e.indexOf("reference", !0)).length;
+		r !== 2 && t.push(new W(`/bridge expects exactly 2 /fk columns (found ${r}) — the two sides of the N:M relationship`, new G(n.line, n.src[e].begin), new G(n.line, n.src[e].begin + 6), "warning"));
+	}
+	return t;
+}
+function Pe(e, t) {
 	let n = t.inferType() === "table", r = [], i = t.src, a = !1;
 	for (let e = 1; e < i.length; e++) {
 		if (i[e].value === "/") {
@@ -10354,7 +10366,7 @@ function Ne(e, t) {
 	}
 	return r;
 }
-function Pe(e, t) {
+function Fe(e, t) {
 	let n = [];
 	if (t.inferType() === "view") {
 		let r = t.src;
@@ -10362,7 +10374,7 @@ function Pe(e, t) {
 	}
 	return n;
 }
-function Fe(e, t) {
+function Ie(e, t) {
 	let n = [];
 	if (t.isOption("fk") || 0 < t.indexOf("reference", !0)) {
 		let r = t.indexOf("fk");
@@ -10371,20 +10383,20 @@ function Fe(e, t) {
 	}
 	return n;
 }
-function Ie(e) {
-	let t = [], n = Le(e);
+function Le(e) {
+	let t = [], n = Re(e);
 	for (let r = 1; r < e.length; r++) {
-		let i = e[r], a = Re(i);
+		let i = e[r], a = ze(i);
 		n !== null && a % n !== 0 && t.push(new W(K.misalignedAttribute + n, new G(i.line, a)));
 	}
 	return t;
 }
-function Le(e) {
+function Re(e) {
 	let t = [];
-	for (let n = 0; n < e.length; n++) t[n] = Re(e[n]);
+	for (let n = 0; n < e.length; n++) t[n] = ze(e[n]);
 	let n = {};
 	for (let e = 0; e < t.length; e++) {
-		let r = ze(t, e);
+		let r = Be(t, e);
 		if (r != null) {
 			let i = t[e] - t[r];
 			n[i] = (n[i] ?? 0) + 1;
@@ -10397,21 +10409,21 @@ function Le(e) {
 	}
 	return r;
 }
-function Re(e) {
+function ze(e) {
 	return e.src[0].begin;
 }
-function ze(e, t) {
+function Be(e, t) {
 	for (let n = t; 0 <= n; n--) if (e[n] < e[t]) return n;
 	return null;
 }
-var Be = {
+var Ve = {
 	findErrors: ke,
 	messages: K
-}, Ve = "identityDataType", q = "guid", He = "Timestamp with time zone", Ue = "Timestamp with local time zone";
-function We(e) {
+}, He = "identityDataType", q = "guid", Ue = "Timestamp with time zone", We = "Timestamp with local time zone";
+function Ge(e) {
 	if (e == null) return null;
 	let t = typeof e == "string" ? e.toLowerCase() : e;
-	return t === "yes" || t === "y" || t === "true" || t === !0 ? !0 : t === "no" || t === "n" || t === "false" || t === !1 ? !1 : t === Ve.toLowerCase() ? "identity" : t === q.toLowerCase() ? "guid" : t === He.toLowerCase() ? "tswtz" : t === Ue.toLowerCase() ? "tswltz" : typeof t == "string" ? t : String(t);
+	return t === "yes" || t === "y" || t === "true" || t === !0 ? !0 : t === "no" || t === "n" || t === "false" || t === !1 ? !1 : t === He.toLowerCase() ? "identity" : t === q.toLowerCase() ? "guid" : t === Ue.toLowerCase() ? "tswtz" : t === We.toLowerCase() ? "tswltz" : typeof t == "string" ? t : String(t);
 }
 var J = {
 	apex: {
@@ -10487,8 +10499,8 @@ var J = {
 		check: [
 			"DATE",
 			"TIMESTAMP",
-			He,
-			Ue
+			Ue,
+			We
 		]
 	},
 	db: {
@@ -10532,7 +10544,7 @@ var J = {
 		label: "Primary Key Maintenance",
 		value: q,
 		check: [
-			Ve,
+			He,
 			q,
 			"SEQ",
 			"NONE"
@@ -10645,7 +10657,7 @@ var J = {
 		return n?.value ?? null;
 	}
 	optionEQvalue(e, t) {
-		return We(this.getOptionValue(e)) == We(t);
+		return Ge(this.getOptionValue(e)) == Ge(t);
 	}
 	setOptionValue(e, t) {
 		let n = e.toLowerCase();
@@ -10722,32 +10734,32 @@ var J = {
 		return t += "\n*/", t;
 	}
 	getErrors() {
-		return this._errors ??= Be.findErrors(this), this._errors;
+		return this._errors ??= Ve.findErrors(this), this._errors;
 	}
 	version() {
 		return Z();
 	}
 };
-function X(e, t) {
+function Ke(e, t) {
 	return Ee(e, t);
 }
-function Ge(e, t) {
+function qe(e, t) {
 	return new Y(e, t).getERD();
 }
-function Ke(e, t) {
+function X(e, t) {
 	return new Y(e, t).getDDL();
 }
-function qe(e, t) {
+function Je(e, t) {
 	return new Y(e, t).getErrors();
 }
-function Je(e, t, n) {
+function Ye(e, t, n) {
 	let r = new Y(t, n), i = new Y(e, n);
 	return ye(r).compute(i, r);
 }
 function Z() {
 	return "2.1.0";
 }
-Y.toDDL = Ke, Y.toERD = Ge, Y.toErrors = qe, Y.toDiff = Je, Y.fromJSON = X, Y.version = Z, Y.lexer = x;
+Y.toDDL = X, Y.toERD = qe, Y.toErrors = Je, Y.toDiff = Ye, Y.fromJSON = Ke, Y.version = Z, Y.lexer = x;
 //#endregion
 //#region src/db2/types.ts
 function Q(e) {
@@ -10781,7 +10793,7 @@ function $(e, t) {
 	let i = n.findChild(r);
 	return i == null ? "integer" : Q(i._inferTypeFull());
 }
-var Ye = class {
+var Xe = class {
 	constructor(e, t) {
 		this.ctx = e, this.naming = t;
 	}
@@ -10992,13 +11004,13 @@ var Ye = class {
 		}
 		return l += `    set p_result = json_object('${n}': p_${n});\n`, l += "end @\n\n", l += `create or replace procedure ${t}_rst.del (\n`, l += `    in  p_${n} ${r},\n`, l += "    out p_result  varchar(32000),\n", l += "    out p_status  integer\n", l += ")\nlanguage sql\nbegin\n", l += "    declare p_svc_status varchar(20);\n", l += "    declare continue handler for sqlexception\n", l += "    begin\n", l += "        get diagnostics exception 1 p_result = message_text;\n", l += "        set p_result = json_object('error': p_result);\n", l += "        set p_status = 500;\n", l += "    end;\n", l += "    set p_status = 200;\n", i ? l += `    call ${t}_svc.del(p_${n}, p_svc_status);\n` : (l += "    -- private delete (absorbed from absent _svc/_dal)\n", o && (l += `    call ${t}_hks.p_before_delete(p_${n});\n`), l += `    delete from ${t} where ${n} = p_${n};\n`), l += `    set p_result = json_object('${n}': p_${n}, 'deleted': 1);\n`, l += "end @\n\n", l;
 	}
-}, Xe = " not null";
-function Ze(e) {
+}, Ze = " not null";
+function Qe(e) {
 	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
 }
-var Qe = class extends R {
+var $e = class extends R {
 	constructor(e, t) {
-		super(e), this._naming = t ?? D, this._plsql = new Ye(e, this._naming);
+		super(e), this._naming = t ?? D, this._plsql = new Xe(e, this._naming);
 	}
 	colType(e) {
 		return Q(e);
@@ -11094,7 +11106,7 @@ var Qe = class extends R {
 				for (let t in e.children) {
 					let n = e.children[t];
 					if (r === n.parseName()) {
-						(n.isOption("nn") || n.isOption("notnull")) && (o = Xe), n.isOption("cascade") ? a = " on delete cascade" : n.isOption("setnull") && (a = " on delete set null");
+						(n.isOption("nn") || n.isOption("notnull")) && (o = Ze), n.isOption("cascade") ? a = " on delete cascade" : n.isOption("setnull") && (a = " on delete set null");
 						break;
 					}
 				}
@@ -11212,7 +11224,7 @@ var Qe = class extends R {
 		}
 		e.lateInitFks();
 		let t = this._ddl.objPrefix() + e.parseName(), n = e.getGenIdColName(), r = this._genSequence(t);
-		return r += this._genTableHeader(e, t, n), r += this._genFkColumns(e, t), r += this._genRegularColumns(e, n), r += this._genRowVersionColumn(e), r += this._genAuditColumns(e), r += this._genAdditionalColumns(e), r += e.genConstraint(), r = Ze(r), r += this._genTableFooter(e, t), r += this._genMultiColFkAlters(e, t), r += this._genIndexes(e, t), r += this._genComments(e, t), r += "\n", r;
+		return r += this._genTableHeader(e, t, n), r += this._genFkColumns(e, t), r += this._genRegularColumns(e, n), r += this._genRowVersionColumn(e), r += this._genAuditColumns(e), r += this._genAdditionalColumns(e), r += e.genConstraint(), r = Qe(r), r += this._genTableFooter(e, t), r += this._genMultiColFkAlters(e, t), r += this._genIndexes(e, t), r += this._genComments(e, t), r += "\n", r;
 	}
 	generateDDL(e) {
 		if (e.inferType() === "view") return "";
@@ -11290,6 +11302,6 @@ var Qe = class extends R {
 };
 //#endregion
 //#region src/ddl-db2.ts
-ge("db2", (e) => new Qe(e));
+ge("db2", (e) => new $e(e));
 //#endregion
-export { R as BaseGenerator, ye as createDiffGenerator, Y as default, Y as expresql, Z as expresql_version, X as fromJSON, ve as registerDiffGenerator, ge as registerGenerator, Ke as toDDL, Je as toDiff, Ge as toERD, qe as toErrors };
+export { R as BaseGenerator, ye as createDiffGenerator, Y as default, Y as expresql, Z as expresql_version, Ke as fromJSON, ve as registerDiffGenerator, ge as registerGenerator, X as toDDL, Ye as toDiff, qe as toERD, Je as toErrors };

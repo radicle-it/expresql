@@ -135,6 +135,25 @@ describe('businesskey directive checks', () => {
 
 });
 
+describe('bridge directive checks', () => {
+
+    test('/bridge with exactly 2 /fk columns → no warning', () => {
+        const errors = toErrors(`users\n    name\nroles\n    name\nuser_role /bridge\n    user_id /fk users\n    role_id /fk roles`) as ErrorEntry[];
+        expect(errors.some(e => e.message.includes('/bridge'))).toBe(false);
+    });
+
+    test('/bridge with only 1 /fk column → warning', () => {
+        const errors = toErrors(`users\n    name\nuser_role /bridge\n    user_id /fk users\n    note vc100`) as ErrorEntry[];
+        expect(errors.some(e => e.message.includes('/bridge expects exactly 2 /fk columns (found 1)'))).toBe(true);
+    });
+
+    test('/bridge with 3 /fk columns → warning', () => {
+        const errors = toErrors(`users\n    name\nroles\n    name\nteams\n    name\nuser_role /bridge\n    user_id /fk users\n    role_id /fk roles\n    team_id /fk teams`) as ErrorEntry[];
+        expect(errors.some(e => e.message.includes('/bridge expects exactly 2 /fk columns (found 3)'))).toBe(true);
+    });
+
+});
+
 describe('error message constants', () => {
 
     test('all expected message keys are present', () => {

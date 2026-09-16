@@ -2818,3 +2818,170 @@ describe('get_by_<unique> — degraded tiers (absorbed private DML)', () => {
     });
 
 });
+
+// ── /bridge — N:M associative table: grant/revoke/has/list instead of generic CRUD ──
+// Additive, not a replacement (unlike /versioned and /immutable): create_rec/update_rec/
+// delete_rec and ins/upd/del remain fully generated — grant_<label>/revoke_<label>/
+// has_<label>/list_<label> are added alongside, the more natural-shaped API for the
+// common case of managing one N:M pair. <label> derives from the second /fk column
+// with a trailing "_id" stripped (role_id -> role), so names read as grant_role, not
+// grant_role_id. Requires exactly 2 /fk columns (see errors.test.ts bridge_checks);
+// "left" is the first /fk declared, "right" the second.
+
+const USERS_ROLES_QSQL = `\
+users /api
+  name vc100 /nn
+roles /api
+  name vc100 /nn
+user_role /api /bridge
+  user_id /fk users /nn
+  role_id /fk roles /nn
+# settings = {"api": "layered"}`.trim();
+
+describe('bridge — DDL', () => {
+
+    test('composite unique constraint on (left, right) FK columns', () => {
+        const out = ddl(USERS_ROLES_QSQL);
+        expect(out).toContain('alter table user_role add constraint user_role_uk_bridge unique (user_id, role_id);');
+    });
+
+    test('no such constraint when /bridge is absent', () => {
+        const out = ddl('users /api\n  name vc100 /nn\nroles /api\n  name vc100 /nn\nuser_role /api\n  user_id /fk users /nn\n  role_id /fk roles /nn');
+        expect(out).not.toContain('uk_bridge');
+    });
+
+});
+
+describe('bridge — full+hks tier', () => {
+
+    test('generic CRUD is NOT removed — create_rec/update_rec/delete_rec, ins/upd/del all still generated', () => {
+        const out = ddl(USERS_ROLES_QSQL);
+        const svcSpec = segment(out, 'create or replace package user_role_svc', 'end user_role_svc;');
+        expect(svcSpec).toContain('procedure create_rec');
+        expect(svcSpec).toContain('procedure update_rec');
+        expect(svcSpec).toContain('procedure delete_rec');
+        const appSpec = segment(out, 'create or replace package user_role_app', 'end user_role_app;');
+        expect(appSpec).toContain('procedure ins');
+        expect(appSpec).toContain('procedure upd');
+        expect(appSpec).toContain('procedure del');
+    });
+
+    test('DAL: grant_row wraps insert_row; revoke_row is a plain delete by (left, right); has_row/list_row read _rls', () => {
+        const out = ddl(USERS_ROLES_QSQL);
+        const dalSpec = segment(out, 'create or replace package user_role_dal', 'end user_role_dal;');
+        expect(dalSpec).toContain('procedure grant_row (p_row in out nocopy user_role%rowtype);');
+        expect(dalSpec).toContain('procedure revoke_row (p_user_id in user_role.user_id%type, p_role_id in user_role.role_id%type);');
+        expect(dalSpec).toContain('function has_row (p_user_id in user_role.user_id%type, p_role_id in user_role.role_id%type) return boolean;');
+        expect(dalSpec).toContain('function list_row (p_user_id in user_role.user_id%type) return t_cursor;');
+        const dalBody = segment(out, 'create or replace package body user_role_dal', 'end user_role_dal;');
+        const grantRow = segment(dalBody, 'procedure grant_row', 'end grant_row;');
+        expect(grantRow).toContain('insert_row(p_row => p_row);');
+        const hasRow = segment(dalBody, 'function has_row', 'end has_row;');
+        expect(hasRow).toContain('from user_role_rls where user_id = p_user_id and role_id = p_role_id');
+    });
+
+    test('HKS: before_grant/after_grant/before_revoke/after_revoke added alongside the standard hooks', () => {
+        const out = ddl(USERS_ROLES_QSQL);
+        const hksSpec = segment(out, 'create or replace package user_role_hks', 'end user_role_hks;');
+        expect(hksSpec).toContain('procedure before_grant');
+        expect(hksSpec).toContain('procedure after_grant');
+        expect(hksSpec).toContain('procedure before_revoke');
+        expect(hksSpec).toContain('procedure after_revoke');
+        expect(hksSpec).toContain('procedure before_insert');
+        expect(hksSpec).toContain('procedure before_update');
+        expect(hksSpec).toContain('procedure before_delete');
+    });
+
+    test('SVC: grant_role is idempotent (catches dup_val_on_index, does not raise it)', () => {
+        const out = ddl(USERS_ROLES_QSQL);
+        const svcSpec = segment(out, 'create or replace package user_role_svc', 'end user_role_svc;');
+        expect(svcSpec).toContain('procedure grant_role (');
+        expect(svcSpec).toContain('procedure revoke_role (');
+        expect(svcSpec).toContain('function has_role');
+        expect(svcSpec).toContain('function list_role');
+        const svcBody = segment(out, 'create or replace package body user_role_svc', 'end user_role_svc;');
+        const grantRole = segment(svcBody, 'procedure grant_role', 'end grant_role;');
+        expect(grantRole).toContain('user_role_hks.chk_rbac(p_operation => \'grant\', p_row => l_row);');
+        expect(grantRole).toContain('user_role_dal.grant_row(p_row => l_row);');
+        expect(grantRole).toContain('when dup_val_on_index then');
+        expect(grantRole).not.toContain('[DUPLICATE]');
+        expect(grantRole).toContain('select id into x_id from user_role_rls');
+    });
+
+    test('APP: grant_role/revoke_role/has_role flat signatures; no list_role (multi-row, no _app shape)', () => {
+        const out = ddl(USERS_ROLES_QSQL);
+        const appSpec = segment(out, 'create or replace package user_role_app', 'end user_role_app;');
+        const grantSig = segment(appSpec, 'procedure grant_role (', ');');
+        expect(grantSig).toContain('p_user_id       in  user_role.user_id%type');
+        expect(grantSig).toContain('p_role_id       in  user_role.role_id%type');
+        expect(grantSig).toContain('p_id           out user_role.id%type');
+        const hasSig = segment(appSpec, 'procedure has_role (', ');');
+        expect(hasSig).toContain('p_result       out boolean');
+        expect(appSpec).not.toContain('procedure list_role');
+    });
+
+    test('RST: grant/revoke read both keys from :body_text; has/list use :p_<col> binds; list emits a JSON array', () => {
+        const out = ddl(`users /api\n  name vc100 /nn\nroles /api\n  name vc100 /nn\nuser_role /api /bridge\n  user_id /fk users /nn\n  role_id /fk roles /nn\n# settings = {"api": "layered", "interface": "rest"}`);
+        const rstSpec = segment(out, 'create or replace package user_role_rst as', 'end user_role_rst;');
+        expect(rstSpec).toContain('procedure grant_role;');
+        expect(rstSpec).toContain('procedure revoke_role;');
+        expect(rstSpec).toContain('procedure has_role;');
+        expect(rstSpec).toContain('procedure list_role;');
+        const rstBody = segment(out, 'create or replace package body user_role_rst', 'end user_role_rst;');
+        const grantProc = segment(rstBody, 'procedure grant_role is', 'end grant_role;');
+        expect(grantProc).toContain(":body_text");
+        expect(grantProc).toContain("json_value(l_body, '$.user_id')");
+        expect(grantProc).toContain("json_value(l_body, '$.role_id')");
+        expect(grantProc).toContain('user_role_svc.grant_role(');
+        const hasProc = segment(rstBody, 'procedure has_role is', 'end has_role;');
+        expect(hasProc).toContain(':p_user_id');
+        expect(hasProc).toContain(':p_role_id');
+        const listProc = segment(rstBody, 'procedure list_role is', 'end list_role;');
+        expect(listProc).toContain("htp.p('[');");
+        expect(listProc).toContain('user_role_svc.list_role(p_user_id => :p_user_id)');
+    });
+
+    test('naming derivation: FK column not ending in "_id" falls back to the bare column name', () => {
+        const out = ddl('users /api\n  name vc100 /nn\ngroups /api\n  name vc100 /nn\nmembership /api /bridge\n  member /fk users /nn\n  team /fk groups /nn\n# settings = {"api": "layered"}');
+        const svcSpec = segment(out, 'create or replace package membership_svc', 'end membership_svc;');
+        expect(svcSpec).toContain('function has_team');
+        expect(svcSpec).toContain('function list_team');
+    });
+
+});
+
+describe('bridge — degraded tiers (absorbed private DML)', () => {
+
+    test('service tier: SVC absorbs p_grant_row/p_revoke_row/p_has_row/p_list_row and the grant/revoke hook stubs', () => {
+        const out = ddl('users /api\n  name vc100 /nn\nroles /api\n  name vc100 /nn\nuser_role /api service /bridge\n  user_id /fk users /nn\n  role_id /fk roles /nn');
+        const svcBody = segment(out, 'create or replace package body user_role_svc', 'end user_role_svc;');
+        expect(svcBody).toContain('procedure p_grant_row (p_row in out nocopy user_role%rowtype) is');
+        expect(svcBody).toContain('procedure p_revoke_row (p_user_id in user_role.user_id%type, p_role_id in user_role.role_id%type) is');
+        expect(svcBody).toContain('function p_has_row');
+        expect(svcBody).toContain('function p_list_row');
+        expect(svcBody).toContain('procedure p_before_grant');
+        expect(svcBody).toContain('procedure p_after_revoke');
+        const grantRole = segment(svcBody, 'procedure grant_role', 'end grant_role;');
+        expect(grantRole).toContain('p_grant_row(p_row => l_row);');
+    });
+
+    test('lookup tier: _app absorbs p_grant_row directly and is idempotent (no _svc)', () => {
+        const out = ddl('users /api\n  name vc100 /nn\nroles /api\n  name vc100 /nn\nuser_role /api lookup /bridge\n  user_id /fk users /nn\n  role_id /fk roles /nn');
+        const appBody = segment(out, 'create or replace package body user_role_app', 'end user_role_app;');
+        expect(appBody).toContain('procedure p_grant_row');
+        const grantRole = segment(appBody, 'procedure grant_role (', 'end grant_role;');
+        expect(grantRole).toContain('p_grant_row(p_row => l_row);');
+        expect(grantRole).toContain('when dup_val_on_index then');
+        expect(appBody).not.toContain('user_role_svc');
+    });
+
+    test('lookup tier ifc:rest: grant_role inlines the same idempotent logic, reading both keys from :body_text', () => {
+        const out = ddl('users /api\n  name vc100 /nn\nroles /api\n  name vc100 /nn\nuser_role /api lookup /bridge\n  user_id /fk users /nn\n  role_id /fk roles /nn\n# settings = {"interface": "rest"}');
+        const rstBody = segment(out, 'create or replace package body user_role_rst', 'end user_role_rst;');
+        const grantProc = segment(rstBody, 'procedure grant_role is', 'end grant_role;');
+        expect(grantProc).toContain('p_grant_row(p_row => l_row);');
+        expect(grantProc).toContain('when dup_val_on_index then');
+        expect(grantProc).toContain("l_row.user_id := json_value(l_body, '$.user_id');");
+    });
+
+});

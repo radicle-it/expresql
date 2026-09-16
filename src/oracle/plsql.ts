@@ -398,6 +398,23 @@ export class OraclePlsqlBuilder {
         return node.children.some(c => c.isOption('unique'));
     }
 
+    // /bridge — only meaningful with exactly 2 /fk columns (enforced by
+    // error-msgs.ts bridge_checks; anything else generates nothing extra, same
+    // defensive stance as an invalid /businesskey column). `left` is the first FK
+    // declared, `right` the second (Object.keys preserves declaration order — the
+    // same assumption every other FK-column loop in this file already relies on).
+    // `rightLabel` is `right` with a trailing "_id" stripped for use in procedure
+    // names (grant_role, not grant_role_id) — falls back to the bare column name
+    // when it doesn't end in "_id" (not every FK column follows that convention).
+    private _bridgeCols(node: IDdlNode): { left: string; right: string; rightLabel: string } | null {
+        if (!node.isOption('bridge')) return null;
+        const fkCols = Object.keys(node.fks ?? {});
+        if (fkCols.length !== 2) return null;
+        const [left, right] = fkCols;
+        const rightLabel = right.replace(/_id$/i, '') || right;
+        return { left, right, rightLabel };
+    }
+
     // Non-PK, non-version regular columns used as SVC scalar parameters.
     private _svcCols(node: IDdlNode): IDdlNode[] {
         return node.children.filter(
@@ -710,6 +727,37 @@ export class OraclePlsqlBuilder {
             r += `${tab}end p_history;\n\n`;
         }
 
+        {
+            const bridge = this._bridgeCols(node);
+            if (bridge !== null) {
+                const tenantWhere = synTenantId ? ` and tenant_id = ${tenantCtxPkg}.get_id` : '';
+
+                r += `${tab}procedure p_grant_row (p_row in out nocopy ${tbl}%rowtype) is\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}p_insert_row(p_row => p_row);\n`;
+                r += `${tab}end p_grant_row;\n\n`;
+
+                r += `${tab}procedure p_revoke_row (p_${bridge.left} in ${tbl}.${bridge.left}%type, p_${bridge.right} in ${tbl}.${bridge.right}%type) is\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}delete from ${tbl} where ${bridge.left} = p_${bridge.left} and ${bridge.right} = p_${bridge.right}${tenantWhere};\n`;
+                r += `${tab}end p_revoke_row;\n\n`;
+
+                r += `${tab}function p_has_row (p_${bridge.left} in ${tbl}.${bridge.left}%type, p_${bridge.right} in ${tbl}.${bridge.right}%type) return boolean is\n`;
+                r += `${tab}${tab}l_cnt pls_integer;\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}select count(*) into l_cnt from ${dimSource} where ${bridge.left} = p_${bridge.left} and ${bridge.right} = p_${bridge.right}${tenantWhere};\n`;
+                r += `${tab}${tab}return l_cnt > 0;\n`;
+                r += `${tab}end p_has_row;\n\n`;
+
+                r += `${tab}function p_list_row (p_${bridge.left} in ${tbl}.${bridge.left}%type) return sys_refcursor is\n`;
+                r += `${tab}${tab}l_cur sys_refcursor;\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}open l_cur for select * from ${dimSource} where ${bridge.left} = p_${bridge.left}${tenantWhere};\n`;
+                r += `${tab}${tab}return l_cur;\n`;
+                r += `${tab}end p_list_row;\n\n`;
+            }
+        }
+
         return r;
     }
 
@@ -744,6 +792,14 @@ export class OraclePlsqlBuilder {
             r += `${tab}procedure p_after_insert  (p_row in ${tbl}%rowtype) is begin null; end;\n`;
             r += `${tab}procedure p_after_update  (p_row in ${tbl}%rowtype) is begin null; end;\n`;
             r += `${tab}procedure p_after_delete  (p_id in ${tbl}.${pkNm}%type) is begin null; end;\n\n`;
+        }
+        if (this._bridgeCols(node) !== null) {
+            // /bridge: additive hook pair, alongside whichever set the branch above
+            // already produced — a bridge table keeps its generic CRUD hooks too.
+            r += `${tab}procedure p_before_grant  (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n`;
+            r += `${tab}procedure p_after_grant   (p_row in ${tbl}%rowtype) is begin null; end;\n`;
+            r += `${tab}procedure p_before_revoke (p_row in ${tbl}%rowtype) is begin null; end;\n`;
+            r += `${tab}procedure p_after_revoke  (p_row in ${tbl}%rowtype) is begin null; end;\n\n`;
         }
         return r;
     }
@@ -787,6 +843,17 @@ export class OraclePlsqlBuilder {
             r += `${tab}function get_current (p_${bkCol} in ${tbl}.${bkCol}%type) return ${tbl}%rowtype;\n\n`;
             r += `${tab}function get_as_of (p_${bkCol} in ${tbl}.${bkCol}%type, p_as_of in timestamp) return ${tbl}%rowtype;\n\n`;
             r += `${tab}function history (p_${bkCol} in ${tbl}.${bkCol}%type) return t_cursor;\n\n`;
+        }
+        const bridge = this._bridgeCols(node);
+        if (bridge !== null) {
+            // /bridge: additive, alongside the generic CRUD above (not a replacement —
+            // unlike /versioned/close_row or /immutable's narrowing, a bridge row still
+            // has a real, addressable surrogate id; grant/revoke/has/list are simply the
+            // more natural-shaped API for the common case of managing one N:M pair).
+            r += `${tab}procedure grant_row (p_row in out nocopy ${tbl}%rowtype);\n\n`;
+            r += `${tab}procedure revoke_row (p_${bridge.left} in ${tbl}.${bridge.left}%type, p_${bridge.right} in ${tbl}.${bridge.right}%type);\n\n`;
+            r += `${tab}function has_row (p_${bridge.left} in ${tbl}.${bridge.left}%type, p_${bridge.right} in ${tbl}.${bridge.right}%type) return boolean;\n\n`;
+            r += `${tab}function list_row (p_${bridge.left} in ${tbl}.${bridge.left}%type) return t_cursor;\n\n`;
         }
         r += `${tab}c_err_stale_data constant pls_integer := -20001;\n`;
         r += `${tab}c_err_not_found  constant pls_integer := -20002;\n`;
@@ -1065,6 +1132,40 @@ export class OraclePlsqlBuilder {
             r += `${tab}end history;\n\n`;
         }
 
+        {
+            const bridge = this._bridgeCols(node);
+            if (bridge !== null) {
+                const tenantWhere = synTenantId ? ` and tenant_id = ${tenantCtxPkg}.get_id` : '';
+
+                // grant_row — same column list as insert_row (left/right FKs, plus any
+                // other business columns the bridge table happens to carry, e.g.
+                // granted_by/granted_at); reuses it directly rather than re-deriving.
+                r += `${tab}procedure grant_row (p_row in out nocopy ${tbl}%rowtype) is\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}insert_row(p_row => p_row);\n`;
+                r += `${tab}end grant_row;\n\n`;
+
+                r += `${tab}procedure revoke_row (p_${bridge.left} in ${tbl}.${bridge.left}%type, p_${bridge.right} in ${tbl}.${bridge.right}%type) is\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}delete from ${tbl} where ${bridge.left} = p_${bridge.left} and ${bridge.right} = p_${bridge.right}${tenantWhere};\n`;
+                r += `${tab}end revoke_row;\n\n`;
+
+                r += `${tab}function has_row (p_${bridge.left} in ${tbl}.${bridge.left}%type, p_${bridge.right} in ${tbl}.${bridge.right}%type) return boolean is\n`;
+                r += `${tab}${tab}l_cnt pls_integer;\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}select count(*) into l_cnt from ${dimSource} where ${bridge.left} = p_${bridge.left} and ${bridge.right} = p_${bridge.right}${tenantWhere};\n`;
+                r += `${tab}${tab}return l_cnt > 0;\n`;
+                r += `${tab}end has_row;\n\n`;
+
+                r += `${tab}function list_row (p_${bridge.left} in ${tbl}.${bridge.left}%type) return t_cursor is\n`;
+                r += `${tab}${tab}l_cur t_cursor;\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}open l_cur for select * from ${dimSource} where ${bridge.left} = p_${bridge.left}${tenantWhere};\n`;
+                r += `${tab}${tab}return l_cur;\n`;
+                r += `${tab}end list_row;\n\n`;
+            }
+        }
+
         r += `end ${this._bare(dal)};\n/\n`;
         return r;
     }
@@ -1110,6 +1211,12 @@ export class OraclePlsqlBuilder {
             r += `${tab}procedure after_update (p_row in ${tbl}%rowtype);\n`;
             r += `${tab}procedure after_delete (p_id in ${idType});\n\n`;
         }
+        if (this._bridgeCols(node) !== null) {
+            r += `${tab}procedure before_grant  (p_row in out nocopy ${tbl}%rowtype);\n`;
+            r += `${tab}procedure after_grant   (p_row in ${tbl}%rowtype);\n`;
+            r += `${tab}procedure before_revoke (p_row in ${tbl}%rowtype);\n`;
+            r += `${tab}procedure after_revoke  (p_row in ${tbl}%rowtype);\n\n`;
+        }
         r += `end ${this._bare(pkg)};\n/\n`;
         return r;
     }
@@ -1152,6 +1259,12 @@ export class OraclePlsqlBuilder {
             r += `${tab}procedure after_insert  (p_row in ${tbl}%rowtype) is begin null; end;\n`;
             r += `${tab}procedure after_update  (p_row in ${tbl}%rowtype) is begin null; end;\n`;
             r += `${tab}procedure after_delete  (p_id in ${idType})     is begin null; end;\n\n`;
+        }
+        if (this._bridgeCols(node) !== null) {
+            r += `${tab}procedure before_grant  (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n`;
+            r += `${tab}procedure after_grant   (p_row in ${tbl}%rowtype) is begin null; end;\n`;
+            r += `${tab}procedure before_revoke (p_row in ${tbl}%rowtype) is begin null; end;\n`;
+            r += `${tab}procedure after_revoke  (p_row in ${tbl}%rowtype) is begin null; end;\n\n`;
         }
         r += `end ${this._bare(pkg)};\n/\n`;
         return r;
@@ -1258,6 +1371,26 @@ export class OraclePlsqlBuilder {
             r += `${tab}${tab}x_id          out    ${tbl}.${pkNm}%type\n`;
             r += `${tab});\n\n`;
         }
+        const bridge = this._bridgeCols(node);
+        if (bridge !== null) {
+            // /bridge: grant_<rightLabel> is idempotent — granting an already-granted
+            // pair succeeds and returns the existing row's id, it never raises
+            // [DUPLICATE] (the unique constraint from generator.ts is what makes a
+            // concurrent duplicate grant detectable at all, not just this check-first
+            // path). All four names derive from the second /fk column (grant_role,
+            // not grant_role_id) — see _bridgeCols.
+            r += `${tab}procedure grant_${bridge.rightLabel} (\n`;
+            r += `${tab}${tab}p_${bridge.left.padEnd(10)} in     ${tbl}.${bridge.left}%type,\n`;
+            r += `${tab}${tab}p_${bridge.right.padEnd(10)} in     ${tbl}.${bridge.right}%type,\n`;
+            r += `${tab}${tab}x_id          out    ${tbl}.${pkNm}%type\n`;
+            r += `${tab});\n\n`;
+            r += `${tab}procedure revoke_${bridge.rightLabel} (\n`;
+            r += `${tab}${tab}p_${bridge.left} in ${tbl}.${bridge.left}%type,\n`;
+            r += `${tab}${tab}p_${bridge.right} in ${tbl}.${bridge.right}%type\n`;
+            r += `${tab});\n\n`;
+            r += `${tab}function has_${bridge.rightLabel} (p_${bridge.left} in ${tbl}.${bridge.left}%type, p_${bridge.right} in ${tbl}.${bridge.right}%type) return boolean;\n\n`;
+            r += `${tab}function list_${bridge.rightLabel} (p_${bridge.left} in ${tbl}.${bridge.left}%type) return sys_refcursor;\n\n`;
+        }
         r += `end ${this._bare(svc)};\n/\n`;
         return r;
     }
@@ -1291,6 +1424,11 @@ export class OraclePlsqlBuilder {
         const getCurrentRow = hasDal ? `${dal}.get_current` : 'p_get_current';
         const getAsOfRow    = hasDal ? `${dal}.get_as_of`   : 'p_get_as_of';
         const historyCur    = hasDal ? `${dal}.history`     : 'p_history';
+        const grantRow  = hasDal ? `${dal}.grant_row`  : 'p_grant_row';
+        const revokeRow = hasDal ? `${dal}.revoke_row` : 'p_revoke_row';
+        const hasRow    = hasDal ? `${dal}.has_row`    : 'p_has_row';
+        const listRow   = hasDal ? `${dal}.list_row`   : 'p_list_row';
+        const bridge    = this._bridgeCols(node);
         const hkCall    = (proc: string) => hasHks ? `${hk}.${proc}` : `p_${proc}`;
 
         let r = `create or replace package body ${svc} as\n`;
@@ -1473,6 +1611,55 @@ export class OraclePlsqlBuilder {
             r += `${tab}end change_rec;\n\n`;
         }
 
+        if (bridge !== null) {
+            r += `${tab}procedure grant_${bridge.rightLabel} (\n`;
+            r += `${tab}${tab}p_${bridge.left.padEnd(10)} in     ${tbl}.${bridge.left}%type,\n`;
+            r += `${tab}${tab}p_${bridge.right.padEnd(10)} in     ${tbl}.${bridge.right}%type,\n`;
+            r += `${tab}${tab}x_id          out    ${tbl}.${pkNm}%type\n`;
+            r += `${tab}) is\n`;
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}l_row.${bridge.left} := p_${bridge.left};\n`;
+            r += `${tab}${tab}l_row.${bridge.right} := p_${bridge.right};\n`;
+            r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'grant', p_row => l_row);\n`;
+            if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
+            r += `${tab}${tab}${hkCall('validate')}(p_operation => 'grant', p_row => l_row);\n`;
+            r += `${tab}${tab}${hkCall('before_grant')}(p_row => l_row);\n`;
+            r += `${tab}${tab}${grantRow}(p_row => l_row);\n`;
+            r += `${tab}${tab}${hkCall('after_grant')}(p_row => l_row);\n`;
+            r += `${tab}${tab}x_id := l_row.${pkNm};\n`;
+            r += `${tab}exception\n`;
+            r += `${tab}${tab}when dup_val_on_index then\n`;
+            r += `${tab}${tab}${tab}select ${pkNm} into x_id from ${tbl}_rls where ${bridge.left} = p_${bridge.left} and ${bridge.right} = p_${bridge.right};\n`;
+            r += `${tab}end grant_${bridge.rightLabel};\n\n`;
+
+            r += `${tab}procedure revoke_${bridge.rightLabel} (\n`;
+            r += `${tab}${tab}p_${bridge.left} in ${tbl}.${bridge.left}%type,\n`;
+            r += `${tab}${tab}p_${bridge.right} in ${tbl}.${bridge.right}%type\n`;
+            r += `${tab}) is\n`;
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}l_row.${bridge.left} := p_${bridge.left};\n`;
+            r += `${tab}${tab}l_row.${bridge.right} := p_${bridge.right};\n`;
+            r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'revoke', p_row => l_row);\n`;
+            if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
+            r += `${tab}${tab}${hkCall('validate')}(p_operation => 'revoke', p_row => l_row);\n`;
+            r += `${tab}${tab}${hkCall('before_revoke')}(p_row => l_row);\n`;
+            r += `${tab}${tab}${revokeRow}(p_${bridge.left} => p_${bridge.left}, p_${bridge.right} => p_${bridge.right});\n`;
+            r += `${tab}${tab}${hkCall('after_revoke')}(p_row => l_row);\n`;
+            r += `${tab}end revoke_${bridge.rightLabel};\n\n`;
+
+            r += `${tab}function has_${bridge.rightLabel} (p_${bridge.left} in ${tbl}.${bridge.left}%type, p_${bridge.right} in ${tbl}.${bridge.right}%type) return boolean is\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}return ${hasRow}(p_${bridge.left} => p_${bridge.left}, p_${bridge.right} => p_${bridge.right});\n`;
+            r += `${tab}end has_${bridge.rightLabel};\n\n`;
+
+            r += `${tab}function list_${bridge.rightLabel} (p_${bridge.left} in ${tbl}.${bridge.left}%type) return sys_refcursor is\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}return ${listRow}(p_${bridge.left} => p_${bridge.left});\n`;
+            r += `${tab}end list_${bridge.rightLabel};\n\n`;
+        }
+
         r += `end ${this._bare(svc)};\n/\n`;
         return r;
     }
@@ -1611,6 +1798,25 @@ export class OraclePlsqlBuilder {
             changeLines.push(`${tab}${tab}p_${vtCol.padEnd(appPadWidth)} in  ${tbl}.${vtCol}%type default systimestamp`);
             changeLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
             r += changeLines.join(',\n') + `\n${tab});\n\n`;
+        }
+        const bridge = this._bridgeCols(node);
+        if (bridge !== null) {
+            r += `${tab}procedure grant_${bridge.rightLabel} (\n`;
+            r += `${tab}${tab}p_${bridge.left.padEnd(13)} in  ${tbl}.${bridge.left}%type,\n`;
+            r += `${tab}${tab}p_${bridge.right.padEnd(13)} in  ${tbl}.${bridge.right}%type,\n`;
+            r += `${tab}${tab}p_id           out ${tbl}.${pkNm}%type\n`;
+            r += `${tab});\n\n`;
+            r += `${tab}procedure revoke_${bridge.rightLabel} (\n`;
+            r += `${tab}${tab}p_${bridge.left} in ${tbl}.${bridge.left}%type,\n`;
+            r += `${tab}${tab}p_${bridge.right} in ${tbl}.${bridge.right}%type\n`;
+            r += `${tab});\n\n`;
+            r += `${tab}procedure has_${bridge.rightLabel} (\n`;
+            r += `${tab}${tab}p_${bridge.left} in  ${tbl}.${bridge.left}%type,\n`;
+            r += `${tab}${tab}p_${bridge.right} in  ${tbl}.${bridge.right}%type,\n`;
+            r += `${tab}${tab}p_result       out boolean\n`;
+            r += `${tab});\n\n`;
+            // No list_<rightLabel> here — a multi-row cursor has no honest shape as flat
+            // OUT parameters (same reasoning as /businesskey's history, absent at _app).
         }
         r += `end ${this._bare(app)};\n/\n`;
         return r;
@@ -1947,6 +2153,69 @@ export class OraclePlsqlBuilder {
             r += `${tab}end change_rec;\n\n`;
         }
 
+        const bridge = this._bridgeCols(node);
+        if (bridge !== null) {
+            const grantCall  = hasSvc ? `${svc}.grant_${bridge.rightLabel}`  : `p_grant_row`;
+            const revokeCall = hasSvc ? `${svc}.revoke_${bridge.rightLabel}` : `p_revoke_row`;
+            const hasCall    = hasSvc ? `${svc}.has_${bridge.rightLabel}`    : `p_has_row`;
+
+            r += `${tab}procedure grant_${bridge.rightLabel} (\n`;
+            r += `${tab}${tab}p_${bridge.left.padEnd(13)} in  ${tbl}.${bridge.left}%type,\n`;
+            r += `${tab}${tab}p_${bridge.right.padEnd(13)} in  ${tbl}.${bridge.right}%type,\n`;
+            r += `${tab}${tab}p_id           out ${tbl}.${pkNm}%type\n`;
+            r += `${tab}) is\n`;
+            if (hasSvc) {
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}${grantCall}(p_${bridge.left} => p_${bridge.left}, p_${bridge.right} => p_${bridge.right}, x_id => p_id);\n`;
+            } else {
+                r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}l_row.${bridge.left} := p_${bridge.left};\n`;
+                r += `${tab}${tab}l_row.${bridge.right} := p_${bridge.right};\n`;
+                r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'grant', p_row => l_row);\n`;
+                if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
+                r += `${tab}${tab}${hkCall('validate')}(p_operation => 'grant', p_row => l_row);\n`;
+                r += `${tab}${tab}${hkCall('before_grant')}(p_row => l_row);\n`;
+                r += `${tab}${tab}${grantCall}(p_row => l_row);\n`;
+                r += `${tab}${tab}${hkCall('after_grant')}(p_row => l_row);\n`;
+                r += `${tab}${tab}p_id := l_row.${pkNm};\n`;
+                r += `${tab}exception\n`;
+                r += `${tab}${tab}when dup_val_on_index then\n`;
+                r += `${tab}${tab}${tab}select ${pkNm} into p_id from ${tbl}_rls where ${bridge.left} = p_${bridge.left} and ${bridge.right} = p_${bridge.right};\n`;
+            }
+            r += `${tab}end grant_${bridge.rightLabel};\n\n`;
+
+            r += `${tab}procedure revoke_${bridge.rightLabel} (\n`;
+            r += `${tab}${tab}p_${bridge.left} in ${tbl}.${bridge.left}%type,\n`;
+            r += `${tab}${tab}p_${bridge.right} in ${tbl}.${bridge.right}%type\n`;
+            r += `${tab}) is\n`;
+            if (hasSvc) {
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}${revokeCall}(p_${bridge.left} => p_${bridge.left}, p_${bridge.right} => p_${bridge.right});\n`;
+            } else {
+                r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}l_row.${bridge.left} := p_${bridge.left};\n`;
+                r += `${tab}${tab}l_row.${bridge.right} := p_${bridge.right};\n`;
+                r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'revoke', p_row => l_row);\n`;
+                if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
+                r += `${tab}${tab}${hkCall('validate')}(p_operation => 'revoke', p_row => l_row);\n`;
+                r += `${tab}${tab}${hkCall('before_revoke')}(p_row => l_row);\n`;
+                r += `${tab}${tab}${revokeCall}(p_${bridge.left} => p_${bridge.left}, p_${bridge.right} => p_${bridge.right});\n`;
+                r += `${tab}${tab}${hkCall('after_revoke')}(p_row => l_row);\n`;
+            }
+            r += `${tab}end revoke_${bridge.rightLabel};\n\n`;
+
+            r += `${tab}procedure has_${bridge.rightLabel} (\n`;
+            r += `${tab}${tab}p_${bridge.left} in  ${tbl}.${bridge.left}%type,\n`;
+            r += `${tab}${tab}p_${bridge.right} in  ${tbl}.${bridge.right}%type,\n`;
+            r += `${tab}${tab}p_result       out boolean\n`;
+            r += `${tab}) is\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}p_result := ${hasCall}(p_${bridge.left} => p_${bridge.left}, p_${bridge.right} => p_${bridge.right});\n`;
+            r += `${tab}end has_${bridge.rightLabel};\n\n`;
+        }
+
         r += `end ${this._bare(app)};\n/\n`;
         return r;
     }
@@ -1975,6 +2244,15 @@ export class OraclePlsqlBuilder {
             r += `${tab}procedure get_as_of;\n`;
             r += `${tab}procedure history;\n`;
             r += `${tab}procedure change_rec;\n\n`;
+        }
+        {
+            const bridge = this._bridgeCols(node);
+            if (bridge !== null) {
+                r += `${tab}procedure grant_${bridge.rightLabel};\n`;
+                r += `${tab}procedure revoke_${bridge.rightLabel};\n`;
+                r += `${tab}procedure has_${bridge.rightLabel};\n`;
+                r += `${tab}procedure list_${bridge.rightLabel};\n\n`;
+            }
         }
         r += `end ${this._bare(rst)};\n/\n`;
         return r;
@@ -2325,6 +2603,118 @@ export class OraclePlsqlBuilder {
             r += `${tab}${tab}:status := 201;\n`;
             r += `${tab}${tab}htp.p(json_object('${pkNm}' value l_id));\n`;
             r += excTail + `${tab}end change_rec;\n\n`;
+        }
+
+        {
+            const bridge = this._bridgeCols(node);
+            if (bridge !== null) {
+                const grantCall  = hasSvc ? `${svc}.grant_${bridge.rightLabel}`  : 'p_grant_row';
+                const revokeCall = hasSvc ? `${svc}.revoke_${bridge.rightLabel}` : 'p_revoke_row';
+                const hasCall    = hasSvc ? `${svc}.has_${bridge.rightLabel}`    : 'p_has_row';
+                const listCall   = hasSvc ? `${svc}.list_${bridge.rightLabel}`   : 'p_list_row';
+
+                // grant/revoke read both key columns from :body_text, same convention as
+                // ins/upd — not from URI binds, so the two /fk values are never split
+                // across path and body depending on which side is "the resource".
+                r += `${tab}procedure grant_${bridge.rightLabel} is\n`;
+                r += `${tab}${tab}l_body clob := :body_text;\n`;
+                r += `${tab}${tab}l_id   ${tbl}.${pkNm}%type;\n`;
+                if (!hasSvc) r += `${tab}${tab}l_row  ${tbl}%rowtype;\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}if l_body is null or not json_exists(l_body, '$') then\n`;
+                r += `${tab}${tab}${tab}:status := 400;\n`;
+                r += `${tab}${tab}${tab}htp.p(json_object('message' value 'request body must be valid json'));\n`;
+                r += `${tab}${tab}${tab}return;\n`;
+                r += `${tab}${tab}end if;\n`;
+                if (hasSvc) {
+                    r += `${tab}${tab}${grantCall}(\n`;
+                    r += `${tab}${tab}${tab}p_${bridge.left} => json_value(l_body, '$.${bridge.left}'),\n`;
+                    r += `${tab}${tab}${tab}p_${bridge.right} => json_value(l_body, '$.${bridge.right}'),\n`;
+                    r += `${tab}${tab}${tab}x_id => l_id\n`;
+                    r += `${tab}${tab});\n`;
+                } else {
+                    r += `${tab}${tab}l_row.${bridge.left} := json_value(l_body, '$.${bridge.left}');\n`;
+                    r += `${tab}${tab}l_row.${bridge.right} := json_value(l_body, '$.${bridge.right}');\n`;
+                    r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'grant', p_row => l_row);\n`;
+                    if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
+                    r += `${tab}${tab}${hkCall('validate')}(p_operation => 'grant', p_row => l_row);\n`;
+                    r += `${tab}${tab}${hkCall('before_grant')}(p_row => l_row);\n`;
+                    r += `${tab}${tab}${grantCall}(p_row => l_row);\n`;
+                    r += `${tab}${tab}${hkCall('after_grant')}(p_row => l_row);\n`;
+                    r += `${tab}${tab}l_id := l_row.${pkNm};\n`;
+                }
+                r += `${tab}${tab}:status := 201;\n`;
+                r += `${tab}${tab}htp.p(json_object('${pkNm}' value l_id));\n`;
+                if (!hasSvc) {
+                    r += `${tab}exception\n`;
+                    r += `${tab}${tab}when dup_val_on_index then\n`;
+                    r += `${tab}${tab}${tab}select ${pkNm} into l_id from ${tbl}_rls where ${bridge.left} = l_row.${bridge.left} and ${bridge.right} = l_row.${bridge.right};\n`;
+                    r += `${tab}${tab}${tab}:status := 201;\n`;
+                    r += `${tab}${tab}${tab}htp.p(json_object('${pkNm}' value l_id));\n`;
+                    r += excTail.replace(`${tab}exception\n`, '');
+                } else {
+                    r += excTail;
+                }
+                r += `${tab}end grant_${bridge.rightLabel};\n\n`;
+
+                r += `${tab}procedure revoke_${bridge.rightLabel} is\n`;
+                r += `${tab}${tab}l_body clob := :body_text;\n`;
+                if (!hasSvc) r += `${tab}${tab}l_row  ${tbl}%rowtype;\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}if l_body is null or not json_exists(l_body, '$') then\n`;
+                r += `${tab}${tab}${tab}:status := 400;\n`;
+                r += `${tab}${tab}${tab}htp.p(json_object('message' value 'request body must be valid json'));\n`;
+                r += `${tab}${tab}${tab}return;\n`;
+                r += `${tab}${tab}end if;\n`;
+                if (hasSvc) {
+                    r += `${tab}${tab}${revokeCall}(\n`;
+                    r += `${tab}${tab}${tab}p_${bridge.left} => json_value(l_body, '$.${bridge.left}'),\n`;
+                    r += `${tab}${tab}${tab}p_${bridge.right} => json_value(l_body, '$.${bridge.right}')\n`;
+                    r += `${tab}${tab});\n`;
+                } else {
+                    r += `${tab}${tab}l_row.${bridge.left} := json_value(l_body, '$.${bridge.left}');\n`;
+                    r += `${tab}${tab}l_row.${bridge.right} := json_value(l_body, '$.${bridge.right}');\n`;
+                    r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'revoke', p_row => l_row);\n`;
+                    if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
+                    r += `${tab}${tab}${hkCall('validate')}(p_operation => 'revoke', p_row => l_row);\n`;
+                    r += `${tab}${tab}${hkCall('before_revoke')}(p_row => l_row);\n`;
+                    r += `${tab}${tab}${revokeCall}(p_${bridge.left} => l_row.${bridge.left}, p_${bridge.right} => l_row.${bridge.right});\n`;
+                    r += `${tab}${tab}${hkCall('after_revoke')}(p_row => l_row);\n`;
+                }
+                r += `${tab}${tab}:status := 200;\n`;
+                r += `${tab}${tab}htp.p(json_object('status' value 'revoked'));\n`;
+                r += excTail + `${tab}end revoke_${bridge.rightLabel};\n\n`;
+
+                // has/list are GET-style reads — :p_<left>/:p_<right> binds, like get_by_<col>.
+                r += `${tab}procedure has_${bridge.rightLabel} is\n`;
+                r += `${tab}${tab}l_result boolean;\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}l_result := ${hasCall}(p_${bridge.left} => :p_${bridge.left}, p_${bridge.right} => :p_${bridge.right});\n`;
+                r += `${tab}${tab}:status := 200;\n`;
+                r += `${tab}${tab}htp.p(json_object('has' value (case when l_result then 1 else 0 end)));\n`;
+                r += excTail + `${tab}end has_${bridge.rightLabel};\n\n`;
+
+                r += `${tab}procedure list_${bridge.rightLabel} is\n`;
+                r += `${tab}${tab}l_cur sys_refcursor;\n`;
+                r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+                r += `${tab}${tab}l_sep varchar2(1) := '';\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}l_cur := ${listCall}(p_${bridge.left} => :p_${bridge.left});\n`;
+                r += `${tab}${tab}htp.p('[');\n`;
+                r += `${tab}${tab}loop\n`;
+                r += `${tab}${tab}${tab}fetch l_cur into l_row;\n`;
+                r += `${tab}${tab}${tab}exit when l_cur%notfound;\n`;
+                r += `${tab}${tab}${tab}htp.p(l_sep || json_object(\n`;
+                r += jsonCols.map(c => `${tab}${tab}${tab}${tab}'${c}' value l_row.${c}`).join(',\n') + '\n';
+                r += `${tab}${tab}${tab}${tab}returning clob\n`;
+                r += `${tab}${tab}${tab}));\n`;
+                r += `${tab}${tab}${tab}l_sep := ',';\n`;
+                r += `${tab}${tab}end loop;\n`;
+                r += `${tab}${tab}close l_cur;\n`;
+                r += `${tab}${tab}htp.p(']');\n`;
+                r += `${tab}${tab}:status := 200;\n`;
+                r += excTail + `${tab}end list_${bridge.rightLabel};\n\n`;
+            }
         }
 
         r += `end ${this._bare(rst)};\n/\n`;

@@ -627,6 +627,23 @@ dim_status /api
    row_version num /nn`,
     },
     {
+        label: 'Layered TAPI — N:M bridge (/bridge)', desc: 'grant_role/revoke_role/has_role/list_role alongside the generic CRUD — try removing /bridge to see them disappear (ins/upd/del stay either way)', cat: 'TAPI',
+        esql:
+`-- /bridge is additive, not a replacement: create_rec/update_rec/delete_rec
+-- and ins/upd/del remain fully generated. grant_role is idempotent (granting
+-- an already-granted pair returns the existing row's id, never [DUPLICATE])
+-- thanks to the composite unique constraint /bridge also adds. Needs exactly
+-- 2 /fk columns — "role" in grant_role/has_role/list_role comes from
+-- role_id with the trailing _id stripped.
+users /api
+   name vc100 /nn
+roles /api
+   name vc100 /nn
+user_role /api /bridge
+   user_id /fk users /nn
+   role_id /fk roles /nn`,
+    },
+    {
         label: 'Multi-Tenant SaaS', desc: 'Shared schema with tenant_id isolation', cat: 'Multi-tenant',
         esql:
 `tenants /insert 2

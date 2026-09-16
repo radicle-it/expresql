@@ -443,6 +443,16 @@ export class OracleDDLGenerator extends BaseGenerator {
             ret += 'alter table ' + objName + ' add constraint ' + cstObjName + this._naming.uk + ' unique (' + cols + ');\n\n';
         }
 
+        // ── /bridge: composite unique across the two FK columns ─────────────────────
+        // Prevents duplicate (left, right) pairs at the database level — grant_rec's
+        // own idempotency (SVC layer) relies on this constraint existing to detect a
+        // concurrent duplicate grant via DUP_VAL_ON_INDEX, not just its own check-first.
+        if (node.isOption('bridge')) {
+            const fkCols = Object.keys(node.fks ?? {});
+            if (fkCols.length === 2)
+                ret += 'alter table ' + objName + ' add constraint ' + cstObjName + this._naming.uk + '_bridge unique (' + fkCols.join(', ') + ');\n\n';
+        }
+
         // ── Column-level /unique → (tenant_id, col) scoped unique index ──────────────
         // When tenantid: yes on a tenant table, inline constraint was suppressed in
         // _buildColumnConstraints(); generate composite index here instead.

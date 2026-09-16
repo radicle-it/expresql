@@ -32,6 +32,7 @@ This document collects end-to-end ExpreSQL examples. Each scenario shows the QSQ
 - [25. Row-level scope with `dimensioncolumns`, `chk_rbac` and `chk_rls`](#25-row-level-scope-with-dimensioncolumns-chk_rbac-and-chk_rls)
 - [26. SCD2 business-key navigation with `/businesskey`](#26-scd2-business-key-navigation-with-businesskey)
 - [27. Natural-key reads with `/unique`: `get_by_<col>` through every layer](#27-natural-key-reads-with-unique-get_by_col-through-every-layer)
+- [28. N:M associative tables with `/bridge`](#28-nm-associative-tables-with-bridge)
 
 ---
 
@@ -2064,3 +2065,110 @@ end get_by_code;
 Every `/unique` column gets its own independent `get_by_<col>` at every layer — a table with two, `sku` and `serial`, gets `get_by_sku` and `get_by_serial` side by side, no conflict.
 
 Deliberately out of scope here (left for when a concrete need emerges, same principle as everywhere else in this catalogue): no locking variant (`get_by_<col>` never takes `p_lock`/`p_lock_timeout` — `_dal` itself has none either, only the PK gets `lock_by_id`/`lock_by_id_wait`); no `list_active`/soft-delete filtering; no suppression of `upd`/`del` for tables that are conceptually lookup/reference tables — those remain full CRUD, exactly as before.
+
+---
+
+## 28. N:M associative tables with `/bridge`
+
+A pure associative table (`user_role(user_id, role_id)`) rarely has a meaningful "update" — the relationship exists or it doesn't — and the generic CRUD `ins`/`upd`/`del` says nothing about what the table is actually _for_. `/bridge` adds the vocabulary a caller actually wants: `grant`/`revoke`/`has`/`list`. Unlike `/versioned` and `/immutable`, this is **additive, not a replacement** — `create_rec`/`update_rec`/`delete_rec` and `ins`/`upd`/`del` remain fully generated; `/bridge` gives you a better-shaped alternative alongside them, not instead of them.
+
+**Input:**
+
+```expresql
+users /api
+  name vc100 /nn
+roles /api
+  name vc100 /nn
+user_role /api /bridge
+  user_id /fk users /nn
+  role_id /fk roles /nn
+```
+
+`/bridge` requires exactly 2 `/fk` columns (a warning otherwise) — the first declared is "left" (`user_id`), the second "right" (`role_id`). Every generated name derives from the right column with a trailing `_id` stripped: `role_id` → `grant_role`/`revoke_role`/`has_role`/`list_role` (falls back to the bare column name when it doesn't end in `_id`).
+
+**DDL — a composite unique constraint, beyond the individual FK indexes:**
+
+```sql
+alter table user_role add constraint user_role_uk_bridge unique (user_id, role_id);
+```
+
+This is what makes a concurrent duplicate grant detectable as `DUP_VAL_ON_INDEX` in the first place — `grant_role`'s own idempotency (below) depends on it existing, not just on checking first.
+
+**DAL — `grant_row` wraps `insert_row` directly (same column list, including any extra business columns the bridge table happens to carry); `revoke_row` is a plain delete by the pair; `has_row`/`list_row` read `_rls` like every other read path:**
+
+```sql
+procedure grant_row (p_row in out nocopy user_role%rowtype) is
+begin
+    insert_row(p_row => p_row);
+end grant_row;
+
+procedure revoke_row (p_user_id in user_role.user_id%type, p_role_id in user_role.role_id%type) is
+begin
+    delete from user_role where user_id = p_user_id and role_id = p_role_id;
+end revoke_row;
+```
+
+**SVC — `grant_role` is idempotent: granting an already-granted pair returns the existing row's id instead of raising `[DUPLICATE]`:**
+
+```sql
+procedure grant_role (
+    p_user_id    in     user_role.user_id%type,
+    p_role_id    in     user_role.role_id%type,
+    x_id          out    user_role.id%type
+) is
+    l_row user_role%rowtype;
+begin
+    l_row.user_id := p_user_id;
+    l_row.role_id := p_role_id;
+    user_role_hks.chk_rbac(p_operation => 'grant', p_row => l_row);
+    user_role_hks.validate(p_operation => 'grant', p_row => l_row);
+    user_role_hks.before_grant(p_row => l_row);
+    user_role_dal.grant_row(p_row => l_row);
+    user_role_hks.after_grant(p_row => l_row);
+    x_id := l_row.id;
+exception
+    when dup_val_on_index then
+        select id into x_id from user_role_rls where user_id = p_user_id and role_id = p_role_id;
+end grant_role;
+```
+
+`revoke_role`/`has_role`/`list_role` follow the same shape as `grant_role`, `get_by_<col>` and `history` respectively — no new mechanism, just the established ones applied to the bridge's own pair of keys. **HKS** gains `before_grant`/`after_grant`/`before_revoke`/`after_revoke` alongside (not instead of) `before_insert`/`before_update`/`before_delete`/etc. — a bridge table keeps its generic CRUD hooks too, since the generic operations are still there.
+
+**`_app`** gets `grant_role`/`revoke_role`/`has_role` with flat parameters — no `list_role` (a multi-row cursor has no honest shape as flat OUT parameters, same reasoning as `/businesskey`'s `history` and `/unique`'s absence of a list at this layer).
+
+**`_rst`** (`interface: "rest"`) gets all four: `grant`/`revoke` read both keys from `:body_text` (same convention as `ins`/`upd` — never split across a URI bind and the body), `has`/`list` use `:p_user_id`/`:p_role_id` binds (GET-style, like `get_by_<col>`), and `list` returns a JSON array (same shape as `get_all`):
+
+```sql
+procedure grant_role is
+    l_body clob := :body_text;
+    l_id   user_role.id%type;
+begin
+    if l_body is null or not json_exists(l_body, '$') then
+        :status := 400;
+        htp.p(json_object('message' value 'request body must be valid json'));
+        return;
+    end if;
+    user_role_svc.grant_role(
+        p_user_id => json_value(l_body, '$.user_id'),
+        p_role_id => json_value(l_body, '$.role_id'),
+        x_id => l_id
+    );
+    :status := 201;
+    htp.p(json_object('id' value l_id));
+exception
+    when others then ...
+end grant_role;
+```
+
+On `service`/`lookup` tiers (no `_svc`), the same idempotency is inlined directly at whichever layer absorbs the private DML — the `dup_val_on_index` handler and the fallback lookup are identical, just without a `_svc` call in between.
+
+| Layer | New procedures | Notes |
+|---|---|---|
+| DAL | `grant_row`, `revoke_row`, `has_row`, `list_row` | `grant_row` wraps `insert_row`; the rest are direct DML |
+| SVC | `grant_<label>`, `revoke_<label>`, `has_<label>`, `list_<label>` | `grant_<label>` idempotent via `DUP_VAL_ON_INDEX` |
+| `_app` | `grant_<label>`, `revoke_<label>`, `has_<label>` (no `list_<label>`) | Flat params can't carry a multi-row result |
+| `_rst` | all four | `grant`/`revoke` from `:body_text`; `has`/`list` from `:p_<col>` binds |
+| HKS | `before_grant`/`after_grant`/`before_revoke`/`after_revoke` | Additive — the standard hooks stay too |
+| DDL | `create unique index ... unique (left, right)` | Makes a concurrent duplicate grant detectable at all |
+
+Deliberately out of scope (documented, not silently dropped): a set-based `replace_<label>(p_left, p_right_list)` that reconciles a whole set of grants in one call (would need a SQL collection type parameter — real complexity, left for when a concrete need emerges); no reverse direction (`list_<label>`-equivalent for the left side, e.g. "which users have this role" — same mechanism, just swapping which FK is "left").

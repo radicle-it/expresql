@@ -66,6 +66,7 @@ const tableDirectives = [
     ,'soda'
     ,'versioned'
     ,'businesskey'
+    ,'bridge'
     ,'unique','uk'
     ,'pk'
     ,'cascade','setnull'
@@ -145,6 +146,7 @@ function checkSyntax(parsed: ParsedContext): SyntaxError[] {
 
     ret = ret.concat(versioned_immutable_conflict(ddl));
     ret = ret.concat(businesskey_checks(ddl));
+    ret = ret.concat(bridge_checks(ddl));
 
     return ret;
 }
@@ -212,6 +214,28 @@ function businesskey_checks(ddl: ParsedContext): SyntaxError[] {
                 `/businesskey references column "${keyCol}", which is not declared on this table`,
                 new Offset(node.line, node.src[pos].begin),
                 new Offset(node.line, node.src[pos].begin + 'businesskey'.length),
+                'warning'
+            ));
+        }
+    }
+    return ret;
+}
+
+function bridge_checks(ddl: ParsedContext): SyntaxError[] {
+    const ret: SyntaxError[] = [];
+    for (const node of ddl.descendants()) {
+        if (node.inferType() !== 'table') continue;
+        if (!node.isOption('bridge')) continue;
+        const pos = node.indexOf('bridge');
+        if (pos < 0 || pos >= node.src.length) continue;
+        const fkCount = node.descendants().filter(
+            d => d.isOption('fk') || 0 < d.indexOf('reference', true)
+        ).length;
+        if (fkCount !== 2) {
+            ret.push(new SyntaxError(
+                `/bridge expects exactly 2 /fk columns (found ${fkCount}) — the two sides of the N:M relationship`,
+                new Offset(node.line, node.src[pos].begin),
+                new Offset(node.line, node.src[pos].begin + 'bridge'.length),
                 'warning'
             ));
         }
