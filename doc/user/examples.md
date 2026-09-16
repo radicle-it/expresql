@@ -1430,6 +1430,40 @@ ELSIF p_error.ora_sqlcode = -20003 THEN
 
 In `_rst`, the `WHEN OTHERS` handler already maps `-20003` to HTTP `409 Conflict`.
 
+**Per-table default — `/lockmode` directive:**
+
+If a table is always fetched with pessimistic locking you can set the default once on the table line instead of passing the parameter every time:
+
+```expresql
+-- lookup-only table, always locked for 10 seconds while editing
+appointment_slots /api lookup /lockmode wait:10
+  slot_time timestamp /nn
+  available num /nn
+
+# settings = { api: layered }
+```
+
+The generated `_app.get` signature becomes:
+
+```sql
+procedure get (
+    p_id           in  appointment_slots.id%type,
+    p_lock         in  varchar2 default 'wait',  -- changed from 'none'
+    p_lock_timeout in  number   default 10,       -- changed from 5
+    p_slot_time    out appointment_slots.slot_time%type,
+    p_available    out appointment_slots.available%type
+);
+```
+
+Callers still override at runtime — `/lockmode` sets the parameter _default_, not a hard policy.
+
+| Notation | Generated default |
+| --- | --- |
+| *(absent)* | `p_lock => 'none'`, `p_lock_timeout => 5` |
+| `/lockmode nowait` | `p_lock => 'nowait'`, `p_lock_timeout => 5` |
+| `/lockmode wait` | `p_lock => 'wait'`, `p_lock_timeout => 5` |
+| `/lockmode wait:n` | `p_lock => 'wait'`, `p_lock_timeout => n` |
+
 > **Lock scope**: the lock is held for the duration of the current database transaction and is released on `COMMIT` or `ROLLBACK`. It is **not** held across HTTP requests. For cross-request conflict detection, rely on `row_version` OCC. Use pessimistic locking only within a single transaction (e.g. check-then-act within one SVC procedure, or fetch-for-edit within one APEX page process).
 
 ---

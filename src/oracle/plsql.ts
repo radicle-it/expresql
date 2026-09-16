@@ -28,6 +28,13 @@ export class OraclePlsqlBuilder {
         private naming: Naming,
     ) {}
 
+    // Strip schema prefix from a qualified name — used in PL/SQL END clauses where
+    // Oracle requires the simple identifier, not schema.name.
+    private _bare(name: string): string {
+        const dot = name.indexOf('.');
+        return dot >= 0 ? name.slice(dot + 1) : name;
+    }
+
     // ── ORDS ──────────────────────────────────────────────────────────────────
 
     restEnable(node: IDdlNode): string {
@@ -114,7 +121,7 @@ export class OraclePlsqlBuilder {
             OK = true;
         }
         if (!OK) return '';
-        ret += 'end ' + objName + this.naming.bi + ';\n/\n\n';
+        ret += 'end ' + this._bare(objName) + this.naming.bi + ';\n/\n\n';
         return ret;
     }
 
@@ -143,7 +150,7 @@ export class OraclePlsqlBuilder {
             ret += '    :new.' + this.ctx.getOptionValue('updatedcol')   + ' := ' + sysDateFn + ';\n';
             ret += '    :new.' + this.ctx.getOptionValue('updatedbycol') + ' := ' + user + ';\n';
         }
-        ret += 'end ' + objName + this.naming.bu + ';\n/\n\n';
+        ret += 'end ' + this._bare(objName) + this.naming.bu + ';\n/\n\n';
         return ret;
     }
 
@@ -152,8 +159,12 @@ export class OraclePlsqlBuilder {
         if (!node.isOption('immutable')) return '';
         const dbVer = this.ctx.getOptionValue('db') as string | null;
         if (dbVer && dbVer.length > 0 && 23 <= (getMajorVersion(dbVer) ?? 0)) return '';
-        const objName = this.ctx.objPrefix() + node.parseName();
-        let ret = 'create or replace trigger ' + this.naming.immutable_prefix + objName.toLowerCase() + this.naming.immutable_suffix + '\n';
+        const objName     = this.ctx.objPrefix() + node.parseName();
+        const pfxNS       = this.ctx.objPrefix('no schema');
+        const schemaOnly  = this.ctx.objPrefix().slice(0, this.ctx.objPrefix().length - pfxNS.length).toLowerCase();
+        const bareObjName = this._bare(objName.toLowerCase());
+        const trgName     = schemaOnly + this.naming.immutable_prefix + bareObjName + this.naming.immutable_suffix;
+        let ret = 'create or replace trigger ' + trgName + '\n';
         ret += '    before update or delete\n    on ' + objName.toLowerCase() + '\ndeclare\n';
         ret += "    co_immutable_err  constant pls_integer      := -20055;\n";
         ret += "    co_immutable_msg  constant varchar2(200 char) := '" + objName.toLowerCase() + " is immutable';\n";
@@ -163,8 +174,12 @@ export class OraclePlsqlBuilder {
 
     generateVersionedTrigger(node: IDdlNode): string {
         if (node.inferType() !== 'table' || !node.isOption('versioned')) return '';
-        const objName = this.ctx.objPrefix() + node.parseName();
-        const tbl     = objName.toLowerCase();
+        const objName    = this.ctx.objPrefix() + node.parseName();
+        const tbl        = objName.toLowerCase();
+        const pfxNS      = this.ctx.objPrefix('no schema');
+        const schemaOnly = this.ctx.objPrefix().slice(0, this.ctx.objPrefix().length - pfxNS.length).toLowerCase();
+        const bareTbl    = this._bare(tbl);
+        const trgName    = schemaOnly + 'trg_' + bareTbl + '_versioned';
         const vtCol   = ((node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
         const pk      = (node.getPkName() ?? 'id').toLowerCase();
         const updCl   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated').toLowerCase();
@@ -194,7 +209,7 @@ export class OraclePlsqlBuilder {
             changedParts.push(changed(cn));
         }
 
-        let r = `create or replace trigger trg_${tbl}_versioned\n`;
+        let r = `create or replace trigger ${trgName}\n`;
         r += `    before update or delete\n    on ${tbl}\n    for each row\ndeclare\n`;
         r += `    c_del_err  constant pls_integer := -20056;\n`;
         r += `    c_upd_err  constant pls_integer := -20057;\n`;
@@ -216,7 +231,7 @@ export class OraclePlsqlBuilder {
             r += `        raise_application_error(c_upd_err, '[VERSIONED] ${tbl}: only closing ${vtCol} is permitted; other columns must not change');\n`;
             r += `    end if;\n`;
         }
-        r += `end trg_${tbl}_versioned;\n/\n\n`;
+        r += `end trg_${bareTbl}_versioned;\n/\n\n`;
         return r;
     }
 
@@ -379,6 +394,20 @@ export class OraclePlsqlBuilder {
                  c.refId() === null &&
                  c.parseName().toLowerCase() !== 'row_version'
         );
+    }
+
+    // Parses /lockmode directive: 'nowait' | 'wait' | 'wait:n' | absent.
+    // Returns the default values to embed in generated get() signatures.
+    private _getLockDefaults(node: IDdlNode): { lock: string; timeout: number } {
+        const raw = (node.getOptionValue('lockmode') ?? '').trim().toLowerCase();
+        if (!raw || raw === 'none') return { lock: 'none', timeout: 5 };
+        if (raw === 'nowait') return { lock: 'nowait', timeout: 5 };
+        if (raw === 'wait') return { lock: 'wait', timeout: 5 };
+        if (raw.startsWith('wait:')) {
+            const n = parseInt(raw.slice(5), 10);
+            return { lock: 'wait', timeout: isNaN(n) || n < 0 ? 5 : n };
+        }
+        return { lock: 'none', timeout: 5 };
     }
 
     // Normalises /api directive arg to a canonical tier name.
@@ -677,7 +706,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}c_err_stale_data constant pls_integer := -20001;\n`;
         r += `${tab}c_err_not_found  constant pls_integer := -20002;\n`;
         r += `${tab}c_err_locked     constant pls_integer := -20003;\n\n`;
-        r += `end ${dal};\n/\n`;
+        r += `end ${this._bare(dal)};\n/\n`;
         return r;
     }
 
@@ -912,7 +941,7 @@ export class OraclePlsqlBuilder {
             r += `${tab}end delete_row;\n\n`;
         }
 
-        r += `end ${dal};\n/\n`;
+        r += `end ${this._bare(dal)};\n/\n`;
         return r;
     }
 
@@ -954,7 +983,7 @@ export class OraclePlsqlBuilder {
             r += `${tab}procedure after_update (p_row in ${tbl}%rowtype);\n`;
             r += `${tab}procedure after_delete (p_id in ${idType});\n\n`;
         }
-        r += `end ${pkg};\n/\n`;
+        r += `end ${this._bare(pkg)};\n/\n`;
         return r;
     }
 
@@ -994,7 +1023,7 @@ export class OraclePlsqlBuilder {
             r += `${tab}procedure after_update  (p_row in ${tbl}%rowtype) is begin null; end;\n`;
             r += `${tab}procedure after_delete  (p_id in ${idType})     is begin null; end;\n\n`;
         }
-        r += `end ${pkg};\n/\n`;
+        r += `end ${this._bare(pkg)};\n/\n`;
         return r;
     }
 
@@ -1033,6 +1062,7 @@ export class OraclePlsqlBuilder {
         const paramCols = this._svcParamCols(node);
         const isVersioned = node.isOption('versioned');
         const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
+        const lockDef     = this._getLockDefaults(node);
 
         let r = `create or replace package ${svc} as\n\n`;
 
@@ -1046,8 +1076,8 @@ export class OraclePlsqlBuilder {
 
         r += `${tab}function get (\n`;
         r += `${tab}${tab}p_id           in ${tbl}.${pkNm}%type,\n`;
-        r += `${tab}${tab}p_lock         in varchar2 default 'none',\n`;
-        r += `${tab}${tab}p_lock_timeout in number   default 5\n`;
+        r += `${tab}${tab}p_lock         in varchar2 default '${lockDef.lock}',\n`;
+        r += `${tab}${tab}p_lock_timeout in number   default ${lockDef.timeout}\n`;
         r += `${tab}) return ${tbl}%rowtype;\n\n`;
 
         r += `${tab}function get_all return sys_refcursor;\n\n`;
@@ -1072,7 +1102,7 @@ export class OraclePlsqlBuilder {
 
             r += `${tab}procedure delete_rec (p_id in ${tbl}.${pkNm}%type);\n\n`;
         }
-        r += `end ${svc};\n/\n`;
+        r += `end ${this._bare(svc)};\n/\n`;
         return r;
     }
 
@@ -1090,6 +1120,7 @@ export class OraclePlsqlBuilder {
         const isVersioned = node.isOption('versioned');
         const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
         const dimCols     = this._dimensionScopeColumns(node);
+        const lockDef     = this._getLockDefaults(node);
 
         const getById      = hasDal ? `${dal}.get_by_id`       : 'p_get_by_id';
         const lockById     = hasDal ? `${dal}.lock_by_id`      : 'p_lock_by_id';
@@ -1110,8 +1141,8 @@ export class OraclePlsqlBuilder {
         // get — routes to get_by_id / lock_by_id / lock_by_id_wait based on p_lock
         r += `${tab}function get (\n`;
         r += `${tab}${tab}p_id           in ${tbl}.${pkNm}%type,\n`;
-        r += `${tab}${tab}p_lock         in varchar2 default 'none',\n`;
-        r += `${tab}${tab}p_lock_timeout in number   default 5\n`;
+        r += `${tab}${tab}p_lock         in varchar2 default '${lockDef.lock}',\n`;
+        r += `${tab}${tab}p_lock_timeout in number   default ${lockDef.timeout}\n`;
         r += `${tab}) return ${tbl}%rowtype is\n`;
         r += `${tab}begin\n`;
         r += `${tab}${tab}if p_lock = 'nowait' then\n`;
@@ -1222,7 +1253,7 @@ export class OraclePlsqlBuilder {
             r += `${tab}end delete_rec;\n\n`;
         }
 
-        r += `end ${svc};\n/\n`;
+        r += `end ${this._bare(svc)};\n/\n`;
         return r;
     }
 
@@ -1244,6 +1275,7 @@ export class OraclePlsqlBuilder {
         const createdByCol = String(this.ctx.getOptionValue('createdbycol') ?? 'created_by');
         const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
         const updatedByCol = String(this.ctx.getOptionValue('updatedbycol') ?? 'updated_by');
+        const lockDef      = this._getLockDefaults(node);
 
         // Column width computed per table instead of a fixed padEnd(13): a long name would
         // otherwise run directly into the %type anchor with no separator.
@@ -1256,8 +1288,8 @@ export class OraclePlsqlBuilder {
         // get: loads one row into OUT params — APEX Invoke API maps them to page items
         r += `${tab}procedure get (\n`;
         r += `${tab}${tab}p_id           in  ${tbl}.${pkNm}%type,\n`;
-        r += `${tab}${tab}p_lock         in  varchar2 default 'none',\n`;
-        r += `${tab}${tab}p_lock_timeout in  number   default 5`;
+        r += `${tab}${tab}p_lock         in  varchar2 default '${lockDef.lock}',\n`;
+        r += `${tab}${tab}p_lock_timeout in  number   default ${lockDef.timeout}`;
         for (const { name } of appCols)
             r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
         if (hasVer)
@@ -1300,7 +1332,7 @@ export class OraclePlsqlBuilder {
 
             r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type);\n\n`;
         }
-        r += `end ${app};\n/\n`;
+        r += `end ${this._bare(app)};\n/\n`;
         return r;
     }
 
@@ -1323,6 +1355,7 @@ export class OraclePlsqlBuilder {
         const createdByCol = String(this.ctx.getOptionValue('createdbycol') ?? 'created_by');
         const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
         const updatedByCol = String(this.ctx.getOptionValue('updatedbycol') ?? 'updated_by');
+        const lockDef      = this._getLockDefaults(node);
         const hkCall    = (proc: string) => hasHks ? `${hk}.${proc}` : `p_${proc}`;
 
         // Column width computed per table instead of a fixed padEnd(13) — same reasoning as _generateAppSpec.
@@ -1342,8 +1375,8 @@ export class OraclePlsqlBuilder {
         // get — p_lock ('none'|'nowait'|'wait') controls optimistic vs pessimistic fetch
         r += `\n${tab}procedure get (\n`;
         r += `${tab}${tab}p_id           in  ${tbl}.${pkNm}%type,\n`;
-        r += `${tab}${tab}p_lock         in  varchar2 default 'none',\n`;
-        r += `${tab}${tab}p_lock_timeout in  number   default 5`;
+        r += `${tab}${tab}p_lock         in  varchar2 default '${lockDef.lock}',\n`;
+        r += `${tab}${tab}p_lock_timeout in  number   default ${lockDef.timeout}`;
         for (const { name } of appCols)
             r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
         if (hasVer)
@@ -1509,7 +1542,7 @@ export class OraclePlsqlBuilder {
             r += `${tab}end del;\n\n`;
         }
 
-        r += `end ${app};\n/\n`;
+        r += `end ${this._bare(app)};\n/\n`;
         return r;
     }
 
@@ -1527,7 +1560,7 @@ export class OraclePlsqlBuilder {
             r += `${tab}procedure upd;\n`;
             r += `${tab}procedure del;\n\n`;
         }
-        r += `end ${rst};\n/\n`;
+        r += `end ${this._bare(rst)};\n/\n`;
         return r;
     }
 
@@ -1538,6 +1571,7 @@ export class OraclePlsqlBuilder {
         const rst       = tbl + '_rst';
         const pkNm      = (node.getPkName() ?? 'id').toLowerCase();
         const hasVer    = this._hasVersionCol(node);
+        const lockDef   = this._getLockDefaults(node);
         const paramCols       = this._svcParamCols(node);
         const pkIsUserDefined = this._pkIsUserDefined(node);
         const isVersioned     = node.isOption('versioned');
@@ -1576,8 +1610,8 @@ export class OraclePlsqlBuilder {
         // get — optional ?lock=nowait|wait and ?lock_timeout=n ORDS bind params
         r += `\n${tab}procedure get is\n`;
         r += `${tab}${tab}l_row          ${tbl}%rowtype;\n`;
-        r += `${tab}${tab}l_lock         varchar2(10) := nvl(:lock, 'none');\n`;
-        r += `${tab}${tab}l_lock_timeout number       := nvl(to_number(:lock_timeout), 5);\n`;
+        r += `${tab}${tab}l_lock         varchar2(10) := nvl(:lock, '${lockDef.lock}');\n`;
+        r += `${tab}${tab}l_lock_timeout number       := nvl(to_number(:lock_timeout), ${lockDef.timeout});\n`;
         r += `${tab}begin\n`;
         if (hasSvc) {
             r += `${tab}${tab}l_row := ${svc}.get(p_id => :p_id, p_lock => l_lock, p_lock_timeout => l_lock_timeout);\n`;
@@ -1751,7 +1785,7 @@ export class OraclePlsqlBuilder {
             r += excTail + `${tab}end del;\n\n`;
         }
 
-        r += `end ${rst};\n/\n`;
+        r += `end ${this._bare(rst)};\n/\n`;
         return r;
     }
 
@@ -1763,7 +1797,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}procedure log_insert (p_row     in ${tbl}%rowtype);\n`;
         r += `${tab}procedure log_update (p_old_row in ${tbl}%rowtype, p_new_row in ${tbl}%rowtype);\n`;
         r += `${tab}procedure log_delete (p_old_row in ${tbl}%rowtype);\n\n`;
-        r += `end ${aud};\n/\n`;
+        r += `end ${this._bare(aud)};\n/\n`;
         return r;
     }
 
@@ -1865,7 +1899,7 @@ export class OraclePlsqlBuilder {
         }
         r += `${tab}end log_delete;\n\n`;
 
-        r += `end ${aud};\n/\n`;
+        r += `end ${this._bare(aud)};\n/\n`;
         return r;
     }
 
@@ -1949,7 +1983,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}-- Returns the tenant ID bound to the current session (null when not set).\n`;
         r += `${tab}-- Safe to grant broadly: a SYS_CONTEXT read carries no privilege restriction.\n`;
         r += `${tab}function get_id return integer;\n\n`;
-        r += `end ${pkg};\n/\n`;
+        r += `end ${this._bare(pkg)};\n/\n`;
         return r;
     }
 
@@ -1961,7 +1995,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}begin\n`;
         r += `${tab}${tab}return to_number(sys_context('${pkg}', 'tenant_id'));\n`;
         r += `${tab}end get_id;\n\n`;
-        r += `end ${pkg};\n/\n`;
+        r += `end ${this._bare(pkg)};\n/\n`;
         return r;
     }
 
@@ -1988,7 +2022,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}-- Clears the tenant ID bound to the current session (connection-pool checkout\n`;
         r += `${tab}-- boundaries, logoff, or test teardown).\n`;
         r += `${tab}procedure clear_id;\n\n`;
-        r += `end ${bootPkg};\n/\n`;
+        r += `end ${this._bare(bootPkg)};\n/\n`;
         return r;
     }
 
@@ -2005,7 +2039,7 @@ export class OraclePlsqlBuilder {
         r += `${tab}begin\n`;
         r += `${tab}${tab}dbms_session.clear_context('${ctxPkg}');\n`;
         r += `${tab}end clear_id;\n\n`;
-        r += `end ${bootPkg};\n/\n`;
+        r += `end ${this._bare(bootPkg)};\n/\n`;
         return r;
     }
 }

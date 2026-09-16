@@ -68,7 +68,7 @@ export class OracleDDLGenerator extends BaseGenerator {
             const parentIsNoTenant = node.parent !== null && node.parent.isOption('notenantid');
             if (!this._ddl.optionEQvalue('tenantid', true) || parentIsNoTenant) {
                 ret += '\n';
-                ret += this._cpad(node) + 'constraint ' + concatNames(this._ddl.objPrefix(), sem.parent_child, this._naming.unq) + ' unique';
+                ret += this._cpad(node) + 'constraint ' + concatNames(this._ddl.objPrefix('no schema'), sem.parent_child, this._naming.unq) + ' unique';
             }
             // When tenantid: yes on a tenant table, inline unique is suppressed and replaced by
             // a (tenant_id, col) composite unique index generated in _genIndexes()
@@ -92,7 +92,7 @@ export class OracleDDLGenerator extends BaseGenerator {
         if (!sem.isNativeBoolean) ret += node.genConstraint(optQuote);
         if (sem.needsBoolCheck)
             ret += '\n' + this._cpad(node)
-                + 'constraint ' + concatNames(this._ddl.objPrefix(), sem.parent_child)
+                + 'constraint ' + concatNames(this._ddl.objPrefix('no schema'), sem.parent_child)
                 + ` check (${node.parseName()} in ('Y','N'))`;
         if (node.isOption('between')) {
             const values = node.getBetweenClause() ?? '';
@@ -104,7 +104,7 @@ export class OracleDDLGenerator extends BaseGenerator {
                 ? ' ' + this._pkTypeModifier(this._ddl.objPrefix() + node.parent!.parseName())
                 : ' not null';
             ret += typeModifier + '\n';
-            ret += this._cpad(node) + 'constraint ' + concatNames(this._ddl.objPrefix(), sem.parent_child, this._naming.pk) + ' primary key';
+            ret += this._cpad(node) + 'constraint ' + concatNames(this._ddl.objPrefix('no schema'), sem.parent_child, this._naming.pk) + ' primary key';
         }
         if (node.annotations !== null) {
             if (0 <= ret.indexOf('\n'))
@@ -142,6 +142,7 @@ export class OracleDDLGenerator extends BaseGenerator {
     }
 
     _genFkColumns(node: IDdlNode, objName: string): string {
+        const cstObjName = this._ddl.objPrefix('no schema') + node.parseName();
         let ret = '';
         for (let fk in node.fks) {
             let parent = node.fks![fk];
@@ -174,7 +175,8 @@ export class OracleDDLGenerator extends BaseGenerator {
             }
             const fkPad = tab + ' '.repeat(node.maxChildNameLen() - fk.length);
             ret += tab + fk + _id + fkPad + type;
-            const refPrefix = this._ddl.find(parent) !== null ? this._ddl.objPrefix() : '';
+            const refPrefix   = this._ddl.find(parent) !== null ? this._ddl.objPrefix() : '';
+            const refPrefixNS = this._ddl.find(parent) !== null ? this._ddl.objPrefix('no schema') : '';
             const fkColName = fk + _id;
             const _isCompFk = this._ddl.optionEQvalue('tenantid', true)
                 && !node.isOption('notenantid')
@@ -185,9 +187,10 @@ export class OracleDDLGenerator extends BaseGenerator {
                 // Ensure target has (tenant_id, id) unique — Oracle requires it for FK validation.
                 // Generated on-demand here (not proactively for every table).
                 // Index FIRST, then CONSTRAINT USING INDEX — avoids ORA-01408.
-                const targetObj = refPrefix + parent;
-                const tidIxName = targetObj + '_tid_id_uix';
-                const tidCName  = targetObj + '_tid_id_uq';
+                const targetObj    = refPrefix + parent;
+                const targetObjNS  = refPrefixNS + parent;
+                const tidIxName    = targetObjNS + '_tid_id_uix';
+                const tidCName     = targetObjNS + '_tid_id_uq';
                 const tidUix = `create unique index ${tidIxName}\n    on ${targetObj} (tenant_id, id);\n`;
                 const tidUq  = `alter table ${targetObj}\n    add constraint ${tidCName}\n    unique (tenant_id, id) using index ${tidIxName};\n`;
                 if (!this._ddl.postponedAltersSet.has(tidUix)) {
@@ -208,7 +211,7 @@ export class OracleDDLGenerator extends BaseGenerator {
                     }
                 }
                 if (!onDelete) onDelete = this._globalOnDelete();
-                const cName = objName + '_' + fkColName + this._naming.fk;
+                const cName = cstObjName + '_' + fkColName + this._naming.fk;
                 const alter = 'alter table ' + objName + ' add constraint ' + cName +
                     '\n    foreign key (tenant_id, ' + fkColName + ')' +
                     '\n    references ' + refPrefix + parent + ' (tenant_id, id)' + onDelete + ';\n';
@@ -217,7 +220,7 @@ export class OracleDDLGenerator extends BaseGenerator {
                     this._ddl.postponedAltersSet.add(alter);
                 }
             } else if (refNode !== null && (refNode.line < node.line || refNode.isMany2One())) {
-                ret += tab + tab + ' '.repeat(node.maxChildNameLen()) + 'constraint ' + objName + '_' + fk + this._naming.fk + '\n';
+                ret += tab + tab + ' '.repeat(node.maxChildNameLen()) + 'constraint ' + cstObjName + '_' + fk + this._naming.fk + '\n';
                 let onDelete = '';
                 if (node.isOption('cascade')) onDelete = ' on delete cascade';
                 else if (node.isOption('setnull')) onDelete = ' on delete set null';
@@ -249,7 +252,7 @@ export class OracleDDLGenerator extends BaseGenerator {
                 }
                 ret += notNull + ',\n';
                 if (!onDelete) onDelete = this._globalOnDelete();
-                const alter = 'alter table ' + objName + ' add constraint ' + objName + '_' + fk + '_fk foreign key (' + fk + ') references ' + refPrefix + parent + onDelete + ';\n';
+                const alter = 'alter table ' + objName + ' add constraint ' + cstObjName + '_' + fk + '_fk foreign key (' + fk + ') references ' + refPrefix + parent + onDelete + ';\n';
                 if (!this._ddl.postponedAltersSet.has(alter)) {
                     this._ddl.postponedAlters.push(alter);
                     this._ddl.postponedAltersSet.add(alter);
@@ -276,7 +279,7 @@ export class OracleDDLGenerator extends BaseGenerator {
         const tenantRef = String(this._ddl.getOptionValue('tenantref') || 'tenants');
         if (this._ddl.find(tenantRef) === null) return;   // no tenants master table in schema
         const tenantsObj = this._ddl.objPrefix() + tenantRef;
-        const cName = objName + '_tenant_id' + this._naming.fk;
+        const cName = (this._ddl.objPrefix('no schema') + node.parseName()) + '_tenant_id' + this._naming.fk;
         const alter = `alter table ${objName} add constraint ${cName}\n    foreign key (tenant_id) references ${tenantsObj} (id);\n`;
         if (!this._ddl.postponedAltersSet.has(alter)) {
             this._ddl.postponedAlters.push(alter);
@@ -286,9 +289,10 @@ export class OracleDDLGenerator extends BaseGenerator {
 
     _genRowKeyColumn(node: IDdlNode, objName: string): string {
         if (!node.hasRowKey()) return '';
+        const cstObjName = this._ddl.objPrefix('no schema') + node.parseName();
         const pad = tab + ' '.repeat(node.maxChildNameLen() - 'ROW_KEY'.length);
         let ret = tab + 'row_key' + pad + `varchar2(30${this._ddl.semantics()})\n`;
-        ret += tab + tab + ' '.repeat(node.maxChildNameLen()) + 'constraint ' + objName + '_row_key' + this._naming.unq + ' unique not null,\n';
+        ret += tab + tab + ' '.repeat(node.maxChildNameLen()) + 'constraint ' + cstObjName + '_row_key' + this._naming.unq + ' unique not null,\n';
         return ret;
     }
 
@@ -390,17 +394,19 @@ export class OracleDDLGenerator extends BaseGenerator {
     }
 
     _genMultiColFkAlters(node: IDdlNode, objName: string): string {
+        const cstObjName = this._ddl.objPrefix('no schema') + node.parseName();
         let ret = '';
         for (const fk in node.fks) {
             if (0 < fk.indexOf(',')) {
                 const parent = node.fks![fk];
-                ret += 'alter table ' + objName + ' add constraint ' + parent + '_' + objName + '_fk foreign key (' + fk + ') references ' + parent + ';\n\n';
+                ret += 'alter table ' + objName + ' add constraint ' + parent + '_' + cstObjName + '_fk foreign key (' + fk + ') references ' + parent + ';\n\n';
             }
         }
         return ret;
     }
 
     _genIndexes(node: IDdlNode, objName: string, _db23plus: boolean): string {
+        const cstObjName = this._ddl.objPrefix('no schema') + node.parseName();
         let ret = '';
         let num = 1;
 
@@ -427,14 +433,14 @@ export class OracleDDLGenerator extends BaseGenerator {
 
         // ── Explicit /pk override ──────────────────────────────────────────────────────
         const cut = node.getOptionValue('pk');
-        if (cut) ret += 'alter table ' + objName + ' add constraint ' + objName + this._naming.pk + ' primary key (' + cut + ');\n\n';
+        if (cut) ret += 'alter table ' + objName + ' add constraint ' + cstObjName + this._naming.pk + ' primary key (' + cut + ');\n\n';
 
         // ── Table-level /unique or /uk ─────────────────────────────────────────────────
         // When tenantid: yes, scope the unique constraint to the tenant.
         const cutUnq = node.getOptionValue('unique') ?? node.getOptionValue('uk');
         if (cutUnq !== null) {
             const cols = (isTenant && !isSourceSupra) ? `tenant_id, ${cutUnq}` : cutUnq;
-            ret += 'alter table ' + objName + ' add constraint ' + objName + this._naming.uk + ' unique (' + cols + ');\n\n';
+            ret += 'alter table ' + objName + ' add constraint ' + cstObjName + this._naming.uk + ' unique (' + cols + ');\n\n';
         }
 
         // ── Column-level /unique → (tenant_id, col) scoped unique index ──────────────
@@ -516,12 +522,13 @@ export class OracleDDLGenerator extends BaseGenerator {
         }
 
         node.lateInitFks();
-        const objName = this._ddl.objPrefix() + node.parseName();
+        const objName    = this._ddl.objPrefix() + node.parseName();
+        const cstObjName = this._ddl.objPrefix('no schema') + node.parseName();
 
         if (node.isOption('soda')) {
             let ret = 'create table ' + objName + ' (\n';
             ret += tab + 'id              varchar2(255' + this._ddl.semantics() + ') not null\n';
-            ret += tab + '                constraint ' + objName + '_id_pk primary key,\n';
+            ret += tab + '                constraint ' + cstObjName + '_id_pk primary key,\n';
             ret += tab + 'created_on      timestamp default sys_extract_utc(systimestamp) not null,\n';
             ret += tab + 'last_modified   timestamp default sys_extract_utc(systimestamp) not null,\n';
             ret += tab + 'version         varchar2(255' + this._ddl.semantics() + ') not null,\n';

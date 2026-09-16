@@ -606,6 +606,36 @@ l_row := doctors_svc.get(p_id => p_doc_id, p_lock => 'wait', p_lock_timeout => 1
 - `full` / `full+hks` — routes to `dal.lock_by_id` (nowait) or `dal.lock_by_id_wait` (wait), both generated in `_dal`.
 - `service` / `lookup` (absorbed tiers) — uses private `p_lock_by_id` / `p_lock_by_id_wait` functions generated inline in the package body; no `_dal` package involved.
 
+#### `/lockmode` — per-table lock default
+
+By default all generated `get` signatures use `p_lock default 'none'` and `p_lock_timeout default 5`. Add `/lockmode` to the table line to change those defaults schema-wide — useful when a table is always edited with pessimistic locking and you don't want every call-site to spell out the parameter.
+
+| Notation | Generated default |
+| --- | --- |
+| *(absent)* | `p_lock default 'none'`, `p_lock_timeout default 5` |
+| `/lockmode nowait` | `p_lock default 'nowait'`, `p_lock_timeout default 5` |
+| `/lockmode wait` | `p_lock default 'wait'`, `p_lock_timeout default 5` |
+| `/lockmode wait:n` | `p_lock default 'wait'`, `p_lock_timeout default n` |
+
+```expresql
+bookings /api full+hks /lockmode wait:10
+  guest_id /fk guests /nn
+  room_id  /fk rooms  /nn
+  check_in date /nn
+```
+
+The generated `_svc` spec becomes:
+
+```sql
+function get (
+    p_id           in bookings.id%type,
+    p_lock         in varchar2 default 'wait',
+    p_lock_timeout in number   default 10
+) return bookings%rowtype;
+```
+
+The `_app` procedure and `_rst` ORDS handler inherit the same defaults. Callers can still override at runtime — `/lockmode` only sets the parameter default, not a hard policy.
+
 #### API and multi-tenancy (`tenantid: yes`)
 
 When `tenantid: yes` is active, every tenant-scoped table automatically receives a `tenant_id NUMBER NOT NULL` column. The API generator is aware of this and adds `p_tenant_id` to all four procedures:

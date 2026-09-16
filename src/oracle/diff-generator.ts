@@ -354,23 +354,24 @@ export class OracleDiffGenerator implements DiffGenerator {
     private _pkDesc(
         node: IDdlNode, ctx: DdlContext,
     ): { type: 'surrogate' | 'business' | 'none'; columns: string[]; constraintName: string } {
-        const tbl     = node.parseName();
-        const objName = ctx.objPrefix() + tbl;
-        const expName = node.getExplicitPkName() as string | null;
+        const tbl       = node.parseName();
+        const objName   = ctx.objPrefix() + tbl;
+        const cstObjName = ctx.objPrefix('no schema') + tbl;
+        const expName   = node.getExplicitPkName() as string | null;
 
         if (expName != null) {
             const cols  = expName.includes(',')
                 ? expName.split(',').map(s => s.trim())
                 : [expName];
             const cname = cols.length === 1
-                ? `${objName}_${cols[0]}_pk`
-                : `${objName}_pk`;
+                ? `${cstObjName}_${cols[0]}_pk`
+                : `${cstObjName}_pk`;
             return { type: 'business', columns: cols, constraintName: cname };
         }
 
         const genId = node.getGenIdColName();
         if (genId != null)
-            return { type: 'surrogate', columns: [genId], constraintName: `${objName}_pk` };
+            return { type: 'surrogate', columns: [genId], constraintName: `${cstObjName}_pk` };
 
         return { type: 'none', columns: [], constraintName: '' };
     }
@@ -623,7 +624,7 @@ export class OracleDiffGenerator implements DiffGenerator {
         // Check / between constraint for the new column
         if (col.isOption('check') || col.isOption('values')) {
             const vals   = col.isOption('check') ? col.getValues('check') : col.getValues('values');
-            const ckName = concatNames(ctx.objPrefix(), `${tbl}_${colName}`, DEFAULT_NAMING.ck);
+            const ckName = concatNames(ctx.objPrefix('no schema'), `${tbl}_${colName}`, DEFAULT_NAMING.ck);
             stmts.push(mk('add_column', tbl,
                 `alter table ${objName} add constraint ${ckName} check (${colName} in (${vals}));\n`,
                 colName));
@@ -772,13 +773,13 @@ export class OracleDiffGenerator implements DiffGenerator {
             if (oldConstrSig !== null) {
                 const oldCkName = oldHasBet
                     ? concatNames(`${tbl}_${colName}`, DEFAULT_NAMING.bet)
-                    : concatNames(oldCtx.objPrefix(), `${tbl}_${colName}`, DEFAULT_NAMING.ck);
+                    : concatNames(oldCtx.objPrefix('no schema'), `${tbl}_${colName}`, DEFAULT_NAMING.ck);
                 stmts.push(mk('modify_column', tbl,
                     `alter table ${objName} drop constraint ${oldCkName};\n`, colName));
             }
             if (newHasCheck) {
                 const vals   = newHasCheck && newCol.isOption('check') ? newCol.getValues('check') : newCol.getValues('values');
-                const ckName = concatNames(newCtx.objPrefix(), `${tbl}_${colName}`, DEFAULT_NAMING.ck);
+                const ckName = concatNames(newCtx.objPrefix('no schema'), `${tbl}_${colName}`, DEFAULT_NAMING.ck);
                 stmts.push(mk('modify_column', tbl,
                     `alter table ${objName} add constraint ${ckName} check (${colName} in (${vals}));\n`,
                     colName));
@@ -801,18 +802,20 @@ export class OracleDiffGenerator implements DiffGenerator {
         oldCtx:  DdlContext, newCtx:  DdlContext,
     ): DiffStatement[] {
         const stmts:    DiffStatement[] = [];
-        const tbl       = newNode.parseName();
-        const oldObj    = oldCtx.objPrefix() + tbl;
-        const newObj    = newCtx.objPrefix() + tbl;
-        const db23      = isDb23(newCtx);
-        const oldFks    = oldNode.fks ?? {};
-        const newFks    = newNode.fks ?? {};
+        const tbl          = newNode.parseName();
+        const oldObj       = oldCtx.objPrefix() + tbl;
+        const newObj       = newCtx.objPrefix() + tbl;
+        const oldObjCst    = oldCtx.objPrefix('no schema') + tbl;
+        const newObjCst    = newCtx.objPrefix('no schema') + tbl;
+        const db23         = isDb23(newCtx);
+        const oldFks       = oldNode.fks ?? {};
+        const newFks       = newNode.fks ?? {};
 
         // Dropped FKs
         for (const fkCol in oldFks) {
             if (fkCol in newFks) continue;
             stmts.push(mk('drop_fk', tbl,
-                `alter table ${oldObj} drop constraint ${oldObj}_${fkCol}_fk;\n`));
+                `alter table ${oldObj} drop constraint ${oldObjCst}_${fkCol}_fk;\n`));
             // Also drop the FK column (it was auto-generated from the relationship)
             stmts.push(mk('set_unused', tbl,
                 `alter table ${oldObj} set unused column ${fkCol};\n`, fkCol));
@@ -826,7 +829,7 @@ export class OracleDiffGenerator implements DiffGenerator {
             if (fkCol in oldFks) continue;
             const refTable  = newFks[fkCol];
             const refPrefix = newCtx.find(refTable) != null ? newCtx.objPrefix() : '';
-            const cName     = `${newObj}_${fkCol}_fk`;
+            const cName     = `${newObjCst}_${fkCol}_fk`;
             const fkType    = this._fkColType(refTable, newCtx) ?? 'number';
             const alterSql  =
                 `alter table ${newObj} add constraint ${cName}\n` +
@@ -862,11 +865,13 @@ export class OracleDiffGenerator implements DiffGenerator {
         oldNode: IDdlNode, newNode: IDdlNode,
         oldCtx:  DdlContext, newCtx:  DdlContext,
     ): DiffStatement[] {
-        const stmts:  DiffStatement[] = [];
-        const tbl     = newNode.parseName();
-        const newObj  = newCtx.objPrefix() + tbl;
-        const oldObj  = oldCtx.objPrefix() + tbl;
-        const db23    = isDb23(newCtx);
+        const stmts:     DiffStatement[] = [];
+        const tbl        = newNode.parseName();
+        const newObj     = newCtx.objPrefix() + tbl;
+        const oldObj     = oldCtx.objPrefix() + tbl;
+        const newObjCst  = newCtx.objPrefix('no schema') + tbl;
+        const oldObjCst  = oldCtx.objPrefix('no schema') + tbl;
+        const db23       = isDb23(newCtx);
         const oldMap  = this._colMap(oldNode);
         const newMap  = this._colMap(newNode);
 
@@ -892,14 +897,14 @@ export class OracleDiffGenerator implements DiffGenerator {
             }
 
             if (!hadUnq && hasUnq) {
-                const name = `${newObj}_${colName}_unq`;
+                const name = `${newObjCst}_${colName}_unq`;
                 const sql  = `create unique index ${name} on ${newObj} (${colName});\n`;
                 stmts.push(mk('add_index', tbl,
                     db23 ? `create unique index if not exists ${name} on ${newObj} (${colName});\n`
                          : this._wrapIndex(sql)));
             }
             if (hadUnq && !hasUnq) {
-                const name = `${oldObj}_${colName}_unq`;
+                const name = `${oldObjCst}_${colName}_unq`;
                 stmts.push(mk('drop_index', tbl, `drop index ${name};\n`));
             }
         }
@@ -920,11 +925,11 @@ export class OracleDiffGenerator implements DiffGenerator {
         if (oldUk !== newUk) {
             if (oldUk != null) {
                 stmts.push(mk('drop_index', tbl,
-                    `alter table ${oldObj} drop constraint ${oldObj}${DEFAULT_NAMING.uk};\n`));
+                    `alter table ${oldObj} drop constraint ${oldObjCst}${DEFAULT_NAMING.uk};\n`));
             }
             if (newUk != null) {
                 const cols     = newUk.split(',').join(', ');
-                const ukName   = `${newObj}${DEFAULT_NAMING.uk}`;
+                const ukName   = `${newObjCst}${DEFAULT_NAMING.uk}`;
                 const alterSql = `alter table ${newObj} add constraint ${ukName} unique (${cols});\n`;
                 stmts.push(mk('add_index', tbl,
                     db23 ? alterSql : this._wrapConstraint(alterSql)));

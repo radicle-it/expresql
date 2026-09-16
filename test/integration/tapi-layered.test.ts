@@ -2382,3 +2382,60 @@ describe('pessimistic lock — p_lock parameter on get', () => {
     });
 
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §18  /lockmode directive — per-table lock default
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('/lockmode directive — per-table lock default', () => {
+
+    // No directive → 'none' / 5 (the implicit default)
+    test('no /lockmode: SVC spec defaults to none / 5', () => {
+        const out = ddl('tabs /api full\n  name');
+        expect(out).toContain("p_lock         in varchar2 default 'none'");
+        expect(out).toContain('p_lock_timeout in number   default 5');
+    });
+
+    // /lockmode nowait
+    test('/lockmode nowait: SVC spec default becomes nowait', () => {
+        const out = ddl('tabs /api full /lockmode nowait\n  name');
+        expect(out).toContain("p_lock         in varchar2 default 'nowait'");
+        expect(out).toContain('p_lock_timeout in number   default 5');
+    });
+
+    // /lockmode wait (no timeout → 5)
+    test('/lockmode wait: SVC spec default becomes wait with timeout 5', () => {
+        const out = ddl('tabs /api full /lockmode wait\n  name');
+        expect(out).toContain("p_lock         in varchar2 default 'wait'");
+        expect(out).toContain('p_lock_timeout in number   default 5');
+    });
+
+    // /lockmode wait:10
+    test('/lockmode wait:10: SVC spec default becomes wait with timeout 10', () => {
+        const out = ddl('tabs /api full /lockmode wait:10\n  name');
+        expect(out).toContain("p_lock         in varchar2 default 'wait'");
+        expect(out).toContain('p_lock_timeout in number   default 10');
+    });
+
+    // Propagates to APP spec
+    test('/lockmode wait:10: APP spec default becomes wait / 10', () => {
+        const out = ddl('tabs /api full /lockmode wait:10\n  name');
+        expect(out).toContain("p_lock         in  varchar2 default 'wait'");
+        expect(out).toContain('p_lock_timeout in  number   default 10');
+    });
+
+    // Propagates to RST NVL default
+    test('/lockmode wait:10: RST body l_lock NVL default becomes wait', () => {
+        const out = ddl('tabs /api full /lockmode wait:10\n  name\n# settings = {"interface": "rest"}');
+        expect(out).toContain("l_lock         varchar2(10) := nvl(:lock, 'wait');");
+        expect(out).toContain('l_lock_timeout number       := nvl(to_number(:lock_timeout), 10);');
+    });
+
+    // lookup tier with /lockmode wait:10
+    test('/lockmode wait:10 on lookup tier: APP spec default becomes wait / 10', () => {
+        const out = ddl('tabs /api lookup /lockmode wait:10\n  name');
+        expect(out).toContain("p_lock         in  varchar2 default 'wait'");
+        expect(out).toContain('p_lock_timeout in  number   default 10');
+    });
+
+});

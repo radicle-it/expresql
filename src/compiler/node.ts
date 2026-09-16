@@ -564,16 +564,16 @@ export class DdlNode implements IDdlNode {
             const constr = this.getGeneralConstraint();
             if (constr !== null) {
                 if (this.children !== null && 0 < this.children.length) {
-                    ret += tab + 'constraint ' + concatNames(this._ctx.objPrefix(), parent_child, DEFAULT_NAMING.ck);
+                    ret += tab + 'constraint ' + concatNames(this._ctx.objPrefix('no schema'), parent_child, DEFAULT_NAMING.ck);
                     ret += '  check ' + constr + ',\n';
                 } else {
-                    ret += ' constraint ' + concatNames(this._ctx.objPrefix(), parent_child, DEFAULT_NAMING.ck) + '\n';
+                    ret += ' constraint ' + concatNames(this._ctx.objPrefix('no schema'), parent_child, DEFAULT_NAMING.ck) + '\n';
                     ret += tab + tab + offset + 'check ' + constr + '';
                 }
                 return ret;
             }
             const values = this.getValues('check');
-            ret += ' constraint ' + concatNames(this._ctx.objPrefix(), parent_child, DEFAULT_NAMING.ck) + '\n';
+            ret += ' constraint ' + concatNames(this._ctx.objPrefix('no schema'), parent_child, DEFAULT_NAMING.ck) + '\n';
             ret += tab + tab + offset + 'check (' + this.parseName() + ' in (' + values + '))';
         }
         return ret;
