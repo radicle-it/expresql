@@ -600,6 +600,20 @@ audit_log /api /immutable
    payload    clob`,
     },
     {
+        label: 'Layered TAPI — SCD2 business key (/businesskey)', desc: 'get_current/get_as_of/history + change_rec on top of /versioned, keyed by a business key instead of the surrogate PK', cat: 'TAPI',
+        esql:
+`-- /businesskey adds SCD2 navigation on top of /versioned: get_current(code)/
+-- get_as_of(code, date)/history(code) (read paths, through customer_dim_rls
+-- like every other read) plus change_rec (closes the current version and
+-- opens the next one as a single call). Also adds a unique index so at most
+-- one row per code can ever be current — try removing /businesskey to see
+-- change_rec/get_current disappear along with it.
+customer_dim /api /versioned /businesskey code
+   code        vc20 /nn
+   name        vc200 /nn
+   row_version num /nn`,
+    },
+    {
         label: 'Multi-Tenant SaaS', desc: 'Shared schema with tenant_id isolation', cat: 'Multi-tenant',
         esql:
 `tenants /insert 2

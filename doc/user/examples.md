@@ -30,6 +30,7 @@ This document collects end-to-end ExpreSQL examples. Each scenario shows the QSQ
 - [23. IBM Db2 — triggers and audit columns](#23-ibm-db2--triggers-and-audit-columns)
 - [24. IBM Db2 — layered TAPI with schema-based procedures](#24-ibm-db2--layered-tapi-with-schema-based-procedures)
 - [25. Row-level scope with `dimensioncolumns`, `chk_rbac` and `chk_rls`](#25-row-level-scope-with-dimensioncolumns-chk_rbac-and-chk_rls)
+- [26. SCD2 business-key navigation with `/businesskey`](#26-scd2-business-key-navigation-with-businesskey)
 
 ---
 
@@ -1882,3 +1883,117 @@ Before this setting, `validate()` never fired on delete at all, on any table —
 | `chk_rls` | Only if the table has a configured dimension column | Raises via `sec_pkg.require_dimension_scope` |
 | `<table>_rls` view + read paths reading from it | Always, every table (filtered if a dimension column is configured, an unfiltered passthrough otherwise) | Row never returned when out of scope; same `NOT_FOUND` as missing id |
 | Write paths reading from `<table>_rls` | Never (unlike `tenantid`'s WHERE-clause enforcement) | N/A — `chk_rls` is authoritative instead |
+
+---
+
+## 26. SCD2 business-key navigation with `/businesskey`
+
+`/versioned` (§8) already makes a table insert-only, with a narrowed TAPI (`close_row`/`close_version`/`close` in place of update/delete) — but on its own it has no concept of "this row and that row are two versions of the same logical entity." `/businesskey <col>` adds exactly that on top: navigating by a business key instead of by the surrogate PK of one specific version row. Only meaningful together with `/versioned` (a warning otherwise), and `<col>` must already be a declared column (a warning if it isn't — see `errors.test.ts`).
+
+**Input:**
+
+```expresql
+customer_dim /api /versioned /businesskey code
+  code vc20 /nn
+  name vc200 /nn
+  row_version num /nn
+```
+
+**Beyond what `/versioned` already generates, a unique index:**
+
+```sql
+create unique index customer_dim_code_cur_uk on customer_dim (case when is_current = 1 then code end);
+```
+
+Oracle's function-based unique index makes "at most one current row per key" a database-level guarantee, not just a convention the TAPI's own orchestration (below) happens to follow — two concurrent `create_rec` calls for the same `code` without a `change_rec`/`close_version` in between will not both succeed silently.
+
+**DAL — three new read functions, all through `customer_dim_rls` like every other read path (never the base table):**
+
+```sql
+function get_current (p_code in customer_dim.code%type) return customer_dim%rowtype is
+    l_row customer_dim%rowtype;
+begin
+    select * into l_row from customer_dim_rls where code = p_code and is_current = 1;
+    return l_row;
+exception
+    when no_data_found then
+        raise_application_error(c_err_not_found, '[NOT_FOUND] customer_dim: no current version for code=' || p_code);
+end get_current;
+
+function get_as_of (p_code in customer_dim.code%type, p_as_of in timestamp) return customer_dim%rowtype is
+    l_row customer_dim%rowtype;
+begin
+    select * into l_row from customer_dim_rls
+    where  code = p_code
+    and    valid_from <= p_as_of
+    and    (valid_to is null or valid_to > p_as_of);
+    return l_row;
+exception
+    when no_data_found then
+        raise_application_error(c_err_not_found, '[NOT_FOUND] customer_dim: no version for code=' || p_code || ' as of ' || p_as_of);
+end get_as_of;
+
+function history (p_code in customer_dim.code%type) return t_cursor is
+    l_cur t_cursor;
+begin
+    open l_cur for select * from customer_dim_rls where code = p_code order by valid_from;
+    return l_cur;
+end history;
+```
+
+**SVC — `get_current`/`get_as_of`/`history` delegate to DAL (or the absorbed `p_get_current`/`p_get_as_of`/`p_history` on `service`/`lookup` tiers); `change_rec` is the new part — it closes the current version and opens the next one as a single call, instead of the caller having to sequence `close_version` then `create_rec` by hand:**
+
+```sql
+procedure change_rec (
+    p_code        in     customer_dim.code%type,
+    p_rec         in     t_rec,
+    p_valid_to    in     customer_dim.valid_to%type default systimestamp,
+    x_id          out    customer_dim.id%type
+) is
+    l_current customer_dim%rowtype;
+    l_rec     t_rec := p_rec;
+begin
+    l_current := get_current(p_code => p_code);
+    l_rec.code := p_code;
+    close_version(
+        p_id          => l_current.id,
+        p_valid_to    => p_valid_to,
+        p_row_version => l_current.row_version
+    );
+    create_rec(p_rec => l_rec, x_id => x_id);
+end change_rec;
+```
+
+`p_code` (the lookup argument) is authoritative — `l_rec.code := p_code` overwrites whatever `p_rec.code` the caller passed, so a caller can never accidentally open the new version under a different key than the one just closed. No explicit transaction control here (same rule as every other `_svc` procedure): both writes share the caller's transaction, so a failure between `close_version` and `create_rec` rolls back the whole `change_rec`, not just half of it.
+
+**`_app`** gets `get_current`/`get_as_of` (same OUT-parameter shape as `get()`, but keyed by `p_code` instead of `p_id` — and `p_code` itself is excluded from the OUT list, since the caller already supplied it) and `change_rec` (same flat IN shape as `ins()`, plus `p_valid_to` and an OUT `p_id` for the new version). No `history` at `_app`: a multi-row result has no honest shape as flat OUT parameters — call `_svc.history` directly from PL/SQL, or query `customer_dim_rls where code = :code order by valid_from` straight from an APEX report region, the same way nothing needed a dedicated view for `/versioned`'s own `_current` case.
+
+**`_rst`** (`interface: "rest"`) gets all four, using `:p_code` instead of `:p_id` as the ORDS bind for the lookup, plus `:as_of` (a query-param bind, `to_timestamp(:as_of, 'YYYY-MM-DD"T"HH24:MI:SS.FF3')`) for `get_as_of`. `history` returns a JSON array, the same fetch-loop shape as `get_all`:
+
+```sql
+procedure history is
+    l_cur sys_refcursor;
+    l_row customer_dim%rowtype;
+    l_sep varchar2(1) := '';
+begin
+    l_cur := customer_dim_svc.history(p_code => :p_code);
+    htp.p('[');
+    loop
+        fetch l_cur into l_row;
+        exit when l_cur%notfound;
+        htp.p(l_sep || json_object('id' value l_row.id, 'code' value l_row.code, 'name' value l_row.name returning clob));
+        l_sep := ',';
+    end loop;
+    close l_cur;
+    htp.p(']');
+    :status := 200;
+end history;
+```
+
+| Layer | New procedures | Notes |
+|---|---|---|
+| DAL/SVC | `get_current`, `get_as_of`, `history` | Read paths — always through `<table>_rls` |
+| SVC/`_app`/`_rst` | `change_rec` | Closes current version + opens next, one call |
+| `_app` | `get_current`, `get_as_of` (no `history`) | Flat OUT params can't carry a multi-row result |
+| `_rst` | `get_current`, `get_as_of`, `history`, `change_rec` | `history` as a JSON array, like `get_all` |
+| DDL | `create unique index <table>_<col>_cur_uk ...` | At most one current row per key, enforced by the DB |

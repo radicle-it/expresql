@@ -770,6 +770,16 @@ export class OracleDDLGenerator extends BaseGenerator {
                 output += vv;
                 const objName = (this._ddl.objPrefix() + node.parseName()).toLowerCase();
                 output += `create index ${objName}_is_current_i on ${objName} (is_current);\n\n`;
+                // /businesskey: enforce at most one current row per business key — the
+                // TAPI (change_rec/close_version+create_rec) is the intended write path,
+                // but the DB is the authority: two concurrent create_rec calls for the
+                // same key must not both succeed silently.
+                const bkCol = node.isOption('businesskey')
+                    ? (node.getOptionValue('businesskey') ?? '').trim().toLowerCase() : '';
+                if (bkCol !== '' && node.findChild(bkCol) !== null) {
+                    output += `create unique index ${objName}_${bkCol}_cur_uk on ${objName} `
+                        + `(case when is_current = 1 then ${bkCol} end);\n\n`;
+                }
             }
         }
 

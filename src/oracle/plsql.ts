@@ -383,6 +383,17 @@ export class OraclePlsqlBuilder {
         );
     }
 
+    // /businesskey <col> — only meaningful alongside /versioned (enforced by
+    // error-msgs.ts businesskey_checks). Returns '' when absent, invalid, or the
+    // named column isn't actually declared on this table (same defensive stance
+    // as an invalid /versioned custom column name would take: generate nothing
+    // extra rather than reference a column that doesn't exist).
+    private _businessKeyCol(node: IDdlNode): string {
+        if (!node.isOption('versioned') || !node.isOption('businesskey')) return '';
+        const col = (String(node.getOptionValue('businesskey') ?? '')).trim().toLowerCase();
+        return col !== '' && node.findChild(col) !== null ? col : '';
+    }
+
     private _hasUniqueCol(node: IDdlNode): boolean {
         return node.children.some(c => c.isOption('unique'));
     }
@@ -647,6 +658,41 @@ export class OraclePlsqlBuilder {
             r += `${tab}end p_delete_row;\n\n`;
         }
 
+        const bkCol = this._businessKeyCol(node);
+        if (bkCol !== '') {
+            const tenantWhere = synTenantId ? ` and tenant_id = ${tenantCtxPkg}.get_id` : '';
+
+            r += `${tab}function p_get_current (p_${bkCol} in ${tbl}.${bkCol}%type) return ${tbl}%rowtype is\n`;
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}select * into l_row from ${dimSource} where ${bkCol} = p_${bkCol} and is_current = 1${tenantWhere};\n`;
+            r += `${tab}${tab}return l_row;\n`;
+            r += `${tab}exception\n`;
+            r += `${tab}${tab}when no_data_found then\n`;
+            r += `${tab}${tab}${tab}raise_application_error(-20002, '[NOT_FOUND] ${tbl}: no current version for ${bkCol}=' || p_${bkCol});\n`;
+            r += `${tab}end p_get_current;\n\n`;
+
+            r += `${tab}function p_get_as_of (p_${bkCol} in ${tbl}.${bkCol}%type, p_as_of in timestamp) return ${tbl}%rowtype is\n`;
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}select * into l_row from ${dimSource}\n`;
+            r += `${tab}${tab}where  ${bkCol} = p_${bkCol}\n`;
+            r += `${tab}${tab}and    valid_from <= p_as_of\n`;
+            r += `${tab}${tab}and    (${vtCol} is null or ${vtCol} > p_as_of)${tenantWhere};\n`;
+            r += `${tab}${tab}return l_row;\n`;
+            r += `${tab}exception\n`;
+            r += `${tab}${tab}when no_data_found then\n`;
+            r += `${tab}${tab}${tab}raise_application_error(-20002, '[NOT_FOUND] ${tbl}: no version for ${bkCol}=' || p_${bkCol} || ' as of ' || p_as_of);\n`;
+            r += `${tab}end p_get_as_of;\n\n`;
+
+            r += `${tab}function p_history (p_${bkCol} in ${tbl}.${bkCol}%type) return sys_refcursor is\n`;
+            r += `${tab}${tab}l_cur sys_refcursor;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}open l_cur for select * from ${dimSource} where ${bkCol} = p_${bkCol}${tenantWhere} order by valid_from;\n`;
+            r += `${tab}${tab}return l_cur;\n`;
+            r += `${tab}end p_history;\n\n`;
+        }
+
         return r;
     }
 
@@ -716,6 +762,14 @@ export class OraclePlsqlBuilder {
         } else {
             r += `${tab}procedure update_row (p_row in out nocopy ${tbl}%rowtype);\n\n`;
             r += `${tab}procedure delete_row (p_id in t_id);\n\n`;
+        }
+        const bkCol = this._businessKeyCol(node);
+        if (bkCol !== '') {
+            // /businesskey: navigate versions by business key instead of by the
+            // surrogate PK of one specific version row.
+            r += `${tab}function get_current (p_${bkCol} in ${tbl}.${bkCol}%type) return ${tbl}%rowtype;\n\n`;
+            r += `${tab}function get_as_of (p_${bkCol} in ${tbl}.${bkCol}%type, p_as_of in timestamp) return ${tbl}%rowtype;\n\n`;
+            r += `${tab}function history (p_${bkCol} in ${tbl}.${bkCol}%type) return t_cursor;\n\n`;
         }
         r += `${tab}c_err_stale_data constant pls_integer := -20001;\n`;
         r += `${tab}c_err_not_found  constant pls_integer := -20002;\n`;
@@ -959,6 +1013,41 @@ export class OraclePlsqlBuilder {
             r += `${tab}end delete_row;\n\n`;
         }
 
+        const bkCol = this._businessKeyCol(node);
+        if (bkCol !== '') {
+            const tenantWhere = synTenantId ? ` and tenant_id = ${tenantCtxPkg}.get_id` : '';
+
+            r += `${tab}function get_current (p_${bkCol} in ${tbl}.${bkCol}%type) return ${tbl}%rowtype is\n`;
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}select * into l_row from ${dimSource} where ${bkCol} = p_${bkCol} and is_current = 1${tenantWhere};\n`;
+            r += `${tab}${tab}return l_row;\n`;
+            r += `${tab}exception\n`;
+            r += `${tab}${tab}when no_data_found then\n`;
+            r += `${tab}${tab}${tab}raise_application_error(c_err_not_found, '[NOT_FOUND] ${tbl}: no current version for ${bkCol}=' || p_${bkCol});\n`;
+            r += `${tab}end get_current;\n\n`;
+
+            r += `${tab}function get_as_of (p_${bkCol} in ${tbl}.${bkCol}%type, p_as_of in timestamp) return ${tbl}%rowtype is\n`;
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}select * into l_row from ${dimSource}\n`;
+            r += `${tab}${tab}where  ${bkCol} = p_${bkCol}\n`;
+            r += `${tab}${tab}and    valid_from <= p_as_of\n`;
+            r += `${tab}${tab}and    (${vtCol} is null or ${vtCol} > p_as_of)${tenantWhere};\n`;
+            r += `${tab}${tab}return l_row;\n`;
+            r += `${tab}exception\n`;
+            r += `${tab}${tab}when no_data_found then\n`;
+            r += `${tab}${tab}${tab}raise_application_error(c_err_not_found, '[NOT_FOUND] ${tbl}: no version for ${bkCol}=' || p_${bkCol} || ' as of ' || p_as_of);\n`;
+            r += `${tab}end get_as_of;\n\n`;
+
+            r += `${tab}function history (p_${bkCol} in ${tbl}.${bkCol}%type) return t_cursor is\n`;
+            r += `${tab}${tab}l_cur t_cursor;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}open l_cur for select * from ${dimSource} where ${bkCol} = p_${bkCol}${tenantWhere} order by valid_from;\n`;
+            r += `${tab}${tab}return l_cur;\n`;
+            r += `${tab}end history;\n\n`;
+        }
+
         r += `end ${this._bare(dal)};\n/\n`;
         return r;
     }
@@ -1129,6 +1218,23 @@ export class OraclePlsqlBuilder {
 
             r += `${tab}procedure delete_rec (p_id in ${tbl}.${pkNm}%type);\n\n`;
         }
+        const bkCol = this._businessKeyCol(node);
+        if (bkCol !== '') {
+            // /businesskey: navigate by business key instead of by the surrogate PK of
+            // one specific version row, and change_rec() atomically closes the current
+            // version and opens the next one — the two-call sequence (close_version then
+            // create_rec) a caller would otherwise have to orchestrate by hand.
+            r += `${tab}function get_current (p_${bkCol} in ${tbl}.${bkCol}%type) return ${tbl}%rowtype;\n\n`;
+            r += `${tab}function get_as_of (p_${bkCol} in ${tbl}.${bkCol}%type, p_as_of in timestamp) return ${tbl}%rowtype;\n\n`;
+            r += `${tab}function history (p_${bkCol} in ${tbl}.${bkCol}%type) return sys_refcursor;\n\n`;
+
+            r += `${tab}procedure change_rec (\n`;
+            r += `${tab}${tab}p_${bkCol.padEnd(10)} in     ${tbl}.${bkCol}%type,\n`;
+            r += `${tab}${tab}p_rec         in     t_rec,\n`;
+            r += `${tab}${tab}p_${vtCol.padEnd(10)} in     ${tbl}.${vtCol}%type default systimestamp,\n`;
+            r += `${tab}${tab}x_id          out    ${tbl}.${pkNm}%type\n`;
+            r += `${tab});\n\n`;
+        }
         r += `end ${this._bare(svc)};\n/\n`;
         return r;
     }
@@ -1158,6 +1264,9 @@ export class OraclePlsqlBuilder {
         const updateRow = hasDal ? `${dal}.update_row`  : 'p_update_row';
         const deleteRow = hasDal ? `${dal}.delete_row`  : 'p_delete_row';
         const closeRow  = hasDal ? `${dal}.close_row`   : 'p_close_row';
+        const getCurrentRow = hasDal ? `${dal}.get_current` : 'p_get_current';
+        const getAsOfRow    = hasDal ? `${dal}.get_as_of`   : 'p_get_as_of';
+        const historyCur    = hasDal ? `${dal}.history`     : 'p_history';
         const hkCall    = (proc: string) => hasHks ? `${hk}.${proc}` : `p_${proc}`;
 
         let r = `create or replace package body ${svc} as\n`;
@@ -1284,6 +1393,51 @@ export class OraclePlsqlBuilder {
             r += `${tab}end delete_rec;\n\n`;
         }
 
+        const bkCol = this._businessKeyCol(node);
+        if (bkCol !== '') {
+            r += `${tab}function get_current (p_${bkCol} in ${tbl}.${bkCol}%type) return ${tbl}%rowtype is\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}return ${getCurrentRow}(p_${bkCol} => p_${bkCol});\n`;
+            r += `${tab}end get_current;\n\n`;
+
+            r += `${tab}function get_as_of (p_${bkCol} in ${tbl}.${bkCol}%type, p_as_of in timestamp) return ${tbl}%rowtype is\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}return ${getAsOfRow}(p_${bkCol} => p_${bkCol}, p_as_of => p_as_of);\n`;
+            r += `${tab}end get_as_of;\n\n`;
+
+            r += `${tab}function history (p_${bkCol} in ${tbl}.${bkCol}%type) return sys_refcursor is\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}return ${historyCur}(p_${bkCol} => p_${bkCol});\n`;
+            r += `${tab}end history;\n\n`;
+
+            // change_rec — closes the current version as of p_<vtCol>, then opens the next
+            // one via create_rec (so RBAC/validation/hooks/audit run exactly as they would
+            // for a plain create). p_rec.<key> is overwritten with p_<key>, not read from
+            // it: the business key is authoritative from the lookup argument, never from
+            // whatever the caller happened to leave in p_rec.<key>. The two writes are not
+            // wrapped in their own transaction control here (same rule as every other
+            // _svc procedure in this project): the caller's transaction covers both, and a
+            // failure between them rolls back the whole change_rec, not just half of it.
+            r += `${tab}procedure change_rec (\n`;
+            r += `${tab}${tab}p_${bkCol.padEnd(10)} in     ${tbl}.${bkCol}%type,\n`;
+            r += `${tab}${tab}p_rec         in     t_rec,\n`;
+            r += `${tab}${tab}p_${vtCol.padEnd(10)} in     ${tbl}.${vtCol}%type default systimestamp,\n`;
+            r += `${tab}${tab}x_id          out    ${tbl}.${pkNm}%type\n`;
+            r += `${tab}) is\n`;
+            r += `${tab}${tab}l_current ${tbl}%rowtype;\n`;
+            r += `${tab}${tab}l_rec     t_rec := p_rec;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}l_current := get_current(p_${bkCol} => p_${bkCol});\n`;
+            r += `${tab}${tab}l_rec.${bkCol} := p_${bkCol};\n`;
+            r += `${tab}${tab}close_version(\n`;
+            r += `${tab}${tab}${tab}p_id       => l_current.${pkNm},\n`;
+            r += `${tab}${tab}${tab}p_${vtCol} => p_${vtCol}`;
+            if (hasVer) r += `,\n${tab}${tab}${tab}p_row_version => l_current.row_version`;
+            r += `\n${tab}${tab});\n`;
+            r += `${tab}${tab}create_rec(p_rec => l_rec, x_id => x_id);\n`;
+            r += `${tab}end change_rec;\n\n`;
+        }
+
         r += `end ${this._bare(svc)};\n/\n`;
         return r;
     }
@@ -1365,6 +1519,40 @@ export class OraclePlsqlBuilder {
             r += updLines.join(',\n') + `\n${tab});\n\n`;
 
             r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type);\n\n`;
+        }
+        const bkCol = this._businessKeyCol(node);
+        if (bkCol !== '') {
+            // get_current/get_as_of: same OUT shape as get() — the business key column
+            // itself is excluded from the OUT list (it's already the IN lookup argument),
+            // p_id is added to the OUT list (unlike get(), where it's the IN argument, here
+            // it's new information the caller didn't have going in).
+            const lookupCols = appCols.filter(({ name }) => name !== bkCol);
+            r += `${tab}procedure get_current (\n`;
+            r += `${tab}${tab}p_${bkCol.padEnd(appPadWidth)} in  ${tbl}.${bkCol}%type,\n`;
+            r += `${tab}${tab}p_id           out ${tbl}.${pkNm}%type`;
+            for (const { name } of lookupCols)
+                r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
+            if (hasVer) r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
+            r += `\n${tab});\n\n`;
+
+            r += `${tab}procedure get_as_of (\n`;
+            r += `${tab}${tab}p_${bkCol.padEnd(appPadWidth)} in  ${tbl}.${bkCol}%type,\n`;
+            r += `${tab}${tab}p_as_of        in  timestamp,\n`;
+            r += `${tab}${tab}p_id           out ${tbl}.${pkNm}%type`;
+            for (const { name } of lookupCols)
+                r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
+            if (hasVer) r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
+            r += `\n${tab});\n\n`;
+
+            // change_rec: same flat IN shape as ins() (appCols already include p_<key>
+            // at its natural position) plus p_<vtCol> and the new version's p_id OUT.
+            r += `${tab}procedure change_rec (\n`;
+            const changeLines: string[] = [];
+            for (const { name, nullable } of appCols)
+                changeLines.push(`${tab}${tab}p_${name.padEnd(appPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+            changeLines.push(`${tab}${tab}p_${vtCol.padEnd(appPadWidth)} in  ${tbl}.${vtCol}%type default systimestamp`);
+            changeLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
+            r += changeLines.join(',\n') + `\n${tab});\n\n`;
         }
         r += `end ${this._bare(app)};\n/\n`;
         return r;
@@ -1579,6 +1767,92 @@ export class OraclePlsqlBuilder {
             r += `${tab}end del;\n\n`;
         }
 
+        const bkCol = this._businessKeyCol(node);
+        if (bkCol !== '') {
+            const lookupCols = appCols.filter(({ name }) => name !== bkCol);
+            const getCurrentCall = hasSvc ? `${svc}.get_current` : 'p_get_current';
+            const getAsOfCall    = hasSvc ? `${svc}.get_as_of`   : 'p_get_as_of';
+
+            r += `${tab}procedure get_current (\n`;
+            r += `${tab}${tab}p_${bkCol.padEnd(appPadWidth)} in  ${tbl}.${bkCol}%type,\n`;
+            r += `${tab}${tab}p_id           out ${tbl}.${pkNm}%type`;
+            for (const { name } of lookupCols)
+                r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
+            if (hasVer) r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
+            r += `\n${tab}) is\n`;
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}l_row := ${getCurrentCall}(p_${bkCol} => p_${bkCol});\n`;
+            r += `${tab}${tab}p_id := l_row.${pkNm};\n`;
+            for (const { name } of lookupCols)
+                r += `${tab}${tab}p_${name} := l_row.${name};\n`;
+            if (hasVer) r += `${tab}${tab}p_row_version := l_row.row_version;\n`;
+            r += `${tab}end get_current;\n\n`;
+
+            r += `${tab}procedure get_as_of (\n`;
+            r += `${tab}${tab}p_${bkCol.padEnd(appPadWidth)} in  ${tbl}.${bkCol}%type,\n`;
+            r += `${tab}${tab}p_as_of        in  timestamp,\n`;
+            r += `${tab}${tab}p_id           out ${tbl}.${pkNm}%type`;
+            for (const { name } of lookupCols)
+                r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
+            if (hasVer) r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
+            r += `\n${tab}) is\n`;
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}l_row := ${getAsOfCall}(p_${bkCol} => p_${bkCol}, p_as_of => p_as_of);\n`;
+            r += `${tab}${tab}p_id := l_row.${pkNm};\n`;
+            for (const { name } of lookupCols)
+                r += `${tab}${tab}p_${name} := l_row.${name};\n`;
+            if (hasVer) r += `${tab}${tab}p_row_version := l_row.row_version;\n`;
+            r += `${tab}end get_as_of;\n\n`;
+
+            r += `${tab}procedure change_rec (\n`;
+            const changeLines: string[] = [];
+            for (const { name, nullable } of appCols)
+                changeLines.push(`${tab}${tab}p_${name.padEnd(appPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+            changeLines.push(`${tab}${tab}p_${vtCol.padEnd(appPadWidth)} in  ${tbl}.${vtCol}%type default systimestamp`);
+            changeLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
+            r += changeLines.join(',\n') + `\n${tab}) is\n`;
+            if (hasSvc) {
+                r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
+                r += `${tab}begin\n`;
+                for (const { name } of appCols)
+                    r += `${tab}${tab}l_rec.${name} := p_${name};\n`;
+                r += `${tab}${tab}${svc}.change_rec(\n`;
+                r += `${tab}${tab}${tab}p_${bkCol} => p_${bkCol},\n`;
+                r += `${tab}${tab}${tab}p_rec => l_rec,\n`;
+                r += `${tab}${tab}${tab}p_${vtCol} => p_${vtCol},\n`;
+                r += `${tab}${tab}${tab}x_id => p_id\n`;
+                r += `${tab}${tab});\n`;
+            } else {
+                // No _svc to delegate to (lookup/lookup+hks tier): inline the same two
+                // steps change_rec always does — close the current version, then insert
+                // the next one — through the same private DML/hooks every other absorbed
+                // operation on this tier already goes through.
+                r += `${tab}${tab}l_current ${tbl}%rowtype;\n`;
+                r += `${tab}${tab}l_row     ${tbl}%rowtype;\n`;
+                r += `${tab}begin\n`;
+                r += `${tab}${tab}l_current := p_get_current(p_${bkCol} => p_${bkCol});\n`;
+                r += `${tab}${tab}l_current.${vtCol} := p_${vtCol};\n`;
+                r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'close', p_row => l_current);\n`;
+                if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_current);\n`;
+                r += `${tab}${tab}${hkCall('validate')}(p_operation => 'close', p_row => l_current);\n`;
+                r += `${tab}${tab}${hkCall('before_close')}(p_row => l_current);\n`;
+                r += `${tab}${tab}p_close_row(p_id => l_current.${pkNm}, p_${vtCol} => l_current.${vtCol}, p_row => l_current);\n`;
+                r += `${tab}${tab}${hkCall('after_close')}(p_row => l_current);\n`;
+                for (const { name } of appCols)
+                    r += `${tab}${tab}l_row.${name} := p_${name};\n`;
+                r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'insert', p_row => l_row);\n`;
+                if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
+                r += `${tab}${tab}${hkCall('validate')}(p_operation => 'insert', p_row => l_row);\n`;
+                r += `${tab}${tab}${hkCall('before_insert')}(p_row => l_row);\n`;
+                r += `${tab}${tab}p_insert_row(p_row => l_row);\n`;
+                r += `${tab}${tab}${hkCall('after_insert')}(p_row => l_row);\n`;
+                r += `${tab}${tab}p_id := l_row.${pkNm};\n`;
+            }
+            r += `${tab}end change_rec;\n\n`;
+        }
+
         r += `end ${this._bare(app)};\n/\n`;
         return r;
     }
@@ -1599,6 +1873,12 @@ export class OraclePlsqlBuilder {
         } else {
             r += `${tab}procedure upd;\n`;
             r += `${tab}procedure del;\n\n`;
+        }
+        if (this._businessKeyCol(node) !== '') {
+            r += `${tab}procedure get_current;\n`;
+            r += `${tab}procedure get_as_of;\n`;
+            r += `${tab}procedure history;\n`;
+            r += `${tab}procedure change_rec;\n\n`;
         }
         r += `end ${this._bare(rst)};\n/\n`;
         return r;
@@ -1826,6 +2106,113 @@ export class OraclePlsqlBuilder {
             r += `${tab}${tab}:status := 200;\n`;
             r += `${tab}${tab}htp.p(json_object('${pkNm}' value :p_id));\n`;
             r += excTail + `${tab}end del;\n\n`;
+        }
+
+        const bkCol = this._businessKeyCol(node);
+        if (bkCol !== '') {
+            const getCurrentCall = hasSvc ? `${svc}.get_current` : 'p_get_current';
+            const getAsOfCall    = hasSvc ? `${svc}.get_as_of`   : 'p_get_as_of';
+            const historyCall    = hasSvc ? `${svc}.history`     : 'p_history';
+            const changeCols     = rstCols.filter(({ name }) => name !== bkCol);
+
+            // get_current — same JSON shape as get(), looked up by :p_<key> instead of :p_id
+            r += `${tab}procedure get_current is\n`;
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}l_row := ${getCurrentCall}(p_${bkCol} => :p_${bkCol});\n`;
+            r += `${tab}${tab}:status := 200;\n`;
+            r += `${tab}${tab}htp.p(json_object(\n`;
+            r += jsonCols.map(c => `${tab}${tab}${tab}'${c}' value l_row.${c}`).join(',\n') + '\n';
+            r += `${tab}${tab}${tab}returning clob\n`;
+            r += `${tab}${tab}));\n`;
+            r += excTail + `${tab}end get_current;\n\n`;
+
+            // get_as_of — :as_of is an ORDS query-param bind, ISO-8601-ish
+            // ('YYYY-MM-DDTHH24:MI:SS[.FF3]'); same JSON shape as get_current.
+            r += `${tab}procedure get_as_of is\n`;
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}l_row := ${getAsOfCall}(p_${bkCol} => :p_${bkCol}, p_as_of => to_timestamp(:as_of, 'YYYY-MM-DD"T"HH24:MI:SS.FF3'));\n`;
+            r += `${tab}${tab}:status := 200;\n`;
+            r += `${tab}${tab}htp.p(json_object(\n`;
+            r += jsonCols.map(c => `${tab}${tab}${tab}'${c}' value l_row.${c}`).join(',\n') + '\n';
+            r += `${tab}${tab}${tab}returning clob\n`;
+            r += `${tab}${tab}));\n`;
+            r += excTail + `${tab}end get_as_of;\n\n`;
+
+            // history — JSON array of every version for :p_<key>, oldest first (same
+            // fetch-loop shape as get_all).
+            r += `${tab}procedure history is\n`;
+            r += `${tab}${tab}l_cur sys_refcursor;\n`;
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}${tab}l_sep varchar2(1) := '';\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}l_cur := ${historyCall}(p_${bkCol} => :p_${bkCol});\n`;
+            r += `${tab}${tab}htp.p('[');\n`;
+            r += `${tab}${tab}loop\n`;
+            r += `${tab}${tab}${tab}fetch l_cur into l_row;\n`;
+            r += `${tab}${tab}${tab}exit when l_cur%notfound;\n`;
+            r += `${tab}${tab}${tab}htp.p(l_sep || json_object(\n`;
+            r += jsonCols.map(c => `${tab}${tab}${tab}${tab}'${c}' value l_row.${c}`).join(',\n') + '\n';
+            r += `${tab}${tab}${tab}${tab}returning clob\n`;
+            r += `${tab}${tab}${tab}));\n`;
+            r += `${tab}${tab}${tab}l_sep := ',';\n`;
+            r += `${tab}${tab}end loop;\n`;
+            r += `${tab}${tab}close l_cur;\n`;
+            r += `${tab}${tab}htp.p(']');\n`;
+            r += `${tab}${tab}:status := 200;\n`;
+            r += excTail + `${tab}end history;\n\n`;
+
+            // change_rec — :p_<key> (bind) identifies the row to close; the body carries
+            // the next version's attributes (key excluded — always :p_<key>, never the
+            // body's own copy of it) and an optional close instant (defaults to now).
+            r += `${tab}procedure change_rec is\n`;
+            r += `${tab}${tab}l_body clob := :body_text;\n`;
+            if (hasSvc) {
+                r += `${tab}${tab}l_rec  ${svc}.t_rec;\n`;
+            } else {
+                r += `${tab}${tab}l_current ${tbl}%rowtype;\n`;
+                r += `${tab}${tab}l_row     ${tbl}%rowtype;\n`;
+            }
+            r += `${tab}${tab}l_id   ${tbl}.${pkNm}%type;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}if l_body is null or not json_exists(l_body, '$') then\n`;
+            r += `${tab}${tab}${tab}:status := 400;\n`;
+            r += `${tab}${tab}${tab}htp.p(json_object('message' value 'request body must be valid json'));\n`;
+            r += `${tab}${tab}${tab}return;\n`;
+            r += `${tab}${tab}end if;\n`;
+            if (hasSvc) {
+                for (const { name } of changeCols)
+                    r += `${tab}${tab}l_rec.${name} := json_value(l_body, '$.${name}');\n`;
+                r += `${tab}${tab}${svc}.change_rec(\n`;
+                r += `${tab}${tab}${tab}p_${bkCol} => :p_${bkCol},\n`;
+                r += `${tab}${tab}${tab}p_rec => l_rec,\n`;
+                r += `${tab}${tab}${tab}p_${vtCol} => coalesce(json_value(l_body, '$.${vtCol}' returning ${tbl}.${vtCol}%type), systimestamp),\n`;
+                r += `${tab}${tab}${tab}x_id => l_id\n`;
+                r += `${tab}${tab});\n`;
+            } else {
+                r += `${tab}${tab}l_current := p_get_current(p_${bkCol} => :p_${bkCol});\n`;
+                r += `${tab}${tab}l_current.${vtCol} := coalesce(json_value(l_body, '$.${vtCol}' returning ${tbl}.${vtCol}%type), systimestamp);\n`;
+                r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'close', p_row => l_current);\n`;
+                if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_current);\n`;
+                r += `${tab}${tab}${hkCall('validate')}(p_operation => 'close', p_row => l_current);\n`;
+                r += `${tab}${tab}${hkCall('before_close')}(p_row => l_current);\n`;
+                r += `${tab}${tab}p_close_row(p_id => l_current.${pkNm}, p_${vtCol} => l_current.${vtCol}, p_row => l_current);\n`;
+                r += `${tab}${tab}${hkCall('after_close')}(p_row => l_current);\n`;
+                for (const { name } of changeCols)
+                    r += `${tab}${tab}l_row.${name} := json_value(l_body, '$.${name}');\n`;
+                r += `${tab}${tab}l_row.${bkCol} := :p_${bkCol};\n`;
+                r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'insert', p_row => l_row);\n`;
+                if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
+                r += `${tab}${tab}${hkCall('validate')}(p_operation => 'insert', p_row => l_row);\n`;
+                r += `${tab}${tab}${hkCall('before_insert')}(p_row => l_row);\n`;
+                r += `${tab}${tab}p_insert_row(p_row => l_row);\n`;
+                r += `${tab}${tab}${hkCall('after_insert')}(p_row => l_row);\n`;
+                r += `${tab}${tab}l_id := l_row.${pkNm};\n`;
+            }
+            r += `${tab}${tab}:status := 201;\n`;
+            r += `${tab}${tab}htp.p(json_object('${pkNm}' value l_id));\n`;
+            r += excTail + `${tab}end change_rec;\n\n`;
         }
 
         r += `end ${this._bare(rst)};\n/\n`;

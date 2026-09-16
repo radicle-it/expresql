@@ -411,6 +411,8 @@ emp_v = departments employees
                         <tr><td>name /compress</td><td>CREATE TABLE … COMPRESS</td></tr>
                         <tr><td>name /flashback <em>archive</em></td><td>Enable Flashback Data Archive (optional archive name)</td></tr>
                         <tr><td>name /immutable</td><td>Append-only table — trigger blocks UPDATE/DELETE (21c+). With <code>/api</code>: no update/delete anywhere in the generated TAPI either — only get/ins</td></tr>
+                        <tr><td>name /versioned [<em>vt_col</em>]</td><td>Versioned insert-only table (valid_from/valid_to/is_current). With <code>/api</code>: TAPI narrowed to close instead of update/delete</td></tr>
+                        <tr><td>name /versioned /businesskey <em>col</em></td><td>SCD2 navigation by business key on top of /versioned: get_current/get_as_of/history + change_rec, plus a unique index (one current row per key)</td></tr>
                         <tr><td>name /history</td><td>Temporal history table with valid_from/valid_to (23ai+)</td></tr>
                         <tr><td>name /soda</td><td>SODA JSON document collection with fixed schema (21c+)</td></tr>
                     </table>

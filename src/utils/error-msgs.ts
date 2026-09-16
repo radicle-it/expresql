@@ -11,6 +11,7 @@ interface ParsedNode {
     descendants(): ParsedNode[];
     isOption(key: string): boolean;
     indexOf(key: string, flag?: boolean): number;
+    getOptionValue(option: string): string | null;
 }
 
 /** Minimal shape of the top-level expresql instance passed to checkSyntax. */
@@ -64,6 +65,7 @@ const tableDirectives = [
     ,'rowversion'
     ,'soda'
     ,'versioned'
+    ,'businesskey'
     ,'unique','uk'
     ,'pk'
     ,'cascade','setnull'
@@ -142,6 +144,7 @@ function checkSyntax(parsed: ParsedContext): SyntaxError[] {
     }
 
     ret = ret.concat(versioned_immutable_conflict(ddl));
+    ret = ret.concat(businesskey_checks(ddl));
 
     return ret;
 }
@@ -180,6 +183,35 @@ function versioned_immutable_conflict(ddl: ParsedContext): SyntaxError[] {
                 '/versioned and /immutable are contradictory: /immutable blocks the valid_to closure that /versioned requires',
                 new Offset(node.line, node.src[pos].begin),
                 new Offset(node.line, node.src[pos].begin + 'immutable'.length),
+                'warning'
+            ));
+        }
+    }
+    return ret;
+}
+
+function businesskey_checks(ddl: ParsedContext): SyntaxError[] {
+    const ret: SyntaxError[] = [];
+    for (const node of ddl.descendants()) {
+        if (node.inferType() !== 'table') continue;
+        if (!node.isOption('businesskey')) continue;
+        const pos = node.indexOf('businesskey');
+        if (pos < 0 || pos >= node.src.length) continue;
+        if (!node.isOption('versioned')) {
+            ret.push(new SyntaxError(
+                '/businesskey has no effect without /versioned',
+                new Offset(node.line, node.src[pos].begin),
+                new Offset(node.line, node.src[pos].begin + 'businesskey'.length),
+                'warning'
+            ));
+            continue;
+        }
+        const keyCol = (node.getOptionValue('businesskey') ?? '').trim().toLowerCase();
+        if (keyCol === '' || !node.descendants().some(d => d.parseName().toLowerCase() === keyCol)) {
+            ret.push(new SyntaxError(
+                `/businesskey references column "${keyCol}", which is not declared on this table`,
+                new Offset(node.line, node.src[pos].begin),
+                new Offset(node.line, node.src[pos].begin + 'businesskey'.length),
                 'warning'
             ));
         }

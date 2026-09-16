@@ -116,6 +116,25 @@ describe('error detection', () => {
 
 });
 
+describe('businesskey directive checks', () => {
+
+    test('/businesskey without /versioned → warning', () => {
+        const errors = toErrors(`customer_dim /api /businesskey code\n    code vc20 /nn`) as ErrorEntry[];
+        expect(errors.some(e => e.message.includes('/businesskey has no effect without /versioned'))).toBe(true);
+    });
+
+    test('/businesskey referencing an undeclared column → warning', () => {
+        const errors = toErrors(`customer_dim /api /versioned /businesskey nope\n    code vc20 /nn`) as ErrorEntry[];
+        expect(errors.some(e => e.message.includes('/businesskey references column "nope"'))).toBe(true);
+    });
+
+    test('/businesskey + /versioned + a real column → no businesskey warnings', () => {
+        const errors = toErrors(`customer_dim /api /versioned /businesskey code\n    code vc20 /nn`) as ErrorEntry[];
+        expect(errors.some(e => e.message.includes('/businesskey'))).toBe(false);
+    });
+
+});
+
 describe('error message constants', () => {
 
     test('all expected message keys are present', () => {

@@ -2584,3 +2584,144 @@ describe('immutable layered TAPI — degraded tiers (no absorbed update/delete)'
     });
 
 });
+
+// ── /businesskey directive — SCD2 business-key navigation on a /versioned table ──
+// /businesskey <col> only takes effect together with /versioned (see errors.test.ts
+// for the standalone-usage/undeclared-column warnings). Adds get_current/get_as_of/
+// history (read, by business key instead of by surrogate PK of one specific version
+// row) and change_rec (atomically closes the current version and opens the next).
+
+const CUSTOMER_DIM_QSQL = `\
+customer_dim /api /versioned /businesskey code
+  code vc20 /nn
+  name vc200 /nn
+  row_version num /nn
+# settings = {"api": "layered"}`.trim();
+
+describe('businesskey (SCD2) — DDL', () => {
+
+    test('unique index enforces at most one current row per business key', () => {
+        const out = ddl(CUSTOMER_DIM_QSQL);
+        expect(out).toContain('create unique index customer_dim_code_cur_uk on customer_dim (case when is_current = 1 then code end);');
+    });
+
+    test('no such index when /businesskey is absent (plain /versioned)', () => {
+        const out = ddl(`policies /api /versioned\n  code vc20 /nn`);
+        expect(out).not.toContain('cur_uk');
+    });
+
+});
+
+describe('businesskey (SCD2) — full+hks tier', () => {
+
+    test('DAL spec/body: get_current/get_as_of/history read from the _rls view, not the base table', () => {
+        const out = ddl(CUSTOMER_DIM_QSQL);
+        const dalSpec = segment(out, 'create or replace package customer_dim_dal', 'end customer_dim_dal;');
+        expect(dalSpec).toContain('function get_current (p_code in customer_dim.code%type) return customer_dim%rowtype;');
+        expect(dalSpec).toContain('function get_as_of (p_code in customer_dim.code%type, p_as_of in timestamp) return customer_dim%rowtype;');
+        expect(dalSpec).toContain('function history (p_code in customer_dim.code%type) return t_cursor;');
+        const dalBody = segment(out, 'create or replace package body customer_dim_dal', 'end customer_dim_dal;');
+        const getCurrent = segment(dalBody, 'function get_current', 'end get_current;');
+        expect(getCurrent).toContain('from customer_dim_rls where code = p_code and is_current = 1');
+        expect(getCurrent).not.toContain('from customer_dim where');
+        const getAsOf = segment(dalBody, 'function get_as_of', 'end get_as_of;');
+        expect(getAsOf).toContain('valid_from <= p_as_of');
+        expect(getAsOf).toContain('(valid_to is null or valid_to > p_as_of)');
+        const history = segment(dalBody, 'function history', 'end history;');
+        expect(history).toContain('order by valid_from');
+    });
+
+    test('SVC: get_current/get_as_of/history delegate to DAL; change_rec closes then creates', () => {
+        const out = ddl(CUSTOMER_DIM_QSQL);
+        const svcSpec = segment(out, 'create or replace package customer_dim_svc', 'end customer_dim_svc;');
+        expect(svcSpec).toContain('function get_current (p_code in customer_dim.code%type) return customer_dim%rowtype;');
+        expect(svcSpec).toContain('procedure change_rec (');
+        const svcBody = segment(out, 'create or replace package body customer_dim_svc', 'end customer_dim_svc;');
+        const changeRec = segment(svcBody, 'procedure change_rec', 'end change_rec;');
+        expect(changeRec).toContain('l_current := get_current(p_code => p_code);');
+        expect(changeRec).toContain('l_rec.code := p_code;');
+        expect(changeRec.indexOf('close_version(')).toBeLessThan(changeRec.indexOf('create_rec(p_rec => l_rec'));
+        expect(changeRec).toContain('p_id       => l_current.id');
+        expect(changeRec).toContain('p_row_version => l_current.row_version');
+    });
+
+    test('APP: get_current/get_as_of exclude the business key from OUT params but include p_id; change_rec has flat IN params', () => {
+        const out = ddl(CUSTOMER_DIM_QSQL);
+        const appSpec = segment(out, 'create or replace package customer_dim_app', 'end customer_dim_app;');
+        const getCurrentSig = segment(appSpec, 'procedure get_current (', ');');
+        expect(getCurrentSig).toContain('p_code');
+        expect(getCurrentSig).toContain('p_id           out customer_dim.id%type');
+        expect(getCurrentSig).not.toContain('p_code          out');
+        expect(appSpec).toContain('procedure get_as_of (');
+        expect(appSpec).toContain('p_as_of        in  timestamp');
+        const changeRecSig = segment(appSpec, 'procedure change_rec (', ');');
+        expect(changeRecSig).toContain('p_code          in  customer_dim.code%type');
+        expect(changeRecSig).toContain('p_valid_to      in  customer_dim.valid_to%type default systimestamp');
+        expect(changeRecSig).toContain('p_id           out customer_dim.id%type');
+        const appBody = segment(out, 'create or replace package body customer_dim_app', 'end customer_dim_app;');
+        const changeRecBody = segment(appBody, 'procedure change_rec (', 'end change_rec;');
+        expect(changeRecBody).toContain('customer_dim_svc.change_rec(');
+    });
+
+    test('RST: get_current/get_as_of/history/change_rec use :p_<key> bind, not :p_id', () => {
+        const out = ddl(`customer_dim /api /versioned /businesskey code\n  code vc20 /nn\n  name vc200 /nn\n# settings = {"api": "layered", "interface": "rest"}`);
+        const rstSpec = segment(out, 'create or replace package customer_dim_rst as', 'end customer_dim_rst;');
+        expect(rstSpec).toContain('procedure get_current;');
+        expect(rstSpec).toContain('procedure get_as_of;');
+        expect(rstSpec).toContain('procedure history;');
+        expect(rstSpec).toContain('procedure change_rec;');
+        const rstBody = segment(out, 'create or replace package body customer_dim_rst', 'end customer_dim_rst;');
+        const getCurrent = segment(rstBody, 'procedure get_current is', 'end get_current;');
+        expect(getCurrent).toContain('customer_dim_svc.get_current(p_code => :p_code)');
+        const getAsOf = segment(rstBody, 'procedure get_as_of is', 'end get_as_of;');
+        expect(getAsOf).toContain(':as_of');
+        expect(getAsOf).toContain('to_timestamp(');
+        const history = segment(rstBody, 'procedure history is', 'end history;');
+        expect(history).toContain("htp.p('[');");
+        expect(history).toContain('customer_dim_svc.history(p_code => :p_code)');
+        const changeRec = segment(rstBody, 'procedure change_rec is', 'end change_rec;');
+        expect(changeRec).toContain(':body_text');
+        expect(changeRec).toContain('customer_dim_svc.change_rec(');
+        expect(changeRec).not.toContain('l_rec.code := json_value'); // code comes from :p_code, never from the body
+    });
+
+});
+
+describe('businesskey (SCD2) — degraded tiers (absorbed private DML)', () => {
+
+    test('service tier: SVC absorbs p_get_current/p_get_as_of/p_history; change_rec still closes then creates', () => {
+        const out = ddl('customer_dim /api service /versioned /businesskey code\n  code vc20 /nn\n  name vc200 /nn');
+        const svcBody = segment(out, 'create or replace package body customer_dim_svc', 'end customer_dim_svc;');
+        expect(svcBody).toContain('function p_get_current (p_code in customer_dim.code%type) return customer_dim%rowtype is');
+        expect(svcBody).toContain('function p_get_as_of');
+        expect(svcBody).toContain('function p_history (p_code in customer_dim.code%type) return sys_refcursor is');
+        const changeRec = segment(svcBody, 'procedure change_rec', 'end change_rec;');
+        expect(changeRec).toContain('get_current(p_code => p_code)');
+        expect(changeRec).toContain('close_version(');
+        expect(changeRec).toContain('create_rec(p_rec => l_rec, x_id => x_id);');
+    });
+
+    test('lookup tier: _app absorbs p_get_current and inlines close-then-insert for change_rec (no _svc)', () => {
+        const out = ddl('customer_dim /api lookup /versioned /businesskey code\n  code vc20 /nn\n  name vc200 /nn');
+        const appBody = segment(out, 'create or replace package body customer_dim_app', 'end customer_dim_app;');
+        expect(appBody).toContain('function p_get_current (p_code in customer_dim.code%type) return customer_dim%rowtype is');
+        const changeRec = segment(appBody, 'l_current customer_dim%rowtype;', 'end change_rec;');
+        expect(changeRec).toContain('l_current := p_get_current(p_code => p_code);');
+        expect(changeRec).toContain("p_chk_rbac(p_operation => 'close', p_row => l_current);");
+        expect(changeRec).toContain('p_close_row(p_id => l_current.id');
+        expect(changeRec).toContain("p_chk_rbac(p_operation => 'insert', p_row => l_row);");
+        expect(changeRec).toContain('p_insert_row(p_row => l_row);');
+        expect(changeRec.indexOf('p_close_row')).toBeLessThan(changeRec.indexOf('p_insert_row'));
+        expect(appBody).not.toContain('customer_dim_svc');
+    });
+
+    test('lookup tier ifc:rest: _rst change_rec inlines the same close-then-insert, using :p_code/:body_text', () => {
+        const out = ddl('customer_dim /api lookup /versioned /businesskey code\n  code vc20 /nn\n  name vc200 /nn\n# settings = {"interface": "rest"}');
+        const rstBody = segment(out, 'create or replace package body customer_dim_rst', 'end customer_dim_rst;');
+        const changeRec = segment(rstBody, 'procedure change_rec is', 'end change_rec;');
+        expect(changeRec).toContain('l_current := p_get_current(p_code => :p_code);');
+        expect(changeRec).toContain('l_row.code := :p_code;');
+        expect(changeRec).toContain('p_insert_row(p_row => l_row);');
+    });
+
+});

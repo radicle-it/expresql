@@ -115,6 +115,7 @@ A comment can appear between any keywords, parameters, or punctuation marks in a
 | `/audit` | Adds Oracle auditing (`AUDIT ALL ON <TABLE>`). On Db2, emits a comment recommending an IBM Db2 Audit Policy instead. | All *(Oracle feature)* |
 | `/auditcols`, `/audit cols` | Adds `CREATED`, `CREATED_BY`, `UPDATED`, `UPDATED_BY` columns and trigger logic. **Oracle:** `SYSDATE` / `v('APP_USER')`. **Db2:** `CURRENT TIMESTAMP` / `CURRENT USER`. | All |
 | `/auditlog [table]` | Generates an audit package with `PRAGMA AUTONOMOUS_TRANSACTION` that logs all DML to a developer-supplied audit table. The generated package calls `<log_table>_svc.create_rec` inside an autonomous transaction. | Oracle only |
+| `/businesskey <col>` | Only meaningful together with `/versioned` (warning otherwise); `<col>` must be a column already declared on the table (warning otherwise). Adds SCD2 business-key navigation on top of `/versioned`'s insert-only version chain: DAL/SVC `get_current(<col>)` (the row where `is_current = 1` for that key), `get_as_of(<col>, date)` (the version whose `valid_from`/`valid_to` range covers that instant), `history(<col>)` (a ref cursor of every version for that key, oldest first) — all read from `<table>_rls`, like every other read path. SVC/`_app`/`_rst` also get `change_rec` — closes the current version (`close_version`) and opens the next one (`create_rec`) as a single call, instead of the caller orchestrating both. Also adds `create unique index <table>_<col>_cur_uk on <table> (case when is_current = 1 then <col> end)` so at most one row per key can ever be current — the same guarantee the TAPI's own orchestration relies on, enforced at the database level too. `_app` has no `history` (a multi-row result doesn't fit flat OUT parameters); `_rst`'s `history` returns a JSON array, same shape as `get_all`. | Oracle only |
 | `/check` | Table-level CHECK constraint. | All |
 | `/colprefix` | Prefix all columns of the table with this value (underscore appended automatically). | All |
 | `/compress`, `/compressed` | Creates the table compressed. | Oracle only |
@@ -1510,6 +1511,7 @@ tableDirective::= '/'
        ('api'
       |'audit'|'auditcols'|'audit cols'|'audit columns'
       |'auditlog' identifier?
+      |'businesskey' identifier
       |'colprefix'
       |'compress'|'compressed'
       |'flashback'|'fda'
