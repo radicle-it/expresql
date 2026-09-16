@@ -1846,7 +1846,10 @@ party /api full+hks
     test('_app spec get has p_id exactly once (IN only, not duplicated as OUT)', () => {
         const out = ddl(qsql);
         const spec = segment(out, 'create or replace package party_app as', 'end party_app;');
-        const getProc = segment(spec, 'procedure get', 'procedure ins');
+        // Bounded to get()'s own declaration (first ");" after the marker) rather than
+        // by adjacency to "procedure ins" — party_ref is /unique, so a get_by_party_ref
+        // procedure (which legitimately has its own p_id OUT) is now generated in between.
+        const getProc = segment(spec, 'procedure get', ');');
         expect(getProc.match(/\bp_id\b/g)?.length).toBe(1);
     });
 
@@ -2722,6 +2725,96 @@ describe('businesskey (SCD2) — degraded tiers (absorbed private DML)', () => {
         expect(changeRec).toContain('l_current := p_get_current(p_code => :p_code);');
         expect(changeRec).toContain('l_row.code := :p_code;');
         expect(changeRec).toContain('p_insert_row(p_row => l_row);');
+    });
+
+});
+
+// ── /unique columns — get_by_<col> surfaced through SVC/_app/_rst ────────────
+// DAL already generated get_by_<col> for every /unique column; SVC/_app/_rst never
+// exposed it — a natural-key read (the most common one on a lookup/reference table)
+// was reachable only from PL/SQL calling _dal directly, never from APEX or REST.
+// No new directive: this is unconditional for any table with at least one /unique
+// column, on every tier.
+
+const DIM_STATUS_QSQL = `\
+dim_status /api
+  code  vc20 /nn /unique
+  label vc100 /nn
+  row_version num /nn
+# settings = {"api": "layered"}`.trim();
+
+describe('get_by_<unique> — full+hks tier', () => {
+
+    test('DAL already had it (baseline, unchanged) — SVC now delegates to it', () => {
+        const out = ddl(DIM_STATUS_QSQL);
+        const dalSpec = segment(out, 'create or replace package dim_status_dal', 'end dim_status_dal;');
+        expect(dalSpec).toContain('function get_by_code (p_code in dim_status.code%type) return dim_status%rowtype;');
+        const svcSpec = segment(out, 'create or replace package dim_status_svc', 'end dim_status_svc;');
+        expect(svcSpec).toContain('function get_by_code (p_code in dim_status.code%type) return dim_status%rowtype;');
+        const svcBody = segment(out, 'create or replace package body dim_status_svc', 'end dim_status_svc;');
+        const getByCode = segment(svcBody, 'function get_by_code', 'end get_by_code;');
+        expect(getByCode).toContain('dim_status_dal.get_by_code(p_code => p_code)');
+    });
+
+    test('_app get_by_code: p_code IN, p_id OUT (new info), other columns OUT, no p_code OUT duplicate', () => {
+        const out = ddl(DIM_STATUS_QSQL);
+        const appSpec = segment(out, 'create or replace package dim_status_app', 'end dim_status_app;');
+        const sig = segment(appSpec, 'procedure get_by_code (', ');');
+        expect(sig).toContain('p_code          in  dim_status.code%type');
+        expect(sig).toContain('p_id           out dim_status.id%type');
+        expect(sig).toContain('p_label         out dim_status.label%type');
+        expect(sig).not.toContain('p_code          out');
+        expect(sig).toContain('p_row_version  out dim_status.row_version%type');
+        const appBody = segment(out, 'create or replace package body dim_status_app', 'end dim_status_app;');
+        const body = segment(appBody, 'procedure get_by_code (', 'end get_by_code;');
+        expect(body).toContain('dim_status_svc.get_by_code(p_code => p_code)');
+        expect(body).toContain('p_id := l_row.id;');
+    });
+
+    test('_rst get_by_code uses :p_code bind, same JSON shape as get()', () => {
+        const out = ddl(`dim_status /api\n  code vc20 /nn /unique\n  label vc100 /nn\n# settings = {"api": "layered", "interface": "rest"}`);
+        const rstSpec = segment(out, 'create or replace package dim_status_rst as', 'end dim_status_rst;');
+        expect(rstSpec).toContain('procedure get_by_code;');
+        const rstBody = segment(out, 'create or replace package body dim_status_rst', 'end dim_status_rst;');
+        const proc = segment(rstBody, 'procedure get_by_code is', 'end get_by_code;');
+        expect(proc).toContain('dim_status_svc.get_by_code(p_code => :p_code)');
+        expect(proc).toContain("'id' value l_row.id");
+        expect(proc).toContain("'code' value l_row.code");
+    });
+
+    test('two /unique columns generate two independent get_by_<col> at every layer', () => {
+        const out = ddl(`part /api\n  sku vc50 /nn /unique\n  serial vc50 /nn /unique\n  name vc100 /nn\n# settings = {"api": "layered"}`);
+        const svcSpec = segment(out, 'create or replace package part_svc', 'end part_svc;');
+        expect(svcSpec).toContain('function get_by_sku');
+        expect(svcSpec).toContain('function get_by_serial');
+    });
+
+});
+
+describe('get_by_<unique> — degraded tiers (absorbed private DML)', () => {
+
+    test('service tier: SVC absorbs p_get_by_code (previously missing entirely on this tier)', () => {
+        const out = ddl('dim_status /api service\n  code vc20 /nn /unique\n  label vc100 /nn');
+        const svcBody = segment(out, 'create or replace package body dim_status_svc', 'end dim_status_svc;');
+        expect(svcBody).toContain('function p_get_by_code (p_code in dim_status.code%type) return dim_status%rowtype is');
+        const getByCode = segment(svcBody, 'function get_by_code', 'end get_by_code;');
+        expect(getByCode).toContain('p_get_by_code(p_code => p_code)');
+    });
+
+    test('lookup tier: _app absorbs p_get_by_code directly (no _svc)', () => {
+        const out = ddl('dim_status /api lookup\n  code vc20 /nn /unique\n  label vc100 /nn');
+        const appBody = segment(out, 'create or replace package body dim_status_app', 'end dim_status_app;');
+        expect(appBody).toContain('function p_get_by_code (p_code in dim_status.code%type) return dim_status%rowtype is');
+        const getByCode = segment(appBody, 'procedure get_by_code (', 'end get_by_code;');
+        expect(getByCode).toContain('p_get_by_code(p_code => p_code)');
+        expect(appBody).not.toContain('dim_status_svc');
+    });
+
+    test('lookup tier ifc:rest: _rst absorbs p_get_by_code directly (no _svc)', () => {
+        const out = ddl('dim_status /api lookup\n  code vc20 /nn /unique\n  label vc100 /nn\n# settings = {"interface": "rest"}');
+        const rstBody = segment(out, 'create or replace package body dim_status_rst', 'end dim_status_rst;');
+        const proc = segment(rstBody, 'procedure get_by_code is', 'end get_by_code;');
+        expect(proc).toContain('p_get_by_code(p_code => :p_code)');
     });
 
 });

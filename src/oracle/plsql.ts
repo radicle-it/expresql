@@ -446,6 +446,7 @@ export class OraclePlsqlBuilder {
         const hasAudit    = node.hasAuditCols();
         const svcCols     = this._svcCols(node);
         const fkCols      = Object.keys(node.fks ?? {});
+        const uniqueCols  = node.children.filter(c => c.isOption('unique'));
         const synTenantId = this._hasSyntheticTenantId(node);
         const isVersioned = node.isOption('versioned');
         const isImmutable = node.isOption('immutable');
@@ -515,6 +516,22 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}when resource_busy then\n`;
         r += `${tab}${tab}${tab}raise_application_error(-20003, '[LOCKED] ${tbl}: record locked by another session');\n`;
         r += `${tab}end p_lock_by_id_wait;\n\n`;
+
+        // p_get_by_<unique> — one per /unique column, absorbed the same way p_get_by_id
+        // is: a natural-key read has no per-row business logic to gate on _svc/_hks.
+        for (const col of uniqueCols) {
+            const cn = col.parseName().toLowerCase();
+            const extraWhere = synTenantId ? ` and tenant_id = ${tenantCtxPkg}.get_id` : '';
+            r += `${tab}function p_get_by_${cn} (p_${cn} in ${tbl}.${cn}%type) return ${tbl}%rowtype is\n`;
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}select * into l_row from ${dimSource} where ${cn} = p_${cn}${extraWhere};\n`;
+            r += `${tab}${tab}return l_row;\n`;
+            r += `${tab}exception\n`;
+            r += `${tab}${tab}when no_data_found then\n`;
+            r += `${tab}${tab}${tab}raise_application_error(-20002, '[NOT_FOUND] ${tbl}: record not found (${cn}=' || p_${cn} || ')');\n`;
+            r += `${tab}end p_get_by_${cn};\n\n`;
+        }
 
         // p_get_all — weak ref cursor (sys_refcursor): absorbed for the same reason as
         // p_get_by_id above; a bulk read has no per-row business logic to gate on _svc/_hks.
@@ -1173,6 +1190,7 @@ export class OraclePlsqlBuilder {
         const pkNm      = (node.getPkName() ?? 'id').toLowerCase();
         const hasVer    = this._hasVersionCol(node);
         const paramCols = this._svcParamCols(node);
+        const uniqueCols  = node.children.filter(c => c.isOption('unique'));
         const isVersioned = node.isOption('versioned');
         const isImmutable = node.isOption('immutable');
         const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
@@ -1195,6 +1213,11 @@ export class OraclePlsqlBuilder {
         r += `${tab}) return ${tbl}%rowtype;\n\n`;
 
         r += `${tab}function get_all return sys_refcursor;\n\n`;
+
+        for (const col of uniqueCols) {
+            const cn = col.parseName().toLowerCase();
+            r += `${tab}function get_by_${cn} (p_${cn} in ${tbl}.${cn}%type) return ${tbl}%rowtype;\n\n`;
+        }
 
         r += `${tab}procedure create_rec (\n`;
         r += `${tab}${tab}p_rec in  t_rec,\n`;
@@ -1250,6 +1273,7 @@ export class OraclePlsqlBuilder {
         const hasUniq     = this._hasUniqueCol(node);
         const hasAuditLog = this._hasAuditLog(node);
         const paramCols   = this._svcParamCols(node);
+        const uniqueCols  = node.children.filter(c => c.isOption('unique'));
         const isVersioned = node.isOption('versioned');
         const isImmutable = node.isOption('immutable');
         const vtCol       = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
@@ -1296,6 +1320,17 @@ export class OraclePlsqlBuilder {
         r += `${tab}begin\n`;
         r += `${tab}${tab}return ${getAll};\n`;
         r += `${tab}end get_all;\n\n`;
+
+        // get_by_<unique> — one per /unique column; plain read, no locking variant
+        // (DAL itself has none either — only the PK gets lock_by_id/lock_by_id_wait).
+        for (const col of uniqueCols) {
+            const cn = col.parseName().toLowerCase();
+            const getByCol = hasDal ? `${dal}.get_by_${cn}` : `p_get_by_${cn}`;
+            r += `${tab}function get_by_${cn} (p_${cn} in ${tbl}.${cn}%type) return ${tbl}%rowtype is\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}return ${getByCol}(p_${cn} => p_${cn});\n`;
+            r += `${tab}end get_by_${cn};\n\n`;
+        }
 
         // p_do_create — private
         r += `${tab}procedure p_do_create (\n`;
@@ -1449,6 +1484,7 @@ export class OraclePlsqlBuilder {
         const hasVer    = this._hasVersionCol(node);
         const hasAudit  = node.hasAuditCols();
         const paramCols       = this._svcParamCols(node);
+        const uniqueCols      = node.children.filter(c => c.isOption('unique'));
         const pkIsUserDefined = this._pkIsUserDefined(node);
         const isVersioned     = node.isOption('versioned');
         const isImmutable     = node.isOption('immutable');
@@ -1487,6 +1523,28 @@ export class OraclePlsqlBuilder {
             r += `,\n${tab}${tab}p_${updatedByCol.padEnd(appPadWidth)} out ${tbl}.${updatedByCol}%type`;
         }
         r += `\n${tab});\n\n`;
+
+        // get_by_<unique>: same OUT shape as get(), but keyed by the unique column
+        // instead of p_id — which is added to the OUT list (new information the caller
+        // didn't have going in) and excluded from it under its own name (redundant,
+        // it's already the IN argument).
+        for (const col of uniqueCols) {
+            const cn = col.parseName().toLowerCase();
+            const otherCols = appCols.filter(({ name }) => name !== cn);
+            r += `${tab}procedure get_by_${cn} (\n`;
+            r += `${tab}${tab}p_${cn.padEnd(appPadWidth)} in  ${tbl}.${cn}%type,\n`;
+            r += `${tab}${tab}p_id           out ${tbl}.${pkNm}%type`;
+            for (const { name } of otherCols)
+                r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
+            if (hasVer) r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
+            if (hasAudit) {
+                r += `,\n${tab}${tab}p_${createdCol.padEnd(appPadWidth)} out ${tbl}.${createdCol}%type`;
+                r += `,\n${tab}${tab}p_${createdByCol.padEnd(appPadWidth)} out ${tbl}.${createdByCol}%type`;
+                r += `,\n${tab}${tab}p_${updatedCol.padEnd(appPadWidth)} out ${tbl}.${updatedCol}%type`;
+                r += `,\n${tab}${tab}p_${updatedByCol.padEnd(appPadWidth)} out ${tbl}.${updatedByCol}%type`;
+            }
+            r += `\n${tab});\n\n`;
+        }
 
         // ins: for a user-defined PK, p_id is IN (caller supplies the key); for an
         // auto-generated PK, p_id is OUT (server-generated key returned to the caller).
@@ -1568,6 +1626,7 @@ export class OraclePlsqlBuilder {
         const hasAudit  = node.hasAuditCols();
         const hasUniq   = this._hasUniqueCol(node);
         const paramCols       = this._svcParamCols(node);
+        const uniqueCols      = node.children.filter(c => c.isOption('unique'));
         const pkIsUserDefined = this._pkIsUserDefined(node);
         const isVersioned     = node.isOption('versioned');
         const isImmutable     = node.isOption('immutable');
@@ -1635,6 +1694,41 @@ export class OraclePlsqlBuilder {
             r += `${tab}${tab}p_${updatedByCol} := l_row.${updatedByCol};\n`;
         }
         r += `${tab}end get;\n\n`;
+
+        // get_by_<unique> — same OUT shape as get(), keyed by the unique column;
+        // p_id (new information) is OUT here instead of the IN argument it is in get().
+        const getByColCall = (cn: string) => hasSvc ? `${svc}.get_by_${cn}` : `p_get_by_${cn}`;
+        for (const col of uniqueCols) {
+            const cn = col.parseName().toLowerCase();
+            const otherCols = appCols.filter(({ name }) => name !== cn);
+            r += `${tab}procedure get_by_${cn} (\n`;
+            r += `${tab}${tab}p_${cn.padEnd(appPadWidth)} in  ${tbl}.${cn}%type,\n`;
+            r += `${tab}${tab}p_id           out ${tbl}.${pkNm}%type`;
+            for (const { name } of otherCols)
+                r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
+            if (hasVer) r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
+            if (hasAudit) {
+                r += `,\n${tab}${tab}p_${createdCol.padEnd(appPadWidth)} out ${tbl}.${createdCol}%type`;
+                r += `,\n${tab}${tab}p_${createdByCol.padEnd(appPadWidth)} out ${tbl}.${createdByCol}%type`;
+                r += `,\n${tab}${tab}p_${updatedCol.padEnd(appPadWidth)} out ${tbl}.${updatedCol}%type`;
+                r += `,\n${tab}${tab}p_${updatedByCol.padEnd(appPadWidth)} out ${tbl}.${updatedByCol}%type`;
+            }
+            r += `\n${tab}) is\n`;
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}l_row := ${getByColCall(cn)}(p_${cn} => p_${cn});\n`;
+            r += `${tab}${tab}p_id := l_row.${pkNm};\n`;
+            for (const { name } of otherCols)
+                r += `${tab}${tab}p_${name} := l_row.${name};\n`;
+            if (hasVer) r += `${tab}${tab}p_row_version := l_row.row_version;\n`;
+            if (hasAudit) {
+                r += `${tab}${tab}p_${createdCol} := l_row.${createdCol};\n`;
+                r += `${tab}${tab}p_${createdByCol} := l_row.${createdByCol};\n`;
+                r += `${tab}${tab}p_${updatedCol} := l_row.${updatedCol};\n`;
+                r += `${tab}${tab}p_${updatedByCol} := l_row.${updatedByCol};\n`;
+            }
+            r += `${tab}end get_by_${cn};\n\n`;
+        }
 
         // ins — for a user-defined PK, p_id is IN (caller supplies the key);
         //       for an auto-generated PK, p_id is OUT (server-generated key returned to the caller)
@@ -1865,6 +1959,8 @@ export class OraclePlsqlBuilder {
         let r = `create or replace package ${rst} as\n\n`;
         r += `${tab}procedure get;\n`;
         r += `${tab}procedure get_all;\n`;
+        for (const col of node.children.filter(c => c.isOption('unique')))
+            r += `${tab}procedure get_by_${col.parseName().toLowerCase()};\n`;
         r += `${tab}procedure ins;\n`;
         if (isVersioned) {
             r += `${tab}procedure close;\n\n`;
@@ -1973,6 +2069,22 @@ export class OraclePlsqlBuilder {
         r += `${tab}${tab}htp.p(']');\n`;
         r += `${tab}${tab}:status := 200;\n`;
         r += excTail + `${tab}end get_all;\n\n`;
+
+        // get_by_<unique> — same JSON shape as get(), looked up by :p_<col> instead of :p_id
+        for (const col of node.children.filter(c => c.isOption('unique'))) {
+            const cn = col.parseName().toLowerCase();
+            const getByColCall = hasSvc ? `${svc}.get_by_${cn}` : `p_get_by_${cn}`;
+            r += `${tab}procedure get_by_${cn} is\n`;
+            r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            r += `${tab}begin\n`;
+            r += `${tab}${tab}l_row := ${getByColCall}(p_${cn} => :p_${cn});\n`;
+            r += `${tab}${tab}:status := 200;\n`;
+            r += `${tab}${tab}htp.p(json_object(\n`;
+            r += jsonCols.map(c => `${tab}${tab}${tab}'${c}' value l_row.${c}`).join(',\n') + '\n';
+            r += `${tab}${tab}${tab}returning clob\n`;
+            r += `${tab}${tab}));\n`;
+            r += excTail + `${tab}end get_by_${cn};\n\n`;
+        }
 
         // ins
         r += `${tab}procedure ins is\n`;

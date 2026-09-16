@@ -162,7 +162,7 @@ and is usually omitted from QSQL schema definition.
 | Directive | Description | Dialect |
 | --- | --- | --- |
 | `/idx`, `/index`, `/indexed` | Creates a non-unique index on the column. | All |
-| `/unique`, `/uk` | Creates a unique constraint on the column. | All |
+| `/unique`, `/uk` | Creates a unique constraint on the column. On a layered `/api` table, also generates a natural-key read reachable from every layer, not just `_dal`: `get_by_<col>` in `_dal` (unconditional, always was) and now also `_svc` (delegates to `_dal`, or the absorbed `p_get_by_<col>` on `service`/`lookup` tiers), `_app` (same OUT-parameter shape as `get()`, keyed by `<col>` instead of the PK — `p_id` becomes an OUT parameter, the column itself is excluded from the OUT list since it's already the IN argument), and `_rst` (`:p_<col>` bind, same JSON shape as `get`). One `get_by_<col>` per `/unique` column. | All |
 | `/check` | Check constraint with comma-delimited values, e.g. `/check Yes, No`. | All |
 | `/constant` | Sets this column to a constant value in generated INSERT data, e.g. `/constant NYC`. | All |
 | `/default` | Adds a DEFAULT value clause to the column. | All |

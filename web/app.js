@@ -614,6 +614,19 @@ customer_dim /api /versioned /businesskey code
    row_version num /nn`,
     },
     {
+        label: 'Layered TAPI — natural-key reads (/unique)', desc: 'get_by_<col> reachable from _svc/_app/_rst too, not just _dal — try removing /unique from code to see it disappear everywhere', cat: 'TAPI',
+        esql:
+`-- get_by_code already existed in dim_status_dal for any /unique column — it
+-- just never reached _svc, _app, or _rst, so an APEX page or a REST client
+-- could only load a row by the surrogate id, never by the natural key. No
+-- new directive: this is unconditional for every /unique column, on every
+-- tier (try /api service or /api lookup instead of the default full+hks).
+dim_status /api
+   code        vc20 /nn /unique
+   label       vc100 /nn
+   row_version num /nn`,
+    },
+    {
         label: 'Multi-Tenant SaaS', desc: 'Shared schema with tenant_id isolation', cat: 'Multi-tenant',
         esql:
 `tenants /insert 2

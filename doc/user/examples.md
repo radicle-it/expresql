@@ -31,6 +31,7 @@ This document collects end-to-end ExpreSQL examples. Each scenario shows the QSQ
 - [24. IBM Db2 — layered TAPI with schema-based procedures](#24-ibm-db2--layered-tapi-with-schema-based-procedures)
 - [25. Row-level scope with `dimensioncolumns`, `chk_rbac` and `chk_rls`](#25-row-level-scope-with-dimensioncolumns-chk_rbac-and-chk_rls)
 - [26. SCD2 business-key navigation with `/businesskey`](#26-scd2-business-key-navigation-with-businesskey)
+- [27. Natural-key reads with `/unique`: `get_by_<col>` through every layer](#27-natural-key-reads-with-unique-get_by_col-through-every-layer)
 
 ---
 
@@ -1997,3 +1998,69 @@ end history;
 | `_app` | `get_current`, `get_as_of` (no `history`) | Flat OUT params can't carry a multi-row result |
 | `_rst` | `get_current`, `get_as_of`, `history`, `change_rec` | `history` as a JSON array, like `get_all` |
 | DDL | `create unique index <table>_<col>_cur_uk ...` | At most one current row per key, enforced by the DB |
+
+---
+
+## 27. Natural-key reads with `/unique`: `get_by_<col>` through every layer
+
+`/unique` (§Column Directives) always generated `get_by_<col>` in `_dal` — but for a lookup/reference table (states, types, codes, categories), the _most common_ read is by that natural key, not by the surrogate PK, and until now `_dal` was the only layer that had it: a plain layered `/api` table left `get_by_<col>` unreachable from APEX (`_app`) or REST (`_rst`), and — on `service`/`lookup` tiers, where there is no `_dal` at all — unreachable from anywhere. No new directive: this is unconditional for any table with at least one `/unique` column, on every tier.
+
+**Input:**
+
+```expresql
+dim_status /api
+  code  vc20 /nn /unique
+  label vc100 /nn
+  row_version num /nn
+```
+
+**`_dal`** — unchanged, this already existed:
+
+```sql
+function get_by_code (p_code in dim_status.code%type) return dim_status%rowtype;
+```
+
+**`_svc`** — new, delegates to `_dal` (or the absorbed `p_get_by_code` on `service`/`lookup` tiers, which is also new — before this, those tiers had no natural-key read at all, not even privately):
+
+```sql
+function get_by_code (p_code in dim_status.code%type) return dim_status%rowtype is
+begin
+    return dim_status_dal.get_by_code(p_code => p_code);
+end get_by_code;
+```
+
+**`_app`** — new; same OUT-parameter shape as `get()`, but keyed by `code` instead of `id`. `code` itself is excluded from the OUT list (it's already the IN argument); `p_id` is added to it (genuinely new information — the caller didn't have the surrogate key going in):
+
+```sql
+procedure get_by_code (
+    p_code          in  dim_status.code%type,
+    p_id           out dim_status.id%type,
+    p_label         out dim_status.label%type,
+    p_row_version  out dim_status.row_version%type
+) is
+    l_row dim_status%rowtype;
+begin
+    l_row := dim_status_svc.get_by_code(p_code => p_code);
+    p_id := l_row.id;
+    p_label := l_row.label;
+    p_row_version := l_row.row_version;
+end get_by_code;
+```
+
+**`_rst`** (`interface: "rest"`) — new; `:p_code` instead of `:p_id`, same JSON shape as `get`:
+
+```sql
+procedure get_by_code is
+    l_row dim_status%rowtype;
+begin
+    l_row := dim_status_svc.get_by_code(p_code => :p_code);
+    :status := 200;
+    htp.p(json_object('id' value l_row.id, 'code' value l_row.code, 'label' value l_row.label, 'row_version' value l_row.row_version returning clob));
+exception
+    when others then ...
+end get_by_code;
+```
+
+Every `/unique` column gets its own independent `get_by_<col>` at every layer — a table with two, `sku` and `serial`, gets `get_by_sku` and `get_by_serial` side by side, no conflict.
+
+Deliberately out of scope here (left for when a concrete need emerges, same principle as everywhere else in this catalogue): no locking variant (`get_by_<col>` never takes `p_lock`/`p_lock_timeout` — `_dal` itself has none either, only the PK gets `lock_by_id`/`lock_by_id_wait`); no `list_active`/soft-delete filtering; no suppression of `upd`/`del` for tables that are conceptually lookup/reference tables — those remain full CRUD, exactly as before.
