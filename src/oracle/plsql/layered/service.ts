@@ -1,13 +1,10 @@
 import { tab } from '../../../compiler/node.js';
 import type { IDdlNode } from '../../../compiler/types.js';
+import { bareName } from '../names.js';
 import { OracleTableApiAnalyzer } from '../table-model.js';
+import { parameterWidth } from './rendering.js';
 import { OracleDalRenderer } from './dal.js';
 import { OracleHooksRenderer } from './hooks.js';
-
-function bareName(name: string): string {
-    const dot = name.indexOf('.');
-    return dot >= 0 ? name.slice(dot + 1) : name;
-}
 
 /** Renders the service contract and coordinates DAL, hooks and audit calls. */
 export class OracleServiceRenderer {
@@ -35,7 +32,7 @@ export class OracleServiceRenderer {
         // t_rec: writable business columns only — excludes PK, row_version, audit cols (all trigger-managed).
         // Column width computed per table instead of a fixed padEnd(20): a long name (e.g.
         // workflow_correlation_id) would otherwise run directly into the %type anchor with no separator.
-        const tRecWidth = Math.max(20, ...paramCols.map(({ name }) => name.length + 1));
+        const tRecWidth = parameterWidth(20, paramCols.map(({ name }) => name));
         r += `${tab}type t_rec is record (\n`;
         r += paramCols.map(({ name }) => `${tab}${tab}${name.padEnd(tRecWidth)}${tbl}.${name}%type`).join(',\n') + '\n';
         r += `${tab});\n\n`;
@@ -387,4 +384,3 @@ export class OracleServiceRenderer {
     }
 
 }
-

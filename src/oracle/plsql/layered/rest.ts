@@ -1,13 +1,9 @@
 import { tab } from '../../../compiler/node.js';
 import type { IDdlNode } from '../../../compiler/types.js';
+import { bareName } from '../names.js';
 import { OracleTableApiAnalyzer } from '../table-model.js';
 import { OracleDalRenderer } from './dal.js';
 import { OracleHooksRenderer } from './hooks.js';
-
-function bareName(name: string): string {
-    const dot = name.indexOf('.');
-    return dot >= 0 ? name.slice(dot + 1) : name;
-}
 
 /** Renders the JSON interface package used by ORDS REST handlers. */
 export class OracleRestRenderer {
@@ -520,4 +516,3 @@ export class OracleRestRenderer {
     }
 
 }
-

@@ -1,11 +1,7 @@
 import { tab } from '../../../compiler/node.js';
 import type { IDdlNode } from '../../../compiler/types.js';
+import { bareName } from '../names.js';
 import { OracleTableApiAnalyzer } from '../table-model.js';
-
-function bareName(name: string): string {
-    const dot = name.indexOf('.');
-    return dot >= 0 ? name.slice(dot + 1) : name;
-}
 
 /** Renders external HKS packages and the equivalent private hook stubs. */
 export class OracleHooksRenderer {
@@ -167,4 +163,3 @@ export class OracleHooksRenderer {
      */
 
 }
-

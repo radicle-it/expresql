@@ -1,12 +1,8 @@
 import { getMajorVersion } from '../../utils/naming.js';
 import type { Naming } from '../../compiler/node.js';
 import type { DdlContext, IDdlNode } from '../../compiler/types.js';
+import { bareName } from './names.js';
 import { hasSyntheticTenantId } from './table-analysis.js';
-
-function bareName(name: string): string {
-    const dot = name.indexOf('.');
-    return dot >= 0 ? name.slice(dot + 1) : name;
-}
 
 function caseMethod(node: IDdlNode): string {
     if (node.isOption('lower')) return 'lower';

@@ -1,11 +1,7 @@
 import { tab } from '../../../compiler/node.js';
 import type { DdlContext, IDdlNode } from '../../../compiler/types.js';
+import { bareName } from '../names.js';
 import { OracleTableApiAnalyzer } from '../table-model.js';
-
-function bareName(name: string): string {
-    const dot = name.indexOf('.');
-    return dot >= 0 ? name.slice(dot + 1) : name;
-}
 
 /** Renders the package DAL and the equivalent DML absorbed by lower tiers. */
 export class OracleDalRenderer {

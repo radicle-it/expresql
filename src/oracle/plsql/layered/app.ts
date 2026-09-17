@@ -1,15 +1,15 @@
 import { tab } from '../../../compiler/node.js';
-import type { IDdlNode } from '../../../compiler/types.js';
+import type { DdlContext, IDdlNode } from '../../../compiler/types.js';
+import { bareName } from '../names.js';
 import { OracleTableApiAnalyzer } from '../table-model.js';
+import {
+    parameterWidth,
+    renderInputParameterLines,
+    renderOutAssignments,
+    renderOutParameterBlock,
+} from './rendering.js';
 import { OracleDalRenderer } from './dal.js';
 import { OracleHooksRenderer } from './hooks.js';
-
-function bareName(name: string): string {
-    const dot = name.indexOf('.');
-    return dot >= 0 ? name.slice(dot + 1) : name;
-}
-
-import type { DdlContext } from '../../../compiler/types.js';
 
 /** Renders the scalar interface package used by APEX and PL/SQL callers. */
 export class OracleAppRenderer {
@@ -19,6 +19,15 @@ export class OracleAppRenderer {
         private dal: OracleDalRenderer,
         private hooks: OracleHooksRenderer,
     ) {}
+
+    private auditColumnNames(): [string, string, string, string] {
+        return [
+            String(this.ctx.getOptionValue('createdcol')   ?? 'created'),
+            String(this.ctx.getOptionValue('createdbycol') ?? 'created_by'),
+            String(this.ctx.getOptionValue('updatedcol')   ?? 'updated'),
+            String(this.ctx.getOptionValue('updatedbycol') ?? 'updated_by'),
+        ];
+    }
 
     generateSpec(node: IDdlNode): string {
         const model           = this.analyzer.analyze(node);
@@ -37,17 +46,15 @@ export class OracleAppRenderer {
         // parameter below, never duplicated as p_<pkNm> too (would collide when pkNm is "id",
         // and is redundant information under two names otherwise).
         const appCols         = paramCols.filter(({ name }) => name !== pkNm);
-        const createdCol   = String(this.ctx.getOptionValue('createdcol')   ?? 'created');
-        const createdByCol = String(this.ctx.getOptionValue('createdbycol') ?? 'created_by');
-        const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
-        const updatedByCol = String(this.ctx.getOptionValue('updatedbycol') ?? 'updated_by');
+        const auditCols = this.auditColumnNames();
         const lockDef      = model.lockDefaults;
 
         // Column width computed per table instead of a fixed padEnd(13): a long name would
         // otherwise run directly into the %type anchor with no separator.
-        const auditCols  = hasAudit ? [createdCol, createdByCol, updatedCol, updatedByCol] : [];
-        const appPadWidth = Math.max(13, ...appCols.map(({ name }) => name.length + 1),
-                                          ...auditCols.map(n => n.length + 1));
+        const appPadWidth = parameterWidth(13, [
+            ...appCols.map(({ name }) => name),
+            ...(hasAudit ? auditCols : []),
+        ]);
 
         let r = `create or replace package ${app} as\n\n`;
 
@@ -56,15 +63,11 @@ export class OracleAppRenderer {
         r += `${tab}${tab}p_id           in  ${tbl}.${pkNm}%type,\n`;
         r += `${tab}${tab}p_lock         in  varchar2 default '${lockDef.lock}',\n`;
         r += `${tab}${tab}p_lock_timeout in  number   default ${lockDef.timeout}`;
-        for (const { name } of appCols)
-            r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
+        r += renderOutParameterBlock(tbl, appCols.map(({ name }) => name), appPadWidth);
         if (hasVer)
             r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
         if (hasAudit) {
-            r += `,\n${tab}${tab}p_${createdCol.padEnd(appPadWidth)} out ${tbl}.${createdCol}%type`;
-            r += `,\n${tab}${tab}p_${createdByCol.padEnd(appPadWidth)} out ${tbl}.${createdByCol}%type`;
-            r += `,\n${tab}${tab}p_${updatedCol.padEnd(appPadWidth)} out ${tbl}.${updatedCol}%type`;
-            r += `,\n${tab}${tab}p_${updatedByCol.padEnd(appPadWidth)} out ${tbl}.${updatedByCol}%type`;
+            r += renderOutParameterBlock(tbl, auditCols, appPadWidth);
         }
         r += `\n${tab});\n\n`;
 
@@ -78,14 +81,10 @@ export class OracleAppRenderer {
             r += `${tab}procedure get_by_${cn} (\n`;
             r += `${tab}${tab}p_${cn.padEnd(appPadWidth)} in  ${tbl}.${cn}%type,\n`;
             r += `${tab}${tab}p_id           out ${tbl}.${pkNm}%type`;
-            for (const { name } of otherCols)
-                r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
+            r += renderOutParameterBlock(tbl, otherCols.map(({ name }) => name), appPadWidth);
             if (hasVer) r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
             if (hasAudit) {
-                r += `,\n${tab}${tab}p_${createdCol.padEnd(appPadWidth)} out ${tbl}.${createdCol}%type`;
-                r += `,\n${tab}${tab}p_${createdByCol.padEnd(appPadWidth)} out ${tbl}.${createdByCol}%type`;
-                r += `,\n${tab}${tab}p_${updatedCol.padEnd(appPadWidth)} out ${tbl}.${updatedCol}%type`;
-                r += `,\n${tab}${tab}p_${updatedByCol.padEnd(appPadWidth)} out ${tbl}.${updatedByCol}%type`;
+                r += renderOutParameterBlock(tbl, auditCols, appPadWidth);
             }
             r += `\n${tab});\n\n`;
         }
@@ -95,8 +94,7 @@ export class OracleAppRenderer {
         r += `${tab}procedure ins (\n`;
         const insLines: string[] = [];
         if (pkIsUserDefined) insLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
-        for (const { name, nullable } of appCols)
-            insLines.push(`${tab}${tab}p_${name.padEnd(appPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+        insLines.push(...renderInputParameterLines(tbl, appCols, appPadWidth));
         if (!pkIsUserDefined) insLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
         r += insLines.join(',\n') + `\n${tab});\n\n`;
 
@@ -115,8 +113,7 @@ export class OracleAppRenderer {
             r += `${tab}procedure upd (\n`;
             const updLines: string[] = [];
             updLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
-            for (const { name, nullable } of appCols)
-                updLines.push(`${tab}${tab}p_${name.padEnd(appPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+            updLines.push(...renderInputParameterLines(tbl, appCols, appPadWidth));
             if (hasVer) updLines.push(`${tab}${tab}p_row_version  in  ${tbl}.row_version%type`);
             r += updLines.join(',\n') + `\n${tab});\n\n`;
 
@@ -132,8 +129,7 @@ export class OracleAppRenderer {
             r += `${tab}procedure get_current (\n`;
             r += `${tab}${tab}p_${bkCol.padEnd(appPadWidth)} in  ${tbl}.${bkCol}%type,\n`;
             r += `${tab}${tab}p_id           out ${tbl}.${pkNm}%type`;
-            for (const { name } of lookupCols)
-                r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
+            r += renderOutParameterBlock(tbl, lookupCols.map(({ name }) => name), appPadWidth);
             if (hasVer) r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
             r += `\n${tab});\n\n`;
 
@@ -141,8 +137,7 @@ export class OracleAppRenderer {
             r += `${tab}${tab}p_${bkCol.padEnd(appPadWidth)} in  ${tbl}.${bkCol}%type,\n`;
             r += `${tab}${tab}p_as_of        in  timestamp,\n`;
             r += `${tab}${tab}p_id           out ${tbl}.${pkNm}%type`;
-            for (const { name } of lookupCols)
-                r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
+            r += renderOutParameterBlock(tbl, lookupCols.map(({ name }) => name), appPadWidth);
             if (hasVer) r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
             r += `\n${tab});\n\n`;
 
@@ -150,8 +145,7 @@ export class OracleAppRenderer {
             // at its natural position) plus p_<vtCol> and the new version's p_id OUT.
             r += `${tab}procedure change_rec (\n`;
             const changeLines: string[] = [];
-            for (const { name, nullable } of appCols)
-                changeLines.push(`${tab}${tab}p_${name.padEnd(appPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+            changeLines.push(...renderInputParameterLines(tbl, appCols, appPadWidth));
             changeLines.push(`${tab}${tab}p_${vtCol.padEnd(appPadWidth)} in  ${tbl}.${vtCol}%type default systimestamp`);
             changeLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
             r += changeLines.join(',\n') + `\n${tab});\n\n`;
@@ -197,17 +191,15 @@ export class OracleAppRenderer {
         const vtCol           = model.versionToColumn;
         const dimCols         = model.dimensionScopes;
         const appCols         = paramCols.filter(({ name }) => name !== pkNm);
-        const createdCol   = String(this.ctx.getOptionValue('createdcol')   ?? 'created');
-        const createdByCol = String(this.ctx.getOptionValue('createdbycol') ?? 'created_by');
-        const updatedCol   = String(this.ctx.getOptionValue('updatedcol')   ?? 'updated');
-        const updatedByCol = String(this.ctx.getOptionValue('updatedbycol') ?? 'updated_by');
+        const auditCols = this.auditColumnNames();
         const lockDef      = model.lockDefaults;
         const hkCall    = (proc: string) => hasHks ? `${hk}.${proc}` : `p_${proc}`;
 
         // Column width computed per table instead of a fixed padEnd(13) — same reasoning as _generateAppSpec.
-        const auditColsBody = hasAudit ? [createdCol, createdByCol, updatedCol, updatedByCol] : [];
-        const appPadWidth = Math.max(13, ...appCols.map(({ name }) => name.length + 1),
-                                          ...auditColsBody.map(n => n.length + 1));
+        const appPadWidth = parameterWidth(13, [
+            ...appCols.map(({ name }) => name),
+            ...(hasAudit ? auditCols : []),
+        ]);
 
         let r = `create or replace package body ${app} as\n`;
 
@@ -223,15 +215,11 @@ export class OracleAppRenderer {
         r += `${tab}${tab}p_id           in  ${tbl}.${pkNm}%type,\n`;
         r += `${tab}${tab}p_lock         in  varchar2 default '${lockDef.lock}',\n`;
         r += `${tab}${tab}p_lock_timeout in  number   default ${lockDef.timeout}`;
-        for (const { name } of appCols)
-            r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
+        r += renderOutParameterBlock(tbl, appCols.map(({ name }) => name), appPadWidth);
         if (hasVer)
             r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
         if (hasAudit) {
-            r += `,\n${tab}${tab}p_${createdCol.padEnd(appPadWidth)} out ${tbl}.${createdCol}%type`;
-            r += `,\n${tab}${tab}p_${createdByCol.padEnd(appPadWidth)} out ${tbl}.${createdByCol}%type`;
-            r += `,\n${tab}${tab}p_${updatedCol.padEnd(appPadWidth)} out ${tbl}.${updatedCol}%type`;
-            r += `,\n${tab}${tab}p_${updatedByCol.padEnd(appPadWidth)} out ${tbl}.${updatedByCol}%type`;
+            r += renderOutParameterBlock(tbl, auditCols, appPadWidth);
         }
         r += `\n${tab}) is\n`;
         r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
@@ -248,14 +236,10 @@ export class OracleAppRenderer {
             r += `${tab}${tab}${tab}l_row := p_get_by_id(p_id => p_id);\n`;
             r += `${tab}${tab}end if;\n`;
         }
-        for (const { name } of appCols)
-            r += `${tab}${tab}p_${name} := l_row.${name};\n`;
+        r += renderOutAssignments(appCols.map(({ name }) => name));
         if (hasVer) r += `${tab}${tab}p_row_version := l_row.row_version;\n`;
         if (hasAudit) {
-            r += `${tab}${tab}p_${createdCol} := l_row.${createdCol};\n`;
-            r += `${tab}${tab}p_${createdByCol} := l_row.${createdByCol};\n`;
-            r += `${tab}${tab}p_${updatedCol} := l_row.${updatedCol};\n`;
-            r += `${tab}${tab}p_${updatedByCol} := l_row.${updatedByCol};\n`;
+            r += renderOutAssignments(auditCols);
         }
         r += `${tab}end get;\n\n`;
 
@@ -268,28 +252,20 @@ export class OracleAppRenderer {
             r += `${tab}procedure get_by_${cn} (\n`;
             r += `${tab}${tab}p_${cn.padEnd(appPadWidth)} in  ${tbl}.${cn}%type,\n`;
             r += `${tab}${tab}p_id           out ${tbl}.${pkNm}%type`;
-            for (const { name } of otherCols)
-                r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
+            r += renderOutParameterBlock(tbl, otherCols.map(({ name }) => name), appPadWidth);
             if (hasVer) r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
             if (hasAudit) {
-                r += `,\n${tab}${tab}p_${createdCol.padEnd(appPadWidth)} out ${tbl}.${createdCol}%type`;
-                r += `,\n${tab}${tab}p_${createdByCol.padEnd(appPadWidth)} out ${tbl}.${createdByCol}%type`;
-                r += `,\n${tab}${tab}p_${updatedCol.padEnd(appPadWidth)} out ${tbl}.${updatedCol}%type`;
-                r += `,\n${tab}${tab}p_${updatedByCol.padEnd(appPadWidth)} out ${tbl}.${updatedByCol}%type`;
+                r += renderOutParameterBlock(tbl, auditCols, appPadWidth);
             }
             r += `\n${tab}) is\n`;
             r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
             r += `${tab}begin\n`;
             r += `${tab}${tab}l_row := ${getByColCall(cn)}(p_${cn} => p_${cn});\n`;
             r += `${tab}${tab}p_id := l_row.${pkNm};\n`;
-            for (const { name } of otherCols)
-                r += `${tab}${tab}p_${name} := l_row.${name};\n`;
+            r += renderOutAssignments(otherCols.map(({ name }) => name));
             if (hasVer) r += `${tab}${tab}p_row_version := l_row.row_version;\n`;
             if (hasAudit) {
-                r += `${tab}${tab}p_${createdCol} := l_row.${createdCol};\n`;
-                r += `${tab}${tab}p_${createdByCol} := l_row.${createdByCol};\n`;
-                r += `${tab}${tab}p_${updatedCol} := l_row.${updatedCol};\n`;
-                r += `${tab}${tab}p_${updatedByCol} := l_row.${updatedByCol};\n`;
+                r += renderOutAssignments(auditCols);
             }
             r += `${tab}end get_by_${cn};\n\n`;
         }
@@ -299,8 +275,7 @@ export class OracleAppRenderer {
         r += `${tab}procedure ins (\n`;
         const insLines: string[] = [];
         if (pkIsUserDefined) insLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
-        for (const { name, nullable } of appCols)
-            insLines.push(`${tab}${tab}p_${name.padEnd(appPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+        insLines.push(...renderInputParameterLines(tbl, appCols, appPadWidth));
         if (!pkIsUserDefined) insLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
         r += insLines.join(',\n') + `\n${tab}) is\n`;
         if (hasSvc) {
@@ -372,8 +347,7 @@ export class OracleAppRenderer {
             r += `${tab}procedure upd (\n`;
             const updLines: string[] = [];
             updLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
-            for (const { name, nullable } of appCols)
-                updLines.push(`${tab}${tab}p_${name.padEnd(appPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+            updLines.push(...renderInputParameterLines(tbl, appCols, appPadWidth));
             if (hasVer) updLines.push(`${tab}${tab}p_row_version  in  ${tbl}.row_version%type`);
             r += updLines.join(',\n') + `\n${tab}) is\n`;
             if (hasSvc) {
@@ -434,16 +408,14 @@ export class OracleAppRenderer {
             r += `${tab}procedure get_current (\n`;
             r += `${tab}${tab}p_${bkCol.padEnd(appPadWidth)} in  ${tbl}.${bkCol}%type,\n`;
             r += `${tab}${tab}p_id           out ${tbl}.${pkNm}%type`;
-            for (const { name } of lookupCols)
-                r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
+            r += renderOutParameterBlock(tbl, lookupCols.map(({ name }) => name), appPadWidth);
             if (hasVer) r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
             r += `\n${tab}) is\n`;
             r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
             r += `${tab}begin\n`;
             r += `${tab}${tab}l_row := ${getCurrentCall}(p_${bkCol} => p_${bkCol});\n`;
             r += `${tab}${tab}p_id := l_row.${pkNm};\n`;
-            for (const { name } of lookupCols)
-                r += `${tab}${tab}p_${name} := l_row.${name};\n`;
+            r += renderOutAssignments(lookupCols.map(({ name }) => name));
             if (hasVer) r += `${tab}${tab}p_row_version := l_row.row_version;\n`;
             r += `${tab}end get_current;\n\n`;
 
@@ -451,23 +423,20 @@ export class OracleAppRenderer {
             r += `${tab}${tab}p_${bkCol.padEnd(appPadWidth)} in  ${tbl}.${bkCol}%type,\n`;
             r += `${tab}${tab}p_as_of        in  timestamp,\n`;
             r += `${tab}${tab}p_id           out ${tbl}.${pkNm}%type`;
-            for (const { name } of lookupCols)
-                r += `,\n${tab}${tab}p_${name.padEnd(appPadWidth)} out ${tbl}.${name}%type`;
+            r += renderOutParameterBlock(tbl, lookupCols.map(({ name }) => name), appPadWidth);
             if (hasVer) r += `,\n${tab}${tab}p_row_version  out ${tbl}.row_version%type`;
             r += `\n${tab}) is\n`;
             r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
             r += `${tab}begin\n`;
             r += `${tab}${tab}l_row := ${getAsOfCall}(p_${bkCol} => p_${bkCol}, p_as_of => p_as_of);\n`;
             r += `${tab}${tab}p_id := l_row.${pkNm};\n`;
-            for (const { name } of lookupCols)
-                r += `${tab}${tab}p_${name} := l_row.${name};\n`;
+            r += renderOutAssignments(lookupCols.map(({ name }) => name));
             if (hasVer) r += `${tab}${tab}p_row_version := l_row.row_version;\n`;
             r += `${tab}end get_as_of;\n\n`;
 
             r += `${tab}procedure change_rec (\n`;
             const changeLines: string[] = [];
-            for (const { name, nullable } of appCols)
-                changeLines.push(`${tab}${tab}p_${name.padEnd(appPadWidth)} in  ${tbl}.${name}%type${nullable ? ' default null' : ''}`);
+            changeLines.push(...renderInputParameterLines(tbl, appCols, appPadWidth));
             changeLines.push(`${tab}${tab}p_${vtCol.padEnd(appPadWidth)} in  ${tbl}.${vtCol}%type default systimestamp`);
             changeLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
             r += changeLines.join(',\n') + `\n${tab}) is\n`;
@@ -579,4 +548,3 @@ export class OracleAppRenderer {
     }
 
 }
-
