@@ -11246,7 +11246,7 @@ var et = class extends I {
 		let t = this._ddl.objPrefix() + e.parseName(), n = "";
 		if (e.inferType() === "view" && (n = `drop view if exists ${t};\n`), e.inferType() === "table") {
 			n = `drop table if exists ${t};\n`, this._ddl.optionEQvalue("pk", "seq") && (n += `drop sequence if exists ${t}${this._naming.seq};\n`);
-			let r = e.trimmedContent().toLowerCase().includes("/api"), i = (e.getOptionValue("api") ?? "").trim().toLowerCase();
+			let r = e.trimmedContent().toLowerCase().includes("/api"), i = String(e.getOptionValue("api") ?? "").trim().toLowerCase();
 			if (r && ([
 				"full+hks",
 				"full",

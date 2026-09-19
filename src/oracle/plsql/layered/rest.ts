@@ -4,6 +4,11 @@ import { bareName } from '../names.js';
 import { OracleTableApiAnalyzer } from '../table-model.js';
 import { OracleDalRenderer } from './dal.js';
 import { OracleHooksRenderer } from './hooks.js';
+import {
+    createHookNameResolver,
+    renderAfterOperation,
+    renderBeforeOperation,
+} from './operation-hooks.js';
 
 /** Renders the JSON interface package used by ORDS REST handlers. */
 export class OracleRestRenderer {
@@ -71,7 +76,7 @@ export class OracleRestRenderer {
         // user-defined; for upd it is deliberately NOT re-extracted from the body (immutable,
         // comes only from :p_id — see the pkIsUserDefined branch in ins below).
         const rstCols   = paramCols.filter(({ name }) => name !== pkNm);
-        const hkCall    = (proc: string) => hasHks ? `${hk}.${proc}` : `p_${proc}`;
+        const hkCall    = createHookNameResolver(hk, hasHks);
 
         const jsonCols = [pkNm, ...rstCols.map(p => p.name)];
         if (hasVer) jsonCols.push('row_version');
@@ -182,12 +187,9 @@ export class OracleRestRenderer {
             for (const { name } of rstCols)
                 r += `${tab}${tab}l_row.${name} := json_value(l_body, '$.${name}');\n`;
             if (pkIsUserDefined) r += `${tab}${tab}l_row.${pkNm} := json_value(l_body, '$.${pkNm}');\n`;
-            r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'insert', p_row => l_row);\n`;
-            if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('validate')}(p_operation => 'insert', p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('before_insert')}(p_row => l_row);\n`;
+            r += renderBeforeOperation('insert', 'l_row', dimCols.length > 0, hkCall);
             r += `${tab}${tab}p_insert_row(p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('after_insert')}(p_row => l_row);\n`;
+            r += renderAfterOperation('insert', 'l_row', hkCall);
             r += `${tab}${tab}l_id := l_row.${pkNm};\n`;
         }
         r += `${tab}${tab}:status := 201;\n`;
@@ -220,12 +222,9 @@ export class OracleRestRenderer {
                 r += `${tab}${tab}l_row := p_get_by_id(p_id => :p_id);\n`;
                 r += `${tab}${tab}l_row.${vtCol} := coalesce(json_value(l_body, '$.${vtCol}' returning ${tbl}.${vtCol}%type), systimestamp);\n`;
                 if (hasVer) r += `${tab}${tab}l_row.row_version := json_value(l_body, '$.row_version' returning ${tbl}.row_version%type);\n`;
-                r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'close', p_row => l_row);\n`;
-                if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
-                r += `${tab}${tab}${hkCall('validate')}(p_operation => 'close', p_row => l_row);\n`;
-                r += `${tab}${tab}${hkCall('before_close')}(p_row => l_row);\n`;
+                r += renderBeforeOperation('close', 'l_row', dimCols.length > 0, hkCall);
                 r += `${tab}${tab}p_close_row(p_id => :p_id, p_${vtCol} => l_row.${vtCol}, p_row => l_row);\n`;
-                r += `${tab}${tab}${hkCall('after_close')}(p_row => l_row);\n`;
+                r += renderAfterOperation('close', 'l_row', hkCall);
             }
             r += `${tab}${tab}:status := 200;\n`;
             r += `${tab}${tab}htp.p(json_object('${pkNm}' value :p_id));\n`;
@@ -261,12 +260,9 @@ export class OracleRestRenderer {
                 for (const { name } of rstCols)
                     r += `${tab}${tab}l_row.${name} := json_value(l_body, '$.${name}');\n`;
                 if (hasVer) r += `${tab}${tab}l_row.row_version := json_value(l_body, '$.row_version' returning ${tbl}.row_version%type);\n`;
-                r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'update', p_row => l_row);\n`;
-                if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
-                r += `${tab}${tab}${hkCall('validate')}(p_operation => 'update', p_row => l_row);\n`;
-                r += `${tab}${tab}${hkCall('before_update')}(p_row => l_row);\n`;
+                r += renderBeforeOperation('update', 'l_row', dimCols.length > 0, hkCall);
                 r += `${tab}${tab}p_update_row(p_row => l_row);\n`;
-                r += `${tab}${tab}${hkCall('after_update')}(p_row => l_row);\n`;
+                r += renderAfterOperation('update', 'l_row', hkCall);
             }
             r += `${tab}${tab}:status := 200;\n`;
             r += `${tab}${tab}htp.p(json_object('${pkNm}' value :p_id));\n`;
@@ -280,12 +276,9 @@ export class OracleRestRenderer {
                 r += `${tab}${tab}${svc}.delete_rec(p_id => :p_id);\n`;
             } else {
                 r += `${tab}${tab}l_row := p_get_by_id(p_id => :p_id);\n`;
-                r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'delete', p_row => l_row);\n`;
-                if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
-                r += `${tab}${tab}${hkCall('validate')}(p_operation => 'delete', p_row => l_row);\n`;
-                r += `${tab}${tab}${hkCall('before_delete')}(p_id => :p_id);\n`;
+                r += renderBeforeOperation('delete', 'l_row', dimCols.length > 0, hkCall, ':p_id');
                 r += `${tab}${tab}p_delete_row(p_id => :p_id);\n`;
-                r += `${tab}${tab}${hkCall('after_delete')}(p_id => :p_id);\n`;
+                r += renderAfterOperation('delete', 'l_row', hkCall, ':p_id');
             }
             r += `${tab}${tab}:status := 200;\n`;
             r += `${tab}${tab}htp.p(json_object('${pkNm}' value :p_id));\n`;
@@ -377,21 +370,15 @@ export class OracleRestRenderer {
             } else {
                 r += `${tab}${tab}l_current := p_get_current(p_${bkCol} => :p_${bkCol});\n`;
                 r += `${tab}${tab}l_current.${vtCol} := coalesce(json_value(l_body, '$.${vtCol}' returning ${tbl}.${vtCol}%type), systimestamp);\n`;
-                r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'close', p_row => l_current);\n`;
-                if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_current);\n`;
-                r += `${tab}${tab}${hkCall('validate')}(p_operation => 'close', p_row => l_current);\n`;
-                r += `${tab}${tab}${hkCall('before_close')}(p_row => l_current);\n`;
+                r += renderBeforeOperation('close', 'l_current', dimCols.length > 0, hkCall);
                 r += `${tab}${tab}p_close_row(p_id => l_current.${pkNm}, p_${vtCol} => l_current.${vtCol}, p_row => l_current);\n`;
-                r += `${tab}${tab}${hkCall('after_close')}(p_row => l_current);\n`;
+                r += renderAfterOperation('close', 'l_current', hkCall);
                 for (const { name } of changeCols)
                     r += `${tab}${tab}l_row.${name} := json_value(l_body, '$.${name}');\n`;
                 r += `${tab}${tab}l_row.${bkCol} := :p_${bkCol};\n`;
-                r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'insert', p_row => l_row);\n`;
-                if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
-                r += `${tab}${tab}${hkCall('validate')}(p_operation => 'insert', p_row => l_row);\n`;
-                r += `${tab}${tab}${hkCall('before_insert')}(p_row => l_row);\n`;
+                r += renderBeforeOperation('insert', 'l_row', dimCols.length > 0, hkCall);
                 r += `${tab}${tab}p_insert_row(p_row => l_row);\n`;
-                r += `${tab}${tab}${hkCall('after_insert')}(p_row => l_row);\n`;
+                r += renderAfterOperation('insert', 'l_row', hkCall);
                 r += `${tab}${tab}l_id := l_row.${pkNm};\n`;
             }
             r += `${tab}${tab}:status := 201;\n`;
@@ -429,12 +416,9 @@ export class OracleRestRenderer {
                 } else {
                     r += `${tab}${tab}l_row.${bridge.left} := json_value(l_body, '$.${bridge.left}');\n`;
                     r += `${tab}${tab}l_row.${bridge.right} := json_value(l_body, '$.${bridge.right}');\n`;
-                    r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'grant', p_row => l_row);\n`;
-                    if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
-                    r += `${tab}${tab}${hkCall('validate')}(p_operation => 'grant', p_row => l_row);\n`;
-                    r += `${tab}${tab}${hkCall('before_grant')}(p_row => l_row);\n`;
+                    r += renderBeforeOperation('grant', 'l_row', dimCols.length > 0, hkCall);
                     r += `${tab}${tab}${grantCall}(p_row => l_row);\n`;
-                    r += `${tab}${tab}${hkCall('after_grant')}(p_row => l_row);\n`;
+                    r += renderAfterOperation('grant', 'l_row', hkCall);
                     r += `${tab}${tab}l_id := l_row.${pkNm};\n`;
                 }
                 r += `${tab}${tab}:status := 201;\n`;
@@ -468,12 +452,9 @@ export class OracleRestRenderer {
                 } else {
                     r += `${tab}${tab}l_row.${bridge.left} := json_value(l_body, '$.${bridge.left}');\n`;
                     r += `${tab}${tab}l_row.${bridge.right} := json_value(l_body, '$.${bridge.right}');\n`;
-                    r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'revoke', p_row => l_row);\n`;
-                    if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
-                    r += `${tab}${tab}${hkCall('validate')}(p_operation => 'revoke', p_row => l_row);\n`;
-                    r += `${tab}${tab}${hkCall('before_revoke')}(p_row => l_row);\n`;
+                    r += renderBeforeOperation('revoke', 'l_row', dimCols.length > 0, hkCall);
                     r += `${tab}${tab}${revokeCall}(p_${bridge.left} => l_row.${bridge.left}, p_${bridge.right} => l_row.${bridge.right});\n`;
-                    r += `${tab}${tab}${hkCall('after_revoke')}(p_row => l_row);\n`;
+                    r += renderAfterOperation('revoke', 'l_row', hkCall);
                 }
                 r += `${tab}${tab}:status := 200;\n`;
                 r += `${tab}${tab}htp.p(json_object('status' value 'revoked'));\n`;

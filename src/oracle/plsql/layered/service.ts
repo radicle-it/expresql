@@ -2,9 +2,18 @@ import { tab } from '../../../compiler/node.js';
 import type { IDdlNode } from '../../../compiler/types.js';
 import { bareName } from '../names.js';
 import { OracleTableApiAnalyzer } from '../table-model.js';
-import { parameterWidth } from './rendering.js';
+import {
+    parameterWidth,
+    renderDuplicateValueException,
+    renderRecordAssignments,
+} from './rendering.js';
 import { OracleDalRenderer } from './dal.js';
 import { OracleHooksRenderer } from './hooks.js';
+import {
+    createHookNameResolver,
+    renderAfterOperation,
+    renderBeforeOperation,
+} from './operation-hooks.js';
 
 /** Renders the service contract and coordinates DAL, hooks and audit calls. */
 export class OracleServiceRenderer {
@@ -148,7 +157,7 @@ export class OracleServiceRenderer {
         const hasRow    = hasDal ? `${dal}.has_row`    : 'p_has_row';
         const listRow   = hasDal ? `${dal}.list_row`   : 'p_list_row';
         const bridge    = model.bridge;
-        const hkCall    = (proc: string) => hasHks ? `${hk}.${proc}` : `p_${proc}`;
+        const hkCall    = createHookNameResolver(hk, hasHks);
 
         let r = `create or replace package body ${svc} as\n`;
 
@@ -195,14 +204,10 @@ export class OracleServiceRenderer {
         r += `${tab}${tab}l_row in out nocopy ${tbl}%rowtype\n`;
         r += `${tab}) is\n`;
         r += `${tab}begin\n`;
-        for (const { name } of paramCols)
-            r += `${tab}${tab}l_row.${name} := p_rec.${name};\n`;
-        r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'insert', p_row => l_row);\n`;
-        if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
-        r += `${tab}${tab}${hkCall('validate')}(p_operation => 'insert', p_row => l_row);\n`;
-        r += `${tab}${tab}${hkCall('before_insert')}(p_row => l_row);\n`;
+        r += renderRecordAssignments(paramCols.map(({ name }) => name), 'l_row', name => `p_rec.${name}`);
+        r += renderBeforeOperation('insert', 'l_row', dimCols.length > 0, hkCall);
         r += `${tab}${tab}${insertRow}(p_row => l_row);\n`;
-        r += `${tab}${tab}${hkCall('after_insert')}(p_row => l_row);\n`;
+        r += renderAfterOperation('insert', 'l_row', hkCall);
         if (hasAuditLog) r += `${tab}${tab}${aud}.log_insert(p_row => l_row);\n`;
         r += `${tab}end p_do_create;\n\n`;
 
@@ -216,9 +221,7 @@ export class OracleServiceRenderer {
         r += `${tab}${tab}p_do_create(p_rec => p_rec, l_row => l_row);\n`;
         r += `${tab}${tab}x_id := l_row.${pkNm};\n`;
         if (hasUniq) {
-            r += `${tab}exception\n`;
-            r += `${tab}${tab}when dup_val_on_index then\n`;
-            r += `${tab}${tab}${tab}raise_application_error(-20010, '[DUPLICATE] duplicate value on unique constraint.');\n`;
+            r += renderDuplicateValueException();
         }
         r += `${tab}end create_rec;\n\n`;
 
@@ -234,12 +237,9 @@ export class OracleServiceRenderer {
             r += `${tab}${tab}l_row := ${getById}(p_id => p_id);\n`;
             r += `${tab}${tab}l_row.${vtCol} := p_${vtCol};\n`;
             if (hasVer) r += `${tab}${tab}l_row.row_version := p_row_version;\n`;
-            r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'close', p_row => l_row);\n`;
-            if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('validate')}(p_operation => 'close', p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('before_close')}(p_row => l_row);\n`;
+            r += renderBeforeOperation('close', 'l_row', dimCols.length > 0, hkCall);
             r += `${tab}${tab}${closeRow}(p_id => p_id, p_${vtCol} => l_row.${vtCol}, p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('after_close')}(p_row => l_row);\n`;
+            r += renderAfterOperation('close', 'l_row', hkCall);
             r += `${tab}end close_version;\n\n`;
         } else if (isImmutable) {
             // No update_rec/delete_rec — append-only (see _generatePrivateDml/_generateDalBody
@@ -256,15 +256,11 @@ export class OracleServiceRenderer {
             r += `${tab}begin\n`;
             r += `${tab}${tab}l_row := ${getById}(p_id => p_id);\n`;
             if (hasAuditLog) r += `${tab}${tab}l_old_row := l_row;\n`;
-            for (const { name } of paramCols)
-                r += `${tab}${tab}l_row.${name} := p_rec.${name};\n`;
+            r += renderRecordAssignments(paramCols.map(({ name }) => name), 'l_row', name => `p_rec.${name}`);
             if (hasVer) r += `${tab}${tab}l_row.row_version := p_row_version;\n`;
-            r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'update', p_row => l_row);\n`;
-            if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('validate')}(p_operation => 'update', p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('before_update')}(p_row => l_row);\n`;
+            r += renderBeforeOperation('update', 'l_row', dimCols.length > 0, hkCall);
             r += `${tab}${tab}${updateRow}(p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('after_update')}(p_row => l_row);\n`;
+            r += renderAfterOperation('update', 'l_row', hkCall);
             if (hasAuditLog) r += `${tab}${tab}${aud}.log_update(p_old_row => l_old_row, p_new_row => l_row);\n`;
             r += `${tab}end update_rec;\n\n`;
 
@@ -275,12 +271,9 @@ export class OracleServiceRenderer {
             r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
             r += `${tab}begin\n`;
             r += `${tab}${tab}l_row := ${getById}(p_id => p_id);\n`;
-            r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'delete', p_row => l_row);\n`;
-            if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('validate')}(p_operation => 'delete', p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('before_delete')}(p_id => p_id);\n`;
+            r += renderBeforeOperation('delete', 'l_row', dimCols.length > 0, hkCall, 'p_id');
             r += `${tab}${tab}${deleteRow}(p_id => p_id);\n`;
-            r += `${tab}${tab}${hkCall('after_delete')}(p_id => p_id);\n`;
+            r += renderAfterOperation('delete', 'l_row', hkCall, 'p_id');
             if (hasAuditLog) r += `${tab}${tab}${aud}.log_delete(p_old_row => l_row);\n`;
             r += `${tab}end delete_rec;\n\n`;
         }
@@ -340,12 +333,9 @@ export class OracleServiceRenderer {
             r += `${tab}begin\n`;
             r += `${tab}${tab}l_row.${bridge.left} := p_${bridge.left};\n`;
             r += `${tab}${tab}l_row.${bridge.right} := p_${bridge.right};\n`;
-            r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'grant', p_row => l_row);\n`;
-            if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('validate')}(p_operation => 'grant', p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('before_grant')}(p_row => l_row);\n`;
+            r += renderBeforeOperation('grant', 'l_row', dimCols.length > 0, hkCall);
             r += `${tab}${tab}${grantRow}(p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('after_grant')}(p_row => l_row);\n`;
+            r += renderAfterOperation('grant', 'l_row', hkCall);
             r += `${tab}${tab}x_id := l_row.${pkNm};\n`;
             r += `${tab}exception\n`;
             r += `${tab}${tab}when dup_val_on_index then\n`;
@@ -360,12 +350,9 @@ export class OracleServiceRenderer {
             r += `${tab}begin\n`;
             r += `${tab}${tab}l_row.${bridge.left} := p_${bridge.left};\n`;
             r += `${tab}${tab}l_row.${bridge.right} := p_${bridge.right};\n`;
-            r += `${tab}${tab}${hkCall('chk_rbac')}(p_operation => 'revoke', p_row => l_row);\n`;
-            if (dimCols.length > 0) r += `${tab}${tab}${hkCall('chk_rls')}(p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('validate')}(p_operation => 'revoke', p_row => l_row);\n`;
-            r += `${tab}${tab}${hkCall('before_revoke')}(p_row => l_row);\n`;
+            r += renderBeforeOperation('revoke', 'l_row', dimCols.length > 0, hkCall);
             r += `${tab}${tab}${revokeRow}(p_${bridge.left} => p_${bridge.left}, p_${bridge.right} => p_${bridge.right});\n`;
-            r += `${tab}${tab}${hkCall('after_revoke')}(p_row => l_row);\n`;
+            r += renderAfterOperation('revoke', 'l_row', hkCall);
             r += `${tab}end revoke_${bridge.rightLabel};\n\n`;
 
             r += `${tab}function has_${bridge.rightLabel} (p_${bridge.left} in ${tbl}.${bridge.left}%type, p_${bridge.right} in ${tbl}.${bridge.right}%type) return boolean is\n`;

@@ -37,3 +37,21 @@ export function renderOutAssignments(
         `${tab}${tab}p_${name} := ${rowVariable}.${name};\n`
     ).join('');
 }
+
+/** Populates a PL/SQL record from a caller-specific value expression. */
+export function renderRecordAssignments(
+    names: readonly string[],
+    recordVariable: string,
+    valueFor: (name: string) => string,
+): string {
+    return names.map(name =>
+        `${tab}${tab}${recordVariable}.${name} := ${valueFor(name)};\n`
+    ).join('');
+}
+
+/** Standard translation for unique-constraint violations in scalar/service APIs. */
+export function renderDuplicateValueException(): string {
+    return `${tab}exception\n` +
+        `${tab}${tab}when dup_val_on_index then\n` +
+        `${tab}${tab}${tab}raise_application_error(-20010, '[DUPLICATE] duplicate value on unique constraint.');\n`;
+}

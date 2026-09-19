@@ -2,9 +2,11 @@ import { describe, expect, test } from 'vitest';
 import { bareName } from '../../src/oracle/plsql/names.js';
 import {
     parameterWidth,
+    renderDuplicateValueException,
     renderInputParameterLines,
     renderOutAssignments,
     renderOutParameterBlock,
+    renderRecordAssignments,
 } from '../../src/oracle/plsql/layered/rendering.js';
 
 describe('Oracle PL/SQL rendering primitives', () => {
@@ -33,5 +35,13 @@ describe('Oracle PL/SQL rendering primitives', () => {
             .toBe(',\n        p_status  out orders.status%type');
         expect(renderOutAssignments(['status']))
             .toBe('        p_status := l_row.status;\n');
+    });
+
+    test('renders record population and duplicate translation', () => {
+        expect(renderRecordAssignments(['status'], 'l_row', name => `p_rec.${name}`))
+            .toBe('        l_row.status := p_rec.status;\n');
+        expect(renderDuplicateValueException()).toContain(
+            "raise_application_error(-20010, '[DUPLICATE] duplicate value on unique constraint.');"
+        );
     });
 });
