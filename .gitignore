@@ -8,3 +8,8 @@ dist-ts/
 examples/diagram-generator/libs/rappid.*
 .claude*
 .vscode*
+
+# MLE integration — not ready yet, generated/build output churns on
+# every generator change; untracked until the feature is stable
+mle/
+dist/expresql.mle.cjs
