@@ -2615,6 +2615,72 @@ describe('businesskey (SCD2) — DDL', () => {
 
 });
 
+// ── /businesskey — non-overlap ASSERTION on db: 26ai+ ────────────────────────
+// cur_uk (above) only rules out two rows CONCURRENTLY current for the same key;
+// it says nothing about a historical (or one historical + one open) row whose
+// [valid_from, vtCol) window overlaps another's — a raw INSERT bypassing
+// change_rec's disciplined close-then-open order could still create that.
+// CREATE ASSERTION (SQL-standard, evaluated immediately, not deferred to COMMIT)
+// closes that gap, but only exists from Oracle 26ai onward — gated the same way
+// as /aienrichment (getMajorVersion(db) >= 26), additive to cur_uk, never a
+// replacement for it. Live-tested against a real 26ai instance (both DATE and
+// TIMESTAMP variants of valid_from/valid_to) before landing this: touching
+// windows insert cleanly, a genuine overlap raises ORA-08601 immediately,
+// unrelated business-key values never interact.
+describe('businesskey (SCD2) — non-overlap ASSERTION (db: 26ai+)', () => {
+
+    test('db: 26ai — assertion generated, half-open interval, default id/valid_to column names', () => {
+        const out = ddl(`customer_dim /api /versioned /businesskey code
+  code vc20 /nn
+  name vc200 /nn
+# settings = {"api": "layered", "db": "26ai"}`);
+        expect(out).toContain('create unique index customer_dim_code_cur_uk on customer_dim (case when is_current = 1 then code end);');
+        expect(out).toContain(
+            'create assertion customer_dim_code_no_overlap\n'
+            + 'check (\n'
+            + '    not exists (\n'
+            + '        select 1\n'
+            + '        from   customer_dim d1\n'
+            + '        join   customer_dim d2\n'
+            + '               on d1.code = d2.code\n'
+            + '              and d1.id != d2.id\n'
+            + "        where  d1.valid_from < nvl(d2.valid_to, date '9999-12-31')\n"
+            + "        and    d2.valid_from < nvl(d1.valid_to, date '9999-12-31')\n"
+            + '    )\n'
+            + ');'
+        );
+    });
+
+    test('custom /versioned close-column name is honored in the assertion, not hardcoded valid_to', () => {
+        const out = ddl(`policies /api /versioned closed_at /businesskey policy_no
+  policy_no vc20 /nn
+# settings = {"api": "layered", "db": "26ai"}`);
+        expect(out).toContain("nvl(d2.closed_at, date '9999-12-31')");
+        expect(out).toContain("nvl(d1.closed_at, date '9999-12-31')");
+        expect(out).not.toContain('nvl(d2.valid_to');
+    });
+
+    test('below 26ai (e.g. 23ai): cur_uk still generated, no assertion at all', () => {
+        const out = ddl(`customer_dim /api /versioned /businesskey code
+  code vc20 /nn
+  name vc200 /nn
+# settings = {"api": "layered", "db": "23ai"}`);
+        expect(out).toContain('cur_uk');
+        expect(out).not.toContain('create assertion');
+    });
+
+    test('no db setting at all: no assertion (same as pre-26ai)', () => {
+        const out = ddl(CUSTOMER_DIM_QSQL);
+        expect(out).not.toContain('create assertion');
+    });
+
+    test('/versioned without /businesskey, even on db: 26ai: no assertion (nothing to key it on)', () => {
+        const out = ddl(`policies /api /versioned\n  code vc20 /nn\n# settings = {"api": "layered", "db": "26ai"}`);
+        expect(out).not.toContain('create assertion');
+    });
+
+});
+
 describe('businesskey (SCD2) — full+hks tier', () => {
 
     test('DAL spec/body: get_current/get_as_of/history read from the _rls view, not the base table', () => {

@@ -802,6 +802,35 @@ export class OracleDDLGenerator extends BaseGenerator {
                 if (bkCol !== '' && node.findChild(bkCol) !== null) {
                     output += `create unique index ${objName}_${bkCol}_cur_uk on ${objName} `
                         + `(case when is_current = 1 then ${bkCol} end);\n\n`;
+
+                    // /businesskey, db >= 26 (26ai+) only: CREATE ASSERTION is a
+                    // recent SQL-standard feature, not available on older target
+                    // versions — cur_uk above (unconditional, all versions) only
+                    // catches two concurrently OPEN rows for the same key; it says
+                    // nothing about two historical (or one historical + one open)
+                    // rows whose [valid_from, vtCol) windows overlap, which a raw
+                    // INSERT outside change_rec's disciplined close-then-open order
+                    // could still create. Half-open interval, touching allowed (one
+                    // window's end may equal another's start) — same semantics and
+                    // DATE '9999-12-31' "unbounded" sentinel as the hand-written fix
+                    // this generalizes (ocean-code aut_delegation, 2026-09-20).
+                    const versionedDbVer = this._ddl.getOptionValue('db') as string | null;
+                    if (versionedDbVer && versionedDbVer.length > 0 && 26 <= (getMajorVersion(versionedDbVer) ?? 0)) {
+                        const vtCol  = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
+                        const idCol  = (node.getGenIdColName() ?? node.getExplicitPkName() ?? 'id').toLowerCase();
+                        output += `create assertion ${objName}_${bkCol}_no_overlap\n`
+                            + `check (\n`
+                            + `    not exists (\n`
+                            + `        select 1\n`
+                            + `        from   ${objName} d1\n`
+                            + `        join   ${objName} d2\n`
+                            + `               on d1.${bkCol} = d2.${bkCol}\n`
+                            + `              and d1.${idCol} != d2.${idCol}\n`
+                            + `        where  d1.valid_from < nvl(d2.${vtCol}, date '9999-12-31')\n`
+                            + `        and    d2.valid_from < nvl(d1.${vtCol}, date '9999-12-31')\n`
+                            + `    )\n`
+                            + `);\n\n`;
+                    }
                 }
             }
         }
