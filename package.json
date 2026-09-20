@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "@radicle-it/expresql",
   "version": "2.1.0",
   "description": "ExpreSQL — ESQL shorthand to DDL, ERD and PL/SQL scaffolding (fork of @oracle/quicksql)",
@@ -62,7 +62,7 @@
   "devDependencies": {
     "cross-env": "^10.1.0",
     "eslint": "^8.42.0",
-    "markdownlint-cli2": "^0.22.1",
+    "markdownlint-cli2": "^0.23.3",
     "npm-run-all": "^4.1.5",
     "typescript": "^6.0.3",
     "vite": "^8.0.11",
