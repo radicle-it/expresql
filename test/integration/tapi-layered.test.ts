@@ -2033,12 +2033,68 @@ policies /api /versioned expires_at
 
 describe('versioned layered TAPI — full+hks tier', () => {
 
-    test('DAL spec exposes close_row instead of update_row and delete_row', () => {
+    test('no trg_..._versioned trigger — a layered table carries the guard in its DAL instead', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        expect(out).not.toContain('trg_policies_versioned');
+        expect(out).not.toContain('this version row is already closed (valid_to is not null)\');\n    end if;\n    if :new.valid_to is null then');
+    });
+
+    test('non-layered /versioned (no /api at all) still gets the trigger — no TAPI exists to carry the guard', () => {
+        const out = ddl('policies /versioned\n  code vc20 /nn');
+        expect(out).toContain('trg_policies_versioned');
+        expect(out).toContain('delete is not permitted on a versioned (insert-only) table');
+    });
+
+    test('a plain (non-versioned, non-immutable) layered table is unaffected: update_row/delete_row have no valid_to guard', () => {
+        const out = ddl('doctors /api\n  name vc200 /nn\n# settings = {"api": "layered"}');
+        const dalBody = segment(out, 'create or replace package body doctors_dal', 'end doctors_dal;');
+        const updateRow = segment(dalBody, 'procedure update_row', 'end update_row;');
+        expect(updateRow).not.toContain('valid_to');
+        expect(updateRow).not.toContain('c_err_versioned_closed');
+    });
+
+    test('DAL spec exposes close_row AND update_row/delete_row — additive, not a replacement', () => {
         const out = ddl(POLICIES_VERSIONED_QSQL);
         const dalSpec = segment(out, 'create or replace package policies_dal', 'end policies_dal;');
         expect(dalSpec).toContain('procedure close_row');
-        expect(dalSpec).not.toContain('procedure update_row');
-        expect(dalSpec).not.toContain('procedure delete_row');
+        expect(dalSpec).toContain('procedure update_row');
+        expect(dalSpec).toContain('procedure delete_row');
+        expect(dalSpec).toContain('c_err_versioned_closed');
+    });
+
+    test('DAL body: close_row/update_row/delete_row WHERE all guard "and valid_to is null" — free correction only until first close', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const dalBody = segment(out, 'create or replace package body policies_dal', 'end policies_dal;');
+        const closeRow = segment(dalBody, 'procedure close_row', 'end close_row;');
+        expect(closeRow).toContain('and valid_to is null');
+        const updateRow = segment(dalBody, 'procedure update_row', 'end update_row;');
+        expect(updateRow).toContain('and valid_to is null');
+        const deleteRow = segment(dalBody, 'procedure delete_row', 'end delete_row;');
+        expect(deleteRow).toContain('and valid_to is null');
+    });
+
+    test('DAL body: 0-rows-affected on close_row/update_row disambiguates already-closed vs stale vs not-found', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const dalBody = segment(out, 'create or replace package body policies_dal', 'end policies_dal;');
+        const closeRow = segment(dalBody, 'procedure close_row', 'end close_row;');
+        expect(closeRow).toContain('if l_valid_to is not null then');
+        expect(closeRow).toContain("[VERSIONED] policies: this version row is already closed (valid_to is not null)");
+        expect(closeRow).toContain('c_err_versioned_closed');
+        expect(closeRow).toContain('[STALE_DATA]');
+        expect(closeRow).toContain('[NOT_FOUND]');
+        const updateRow = segment(dalBody, 'procedure update_row', 'end update_row;');
+        expect(updateRow).toContain('if l_valid_to is not null then');
+        expect(updateRow).toContain('c_err_versioned_closed');
+    });
+
+    test('DAL body: delete_row on an already-closed row raises [VERSIONED]/c_err_versioned_closed; a genuinely missing id stays a silent no-op', () => {
+        const out = ddl(POLICIES_VERSIONED_QSQL);
+        const dalBody = segment(out, 'create or replace package body policies_dal', 'end policies_dal;');
+        const deleteRow = segment(dalBody, 'procedure delete_row', 'end delete_row;');
+        expect(deleteRow).toContain('it cannot be deleted');
+        expect(deleteRow).toContain('c_err_versioned_closed');
+        expect(deleteRow).toContain('when no_data_found then');
+        expect(deleteRow).toMatch(/when no_data_found then\s*null;/);
     });
 
     test('DAL spec close_row has p_id, p_valid_to, and p_row parameters', () => {
@@ -2063,27 +2119,28 @@ describe('versioned layered TAPI — full+hks tier', () => {
         expect(closeRow).toContain('c_err_stale_data');
     });
 
-    test('HKS spec/body expose before_close/after_close instead of before_update/after_update/before_delete/after_delete', () => {
+    test('HKS spec/body expose before_close/after_close ADDITIVE to before_update/after_update/before_delete/after_delete', () => {
         const out = ddl(POLICIES_VERSIONED_QSQL);
         const hksSpec = segment(out, 'create or replace package policies_hks', 'end policies_hks;');
         expect(hksSpec).toContain('procedure before_close');
         expect(hksSpec).toContain('procedure after_close');
-        expect(hksSpec).not.toContain('procedure before_update');
-        expect(hksSpec).not.toContain('procedure after_update');
-        expect(hksSpec).not.toContain('procedure before_delete');
-        expect(hksSpec).not.toContain('procedure after_delete');
+        expect(hksSpec).toContain('procedure before_update');
+        expect(hksSpec).toContain('procedure after_update');
+        expect(hksSpec).toContain('procedure before_delete');
+        expect(hksSpec).toContain('procedure after_delete');
         const hksBody = segment(out, 'create or replace package body policies_hks', 'end policies_hks;');
         expect(hksBody).toContain('procedure before_close');
         expect(hksBody).toContain('procedure after_close');
-        expect(hksBody).not.toContain('procedure before_update');
+        expect(hksBody).toContain('procedure before_update');
+        expect(hksBody).toContain('procedure after_delete');
     });
 
-    test('SVC spec exposes close_version instead of update_rec and delete_rec, with p_id/p_valid_to/p_row_version', () => {
+    test('SVC spec exposes close_version ADDITIVE to update_rec/delete_rec, with p_id/p_valid_to/p_row_version', () => {
         const out = ddl(POLICIES_VERSIONED_QSQL);
         const svcSpec = segment(out, 'create or replace package policies_svc', 'end policies_svc;');
         expect(svcSpec).toContain('procedure close_version');
-        expect(svcSpec).not.toContain('procedure update_rec');
-        expect(svcSpec).not.toContain('procedure delete_rec');
+        expect(svcSpec).toContain('procedure update_rec');
+        expect(svcSpec).toContain('procedure delete_rec');
         const closeVersion = segment(svcSpec, 'procedure close_version', ');');
         expect(closeVersion).toContain('p_id');
         expect(closeVersion).toContain('p_valid_to');
@@ -2104,18 +2161,22 @@ describe('versioned layered TAPI — full+hks tier', () => {
             .toBeLessThan(closeVersion.indexOf('policies_hks.after_close'));
     });
 
-    test('APP spec exposes close instead of upd and del; body delegates to svc.close_version', () => {
+    test('APP spec exposes close ADDITIVE to upd/del; close delegates to svc.close_version, upd/del to svc.update_rec/delete_rec', () => {
         const out = ddl(POLICIES_VERSIONED_QSQL);
         const appSpec = segment(out, 'create or replace package policies_app', 'end policies_app;');
         expect(appSpec).toContain('procedure close');
-        expect(appSpec).not.toContain('procedure upd');
-        expect(appSpec).not.toContain('procedure del');
+        expect(appSpec).toContain('procedure upd');
+        expect(appSpec).toContain('procedure del');
         const appBody = segment(out, 'create or replace package body policies_app', 'end policies_app;');
         const closePr = segment(appBody, 'procedure close', 'end close;');
         expect(closePr).toContain('policies_svc.close_version');
         expect(closePr).toContain('p_id => p_id');
         expect(closePr).toContain('p_valid_to => p_valid_to');
         expect(closePr).toContain('p_row_version => p_row_version');
+        const updPr = segment(appBody, 'procedure upd', 'end upd;');
+        expect(updPr).toContain('policies_svc.update_rec');
+        const delPr = segment(appBody, 'procedure del', 'end del;');
+        expect(delPr).toContain('policies_svc.delete_rec');
     });
 
     test('custom vtCol: /versioned expires_at uses expires_at instead of valid_to', () => {
@@ -2134,32 +2195,34 @@ describe('versioned layered TAPI — full+hks tier', () => {
         expect(svcSpec).toContain('procedure create_rec');
     });
 
-    test('RST spec/body expose close instead of upd/del', () => {
+    test('RST spec/body expose close ADDITIVE to upd/del', () => {
         const out = ddl(`policies /api /versioned\n  code vc20 /nn\n# settings = {"api": "layered", "interface": "rest"}`);
         const rstSpec = segment(out, 'create or replace package policies_rst as', 'end policies_rst;');
         expect(rstSpec).toContain('procedure close;');
-        expect(rstSpec).not.toContain('procedure upd;');
-        expect(rstSpec).not.toContain('procedure del;');
+        expect(rstSpec).toContain('procedure upd;');
+        expect(rstSpec).toContain('procedure del;');
         const rstBody = segment(out, 'create or replace package body policies_rst', 'end policies_rst;');
         const closeProc = segment(rstBody, 'procedure close is', 'end close;');
         expect(closeProc).toContain('policies_svc.close_version');
         expect(closeProc).toContain(':p_id');
+        const updProc = segment(rstBody, 'procedure upd is', 'end upd;');
+        expect(updProc).toContain('policies_svc.update_rec');
     });
 
 });
 
 describe('versioned layered TAPI — degraded tiers (absorbed close_row/close_version/close)', () => {
 
-    test('service tier (no DAL, no HKS): SVC absorbs p_close_row and private hook stubs before_close/after_close', () => {
+    test('service tier (no DAL, no HKS): SVC absorbs p_close_row ADDITIVE to p_update_row/p_delete_row and their hook stubs', () => {
         const out = ddl('policies /api service /versioned\n  code vc20 /nn\n  row_version num /nn');
         const svcBody = segment(out, 'create or replace package body policies_svc', 'end policies_svc;');
         expect(svcBody).toContain('procedure p_close_row');
-        expect(svcBody).not.toContain('procedure p_update_row');
-        expect(svcBody).not.toContain('procedure p_delete_row');
+        expect(svcBody).toContain('procedure p_update_row');
+        expect(svcBody).toContain('procedure p_delete_row');
         expect(svcBody).toContain('procedure p_before_close');
         expect(svcBody).toContain('procedure p_after_close');
-        expect(svcBody).not.toContain('procedure p_before_update');
-        expect(svcBody).not.toContain('procedure p_after_delete');
+        expect(svcBody).toContain('procedure p_before_update');
+        expect(svcBody).toContain('procedure p_after_delete');
     });
 
     test('service tier: close_version calls p_close_row and p_before_close/p_after_close directly (no _hks/_dal)', () => {
@@ -2188,12 +2251,12 @@ describe('versioned layered TAPI — degraded tiers (absorbed close_row/close_ve
         expect(closePr).toContain('p_after_close');
     });
 
-    test('lookup tier: _app spec exposes close, not upd/del', () => {
+    test('lookup tier: _app spec exposes close ADDITIVE to upd/del', () => {
         const out = ddl('policies /api lookup /versioned\n  code vc20 /nn');
         const appSpec = segment(out, 'create or replace package policies_app as', 'end policies_app;');
         expect(appSpec).toContain('procedure close');
-        expect(appSpec).not.toContain('procedure upd');
-        expect(appSpec).not.toContain('procedure del');
+        expect(appSpec).toContain('procedure upd');
+        expect(appSpec).toContain('procedure del');
     });
 
     test('service tier ifc:rest: _rst close calls svc.close_version', () => {

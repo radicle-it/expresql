@@ -31,7 +31,8 @@ export class OracleRestRenderer {
         r += `${tab}procedure ins;\n`;
         if (isVersioned) {
             r += `${tab}procedure close;\n\n`;
-        } else if (isImmutable) {
+        }
+        if (isImmutable) {
             // No upd/del — append-only.
         } else {
             r += `${tab}procedure upd;\n`;
@@ -230,7 +231,9 @@ export class OracleRestRenderer {
             r += `${tab}${tab}htp.p(json_object('${pkNm}' value :p_id));\n`;
             r += excTail;
             r += `${tab}end close;\n\n`;
-        } else if (isImmutable) {
+        }
+
+        if (isImmutable) {
             // No upd/del — append-only.
         } else {
             // upd

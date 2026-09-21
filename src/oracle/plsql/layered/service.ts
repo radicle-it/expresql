@@ -70,9 +70,14 @@ export class OracleServiceRenderer {
             r += `${tab}${tab}p_${vtCol.padEnd(10)} in     ${tbl}.${vtCol}%type default systimestamp`;
             if (hasVer) r += `,\n${tab}${tab}p_row_version in ${tbl}.row_version%type`;
             r += `\n${tab});\n\n`;
-        } else if (isImmutable) {
+        }
+        if (isImmutable) {
             // No update_rec/delete_rec — append-only.
         } else {
+            // /versioned: additive alongside close_version above — free correction
+            // (update_rec, including a change to <vtCol> itself) or delete_rec stay
+            // available until the row is closed for the first time, guarded by the
+            // DAL (not by omitting these procedures).
             r += `${tab}procedure update_rec (\n`;
             r += `${tab}${tab}p_id  in ${tbl}.${pkNm}%type,\n`;
             r += `${tab}${tab}p_rec in t_rec`;
@@ -241,7 +246,9 @@ export class OracleServiceRenderer {
             r += `${tab}${tab}${closeRow}(p_id => p_id, p_${vtCol} => l_row.${vtCol}, p_row => l_row);\n`;
             r += renderAfterOperation('close', 'l_row', hkCall);
             r += `${tab}end close_version;\n\n`;
-        } else if (isImmutable) {
+        }
+
+        if (isImmutable) {
             // No update_rec/delete_rec — append-only (see _generatePrivateDml/_generateDalBody
             // for the same narrowing at the layers below).
         } else {

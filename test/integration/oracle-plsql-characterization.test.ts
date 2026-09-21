@@ -113,7 +113,12 @@ widgets /api full+hks
         table: 'customer_dim',
         render: (builder, node) =>
             builder.generateVersionedTrigger(node) + builder.generateLayeredTAPI(node),
-        expected: '26144:68f5d597801451577a020ffb83210c642fb7e0845b36bb3e488ee85ff8dce5ab',
+        // Fingerprint updated: /versioned's DAL now generates update_row/delete_row
+        // (guarded by "and valid_to is null") additive to close_row, no longer omitted
+        // — see doc/user/expresql-grammar.md. generateVersionedTrigger() itself is
+        // unchanged here (this direct call bypasses generateFullDDL's new "skip when
+        // layered" gating, which lives in generator.ts, not in the trigger renderer).
+        expected: '33132:871570592aec3d5b558fe74d1f5e052d020215e413732ce266e2ac88ce0c8638',
     },
     {
         name: 'immutable TAPI with REST interface',

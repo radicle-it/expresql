@@ -12,6 +12,7 @@ interface DalRenderProfile {
     notFoundError: string;
     lockedError: string;
     staleError: string;
+    closedError: string;
 }
 
 /** Renders the package DAL and the equivalent DML absorbed by lower tiers. */
@@ -30,6 +31,7 @@ export class OracleDalRenderer {
             notFoundError: absorbed ? '-20002' : 'c_err_not_found',
             lockedError: absorbed ? '-20003' : 'c_err_locked',
             staleError: absorbed ? '-20001' : 'c_err_stale_data',
+            closedError: absorbed ? '-20057' : 'c_err_versioned_closed',
         };
     }
 
@@ -113,6 +115,45 @@ export class OracleDalRenderer {
         return r;
     }
 
+    /**
+     * Same 0-rows-affected disambiguation as renderNoRowsCheck, plus a third
+     * case ahead of it: the row exists but is already closed (<vtCol> is not
+     * null) — the WHERE clause of the caller (close_row/update_row) always
+     * includes "and <vtCol> is null", so 0 rows can now mean CLOSED as well as
+     * STALE_DATA/NOT_FOUND. This is what used to be enforced by the
+     * trg_<table>_versioned trigger (removed) — the TAPI is now the only place
+     * this is checked, per the SmartDB principle: bypass protection is a GRANT
+     * concern, not a trigger's job.
+     */
+    private renderVersionedNoRowsCheck(
+        model: OracleTableApiModel,
+        profile: DalRenderProfile,
+        vtCol: string,
+    ): string {
+        const tbl = model.names.table;
+        const pkName = model.names.pk;
+        let r = `${tab}${tab}if sql%rowcount = 0 then\n`;
+        r += `${tab}${tab}${tab}declare\n`;
+        r += `${tab}${tab}${tab}${tab}l_${vtCol} ${tbl}.${vtCol}%type;\n`;
+        r += `${tab}${tab}${tab}begin\n`;
+        if (model.features.syntheticTenantId) {
+            r += `${tab}${tab}${tab}${tab}select ${vtCol} into l_${vtCol} from ${tbl} where ${pkName} = l_id and tenant_id = ${model.names.tenantContext}.get_id;\n`;
+        } else {
+            r += `${tab}${tab}${tab}${tab}select ${vtCol} into l_${vtCol} from ${tbl} where ${pkName} = l_id;\n`;
+        }
+        r += `${tab}${tab}${tab}${tab}if l_${vtCol} is not null then\n`;
+        r += `${tab}${tab}${tab}${tab}${tab}raise_application_error(${profile.closedError}, '[VERSIONED] ${tbl}: this version row is already closed (${vtCol} is not null)');\n`;
+        r += `${tab}${tab}${tab}${tab}else\n`;
+        r += `${tab}${tab}${tab}${tab}${tab}raise_application_error(${profile.staleError}, '[STALE_DATA] row modified by another session. reload and retry.');\n`;
+        r += `${tab}${tab}${tab}${tab}end if;\n`;
+        r += `${tab}${tab}${tab}exception\n`;
+        r += `${tab}${tab}${tab}${tab}when no_data_found then\n`;
+        r += `${tab}${tab}${tab}${tab}${tab}raise_application_error(${profile.notFoundError}, '[NOT_FOUND] record ' || l_id || ' does not exist.');\n`;
+        r += `${tab}${tab}${tab}end;\n`;
+        r += `${tab}${tab}end if;\n`;
+        return r;
+    }
+
     private renderCloseRoutine(model: OracleTableApiModel, mode: DalRenderMode): string {
         if (!model.features.versioned) return '';
 
@@ -137,6 +178,7 @@ export class OracleDalRenderer {
         r += `${tab}${tab}update ${tbl} set\n`;
         r += `${tab}${tab}${tab}${vtCol} = p_${vtCol}\n`;
         r += `${tab}${tab}where ${pkName} = l_id`;
+        r += `\n${tab}${tab}  and ${vtCol} is null`;
         if (synTenantId) r += `\n${tab}${tab}  and tenant_id = ${tenantCtxPkg}.get_id`;
         if (hasVer) r += `\n${tab}${tab}  and row_version = p_row.row_version`;
         const retCols: string[] = [];
@@ -153,14 +195,16 @@ export class OracleDalRenderer {
         intoCols.push(`p_row.${vtCol}`);
         r += `\n${tab}${tab}returning ${retCols.join(', ')}\n`;
         r += `${tab}${tab}     into ${intoCols.join(', ')};\n`;
-        r += this.renderNoRowsCheck(model, profile, hasVer);
+        r += this.renderVersionedNoRowsCheck(model, profile, vtCol);
         r += `${tab}end ${profile.prefix}close_row;\n\n`;
         return r;
     }
 
     private renderUpdateDeleteRoutines(model: OracleTableApiModel, mode: DalRenderMode): string {
-        if (model.features.versioned || model.features.immutable) return '';
+        if (model.features.immutable) return '';
 
+        const isVersioned = model.features.versioned;
+        const vtCol = model.versionToColumn;
         const tbl = model.names.table;
         const pkName = model.names.pk;
         const hasVer = model.features.versionColumn;
@@ -184,15 +228,42 @@ export class OracleDalRenderer {
         } else {
             r += `${tab}${tab}update ${tbl} set ${pkName} = l_id where ${pkName} = l_id`;
         }
+        // /versioned: free correction of any column (including <vtCol> itself,
+        // i.e. this can also close the row) is permitted only while the row has
+        // never been closed — once <vtCol> is set, it is permanent history. See
+        // renderVersionedNoRowsCheck: this is what used to be a DB trigger.
+        if (isVersioned) r += `\n${tab}${tab}  and ${vtCol} is null`;
         if (synTenantId) r += `\n${tab}${tab}  and tenant_id = ${tenantCtxPkg}.get_id`;
         if (hasVer) r += `\n${tab}${tab}  and row_version = p_row.row_version`;
         r += `;\n`;
-        if (hasVer) r += this.renderNoRowsCheck(model, profile, true);
+        if (isVersioned) r += this.renderVersionedNoRowsCheck(model, profile, vtCol);
+        else if (hasVer) r += this.renderNoRowsCheck(model, profile, true);
         r += `${tab}end ${profile.prefix}update_row;\n\n`;
 
         r += `${tab}procedure ${profile.prefix}delete_row (p_id in ${profile.idType}) is\n`;
         r += `${tab}begin\n`;
-        if (synTenantId) {
+        if (isVersioned) {
+            // Same rule as update_row: deletable only while still open. Unlike
+            // update_row/close_row this has no p_row to report the conflict onto,
+            // and delete_row has never raised NOT_FOUND for a missing id (silent
+            // no-op, preserved here) — so the only new, explicit error is the
+            // "exists but already closed" case.
+            const tenantWhere = synTenantId ? ` and tenant_id = ${tenantCtxPkg}.get_id` : '';
+            r += `${tab}${tab}delete from ${tbl} where ${pkName} = p_id and ${vtCol} is null${tenantWhere};\n`;
+            r += `${tab}${tab}if sql%rowcount = 0 then\n`;
+            r += `${tab}${tab}${tab}declare\n`;
+            r += `${tab}${tab}${tab}${tab}l_${vtCol} ${tbl}.${vtCol}%type;\n`;
+            r += `${tab}${tab}${tab}begin\n`;
+            r += `${tab}${tab}${tab}${tab}select ${vtCol} into l_${vtCol} from ${tbl} where ${pkName} = p_id${tenantWhere};\n`;
+            r += `${tab}${tab}${tab}${tab}if l_${vtCol} is not null then\n`;
+            r += `${tab}${tab}${tab}${tab}${tab}raise_application_error(${profile.closedError}, '[VERSIONED] ${tbl}: this version row is already closed (${vtCol} is not null), it cannot be deleted');\n`;
+            r += `${tab}${tab}${tab}${tab}end if;\n`;
+            r += `${tab}${tab}${tab}exception\n`;
+            r += `${tab}${tab}${tab}${tab}when no_data_found then\n`;
+            r += `${tab}${tab}${tab}${tab}${tab}null;\n`;
+            r += `${tab}${tab}${tab}end;\n`;
+            r += `${tab}${tab}end if;\n`;
+        } else if (synTenantId) {
             r += `${tab}${tab}delete from ${tbl} where ${pkName} = p_id and tenant_id = ${tenantCtxPkg}.get_id;\n`;
         } else {
             r += `${tab}${tab}delete from ${tbl} where ${pkName} = p_id;\n`;
@@ -414,9 +485,16 @@ export class OracleDalRenderer {
             r += `${tab}${tab}p_${vtCol.padEnd(10)} in     ${tbl}.${vtCol}%type default systimestamp,\n`;
             r += `${tab}${tab}p_row      in out nocopy ${tbl}%rowtype\n`;
             r += `${tab});\n\n`;
-        } else if (isImmutable) {
+        }
+        if (isImmutable) {
             // No update_row/delete_row — append-only.
         } else {
+            // /versioned: update_row/delete_row are additive alongside close_row
+            // above, not a replacement — free correction (any column, including
+            // <vtCol> itself) or deletion is permitted only while the row has
+            // never been closed. Once closed it is permanent history, enforced
+            // by the "and <vtCol> is null" guard these two now carry (see
+            // renderUpdateDeleteRoutines) — no longer by a DB trigger.
             r += `${tab}procedure update_row (p_row in out nocopy ${tbl}%rowtype);\n\n`;
             r += `${tab}procedure delete_row (p_id in t_id);\n\n`;
         }
@@ -441,7 +519,9 @@ export class OracleDalRenderer {
         }
         r += `${tab}c_err_stale_data constant pls_integer := -20001;\n`;
         r += `${tab}c_err_not_found  constant pls_integer := -20002;\n`;
-        r += `${tab}c_err_locked     constant pls_integer := -20003;\n\n`;
+        r += `${tab}c_err_locked     constant pls_integer := -20003;\n`;
+        if (isVersioned) r += `${tab}c_err_versioned_closed constant pls_integer := -20057;\n`;
+        r += `\n`;
         r += `end ${bareName(dal)};\n/\n`;
         return r;
     }

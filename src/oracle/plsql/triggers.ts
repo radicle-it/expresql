@@ -138,6 +138,14 @@ export class OracleTriggerBuilder {
         return ret;
     }
 
+    /**
+     * /versioned WITHOUT a layered API on this node — no DAL/SVC/APP exists to carry
+     * the "insert-only, close-once" guard, so the trigger remains the only tool
+     * available (there is no TAPI to move the logic into). generator.ts only calls
+     * this for nodes where isNodeLayered is false; a layered /versioned table gets
+     * the same guarantee from its DAL (close_row/update_row/delete_row all carry
+     * "and <vtCol> is null") instead — see doc/user/expresql-grammar.md.
+     */
     generateVersioned(node: IDdlNode): string {
         if (node.inferType() !== 'table' || !node.isOption('versioned')) return '';
         const objName    = this.ctx.objPrefix() + node.parseName();

@@ -106,17 +106,21 @@ export class OracleAppRenderer {
         r += insLines.join(',\n') + `\n${tab});\n\n`;
 
         if (isVersioned) {
-            // close: replaces upd + del for temporally-versioned tables
+            // close: additive alongside upd/del below for temporally-versioned tables
             r += `${tab}procedure close (\n`;
             const closeLines: string[] = [];
             closeLines.push(`${tab}${tab}p_id           in     ${tbl}.${pkNm}%type`);
             closeLines.push(`${tab}${tab}p_${vtCol.padEnd(appPadWidth)} in     ${tbl}.${vtCol}%type default systimestamp`);
             if (hasVer) closeLines.push(`${tab}${tab}p_row_version  in     ${tbl}.row_version%type`);
             r += closeLines.join(',\n') + `\n${tab});\n\n`;
-        } else if (isImmutable) {
+        }
+        if (isImmutable) {
             // No upd/del — append-only.
         } else {
-            // upd: p_row_version only when /rowversion is active
+            // upd: p_row_version only when /rowversion is active. /versioned: free
+            // correction (including a change to <vtCol> itself) or delete stays
+            // available until the row is closed for the first time — guarded by the
+            // DAL, not by omitting upd/del.
             r += `${tab}procedure upd (\n`;
             const updLines: string[] = [];
             updLines.push(`${tab}${tab}p_id           in  ${tbl}.${pkNm}%type`);
@@ -337,7 +341,9 @@ export class OracleAppRenderer {
                 r += renderAfterOperation('close', 'l_row', hkCall);
             }
             r += `${tab}end close;\n\n`;
-        } else if (isImmutable) {
+        }
+
+        if (isImmutable) {
             // No upd/del — append-only.
         } else {
             // upd

@@ -5,10 +5,10 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		enumerable: !(s = n(i, d)) || s.enumerable
 	});
 	return e;
-}, c = (n, r, a) => (a = n == null ? {} : e(i(n)), s(r || !n || !n.__esModule ? t(a, "default", {
+}, c = (n, r, o) => (o = n == null ? {} : e(i(n)), s(r || !n || !n.__esModule || !a.call(n, "default") ? t(o, "default", {
 	value: n,
 	enumerable: !0
-}) : a, n));
+}) : o, n));
 //#endregion
 //#region src/utils/naming.ts
 function l(e) {
@@ -642,9 +642,9 @@ var A = class {
 			let n = f(e, this.parseName()), r = E;
 			this.parent !== null && (r = " ".repeat(this.parent.maxChildNameLen()));
 			let i = this.getGeneralConstraint();
-			if (i !== null) return this.children !== null && 0 < this.children.length ? (t += "    constraint " + f(this._ctx.objPrefix("no schema"), n, T.ck), t += "  check " + i + ",\n") : (t += " constraint " + f(this._ctx.objPrefix("no schema"), n, T.ck) + "\n", t += "        " + r + "check " + i), t;
+			if (i !== null) return this.children !== null && 0 < this.children.length ? (t += "    constraint " + f(this._ctx.objPrefix("no schema"), n, T.ck), t += "  check " + i + ",\n") : (t += " constraint " + f(this._ctx.objPrefix("no schema"), n, T.ck) + "\n", t += E + E + r + "check " + i), t;
 			let a = this.getValues("check");
-			t += " constraint " + f(this._ctx.objPrefix("no schema"), n, T.ck) + "\n", t += "        " + r + "check (" + this.parseName() + " in (" + a + "))";
+			t += " constraint " + f(this._ctx.objPrefix("no schema"), n, T.ck) + "\n", t += E + E + r + "check (" + this.parseName() + " in (" + a + "))";
 		}
 		return t;
 	}
@@ -705,7 +705,7 @@ var A = class {
 				a === "identifier" && i !== "null" && (i = "'" + i + "'"), t.push(i), i = null, a = null;
 				continue;
 			}
-			n === "(" || n === ")" || (n.charAt(0) === "`" ? n = n.substring(1, n.length - 1) : k(this.src[e].type, n) && (a = "identifier"), i = i === null ? n : i + o + n);
+			n !== "(" && n !== ")" && (n.charAt(0) === "`" ? n = n.substring(1, n.length - 1) : k(this.src[e].type, n) && (a = "identifier"), i = i === null ? n : i + o + n);
 		}
 		return a === "identifier" && i !== "null" && (i = "'" + i + "'"), t.push(i), t;
 	}
@@ -834,11 +834,14 @@ function de(e) {
 			let t = new A(s.line - 1, o, null, e), i = !1;
 			for (let a = 0; a < n.length; a++) {
 				let c = n[a];
-				if (t.apparentDepth() <= c.apparentDepth()) if (0 < a) {
-					let r = n[a - 1];
-					t = new A(s.line - 1, o, r, e), n[a] = t, n = n.slice(0, a + 1), i = !0;
-					break;
-				} else n[0] = t, n = n.slice(0, 1), r.push(t), i = !0;
+				if (t.apparentDepth() <= c.apparentDepth()) {
+					if (0 < a) {
+						let r = n[a - 1];
+						t = new A(s.line - 1, o, r, e), n[a] = t, n = n.slice(0, a + 1), i = !0;
+						break;
+					}
+					n[0] = t, n = n.slice(0, 1), r.push(t), i = !0;
+				}
 			}
 			if (!i) {
 				if (0 < n.length) {
@@ -1148,9 +1151,7 @@ var me = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 					case "identity":
 						i === "{" ? n = "replace" : i === "\\" ? n = "escape" : t.push(new h(i));
 						break;
-					case "replace":
-						i === "}" ? n = "identity" : t.push(new _(i));
-						break;
+					case "replace": i === "}" ? n = "identity" : t.push(new _(i));
 				}
 			}
 			return t;
@@ -1310,12 +1311,10 @@ var me = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 						max: 100
 					};
 					break;
-				default:
-					t = {
-						min: 18,
-						max: 65
-					};
-					break;
+				default: t = {
+					min: 18,
+					max: 65
+				};
 			}
 			return this.natural(t);
 		}, u.prototype.birthday = function(e) {
@@ -1373,7 +1372,8 @@ var me = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				return Object.keys(n).forEach(function(e) {
 					t = t.concat(n[e]);
 				}), this.pick(t);
-			} else return this.pick(this.get("lastNames")[e.nationality.toLowerCase()]);
+			}
+			return this.pick(this.get("lastNames")[e.nationality.toLowerCase()]);
 		}, u.prototype.israelId = function() {
 			for (var e = this.string({
 				pool: "0123456789",
@@ -1653,7 +1653,7 @@ var me = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			else if (typeof e == "string") s.email = e, e = {};
 			else if (typeof e != "object") return null;
 			else if (e.constructor === "Array") return null;
-			return s = d(e, s), s.email ||= this.email(), s.protocol = r[s.protocol] ? s.protocol + ":" : "", s.size = parseInt(s.size, 0) ? s.size : "", s.rating = o[s.rating] ? s.rating : "", s.fallback = a[s.fallback] ? s.fallback : "", s.fileExtension = i[s.fileExtension] ? s.fileExtension : "", t = s.protocol + n + this.bimd5.md5(s.email) + (s.fileExtension ? "." + s.fileExtension : "") + (s.size || s.rating || s.fallback ? "?" : "") + (s.size ? "&s=" + s.size.toString() : "") + (s.rating ? "&r=" + s.rating : "") + (s.fallback ? "&d=" + s.fallback : ""), t;
+			return s = d(e, s), s.email || (s.email = this.email()), s.protocol = r[s.protocol] ? s.protocol + ":" : "", s.size = parseInt(s.size, 0) ? s.size : "", s.rating = o[s.rating] ? s.rating : "", s.fallback = a[s.fallback] ? s.fallback : "", s.fileExtension = i[s.fileExtension] ? s.fileExtension : "", t = s.protocol + n + this.bimd5.md5(s.email) + (s.fileExtension ? "." + s.fileExtension : "") + (s.size || s.rating || s.fallback ? "?" : "") + (s.size ? "&s=" + s.size.toString() : "") + (s.rating ? "&r=" + s.rating : "") + (s.fallback ? "&d=" + s.fallback : ""), t;
 		}, u.prototype.color = function(e) {
 			function t(e, t) {
 				return [
@@ -2315,7 +2315,6 @@ var me = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 						length: 4
 					});
 					i = e.formatted ? "(" + c + ") " + l + "-" + u : c + l + u;
-					break;
 			}
 			return i;
 		}, u.prototype.postal = function() {
@@ -2364,9 +2363,7 @@ var me = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				case "mx":
 					t = this.get("country_regions")[e.country.toLowerCase()];
 					break;
-				case "uk":
-					t = this.get("counties")[e.country.toLowerCase()];
-					break;
+				case "uk": t = this.get("counties")[e.country.toLowerCase()];
 			}
 			return t;
 		}, u.prototype.street = function(e) {
@@ -2379,9 +2376,7 @@ var me = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				case "us":
 					t = this.word({ syllables: e.syllables }), t = this.capitalize(t), t += " ", t += e.short_suffix ? this.street_suffix(e).abbreviation : this.street_suffix(e).name;
 					break;
-				case "it":
-					t = this.word({ syllables: e.syllables }), t = this.capitalize(t), t = (e.short_suffix ? this.street_suffix(e).abbreviation : this.street_suffix(e).name) + " " + t;
-					break;
+				case "it": t = this.word({ syllables: e.syllables }), t = this.capitalize(t), t = (e.short_suffix ? this.street_suffix(e).abbreviation : this.street_suffix(e).name) + " " + t;
 			}
 			return t;
 		}, u.prototype.street_suffix = function(e) {
@@ -2525,7 +2520,7 @@ var me = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 		}, u.prototype.exp = function(e) {
 			e = d(e);
 			var t = {};
-			return t.year = this.exp_year(), t.year === (/* @__PURE__ */ new Date()).getFullYear().toString() ? t.month = this.exp_month({ future: !0 }) : t.month = this.exp_month(), e.raw ? t : t.month + "/" + t.year;
+			return t.year = this.exp_year(), t.month = t.year === (/* @__PURE__ */ new Date()).getFullYear().toString() ? this.exp_month({ future: !0 }) : this.exp_month(), e.raw ? t : t.month + "/" + t.year;
 		}, u.prototype.exp_month = function(e) {
 			e = d(e);
 			var t, n, r = (/* @__PURE__ */ new Date()).getMonth() + 1;
@@ -2541,9 +2536,7 @@ var me = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				max: t + 10
 			});
 		}, u.prototype.vat = function(e) {
-			switch (e = d(e, { country: "it" }), e.country.toLowerCase()) {
-				case "it": return this.it_vat();
-			}
+			if (e = d(e, { country: "it" }), e.country.toLowerCase() === "it") return this.it_vat();
 		}, u.prototype.iban = function() {
 			var e = "ABCDEFGHIJKLMNOPQRSTUVWXYZ", t = e + "0123456789";
 			return this.string({
@@ -2743,7 +2736,8 @@ var me = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				return t.sum !== void 0 && t.sum ? r.reduce(function(e, t) {
 					return e + t;
 				}) : r;
-			} else throw RangeError("Chance: A type of die roll must be included");
+			}
+			throw RangeError("Chance: A type of die roll must be included");
 		}, u.prototype.guid = function(e) {
 			e = d(e, { version: 5 });
 			var t = "abcdef1234567890";
@@ -9521,7 +9515,7 @@ var me = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 		u.prototype.get = function(e) {
 			return C(b[e]);
 		}, u.prototype.mac_address = function(e) {
-			e = d(e), e.separator ||= e.networkVersion ? "." : ":";
+			e = d(e), e.separator || (e.separator = e.networkVersion ? "." : ":");
 			var t = "ABCDEF1234567890", n = "";
 			return n = e.networkVersion ? this.n(this.string, 3, {
 				pool: t,
@@ -9564,9 +9558,7 @@ var me = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 				case "w":
 					t = "K";
 					break;
-				default:
-					t = this.character({ pool: "KW" });
-					break;
+				default: t = this.character({ pool: "KW" });
 			}
 			return t + this.character({
 				alpha: !0,
@@ -9667,8 +9659,7 @@ var me = /* @__PURE__ */ c((/* @__PURE__ */ o(((e, t) => {
 			for (i[15] = a[15] = void 0, r.length > 16 && (r = this.binl_md5(r, e.length * 8)), n = 0; n < 16; n += 1) i[n] = r[n] ^ 909522486, a[n] = r[n] ^ 1549556828;
 			return o = this.binl_md5(i.concat(this.rstr2binl(t)), 512 + t.length * 8), this.binl2rstr(this.binl_md5(a.concat(o), 640));
 		}, T.prototype.rstr2hex = function(e) {
-			var t = "0123456789abcdef", n = "", r, i;
-			for (i = 0; i < e.length; i += 1) r = e.charCodeAt(i), n += t.charAt(r >>> 4 & 15) + t.charAt(r & 15);
+			for (var t = "0123456789abcdef", n = "", r, i = 0; i < e.length; i += 1) r = e.charCodeAt(i), n += t.charAt(r >>> 4 & 15) + t.charAt(r & 15);
 			return n;
 		}, T.prototype.str2rstr_utf8 = function(e) {
 			return unescape(encodeURIComponent(e));
@@ -9994,7 +9985,7 @@ var I = class {
 			let n = e.fks[t], r = "", a = this._ddl.find(n);
 			a ?? (a = this._ddl.find(t), a?.isMany2One?.() && !t.endsWith("_id") && (n = t, t = l(t) ?? t, r = "_id")), i += E + t + r + ",\n";
 		}
-		for (let t of e.regularColumns()) a != null && t.parseName() === "id" || t.isOption("pk") || (i += E + t.parseName() + ",\n");
+		for (let t of e.regularColumns()) (a == null || t.parseName() !== "id") && (t.isOption("pk") || (i += E + t.parseName() + ",\n"));
 		if (i = _e(i), i += ") values (\n", a != null) s = t + 1, i += E + s + ",\n";
 		else if (o != null) {
 			let r = o, a = F(this._ddl.data, null, r, e.parseName()), c = -1;
@@ -10094,7 +10085,7 @@ function H(e) {
 }
 function xe(e) {
 	if (typeof e != "object" || !e) return !1;
-	for (let t in e) if (!(e[t] != null && typeof e[t] == "object")) return !0;
+	for (let t in e) if (e[t] == null || typeof e[t] != "object") return !0;
 	return !1;
 }
 function Se(e) {
@@ -10119,7 +10110,7 @@ function U(e) {
 	let t = "(";
 	for (let n in e) {
 		if (n === "0") return U(e[n]);
-		e[n] != null && typeof e[n] == "object" || (t += n + ",");
+		(e[n] == null || typeof e[n] != "object") && (t += n + ",");
 	}
 	return t.lastIndexOf(",") === t.length - 1 && (t = t.substring(0, t.length - 1)), t + ")";
 }
@@ -10971,7 +10962,7 @@ var Ze = class {
 			}
 			o && (l += `    call ${t}_hks.p_after_update('');\n`), l += "    set p_status = 'SUCCESS';\n";
 		}
-		return l += "end @\n\n", l += `create or replace procedure ${t}_app.del (\n`, l += `    in  p_${n}  ${r},\n`, l += "    out p_status   varchar(20)\n", l += ")\nlanguage sql\nbegin\n", i ? l += `    call ${t}_svc.del(p_${n}, p_status);\n` : (l += "    -- private delete (absorbed from absent _svc)\n", o && (l += `    call ${t}_hks.p_before_delete(p_${n});\n`), a ? l += `    call ${t}_dal.p_delete_row(p_${n});\n` : l += `    delete from ${t} where ${n} = p_${n};\n`, o && (l += `    call ${t}_hks.p_after_delete(p_${n});\n`), l += "    set p_status = 'SUCCESS';\n"), l += "end @\n\n", l;
+		return l += "end @\n\n", l += `create or replace procedure ${t}_app.del (\n`, l += `    in  p_${n}  ${r},\n`, l += "    out p_status   varchar(20)\n", l += ")\nlanguage sql\nbegin\n", i ? l += `    call ${t}_svc.del(p_${n}, p_status);\n` : (l += "    -- private delete (absorbed from absent _svc)\n", o && (l += `    call ${t}_hks.p_before_delete(p_${n});\n`), l += a ? `    call ${t}_dal.p_delete_row(p_${n});\n` : `    delete from ${t} where ${n} = p_${n};\n`, o && (l += `    call ${t}_hks.p_after_delete(p_${n});\n`), l += "    set p_status = 'SUCCESS';\n"), l += "end @\n\n", l;
 	}
 	_generateRst(e, t, n, r, i, a, o) {
 		let s = Object.keys(e.fks ?? {}), c = this._svcCols(e), l = "";
@@ -11142,7 +11133,7 @@ var et = class extends I {
 		let n = "";
 		for (let r = 0; r < e.children.length; r++) {
 			let i = e.children[r];
-			if (!(t !== null && i.parseName() === "id") && !(0 < i.children.length) && i.refId() === null) {
+			if ((t === null || i.parseName() !== "id") && !(0 < i.children.length) && i.refId() === null) {
 				if (i.parseName() === e.getExplicitPkName()) continue;
 				if (n += E + this.generateTable(i) + ",\n", 0 < i.indexOf("file")) {
 					let t = i.parseName();
@@ -11298,7 +11289,7 @@ var et = class extends I {
 		];
 		for (let e of t) {
 			let t = e.trimmedContent().toLowerCase().includes("/api"), a = (e.getOptionValue("api") ?? "").trim().toLowerCase();
-			if (!(t && (i.includes(a) || a === ""))) continue;
+			if (!t || !i.includes(a) && a !== "") continue;
 			let o = this._plsql.generateLayeredTAPI(e);
 			o && (r++ === 0 && (n += "-- APIs\n"), n += o + "\n");
 		}

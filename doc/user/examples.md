@@ -500,11 +500,16 @@ end audit_log_app;
 ```
 
 `/versioned` (above) and `/immutable` cannot both be declared on the same
-table — see [Table Directives](expresql-grammar.md#table-directives) — but
-they share this one narrowing mechanism: an operation the data model
-doesn't support (update a closed version; update or delete an append-only
-row) is absent from the generated API, not merely rejected by it at
-runtime.
+table — see [Table Directives](expresql-grammar.md#table-directives) — and
+they narrow differently, not identically: for `/immutable`, update/delete
+have no legitimate case at all, so they are absent from the generated API
+entirely, not merely rejected at runtime. For `/versioned`, `upd`/`del` (and
+`update_rec`/`delete_rec`, `update_row`/`delete_row`) **are** generated —
+correcting a mistake, or deleting a row, is a normal operation right up
+until that specific row is closed for the first time — and the DAL rejects
+the call at runtime (`ORA-20057 [VERSIONED] ...: this version row is
+already closed`) only once `valid_to` is actually set. See §26 below for a
+full `/versioned` worked example.
 
 ---
 
@@ -1891,7 +1896,7 @@ Before this setting, `validate()` never fired on delete at all, on any table —
 
 ## 26. SCD2 business-key navigation with `/businesskey`
 
-`/versioned` (§8) already makes a table insert-only, with a narrowed TAPI (`close_row`/`close_version`/`close` in place of update/delete) — but on its own it has no concept of "this row and that row are two versions of the same logical entity." `/businesskey <col>` adds exactly that on top: navigating by a business key instead of by the surrogate PK of one specific version row. Only meaningful together with `/versioned` (a warning otherwise), and `<col>` must already be a declared column (a warning if it isn't — see `errors.test.ts`).
+`/versioned` (§8) already makes a table insert-only *per version*: `close_row`/`close_version`/`close` are generated alongside the normal update/delete, and a version row stays freely correctable or deletable only until it is closed for the first time — but on its own it has no concept of "this row and that row are two versions of the same logical entity." `/businesskey <col>` adds exactly that on top: navigating by a business key instead of by the surrogate PK of one specific version row. Only meaningful together with `/versioned` (a warning otherwise), and `<col>` must already be a declared column (a warning if it isn't — see `errors.test.ts`).
 
 **Input:**
 
@@ -2071,7 +2076,7 @@ Deliberately out of scope here (left for when a concrete need emerges, same prin
 
 ## 28. N:M associative tables with `/bridge`
 
-A pure associative table (`user_role(user_id, role_id)`) rarely has a meaningful "update" — the relationship exists or it doesn't — and the generic CRUD `ins`/`upd`/`del` says nothing about what the table is actually _for_. `/bridge` adds the vocabulary a caller actually wants: `grant`/`revoke`/`has`/`list`. Unlike `/versioned` and `/immutable`, this is **additive, not a replacement** — `create_rec`/`update_rec`/`delete_rec` and `ins`/`upd`/`del` remain fully generated; `/bridge` gives you a better-shaped alternative alongside them, not instead of them.
+A pure associative table (`user_role(user_id, role_id)`) rarely has a meaningful "update" — the relationship exists or it doesn't — and the generic CRUD `ins`/`upd`/`del` says nothing about what the table is actually _for_. `/bridge` adds the vocabulary a caller actually wants: `grant`/`revoke`/`has`/`list`. Like `/versioned` (§8, §26) and unlike `/immutable`, this is **additive, not a replacement** — `create_rec`/`update_rec`/`delete_rec` and `ins`/`upd`/`del` remain fully generated; `/bridge` gives you a better-shaped alternative alongside them, not instead of them.
 
 **Input:**
 
@@ -2270,7 +2275,7 @@ end orders_agg;
 
 **Layer selection — `_svc` preferred, `_app` as fallback:** `generateAggregatePackage` calls the detail's own `_svc.create_rec`/`delete_rec` when the detail's tier has one. On a `lookup`/`lookup+hks` detail (no `_svc`), it calls `<detail>_app.ins`/`.del` instead — the same business logic, since `_app` itself already routes through the detail's hooks and private DML. If the detail has *neither* (an `interface: "rest"`-only script, where a lookup-tier table has no `_app` either — only a JSON-based `_rst`), `add_`/`remove_` are skipped for that detail entirely (with a generated comment explaining why); `list_` is unaffected, since it is a plain `select` against `_rls` regardless of tier.
 
-**Narrowed details:** a `/versioned` or `/immutable` detail has no `delete_rec` at all (by design — see §8 and §26), so `remove_<detail>` is not generated for it; `add_<detail>` still is, since `create_rec` is untouched by either directive.
+**Narrowed details:** `remove_<detail>` is not generated for a `/versioned` or `/immutable` detail; `add_<detail>` still is, since `create_rec` is untouched by either directive. For `/immutable` this mirrors the detail's own TAPI exactly — `delete_rec` doesn't exist there either (§8). For `/versioned`, this is `/aggregate`'s own, separate choice, not a reflection of the detail's TAPI: a `/versioned` table's `_svc.delete_rec` *does* exist (guarded — see §8, §26), but `generateAggregatePackage` currently treats `/versioned` the same as `/immutable` for `canDelete` and skips `remove_<detail>` regardless. Revisiting that — letting `remove_<detail>` call the guarded `delete_rec` for a still-open version — is a reasonable follow-up, not yet done.
 
 | Layer | New package | Notes |
 |---|---|---|

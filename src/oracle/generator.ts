@@ -707,6 +707,19 @@ export class OracleDDLGenerator extends BaseGenerator {
             }
         }
 
+        // Layered-API detection, needed both by the versioned trigger below (skip it
+        // when a layered TAPI exists to carry the guard instead) and by the TAPI
+        // section further down.
+        const globalLayered = this._ddl.optionEQvalue('api', 'layered');
+        const layeredTiers  = ['full+hks', 'full', 'service+hks', 'service',
+                               'lookup+hks', 'lookup', 'layered',
+                               '3h', '3', '2h', '2', '1h', '1'];
+        const isNodeLayered = (node: DdlNode): boolean => {
+            const hasApiDir  = node.trimmedContent().toLowerCase().includes('/api');
+            const nodeApiVal = (node.getOptionValue('api') ?? '').trim().toLowerCase();
+            return hasApiDir && (layeredTiers.includes(nodeApiVal) || globalLayered);
+        };
+
         // Triggers
         let j = 0;
         for (const node of descendants) {
@@ -718,6 +731,12 @@ export class OracleDDLGenerator extends BaseGenerator {
             if (trigger) { if (j++ === 0) output += '-- immutable triggers\n'; output += trigger; }
         }
         for (const node of descendants) {
+            // /versioned: business rules belong in the TAPI, not a trigger — but only
+            // when a layered TAPI actually exists to carry them (its DAL's close_row/
+            // update_row/delete_row all carry "and <vtCol> is null"). Without a layered
+            // API on this node there is no TAPI to move the logic into, so the trigger
+            // remains the only enforcement available. See doc/user/expresql-grammar.md.
+            if (isNodeLayered(node)) continue;
             const trigger = this.generateVersionedTrigger(node);
             if (trigger) { if (j++ === 0) output += '-- triggers\n'; output += trigger; }
         }
@@ -731,15 +750,8 @@ export class OracleDDLGenerator extends BaseGenerator {
         // TAPI
         j = 0;
         let emittedTenantCtx = false;
-        const globalLayered = this._ddl.optionEQvalue('api', 'layered');
-        const layeredTiers  = ['full+hks', 'full', 'service+hks', 'service',
-                               'lookup+hks', 'lookup', 'layered',
-                               '3h', '3', '2h', '2', '1h', '1'];
         for (const node of descendants) {
-            const hasApiDir  = node.trimmedContent().toLowerCase().includes('/api');
-            const nodeApiVal = (node.getOptionValue('api') ?? '').trim().toLowerCase();
-            const isNodeLayered = hasApiDir && (layeredTiers.includes(nodeApiVal) || globalLayered);
-            if (isNodeLayered) {
+            if (isNodeLayered(node)) {
                 // Emit the shared tenant-context packages once, before the first layered
                 // table that can reference them — every tier (full/service/lookup, +hks or
                 // not) calls <prefix>tenant_ctx.get_id from its DAL or absorbed private DML.
@@ -758,6 +770,7 @@ export class OracleDDLGenerator extends BaseGenerator {
                 const tapi = this.generateLayeredTAPI(node);
                 if (tapi) { if (j++ === 0) output += '-- APIs\n'; output += tapi + '\n'; }
             } else {
+                const hasApiDir = node.trimmedContent().toLowerCase().includes('/api');
                 if (this._ddl.optionEQvalue('api', false) && !hasApiDir) continue;
                 const tapi = this.generateTAPI(node);
                 if (tapi) { if (j++ === 0) output += '-- APIs\n'; output += tapi + '\n'; }

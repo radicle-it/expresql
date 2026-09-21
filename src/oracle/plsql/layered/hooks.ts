@@ -25,19 +25,22 @@ export class OracleHooksRenderer {
         }
         r += `${tab}procedure p_validate (p_operation in varchar2, p_row in out nocopy ${tbl}%rowtype) is begin null; end p_validate;\n`;
         r += `${tab}procedure p_before_insert (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n`;
-        if (isVersioned) {
-            r += `${tab}procedure p_before_close (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n\n`;
-            r += `${tab}procedure p_after_insert (p_row in ${tbl}%rowtype) is begin null; end;\n`;
-            r += `${tab}procedure p_after_close  (p_row in ${tbl}%rowtype) is begin null; end;\n\n`;
-        } else if (isImmutable) {
+        if (isVersioned) r += `${tab}procedure p_before_close (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n`;
+        if (isImmutable) {
             // Insert-only: no before_update/before_delete/after_update/after_delete stubs.
             r += `${tab}procedure p_after_insert (p_row in ${tbl}%rowtype) is begin null; end;\n\n`;
         } else {
+            // /versioned: before_update/before_delete/after_update/after_delete are
+            // additive alongside before_close/after_close above — update/delete stay
+            // available (guarded by the DAL, not by omitting the hooks) until the
+            // row is closed for the first time.
             r += `${tab}procedure p_before_update (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n`;
             r += `${tab}procedure p_before_delete (p_id in ${tbl}.${pkNm}%type) is begin null; end;\n`;
             r += `${tab}procedure p_after_insert  (p_row in ${tbl}%rowtype) is begin null; end;\n`;
             r += `${tab}procedure p_after_update  (p_row in ${tbl}%rowtype) is begin null; end;\n`;
-            r += `${tab}procedure p_after_delete  (p_id in ${tbl}.${pkNm}%type) is begin null; end;\n\n`;
+            r += `${tab}procedure p_after_delete  (p_id in ${tbl}.${pkNm}%type) is begin null; end;\n`;
+            if (isVersioned) r += `${tab}procedure p_after_close   (p_row in ${tbl}%rowtype) is begin null; end;\n`;
+            r += `\n`;
         }
         if (model.bridge !== null) {
             // /bridge: additive hook pair, alongside whichever set the branch above
@@ -80,18 +83,19 @@ export class OracleHooksRenderer {
         r += `${tab}${tab}p_row       in out nocopy ${tbl}%rowtype\n`;
         r += `${tab});\n\n`;
         r += `${tab}procedure before_insert (p_row in out nocopy ${tbl}%rowtype);\n`;
-        if (isVersioned) {
-            r += `${tab}procedure before_close (p_row in out nocopy ${tbl}%rowtype);\n\n`;
-            r += `${tab}procedure after_insert (p_row in ${tbl}%rowtype);\n`;
-            r += `${tab}procedure after_close  (p_row in ${tbl}%rowtype);\n\n`;
-        } else if (isImmutable) {
+        if (isVersioned) r += `${tab}procedure before_close (p_row in out nocopy ${tbl}%rowtype);\n\n`;
+        if (isImmutable) {
             r += `${tab}procedure after_insert (p_row in ${tbl}%rowtype);\n\n`;
         } else {
+            // /versioned: before_update/before_delete/after_update/after_delete are
+            // additive alongside before_close/after_close above, not a replacement.
             r += `${tab}procedure before_update (p_row in out nocopy ${tbl}%rowtype);\n`;
             r += `${tab}procedure before_delete (p_id in ${idType});\n\n`;
             r += `${tab}procedure after_insert (p_row in ${tbl}%rowtype);\n`;
             r += `${tab}procedure after_update (p_row in ${tbl}%rowtype);\n`;
-            r += `${tab}procedure after_delete (p_id in ${idType});\n\n`;
+            r += `${tab}procedure after_delete (p_id in ${idType});\n`;
+            if (isVersioned) r += `${tab}procedure after_close  (p_row in ${tbl}%rowtype);\n`;
+            r += `\n`;
         }
         if (model.bridge !== null) {
             r += `${tab}procedure before_grant  (p_row in out nocopy ${tbl}%rowtype);\n`;
@@ -131,18 +135,17 @@ export class OracleHooksRenderer {
         r += `${tab}${tab}p_row       in out nocopy ${tbl}%rowtype\n`;
         r += `${tab}) is begin null; end validate;\n\n`;
         r += `${tab}procedure before_insert (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n`;
-        if (isVersioned) {
-            r += `${tab}procedure before_close (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n\n`;
-            r += `${tab}procedure after_insert (p_row in ${tbl}%rowtype)           is begin null; end;\n`;
-            r += `${tab}procedure after_close  (p_row in ${tbl}%rowtype)           is begin null; end;\n\n`;
-        } else if (isImmutable) {
+        if (isVersioned) r += `${tab}procedure before_close (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n\n`;
+        if (isImmutable) {
             r += `${tab}procedure after_insert (p_row in ${tbl}%rowtype) is begin null; end;\n\n`;
         } else {
             r += `${tab}procedure before_update (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n`;
             r += `${tab}procedure before_delete (p_id in ${idType}) is begin null; end;\n\n`;
             r += `${tab}procedure after_insert  (p_row in ${tbl}%rowtype) is begin null; end;\n`;
             r += `${tab}procedure after_update  (p_row in ${tbl}%rowtype) is begin null; end;\n`;
-            r += `${tab}procedure after_delete  (p_id in ${idType})     is begin null; end;\n\n`;
+            r += `${tab}procedure after_delete  (p_id in ${idType})     is begin null; end;\n`;
+            if (isVersioned) r += `${tab}procedure after_close   (p_row in ${tbl}%rowtype) is begin null; end;\n`;
+            r += `\n`;
         }
         if (model.bridge !== null) {
             r += `${tab}procedure before_grant  (p_row in out nocopy ${tbl}%rowtype) is begin null; end;\n`;
