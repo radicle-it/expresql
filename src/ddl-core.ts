@@ -340,6 +340,50 @@ export function toErrors(input: string, options?: unknown): unknown[] {
     return new expresql(input, options).getErrors();
 }
 
+/**
+ * Convert a DBML (dbmlv2) document to ESQL shorthand or Oracle DDL.
+ * Requires @dbml/core installed (dev dependency); loaded via dynamic import
+ * so it is not included in the production Vite bundle.
+ *
+ * @param dbmlStr         DBML source string
+ * @param options.outputFormat  'ddl' (default) | 'esql' — return DDL or the ESQL intermediate
+ * @param options.schema        Override schema name
+ * @param options.prefix        Override table prefix
+ */
+export async function fromDBML(
+    dbmlStr: string,
+    options?: {
+        outputFormat?: 'ddl' | 'esql';
+        schema?: string;
+        prefix?: string;
+        [key: string]: unknown;
+    },
+): Promise<string> {
+    const { Parser } = await import('@dbml/core') as { Parser: new () => { parse(s: string, fmt: string): unknown } };
+    const { DBMLImporter } = await import('./dbml/importer.js');
+
+    let db: unknown;
+    try {
+        db = new Parser().parse(dbmlStr, 'dbmlv2');
+    } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message
+            : (e as { diags?: Array<{ message: string }> })?.diags?.map(d => d.message).join('; ')
+            ?? String(e);
+        throw new Error(`DBML parse error: ${msg}`);
+    }
+
+    const imp  = new DBMLImporter({
+        schema: options?.schema ?? null,
+        ...(options?.prefix !== undefined ? { prefix: options.prefix } : {}),
+    });
+    const esql = imp.convert(db as Parameters<typeof imp.convert>[0]);
+
+    if (options?.outputFormat === 'esql') return esql;
+
+    // The ESQL string already contains the settings block; pass no overriding options.
+    return new expresql(esql).getDDL();
+}
+
 export function toDiff(
     oldQsql: string,
     newQsql: string,

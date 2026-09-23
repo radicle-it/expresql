@@ -46,7 +46,11 @@ export default defineConfig( ( { command: pCommand, mode: pMode, ssrBuild: pSsrB
                 entry:    path.join( __dirname, DDL_ENTRIES[ gTargetLibrary ].entry ),
                 formats:  [ 'es' ],
                 fileName: DDL_ENTRIES[ gTargetLibrary ].fileName,
-            }
+            },
+            rollupOptions: {
+                // @dbml/core is loaded via dynamic import in fromDBML() — never bundle it.
+                external: [ '@dbml/core', '@dbml/parse' ],
+            },
         },
     };
 } );

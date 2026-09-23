@@ -791,3 +791,59 @@ kbd {
     background: #E8F4FF; border-color: #1A7ACC; color: #0A4A8A;
 }
 
+
+/* ── DBML Import modal ─────────────────────────────────────────── */
+
+.modal-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,.55);
+    display: flex; align-items: center; justify-content: center;
+}
+.modal-box {
+    background: var(--panel-bg, #1e1e2e);
+    border: 1px solid var(--border, #333);
+    border-radius: 6px;
+    width: min(540px, 94vw);
+    display: flex; flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0,0,0,.4);
+}
+.modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--border, #333);
+}
+.modal-title { font-weight: 600; font-size: 14px; }
+.modal-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted, #888); font-size: 18px; line-height: 1;
+    padding: 0 2px;
+}
+.modal-close:hover { color: var(--text, #ccc); }
+.modal-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.modal-desc { font-size: 12px; color: var(--text-muted, #888); margin: 0; }
+.modal-textarea {
+    width: 100%; height: 200px; resize: vertical;
+    font-family: var(--mono, monospace); font-size: 12px;
+    background: var(--editor-bg, #121212); color: var(--text, #ddd);
+    border: 1px solid var(--border, #444); border-radius: 4px;
+    padding: 8px; box-sizing: border-box; tab-size: 2;
+}
+.modal-file-row {
+    display: flex; align-items: center; gap: 8px;
+}
+.modal-filename { font-size: 11px; color: var(--text-muted, #888); }
+.modal-error {
+    font-size: 12px; color: #f87171;
+    background: rgba(248,113,113,.1); border-radius: 4px;
+    padding: 6px 10px; white-space: pre-wrap;
+}
+.modal-footer {
+    display: flex; justify-content: flex-end; gap: 8px;
+    padding: 10px 16px 12px;
+    border-top: 1px solid var(--border, #333);
+}
+.tool-btn-primary {
+    background: var(--accent, #4a9eff);
+    color: #fff; border-color: transparent;
+}
+.tool-btn-primary:hover { filter: brightness(1.1); }

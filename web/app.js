@@ -1,4 +1,4 @@
-﻿import { toDDL, toDiff, toDBML, toERD, expresql_version }               from '../dist/expresql.js';
+﻿import { toDDL, toDiff, toDBML, toERD, expresql_version, fromDBML }      from '../dist/expresql.js';
 import { state, LS_ERD_POS, LS_ERD_COL }                          from './state.js';
 import { highlightExpreSQL, highlightSQL }                          from './highlight.js';
 import { capturePositions, updateDiagram, renderERD, applyErdTheme } from './erd.js';
@@ -291,6 +291,71 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
                 .finally(() => window.open('https://dbdiagram.io/d', '_blank'));
         });
     }
+})();
+
+// ── DBML Import modal ─────────────────────────────────────────────
+
+(function initDbmlImportModal() {
+    const modal      = document.getElementById('dbml-import-modal');
+    const inputTA    = document.getElementById('dbml-import-input');
+    const fileInput  = document.getElementById('dbml-import-file');
+    const fileLabel  = document.getElementById('dbml-import-filename');
+    const errorEl    = document.getElementById('dbml-import-error');
+    const btnOpen    = document.getElementById('btn-dbml-import');
+    const btnClose   = document.getElementById('btn-dbml-import-close');
+    const btnCancel  = document.getElementById('btn-dbml-import-cancel');
+    const btnRun     = document.getElementById('btn-dbml-import-run');
+
+    if (!modal || !btnOpen) return;
+
+    function openModal() {
+        inputTA.value = '';
+        fileLabel.textContent = '';
+        errorEl.style.display = 'none';
+        modal.style.display = 'flex';
+        inputTA.focus();
+    }
+
+    function closeModal() {
+        modal.style.display = 'none';
+    }
+
+    btnOpen.addEventListener('click', openModal);
+    btnClose.addEventListener('click', closeModal);
+    btnCancel.addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+    fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+        fileLabel.textContent = file.name;
+        const reader = new FileReader();
+        reader.onload = ev => { inputTA.value = ev.target.result; };
+        reader.readAsText(file);
+        fileInput.value = '';
+    });
+
+    btnRun.addEventListener('click', async () => {
+        const dbmlText = inputTA.value.trim();
+        if (!dbmlText) return;
+
+        errorEl.style.display = 'none';
+        btnRun.disabled = true;
+        btnRun.textContent = 'Converting…';
+
+        try {
+            const esql = await fromDBML(dbmlText, { outputFormat: 'esql' });
+            inputEl.value = esql;
+            update();
+            closeModal();
+        } catch (err) {
+            errorEl.textContent = err instanceof Error ? err.message : String(err);
+            errorEl.style.display = 'block';
+        } finally {
+            btnRun.disabled = false;
+            btnRun.textContent = 'Import → ESQL';
+        }
+    });
 })();
 
 // ── Editor interaction ────────────────────────────────────────────
