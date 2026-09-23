@@ -226,16 +226,17 @@ export class DBMLImporter {
         for (const ref of schema.refs) {
             const [ep0, ep1] = ref.endpoints;
 
-            // relation: '*' = many side (FK lives here), '1' = one side
+            // @dbml/core relation values: '1' = one side; '*' or '0..*' = many side (FK here).
+            // Optional cardinality (?> or <?) produces '0..*' instead of '*'.
             let fromEp: DbmlEndpoint, toEp: DbmlEndpoint;
 
-            if (ep0.relation === '*') {
+            if (isManyRelation(ep0.relation) && !isManyRelation(ep1.relation)) {
                 fromEp = ep0; toEp = ep1;
-            } else if (ep1.relation === '*') {
+            } else if (isManyRelation(ep1.relation) && !isManyRelation(ep0.relation)) {
                 fromEp = ep1; toEp = ep0;
             } else {
-                // 1:1 or N:M: ep0 → ep1 arbitrarily; skip N:M (both '*')
-                if (ep0.relation === ep1.relation && ep0.relation === '*') continue;
+                // Both many (N:M) or both one (1:1 with no clear FK side): skip N:M, use ep0→ep1 for 1:1
+                if (isManyRelation(ep0.relation) && isManyRelation(ep1.relation)) continue;
                 fromEp = ep0; toEp = ep1;
             }
 
@@ -394,9 +395,18 @@ export class DBMLImporter {
         if (headerDirectives.length) header += ' ' + headerDirectives.join(' ');
         lines.push(header);
 
-        // Columns — skip the field that was used as the parent FK (node.parentFkCol)
+        // Build FK map: fieldName → FkEdge for non-hierarchy FKs belonging to this table.
+        // This is passed to emitField so /fk is merged into the field line, not a separate line.
+        const fkMap = new Map<string, FkEdge>();
+        for (const fk of node.fks) {
+            if (fk.fromTable !== table.name) continue;
+            if (fk.fromCol.toLowerCase() === 'tenant_id' && tenantDetected) continue;
+            fkMap.set(fk.fromCol.toLowerCase(), fk);
+        }
+
+        // Columns — skip the parent FK col; merge non-hierarchy /fk into field directives
         for (const field of remainingFields) {
-            const line = this.emitField(field, indent + '  ', table, node.parentFkCol);
+            const line = this.emitField(field, indent + '  ', table, node.parentFkCol, fkMap);
             if (line !== null) lines.push(line);
         }
 
@@ -404,23 +414,6 @@ export class DBMLImporter {
         for (const idx of table.indexes ?? []) {
             const line = this.emitIndex(idx, indent + '  ');
             if (line) lines.push(line);
-        }
-
-        // Explicit /fk for non-hierarchy edges
-        for (const fk of node.fks) {
-            if (fk.fromTable !== table.name) continue;
-            // Skip if the FK col was removed (tenant_id already handled via tenantGlobal)
-            if (fk.fromCol.toLowerCase() === 'tenant_id' && tenantDetected) continue;
-
-            const targetRaw = this.prefix
-                ? fk.toTable.replace(new RegExp(`^${escapeRegex(this.prefix)}_`, 'i'), '')
-                : fk.toTable;
-
-            let fkLine = `${indent}  ${fk.fromCol} /fk ${targetRaw}`;
-            if (fk.mandatory) fkLine += ' /nn';
-            if (fk.onDelete === 'cascade')   fkLine += ' /cascade';
-            if (fk.onDelete === 'set null')  fkLine += ' /setnull';
-            lines.push(fkLine);
         }
 
         // Children (recursive)
@@ -437,7 +430,8 @@ export class DBMLImporter {
         field: DbmlField,
         indent: string,
         table: DbmlTable,
-        parentFkCol: string,   // actual FK column that established the parent edge
+        parentFkCol: string,           // actual FK column that established the parent edge
+        fkMap: Map<string, FkEdge>,   // non-hierarchy FKs: fieldName → edge (for /fk directive)
     ): string | null {
         // Skip auto-generated PK — ExpreSQL generates the PK column automatically.
         // Skip 'id' (ExpreSQL default) or '<tableName>_id' (round-trip style).
@@ -480,6 +474,17 @@ export class DBMLImporter {
 
         // Check from enum
         if (checkDirective) directives.push(checkDirective);
+
+        // Non-hierarchy FK directive — merged into the field line
+        const fkEdge = fkMap.get(field.name.toLowerCase());
+        if (fkEdge) {
+            const targetRaw = this.prefix
+                ? fkEdge.toTable.replace(new RegExp(`^${escapeRegex(this.prefix)}_`, 'i'), '')
+                : fkEdge.toTable;
+            directives.push(`/fk ${targetRaw}`);
+            if (fkEdge.onDelete === 'cascade')  directives.push('/cascade');
+            if (fkEdge.onDelete === 'set null') directives.push('/setnull');
+        }
 
         // Round-trip metadata
         if (field.metadata) {
@@ -569,6 +574,11 @@ export class DBMLImporter {
 
 function escapeRegex(s: string): string {
     return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// '0..*' (optional many, from ?> / <?) or '*' (required many) are both FK-side relations.
+function isManyRelation(rel: string): boolean {
+    return rel === '*' || rel === '0..*' || (rel.endsWith('..*') && rel.includes('..'));
 }
 
 // Basic English singularization for FK column name detection.

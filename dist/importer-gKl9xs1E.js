@@ -168,13 +168,13 @@ var t = /* @__PURE__ */ new Set([
 		let t = [];
 		for (let n of e.refs) {
 			let [r, i] = n.endpoints, a, o;
-			if (r.relation === "*") a = r, o = i;
-			else if (i.relation === "*") a = i, o = r;
+			if (f(r.relation) && !f(i.relation)) a = r, o = i;
+			else if (f(i.relation) && !f(r.relation)) a = i, o = r;
 			else {
-				if (r.relation === i.relation && r.relation === "*") continue;
+				if (f(r.relation) && f(i.relation)) continue;
 				a = r, o = i;
 			}
-			let s = a.fieldNames[0] ?? "", c = o.tableName, l = o.fieldNames[0] ?? "", u = !!e.tables.find((e) => e.name === a.tableName)?.fields.find((e) => e.name === s)?.not_null, d = s.toLowerCase() === `${c.toLowerCase()}_id` || s.toLowerCase() === `${f(c).toLowerCase()}_id`;
+			let s = a.fieldNames[0] ?? "", c = o.tableName, l = o.fieldNames[0] ?? "", u = !!e.tables.find((e) => e.name === a.tableName)?.fields.find((e) => e.name === s)?.not_null, d = s.toLowerCase() === `${c.toLowerCase()}_id` || s.toLowerCase() === `${p(c).toLowerCase()}_id`;
 			t.push({
 				fromTable: a.tableName,
 				fromCol: s,
@@ -236,40 +236,43 @@ var t = /* @__PURE__ */ new Set([
 		s && (this.tenantGlobal = !0);
 		let c = this.prefix ? i.name.replace(RegExp(`^${d(this.prefix)}_`, "i"), "") : i.name, l = [...o, ...this.emitTableMetaDirectivesList(i)], u = `${n}${c}`;
 		i.note && (u += ` [${i.note}]`), l.length && (u += " " + l.join(" ")), r.push(u);
+		let f = /* @__PURE__ */ new Map();
+		for (let t of e.fks) t.fromTable === i.name && (t.fromCol.toLowerCase() === "tenant_id" && s || f.set(t.fromCol.toLowerCase(), t));
 		for (let t of a) {
-			let a = this.emitField(t, n + "  ", i, e.parentFkCol);
+			let a = this.emitField(t, n + "  ", i, e.parentFkCol, f);
 			a !== null && r.push(a);
 		}
 		for (let e of i.indexes ?? []) {
 			let t = this.emitIndex(e, n + "  ");
 			t && r.push(t);
 		}
-		for (let t of e.fks) {
-			if (t.fromTable !== i.name || t.fromCol.toLowerCase() === "tenant_id" && s) continue;
-			let e = this.prefix ? t.toTable.replace(RegExp(`^${d(this.prefix)}_`, "i"), "") : t.toTable, a = `${n}  ${t.fromCol} /fk ${e}`;
-			t.mandatory && (a += " /nn"), t.onDelete === "cascade" && (a += " /cascade"), t.onDelete === "set null" && (a += " /setnull"), r.push(a);
-		}
 		for (let n of e.children) r.push(...this.emitNode(n, t + 1));
 		return r;
 	}
-	emitField(e, t, n, r) {
+	emitField(e, t, n, r, i) {
 		if (e.pk) {
 			let t = e.name.toLowerCase();
 			if (t === "id" || t === `${n.name.toLowerCase()}_id`) return null;
 		}
 		if (r && e.name.toLowerCase() === r.toLowerCase()) return null;
-		let i = this.resolveType(e);
-		if (i === null) return null;
-		let a = [], { type: o, checkDirective: s } = i;
-		if (e.pk && a.push("/pk"), e.increment, e.not_null && !e.pk && a.push("/nn"), e.unique && !e.pk && a.push("/unique"), e.dbdefault) {
+		let a = this.resolveType(e);
+		if (a === null) return null;
+		let o = [], { type: s, checkDirective: c } = a;
+		if (e.pk && o.push("/pk"), e.increment, e.not_null && !e.pk && o.push("/nn"), e.unique && !e.pk && o.push("/unique"), e.dbdefault) {
 			let t = e.dbdefault;
-			t.type === "expression" ? /sys_guid/i.test(t.value) || a.push(`/default ${t.value}`) : t.type === "string" ? a.push(`/default '${t.value}'`) : a.push(`/default ${t.value}`);
+			t.type === "expression" ? /sys_guid/i.test(t.value) || o.push(`/default ${t.value}`) : t.type === "string" ? o.push(`/default '${t.value}'`) : o.push(`/default ${t.value}`);
 		}
-		s && a.push(s), e.metadata && (e.metadata.esql_case === "upper" && a.push("/upper"), e.metadata.esql_case === "lower" && a.push("/lower"));
-		let c = "";
-		e.note && (c = ` [${e.note}]`);
-		let l = a.length ? " " + a.join(" ") : "", u = o ? ` ${o}` : "";
-		return `${t}${e.name}${u}${l}${c}`;
+		c && o.push(c);
+		let l = i.get(e.name.toLowerCase());
+		if (l) {
+			let e = this.prefix ? l.toTable.replace(RegExp(`^${d(this.prefix)}_`, "i"), "") : l.toTable;
+			o.push(`/fk ${e}`), l.onDelete === "cascade" && o.push("/cascade"), l.onDelete === "set null" && o.push("/setnull");
+		}
+		e.metadata && (e.metadata.esql_case === "upper" && o.push("/upper"), e.metadata.esql_case === "lower" && o.push("/lower"));
+		let u = "";
+		e.note && (u = ` [${e.note}]`);
+		let f = o.length ? " " + o.join(" ") : "", p = s ? ` ${s}` : "";
+		return `${t}${e.name}${p}${f}${u}`;
 	}
 	resolveType(t) {
 		let n = t.type.type_name ?? "", r = t.type.args ?? void 0, i = this.enumMap.get(n);
@@ -296,6 +299,9 @@ function d(e) {
 	return e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 function f(e) {
+	return e === "*" || e === "0..*" || e.endsWith("..*") && e.includes("..");
+}
+function p(e) {
 	return e.endsWith("ies") ? e.slice(0, -3) + "y" : e.endsWith("ses") || e.endsWith("xes") || e.endsWith("zes") ? e.slice(0, -2) : e.endsWith("s") && !e.endsWith("ss") ? e.slice(0, -1) : e;
 }
 //#endregion

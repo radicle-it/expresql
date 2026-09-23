@@ -11173,7 +11173,7 @@ function mt(e, t) {
 	return new B(e, t).getErrors();
 }
 async function ht(e, t) {
-	let { Parser: n } = await import("@dbml/core"), { DBMLImporter: r } = await import("./importer-Cjps6YcP.js"), i;
+	let { Parser: n } = await import("@dbml/core"), { DBMLImporter: r } = await import("./importer-gKl9xs1E.js"), i;
 	try {
 		i = new n().parse(e, "dbmlv2");
 	} catch (e) {
