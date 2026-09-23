@@ -118,11 +118,13 @@ export class DBMLImporter {
     private schemaOpt: string | null;
     private enumMap: Map<string, string[]>;  // enumName → values
     private tenantGlobal = false;
+    private projectMeta: Record<string, string>;
 
-    constructor(options: { schema?: string | null; prefix?: string } = {}) {
-        this.prefix    = options.prefix ?? '';
-        this.schemaOpt = options.schema ?? null;
-        this.enumMap   = new Map();
+    constructor(options: { schema?: string | null; prefix?: string; projectMeta?: Record<string, string> } = {}) {
+        this.prefix      = options.prefix ?? '';
+        this.schemaOpt   = options.schema ?? null;
+        this.enumMap     = new Map();
+        this.projectMeta = options.projectMeta ?? {};
     }
 
     // ── Public entrypoint ─────────────────────────────────────────────────────
@@ -164,8 +166,9 @@ export class DBMLImporter {
 
     private emitSettings(db: DbmlDatabase, schema: DbmlSchema): string {
         const parts: string[] = [];
+        const meta = this.projectMeta;
 
-        // database_type → note only (we always generate Oracle DDL)
+        // database_type → db setting
         const dt = (db.databaseType ?? '').toLowerCase();
         if (dt.includes('23') || dt.includes('ai')) parts.push('db: "23ai"');
 
@@ -173,18 +176,24 @@ export class DBMLImporter {
         const schName = this.schemaOpt ?? (schema.name !== 'public' ? schema.name : null);
         if (schName) parts.push(`schema: ${schName}`);
 
-        // Prefix
+        // Prefix (already applied in constructor; emit it for round-trip)
         if (this.prefix) parts.push(`prefix: ${this.prefix}`);
 
-        // PK mode: detect from tables
-        const pkMode = this.detectPkMode(schema.tables);
+        // PK mode: prefer explicit esql_pk from Project block, then detect from tables
+        const pkMeta = meta['esql_pk'];
+        const pkMode = pkMeta ?? this.detectPkMode(schema.tables);
         if (pkMode !== 'guid') parts.push(`pk: ${pkMode}`);
 
         // Tenant
-        if (this.tenantGlobal) parts.push('tenantid: yes');
+        if (this.tenantGlobal || meta['esql_tenantid'] === 'yes') parts.push('tenantid: yes');
 
-        // Round-trip: project-level esql_* from Metadata blocks (if present)
-        // db doesn't have a .metadata field in @dbml/core — skipped
+        // Additional esql_* round-trip settings from Project block
+        if (meta['esql_auditcols']  === 'yes') parts.push('auditcols: yes');
+        if (meta['esql_rowversion'] === 'yes') parts.push('rowversion: yes');
+        if (meta['esql_rowkey']     === 'yes') parts.push('rowkey: yes');
+        if (meta['esql_api'])                  parts.push(`api: ${meta['esql_api']}`);
+        if (meta['esql_ifc'])                  parts.push(`ifc: ${meta['esql_ifc']}`);
+        if (meta['esql_semantics'])            parts.push(`semantics: ${meta['esql_semantics']}`);
 
         if (!parts.length) return '';
         return `# settings = { ${parts.join(', ')} }`;

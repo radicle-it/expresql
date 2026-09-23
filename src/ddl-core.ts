@@ -350,6 +350,18 @@ export function toErrors(input: string, options?: unknown): unknown[] {
  * @param options.schema        Override schema name
  * @param options.prefix        Override table prefix
  */
+
+function extractDbmlProjectMeta(dbml: string): Record<string, string> {
+    const meta: Record<string, string> = {};
+    const block = dbml.match(/Project\s+\w+\s*\{([^}]*)\}/s);
+    if (!block) return meta;
+    for (const line of block[1].split('\n')) {
+        const m = line.match(/^\s*(esql_\w+)\s*:\s*'([^']*)'/);
+        if (m) meta[m[1]] = m[2];
+    }
+    return meta;
+}
+
 export async function fromDBML(
     dbmlStr: string,
     options?: {
@@ -372,9 +384,13 @@ export async function fromDBML(
         throw new Error(`DBML parse error: ${msg}`);
     }
 
+    // Extract esql_* properties from the raw Project block (@dbml/core discards custom keys)
+    const projectMeta = extractDbmlProjectMeta(dbmlStr);
+
     const imp  = new DBMLImporter({
-        schema: options?.schema ?? null,
-        ...(options?.prefix !== undefined ? { prefix: options.prefix } : {}),
+        schema:      options?.schema ?? projectMeta['esql_schema'] ?? null,
+        prefix:      options?.prefix ?? projectMeta['esql_prefix'] ?? undefined,
+        projectMeta,
     });
     const esql = imp.convert(db as Parameters<typeof imp.convert>[0]);
 

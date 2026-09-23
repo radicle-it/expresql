@@ -563,11 +563,21 @@ export class DBMLGenerator {
 
     private buildProjectMeta(): Record<string, string> {
         const m: Record<string, string> = {};
-        const opt = (k: string) => this.ctx.getOptionValue(k);
-        if (opt('prefix'))   m['esql_prefix']   = String(opt('prefix'));
-        if (opt('api'))      m['esql_api']       = String(opt('api'));
-        if (opt('ifc'))      m['esql_ifc']       = String(opt('ifc'));
-        if (this.globalTenant) m['esql_tenantid'] = 'yes';
+        const opt  = (k: string) => this.ctx.getOptionValue(k);
+        const yesN = (k: string) => { const v = opt(k); return v === true || v === 'yes' || v === 'on' ? 'yes' : null; };
+        const str  = (k: string) => { const v = opt(k); return v ? String(v) : null; };
+        const set  = (key: string, val: string | null) => { if (val) m[key] = val; };
+
+        set('esql_prefix',     str('prefix'));
+        set('esql_pk',         str('pk'));
+        set('esql_schema',     str('schema'));
+        set('esql_api',        str('api'));
+        set('esql_ifc',        str('ifc'));
+        set('esql_auditcols',  yesN('auditcols'));
+        set('esql_rowversion', yesN('rowversion'));
+        set('esql_rowkey',     yesN('rowkey'));
+        set('esql_tenantid',   this.globalTenant ? 'yes' : null);
+        set('esql_semantics',  str('semantics'));
         return m;
     }
 
