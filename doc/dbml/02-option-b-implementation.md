@@ -12,6 +12,7 @@
 2. [Architettura della soluzione](#2-architettura-della-soluzione)
 3. [Modulo 1 — Parser DBML e dipendenza `@dbml/core`](#3-modulo-1--parser-dbml-e-dipendenza-dbmlcore)
 4. [Modulo 2 — `DBMLImporter` (DBML → ESQL)](#4-modulo-2--dbmlimporter-dbml--esql)
+   - [4.4 Reverse expansion — colonne gestite da ExpreSQL](#44-reverse-expansion--rilevamento-colonne-gestite-da-expresql)
 5. [Modulo 3 — Integrazione in `ddl-core.ts`](#5-modulo-3--integrazione-in-ddl-corets)
 6. [Modulo 4 — CLI](#6-modulo-4--cli)
 7. [Modulo 5 — Web UI: Import nel pannello DBML](#7-modulo-5--web-ui-import-nel-pannello-dbml)
@@ -734,6 +735,188 @@ private detectPrefix(tables: DBMLTable[]): string | null {
 }
 ```
 
+### 4.4 Reverse expansion — rilevamento colonne gestite da ExpreSQL
+
+Questa è la trasformazione **simmetrica** a quella dell'Opzione A: lì l'exporter *espande*
+le direttive in colonne fisiche DBML; qui l'importer deve *collassare* le colonne
+riconoscibili in direttive ESQL, eliminandole dal contenuto della tabella.
+
+Se un DBML (interno o esterno) contiene queste colonne, l'utente non le vuole gestire
+manualmente in ESQL — ExpreSQL le gestisce già meglio tramite le direttive corrispondenti.
+
+#### Pattern riconosciuti
+
+| Colonne DBML | Sinonimi accettati | Direttiva ESQL prodotta | Soglia di attivazione |
+|---|---|---|---|
+| `created`, `created_at` | `creation_date`, `ins_date`, `create_date` | `/auditcols` | ≥ 2 audit cols presenti (almeno una "created" + una "updated" O una "by") |
+| `created_by` | `ins_user`, `created_user` | (parte di `/auditcols`) | vedi sopra |
+| `updated`, `updated_at` | `last_update`, `upd_date`, `modify_date` | (parte di `/auditcols`) | vedi sopra |
+| `updated_by` | `upd_user`, `updated_user`, `modified_by` | (parte di `/auditcols`) | vedi sopra |
+| `row_version` | `version`, `opt_lock`, `lock_version` | `/rowversion` | presenza della colonna di tipo int/number |
+| `row_key` | — | `/rowkey` | presenza della colonna di tipo varchar(36) |
+| `valid_from` + `valid_to` + `is_current` | `valid_start`/`valid_end`, `date_from`/`date_to` | `/versioned` | tutte e 3 presenti |
+| `tenant_id` con FK verso tabella `tenants` | — | colonna rimossa + FK rimossa; `tenantid: yes` nel settings block | FK verso `tenants` presente |
+
+**Nota sul threshold `/auditcols`**: la soglia "≥ 2 audit cols" è intenzionalmente permissiva.
+Un DBML esterno potrebbe avere solo `created_at` e `created_by` (senza updated). In quel caso
+`/auditcols` viene comunque emesso perché ExpreSQL aggiunge le colonne updated come nullable —
+il risultato è uno schema più completo, non meno fedele.
+
+#### Implementazione: `collapseKnownColumns()`
+
+```typescript
+// In src/dbml/importer.ts — da chiamare in processNode() prima di emitField()
+
+interface CollapseResult {
+    remainingFields: DBMLField[];
+    directives:      string[];    // direttive ESQL da aggiungere alla tabella
+    tenantDetected:  boolean;
+}
+
+const AUDIT_CREATED_NAMES = new Set([
+    'created', 'created_at', 'creation_date', 'ins_date', 'create_date',
+]);
+const AUDIT_CREATED_BY_NAMES = new Set([
+    'created_by', 'ins_user', 'created_user',
+]);
+const AUDIT_UPDATED_NAMES = new Set([
+    'updated', 'updated_at', 'last_update', 'upd_date', 'modify_date',
+]);
+const AUDIT_UPDATED_BY_NAMES = new Set([
+    'updated_by', 'upd_user', 'updated_user', 'modified_by',
+]);
+const ROWVERSION_NAMES = new Set([
+    'row_version', 'version', 'opt_lock', 'lock_version',
+]);
+const ROWKEY_NAMES = new Set(['row_key']);
+
+const VERSIONED_FROM_NAMES = new Set(['valid_from', 'valid_start', 'date_from']);
+const VERSIONED_TO_NAMES   = new Set(['valid_to',   'valid_end',   'date_to']);
+const VERSIONED_CUR_NAMES  = new Set(['is_current', 'current_flag']);
+
+private collapseKnownColumns(
+    fields:   DBMLField[],
+    fkEdges:  FkEdge[],
+    tableName: string,
+): CollapseResult {
+    const remaining:      DBMLField[] = [];
+    const directives:     string[]    = [];
+    let   tenantDetected              = false;
+
+    const colNames = new Set(fields.map(f => f.name.toLowerCase()));
+
+    // ── Audit columns (/auditcols) ────────────────────────────────────────────
+    const hasCreated   = fields.some(f => AUDIT_CREATED_NAMES.has(f.name.toLowerCase()));
+    const hasCreatedBy = fields.some(f => AUDIT_CREATED_BY_NAMES.has(f.name.toLowerCase()));
+    const hasUpdated   = fields.some(f => AUDIT_UPDATED_NAMES.has(f.name.toLowerCase()));
+    const hasUpdatedBy = fields.some(f => AUDIT_UPDATED_BY_NAMES.has(f.name.toLowerCase()));
+
+    const auditScore = [hasCreated, hasCreatedBy, hasUpdated, hasUpdatedBy]
+        .filter(Boolean).length;
+
+    const auditActive = auditScore >= 2;   // soglia: almeno 2 colonne audit
+
+    const auditNames = new Set([
+        ...AUDIT_CREATED_NAMES, ...AUDIT_CREATED_BY_NAMES,
+        ...AUDIT_UPDATED_NAMES, ...AUDIT_UPDATED_BY_NAMES,
+    ]);
+
+    // ── /versioned ────────────────────────────────────────────────────────────
+    const hasValidFrom = fields.some(f => VERSIONED_FROM_NAMES.has(f.name.toLowerCase()));
+    const hasValidTo   = fields.some(f => VERSIONED_TO_NAMES.has(f.name.toLowerCase()));
+    const hasCurrent   = fields.some(f => VERSIONED_CUR_NAMES.has(f.name.toLowerCase()));
+    const versionedActive = hasValidFrom && hasValidTo && hasCurrent;
+
+    const versionedNames = new Set([
+        ...VERSIONED_FROM_NAMES, ...VERSIONED_TO_NAMES, ...VERSIONED_CUR_NAMES,
+    ]);
+
+    // ── /rowversion ───────────────────────────────────────────────────────────
+    const rowVersionField = fields.find(f => ROWVERSION_NAMES.has(f.name.toLowerCase()));
+    const rowVersionActive = Boolean(rowVersionField);
+
+    // ── /rowkey ───────────────────────────────────────────────────────────────
+    const rowKeyField  = fields.find(f => ROWKEY_NAMES.has(f.name.toLowerCase()));
+    const rowKeyActive = Boolean(rowKeyField);
+
+    // ── tenant_id ─────────────────────────────────────────────────────────────
+    const tenantField = fields.find(f => f.name.toLowerCase() === 'tenant_id');
+    const tenantFk    = tenantField && fkEdges.find(
+        e => e.fromTable === tableName && e.fromCol.toLowerCase() === 'tenant_id'
+            && e.toTable.toLowerCase().includes('tenant'),
+    );
+    tenantDetected = Boolean(tenantField && tenantFk);
+
+    // ── Filtra le colonne da rimuovere ────────────────────────────────────────
+    for (const field of fields) {
+        const n = field.name.toLowerCase();
+
+        if (auditActive    && auditNames.has(n))       continue; // rimossa
+        if (versionedActive && versionedNames.has(n))  continue;
+        if (rowVersionActive && ROWVERSION_NAMES.has(n)) continue;
+        if (rowKeyActive   && ROWKEY_NAMES.has(n))     continue;
+        if (tenantDetected && n === 'tenant_id')       continue;
+
+        remaining.push(field);
+    }
+
+    // ── Emette le direttive corrispondenti ────────────────────────────────────
+    if (auditActive)     directives.push('/auditcols');
+    if (rowVersionActive) directives.push('/rowversion');
+    if (rowKeyActive)    directives.push('/rowkey');
+    if (versionedActive) directives.push('/versioned');
+
+    return { remainingFields: remaining, directives, tenantDetected };
+}
+```
+
+`collapseKnownColumns()` viene chiamata in `emitNode()` **prima** del loop sui field:
+
+```typescript
+private emitNode(node: HierarchyNode, depth: number): string[] {
+    // ...
+    const { remainingFields, directives, tenantDetected } =
+        this.collapseKnownColumns(table.fields, node.fks, table.name);
+
+    // Se tenant_id rilevato, aggiungere 'tenantid: yes' al settings block
+    if (tenantDetected) this.tenantDetected = true;
+
+    // Usa remainingFields invece di table.fields per l'emissione colonne
+    for (const field of remainingFields) {
+        const colLine = this.emitField(field, indent + '  ', table);
+        if (colLine) lines.push(colLine);
+    }
+
+    // Emette direttive tabella dalla reverse expansion
+    for (const dir of directives) {
+        lines.push(`${indent}  ${dir}`);
+    }
+    // ... resto invariato
+}
+```
+
+#### Comportamento quando le colonne sono parzialmente presenti
+
+| Scenario | Comportamento |
+|---|---|
+| Solo `created_at` (senza `created_by`, `updated`, `updated_by`) | 1 colonna audit → auditScore=1 < soglia 2 → colonna emessa normalmente come campo |
+| `created_at` + `updated_at` (senza `_by`) | auditScore=2 → `/auditcols` emesso; le `_by` vengono aggiunte da ExpreSQL |
+| `created_at` + `created_by` + `updated_at` + `updated_by` | auditScore=4 → `/auditcols`, tutte e 4 rimosse |
+| `valid_from` + `valid_to` (senza `is_current`) | versionedActive=false → emesse come campi normali `date` |
+| `row_version` di tipo varchar (non int) | rowVersionActive=true → `/rowversion` comunque (ExpreSQL usa sempre int) |
+| `tenant_id` senza FK verso `tenants` | tenantDetected=false → emessa come campo normale int |
+
+#### Avviso nel settings block quando `tenantid` viene rilevato
+
+Se `tenantDetected` è `true` su almeno una tabella, il settings block ESQL deve includere `tenantid: yes`:
+
+```
+# settings = { schema: hr, tenantid: yes }
+```
+
+Questo flag in ExpreSQL fa sì che il compilatore inietti automaticamente la colonna `tenant_id`
+con la FK verso la tabella `tenants` — che l'importer ha già rimosso dalle singole tabelle.
+
 ---
 
 ## 5. Modulo 3 — Integrazione in `ddl-core.ts`
@@ -1272,6 +1455,22 @@ users
 | Tipi PostgreSQL-specifici (`serial`, `uuid`, `jsonb`, `bytea`, `text[]`) | Mappati al tipo ESQL più vicino: `serial` → `int /pk`, `uuid` → `vc36`, `jsonb` → `json`, `bytea` → `blob`, `text[]` non supportato | Medio |
 | `database_type: 'PostgreSQL'` | Il DDL generato è sempre Oracle; il tipo DB di input è solo indicativo | Atteso |
 
+### Colonne gestite automaticamente (non un gap)
+
+Le seguenti colonne vengono **rimosse** dalla lista campi e convertite in direttive ExpreSQL —
+non sono una perdita di informazioni, è il comportamento desiderato:
+
+| Colonne DBML | → | Direttiva ESQL |
+|---|---|---|
+| `created`/`created_at`, `created_by`, `updated`/`updated_at`, `updated_by` | → | `/auditcols` |
+| `row_version` (e sinonimi) | → | `/rowversion` |
+| `row_key` | → | `/rowkey` |
+| `valid_from`, `valid_to`, `is_current` | → | `/versioned` |
+| `tenant_id` con FK → tenants | → | `tenantid: yes` nel settings block |
+
+Questo comportamento è simmetrico all'Opzione A (exporter): `column-expander.ts` le espande
+in uscita, `collapseKnownColumns()` le collassa in ingresso.
+
 ### DBML → ESQL: qualità dell'output e revisione manuale raccomandata
 
 L'ESQL prodotto dall'import è **corretto ma non ottimizzato**. In particolare:
@@ -1348,6 +1547,12 @@ Obiettivo: integrazione CLI e pannello Import nella web UI.
 | Questione aperta | Decisione |
 |---|---|
 | Strategia DBML → DDL | DBML → ESQL (intermedio visibile) → pipeline DDL esistente; non DBML → DdlNode diretto |
+| Reverse expansion colonne audit | `created`/`created_at`, `created_by`, `updated`/`updated_at`, `updated_by` (e sinonimi comuni) vengono collassate in `/auditcols` se ≥ 2 presenti; non emesse come campi ESQL |
+| Reverse expansion `/rowversion` | `row_version` (e sinonimi: `version`, `opt_lock`) → `/rowversion`; rimossa dal contenuto tabella |
+| Reverse expansion `/rowkey` | `row_key` → `/rowkey`; rimossa |
+| Reverse expansion `/versioned` | `valid_from`/`valid_to`/`is_current` (e sinonimi) → `/versioned` solo se tutte e 3 presenti |
+| Reverse expansion `tenant_id` | `tenant_id` con FK verso tabella il cui nome contiene "tenant" → rimossa; aggiunge `tenantid: yes` al settings block |
+| Soglia audit cols | ≥ 2 colonne del gruppo audit (non tutte e 4 obbligatorie); attiva la direttiva, ExpreSQL completa le eventuali mancanti |
 | Dipendenza `@dbml/parse` | Dev dependency + runtime via dynamic import; **non** nel bundle Vite produzione |
 | Gerarchia parent-child | Ricostruzione euristica: solo FK standard (`child.<parent>_id > parent.<parent>_id`); tutto il resto → `/fk` flat |
 | Enum DBML → ESQL | Se valori ≤ 10 e tutti `[a-zA-Z0-9_]` → `/check val1,val2`; altrimenti tipo passthrough |
