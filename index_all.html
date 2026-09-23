@@ -295,6 +295,7 @@ emp_v = departments employees
         <div class="panel-tabs">
             <button type="button" class="tab-btn qs-active" data-tab="ddl">DDL</button>
             <button type="button" class="tab-btn"        data-tab="erd">ER Diagram</button>
+            <button type="button" class="tab-btn"        data-tab="dbml">DBML</button>
         </div>
         <div class="tab-pane qs-active" data-tab="ddl">
             <div class="ddl-toolbar">
@@ -315,12 +316,24 @@ emp_v = departments employees
             </div>
             <div id="erd-container"></div>
         </div>
+        <div class="tab-pane" data-tab="dbml">
+            <div class="ddl-toolbar">
+                <button type="button" id="btn-dbml-text" class="tool-btn qs-active">{ } Text</button>
+                <button type="button" id="btn-dbml-graph" class="tool-btn">⬡ Graph</button>
+                <span style="flex:1"></span>
+                <button type="button" id="btn-dbml-copy" class="tool-btn">⧉ Copy DBML</button>
+                <button type="button" id="btn-dbml-open" class="tool-btn">↗ dbdiagram.io</button>
+            </div>
+            <pre id="dbml-output" class="dbml-view qs-active"></pre>
+            <div id="dbml-graph-view" class="dbml-view"></div>
+        </div>
     </div>
 
 </div>
 
 <footer id="status">ready</footer>
 
+<script src="web/lib/mermaid.min.js"></script>
 <script type="module" src="web/app_all.js"></script>
 
 <div id="autocomplete"></div>

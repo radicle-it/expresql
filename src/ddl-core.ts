@@ -11,6 +11,7 @@ import errorMsgs from './utils/error-msgs.js';
 import { canonicalObjectName } from './utils/naming.js';
 import type { DdlContext, DDLGenerator, IDdlNode, ErdColumn, ErdItem, ErdLink, ErdOutput } from './compiler/types.js';
 export type { DdlContext, DDLGenerator, IDdlNode, ErdColumn, ErdItem, ErdLink, ErdOutput };
+import { DBMLGenerator } from './dbml/generator.js';
 
 // ── PK / date-type canonical string constants ────────────────────────────────
 
@@ -98,6 +99,7 @@ export class expresql implements DdlContext {
     // ── Cached output (null = not yet generated) ──
     private _ddl:    string     | null = null;
     private _erd:    ErdOutput  | null = null;
+    private _dbml:   string     | null = null;
     private _errors: unknown[]  | null = null;
 
     // ── State ──
@@ -273,6 +275,12 @@ export class expresql implements DdlContext {
         return this._ddl;
     }
 
+    getDBML(): string {
+        if (this._dbml != null) return this._dbml;
+        this._dbml = new DBMLGenerator(this).generate();
+        return this._dbml;
+    }
+
     private _makeFooter(): string {
         const inputWithoutComments = (s: string) => s
             .replace(/\/\*/g, '--<--')
@@ -302,6 +310,7 @@ export class expresql implements DdlContext {
     // ── Static back-compat assignments (for expresql.toDDL() calling convention) ──
     declare static toDDL:    typeof toDDL;
     declare static toERD:    typeof toERD;
+    declare static toDBML:   typeof toDBML;
     declare static toErrors: typeof toErrors;
     declare static toDiff:   typeof toDiff;
     declare static fromJSON: typeof fromJSON;
@@ -317,6 +326,10 @@ export function fromJSON(input: unknown, name?: string): string {
 
 export function toERD(input: string, options?: unknown): ErdOutput {
     return new expresql(input, options).getERD();
+}
+
+export function toDBML(input: string, options?: unknown): string {
+    return new expresql(input, options).getDBML();
 }
 
 export function toDDL(input: string, options?: unknown): string {
@@ -344,6 +357,7 @@ export function expresql_version(): string {
 // Assign to static slots for backward-compat (expresql.toDDL etc.)
 expresql.toDDL    = toDDL;
 expresql.toERD    = toERD;
+expresql.toDBML   = toDBML;
 expresql.toErrors = toErrors;
 expresql.toDiff   = toDiff;
 expresql.fromJSON = fromJSON;

@@ -1,4 +1,4 @@
-﻿import { toDDL, toDiff, expresql_version }                             from '../dist/expresql.js';
+﻿import { toDDL, toDiff, toDBML, toERD, expresql_version }               from '../dist/expresql.js';
 import { state, LS_ERD_POS, LS_ERD_COL }                          from './state.js';
 import { highlightExpreSQL, highlightSQL }                          from './highlight.js';
 import { capturePositions, updateDiagram, renderERD, applyErdTheme } from './erd.js';
@@ -55,11 +55,86 @@ function updateCurLine() {
 }
 
 // Flag set when typing while DDL tab is hidden — forces re-render on tab switch.
-let ddlStale = false;
+let ddlStale  = false;
+let dbmlStale = false;
+
+// Current DBML sub-view: 'text' | 'graph'
+let dbmlView = 'text';
 
 function renderDdl(ddl) {
     outputEl.innerHTML = highlightSQL(ddl) + '\n ';
     ddlStale = false;
+}
+
+// ── Mermaid ───────────────────────────────────────────────────────
+
+function erdToMermaid(erd) {
+    const safeId = s => s.replace(/[^a-zA-Z0-9_]/g, '_');
+    const lines = ['erDiagram'];
+    for (const item of erd.items) {
+        const id = safeId(item.name);
+        lines.push(`    ${id} {`);
+        for (const col of item.columns) {
+            const t = col.datatype.replace(/[^a-zA-Z0-9_(),.]/g, '_');
+            lines.push(`        ${t} ${safeId(col.name)}`);
+        }
+        lines.push('    }');
+    }
+    const seen = new Set();
+    for (const link of erd.links) {
+        const key = link.source + '->' + link.target;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const card = link.mandatory ? '||--o{' : '|o--o{';
+        lines.push(`    ${safeId(link.source)} ${card} ${safeId(link.target)} : ""`);
+    }
+    return lines.join('\n');
+}
+
+let _mermaidReady = false;
+function mermaidInit() {
+    if (_mermaidReady) return;
+    if (!window.mermaid) return;
+    const dark = (document.documentElement.dataset.theme ?? 'light') === 'dark';
+    window.mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'loose' });
+    _mermaidReady = true;
+}
+
+async function renderDbmlGraph(src) {
+    const container = document.getElementById('dbml-graph-view');
+    if (!container || !window.mermaid) return;
+    mermaidInit();
+    try {
+        const erd = toERD(src);
+        const mmd = erdToMermaid(erd);
+        const { svg } = await window.mermaid.render('dbml-mermaid-svg', mmd);
+        container.innerHTML = svg;
+    } catch (e) {
+        container.innerHTML = `<pre style="color:var(--text-muted);padding:12px">${String(e)}</pre>`;
+    }
+}
+
+function renderDbml(src) {
+    dbmlStale = false;
+    if (dbmlView === 'graph') {
+        renderDbmlGraph(src);
+    } else {
+        const el = document.getElementById('dbml-output');
+        if (!el) return;
+        try { el.textContent = toDBML(src); } catch (_) { el.textContent = ''; }
+    }
+}
+
+// ── DBML sub-view toggle ──────────────────────────────────────────
+
+function setDbmlView(view) {
+    dbmlView = view;
+    document.querySelectorAll('.dbml-view').forEach(el =>
+        el.classList.toggle('qs-active', el.id === (view === 'graph' ? 'dbml-graph-view' : 'dbml-output'))
+    );
+    document.getElementById('btn-dbml-text')?.classList.toggle('qs-active', view === 'text');
+    document.getElementById('btn-dbml-graph')?.classList.toggle('qs-active', view === 'graph');
+    if (state.activeTab === 'dbml') renderDbml(inputEl.value);
 }
 
 function update() {
@@ -129,6 +204,12 @@ function update() {
             updateDiagram(true);
         }, 350);
     }
+
+    if (state.activeTab === 'dbml') {
+        renderDbml(inputEl.value);
+    } else {
+        dbmlStale = true;
+    }
 }
 
 // ── Theme toggle ──────────────────────────────────────────────────
@@ -182,10 +263,35 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         state.activeTab = tab;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('qs-active', b.dataset.tab === tab));
         document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('qs-active', p.dataset.tab === tab));
-        if (tab === 'erd') requestAnimationFrame(() => updateDiagram(true));
-        if (tab === 'ddl' && ddlStale && state.lastDdlText) renderDdl(state.lastDdlText);
+        if (tab === 'erd')  requestAnimationFrame(() => updateDiagram(true));
+        if (tab === 'ddl'  && ddlStale  && state.lastDdlText) renderDdl(state.lastDdlText);
+        if (tab === 'dbml' && dbmlStale) renderDbml(inputEl.value);
     });
 });
+
+// ── DBML panel buttons ────────────────────────────────────────────
+
+(function initDbmlButtons() {
+    document.getElementById('btn-dbml-text')?.addEventListener('click',  () => setDbmlView('text'));
+    document.getElementById('btn-dbml-graph')?.addEventListener('click', () => setDbmlView('graph'));
+
+    const btnCopyDbml = document.getElementById('btn-dbml-copy');
+    const btnOpenDbml = document.getElementById('btn-dbml-open');
+    if (btnCopyDbml) {
+        btnCopyDbml.addEventListener('click', () => {
+            const text = document.getElementById('dbml-output')?.textContent ?? '';
+            navigator.clipboard.writeText(text).catch(() => {});
+        });
+    }
+    if (btnOpenDbml) {
+        btnOpenDbml.addEventListener('click', () => {
+            const text = document.getElementById('dbml-output')?.textContent ?? '';
+            navigator.clipboard.writeText(text)
+                .catch(() => {})
+                .finally(() => window.open('https://dbdiagram.io/d', '_blank'));
+        });
+    }
+})();
 
 // ── Editor interaction ────────────────────────────────────────────
 

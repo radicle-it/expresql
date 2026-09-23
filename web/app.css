@@ -328,6 +328,41 @@ header {
     align-items: center;
 }
 
+/* ── DBML panel ───────────────────────────────────────────────────── */
+.dbml-view        { display: none; flex: 1; overflow: auto; }
+.dbml-view.qs-active { display: flex; flex-direction: column; }
+
+#dbml-output {
+    padding: 14px 16px;
+    background: var(--bg);
+    line-height: 1.65;
+    white-space: pre;
+    word-wrap: normal;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-size: 13px;
+    color: var(--text);
+    margin: 0;
+    flex: 1;
+}
+
+#dbml-graph-view {
+    flex: 1;
+    background: var(--bg);
+    padding: 16px;
+    overflow: auto;
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+#dbml-graph-view .mermaid {
+    width: 100%;
+}
+
+#dbml-graph-view svg {
+    max-width: 100%;
+    height: auto;
+}
+
 /* ── ERD panel ────────────────────────────────────────────────────── */
 #erd-container {
     flex: 1;

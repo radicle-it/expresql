@@ -1,73 +1,113 @@
-﻿import { toERD }                     from '../dist/expresql.js';
+import { toERD }                     from '../dist/expresql.js';
 import { state, LS_ERD_POS, LS_ERD_COL } from './state.js';
 
 // ── Layout constants ──────────────────────────────────────────────
 
-const NODE_W   = 240;
-const HEADER_H = 32;
-const COL_H    = 20;
-const GAP_X    = 100;
-const GAP_Y    = 80;
-const RADIUS   = 6;
+const NODE_W   = 280;
+const HEADER_H = 40;
+const COL_H    = 26;
+const GAP_X    = 130;
+const GAP_Y    = 110;
+const RADIUS   = 8;
 
 // ── Theme palettes ────────────────────────────────────────────────
 
 const PALETTES = {
-    dark: [
-        { fill: '#162636', text: '#4fc1ff', border: '#1e6aa8' },
-        { fill: '#1e2716', text: '#b5cea8', border: '#4e7a30' },
-        { fill: '#261626', text: '#c586c0', border: '#8040a0' },
-        { fill: '#261e10', text: '#d7ba7d', border: '#a07030' },
-        { fill: '#261616', text: '#f48771', border: '#a03030' },
-        { fill: '#162626', text: '#4ec9b0', border: '#207060' },
-    ],
     light: [
-        { fill: '#D0E8F8', text: '#005090', border: '#2070C0' },
-        { fill: '#D0E8D0', text: '#1A5A1A', border: '#40A040' },
-        { fill: '#E8D0E8', text: '#601060', border: '#9040A0' },
-        { fill: '#F8ECD0', text: '#604000', border: '#B07020' },
-        { fill: '#F8D8D0', text: '#601010', border: '#B03030' },
-        { fill: '#D0ECE8', text: '#0A5050', border: '#208878' },
+        { fill: '#2D5F8A', text: '#FFFFFF', border: '#2D5F8A', body: '#FFFFFF' },
+        { fill: '#7C3AED', text: '#FFFFFF', border: '#7C3AED', body: '#FFFFFF' },
+        { fill: '#047857', text: '#FFFFFF', border: '#047857', body: '#FFFFFF' },
+        { fill: '#B45309', text: '#FFFFFF', border: '#B45309', body: '#FFFFFF' },
+        { fill: '#BE123C', text: '#FFFFFF', border: '#BE123C', body: '#FFFFFF' },
+        { fill: '#0E7490', text: '#FFFFFF', border: '#0E7490', body: '#FFFFFF' },
+    ],
+    dark: [
+        { fill: '#1E3A5F', text: '#93C5FD', border: '#3B82F6', body: '#1A2236' },
+        { fill: '#3B1F6B', text: '#C4B5FD', border: '#8B5CF6', body: '#1A2236' },
+        { fill: '#064E3B', text: '#6EE7B7', border: '#10B981', body: '#1A2236' },
+        { fill: '#451A03', text: '#FCD34D', border: '#F59E0B', body: '#1A2236' },
+        { fill: '#4C0519', text: '#FCA5A5', border: '#F87171', body: '#1A2236' },
+        { fill: '#083344', text: '#67E8F9', border: '#22D3EE', body: '#1A2236' },
     ],
 };
 
 const NODE_DEFAULTS = {
     dark:  {
-        table: { fill: '#162636', text: '#4fc1ff', border: '#1e6aa8' },
-        view:  { fill: '#162620', text: '#9cdcfe', border: '#2a8a5a' },
+        table: { fill: '#1E3A5F', text: '#93C5FD', border: '#3B82F6', body: '#1A2236' },
+        view:  { fill: '#064E3B', text: '#6EE7B7', border: '#10B981', body: '#1A2236' },
     },
     light: {
-        table: { fill: '#D0E8F8', text: '#005090', border: '#2070C0' },
-        view:  { fill: '#D0E8E0', text: '#0A5050', border: '#30A070' },
+        table: { fill: '#2D5F8A', text: '#FFFFFF', border: '#2D5F8A', body: '#FFFFFF' },
+        view:  { fill: '#047857', text: '#FFFFFF', border: '#047857', body: '#FFFFFF' },
     },
 };
+
+const ICON_PK = '⚷';
+const ICON_FK = '⬡';
 
 const ROW_COLORS = {
     dark: {
-        even: '#202020', odd: '#252527', pk: '#1b2a12', fk: '#0e1c2c',
-        colDefault: '#d4d4d4', colPk: '#c5a400', colFk: '#9cdcfe', colType: '#4ec9b0',
-        tagPk: '#b8a030', tagFk: '#4080c0',
+        row:        '#1A2236',
+        colDefault: '#CBD5E1',
+        colPk:      '#FCD34D',
+        colFk:      '#93C5FD',
+        colType:    '#64748B',
+        iconPk:     '#EAB308',
+        iconFk:     '#60A5FA',
+        labelColor: '#475569',
     },
     light: {
-        even: '#FFFFFF', odd: '#F7F5F3', pk: '#FFF8E0', fk: '#EBF3FF',
-        colDefault: '#2A2826', colPk: '#7A5A00', colFk: '#0050A0', colType: '#157060',
-        tagPk: '#C09000', tagFk: '#3870B0',
+        row:        '#FFFFFF',
+        colDefault: '#374151',
+        colPk:      '#92400E',
+        colFk:      '#1D4ED8',
+        colType:    '#6B7280',
+        iconPk:     '#D97706',
+        iconFk:     '#2563EB',
+        labelColor: '#94A3B8',
     },
 };
 
-const GRAPH_BG  = { dark: '#1a1a1a', light: '#F0EDEA' };
-const BODY_FILL = { dark: '#1a1a1a', light: '#FFFFFF' };
+const GRAPH_BG  = { dark: '#0F172A', light: '#F1F5F9' };
+const BODY_FILL = { dark: '#1A2236', light: '#FFFFFF' };
+
+// Module-level highlight state (not in state.js to avoid coupling)
+let _activeEdgeCells  = [];   // currently highlighted edge Cell objects
+let _highlightedNodeId = null;
+let _flowTimer = null;
 
 function currentTheme() {
     const r = document.querySelector('.expresql-plugin-root') || document.documentElement;
     return r.dataset.theme === 'light' ? 'light' : 'dark';
 }
 
+// ── CSS animation injection ───────────────────────────────────────
+
+function injectErdAnimCSS() {
+    if (document.getElementById('qs-erd-anim')) return;
+    const s = document.createElement('style');
+    s.id = 'qs-erd-anim';
+    // !important needed: X6 sets some attrs as inline styles which beat CSS class selectors.
+    // stroke-dasharray: 0 + round linecap = zero-length dash rendered as a pure circle dot.
+    // Keyframe offset = -(0 + gap) = -24 for one full cycle.
+    s.textContent = `
+        @keyframes qs-edge-flow { to { stroke-dashoffset: -24; } }
+        .qs-edge-hl {
+            stroke:            #3B82F6 !important;
+            stroke-width:      6px     !important;
+            stroke-linecap:    round   !important;
+            stroke-dasharray:  0 24    !important;
+            animation: qs-edge-flow 1.2s linear infinite;
+        }
+    `;
+    document.head.appendChild(s);
+}
+
 // ── Node geometry ─────────────────────────────────────────────────
 
 function nodeH(item, isCollapsed) {
     if (isCollapsed) return HEADER_H;
-    return HEADER_H + (item.columns || []).length * COL_H + 2;
+    return HEADER_H + (item.columns || []).length * COL_H + 1;
 }
 
 function buildErdMeta(data) {
@@ -97,61 +137,80 @@ export function buildNodeDef(item, { isCollapsed = false, pkCols = new Set(), fk
     const h    = nodeH(item, isCollapsed);
     const cols = isCollapsed ? [] : (item.columns || []);
 
-    // X6 v2 applies transform="translate(NODE_W/2, h/2)" to every <text> in markup
-    // and wraps content in <tspan dy="0.3em">. Compensate with these helpers.
     const cx = NODE_W / 2;
     const cy = h / 2;
-    const tx = (ax)        => ax - cx;
-    const ty = (ay, fs=12) => ay - cy - 0.3 * fs;
+    const tx = (ax) => ax - cx;
+    const ty = (ay, fs = 12) => ay - cy - 0.3 * fs;
 
     const hpExpanded  = `M ${RADIUS} 0 H ${NODE_W-RADIUS} Q ${NODE_W} 0 ${NODE_W} ${RADIUS} V ${HEADER_H} H 0 V ${RADIUS} Q 0 0 ${RADIUS} 0 Z`;
     const hpCollapsed = `M ${RADIUS} 0 H ${NODE_W-RADIUS} Q ${NODE_W} 0 ${NODE_W} ${RADIUS} V ${h-RADIUS} Q ${NODE_W} ${h} ${NODE_W-RADIUS} ${h} H ${RADIUS} Q 0 ${h} 0 ${h-RADIUS} V ${RADIUS} Q 0 0 ${RADIUS} 0 Z`;
     const hp = isCollapsed ? hpCollapsed : hpExpanded;
 
-    const accentPath = isCollapsed
-        ? `M ${RADIUS} 1 H ${RADIUS+3} V ${h-1} H ${RADIUS} Q 1 ${h} 1 ${h-RADIUS} V ${RADIUS} Q 1 1 ${RADIUS} 1 Z`
-        : `M ${RADIUS} 1 H ${RADIUS+3} V ${HEADER_H-1} H ${RADIUS} V ${RADIUS} Q 1 1 ${RADIUS} 1 Z`;
-
     const toggleGlyph = isCollapsed ? '▶' : '▾';
+    const labelY = HEADER_H / 2 + 5;
+    const viewTag = isView ? '  ⬡' : '';
 
     const markup = [
         { tagName: 'rect', selector: 'body'    },
         { tagName: 'path', selector: 'hdr'     },
-        { tagName: 'path', selector: 'accent'  },
         { tagName: 'text', selector: 'hdr-lbl' },
         { tagName: 'text', selector: 'hdr-tog' },
     ];
     if (!isCollapsed && cols.length > 0) markup.push({ tagName: 'line', selector: 'divider' });
 
     const attrs = {
-        body:      { width: NODE_W, height: h, fill: BODY_FILL[theme], stroke: gc.border, strokeWidth: 1.5, rx: RADIUS, ry: RADIUS, filter: 'url(#qs-shadow)' },
+        body:      { width: NODE_W, height: h, fill: gc.body || BODY_FILL[theme], stroke: gc.border, strokeWidth: 1.5, rx: RADIUS, ry: RADIUS, filter: 'url(#qs-shadow)' },
         hdr:       { d: hp, fill: gc.fill, stroke: 'none' },
-        accent:    { d: accentPath, fill: gc.border, stroke: 'none' },
-        'hdr-lbl': { text: item.name, x: tx(RADIUS + 8), y: ty(HEADER_H / 2 + 4), fill: gc.text, 'font-size': 12, 'font-weight': 'bold', 'text-anchor': 'start' },
-        'hdr-tog': { text: toggleGlyph, x: tx(NODE_W - 10), y: ty(HEADER_H / 2 + 4, 10), fill: gc.text, 'font-size': 10, 'font-weight': 'normal', 'text-anchor': 'end' },
-        divider:   { x1: 0, y1: HEADER_H, x2: NODE_W, y2: HEADER_H, stroke: gc.border, strokeWidth: 1 },
+        'hdr-lbl': { text: item.name + viewTag, x: tx(14), y: ty(labelY, 13), fill: gc.text, 'font-size': 13, 'font-weight': 'bold', 'text-anchor': 'start' },
+        'hdr-tog': { text: toggleGlyph, x: tx(NODE_W - 12), y: ty(labelY, 11), fill: gc.text, 'font-size': 11, 'text-anchor': 'end' },
+        divider:   { x1: 0, y1: HEADER_H, x2: NODE_W, y2: HEADER_H, stroke: gc.border, strokeWidth: 1, opacity: 0.4 },
     };
 
     cols.forEach((col, i) => {
-        const y0  = HEADER_H + i * COL_H;
-        const ym  = y0 + COL_H / 2;
+        const y0   = HEADER_H + i * COL_H;
+        const ym   = y0 + COL_H / 2;
         const isPk = pkCols.has(col.name);
         const isFk = fkCols.has(col.name);
+        const hasIcon = isPk || isFk;
 
-        const rowFill  = isPk ? rc.pk : isFk ? rc.fk : (i % 2 === 0 ? rc.even : rc.odd);
-        const hasTag   = isPk || isFk;
-        const tagText  = isPk ? 'PK' : 'FK';
-        const tagFill  = isPk ? rc.tagPk : rc.tagFk;
-        const nameX    = hasTag ? tx(RADIUS + 8 + 26) : tx(RADIUS + 8);
+        const iconChar = isPk ? ICON_PK : ICON_FK;
+        const iconFill = isPk ? rc.iconPk : rc.iconFk;
+        const nameX    = hasIcon ? tx(26) : tx(12);
         const nameFill = isPk ? rc.colPk : isFk ? rc.colFk : rc.colDefault;
 
-        markup.push({ tagName: 'rect', selector: `rr${i}` }, { tagName: 'text', selector: `cn${i}` }, { tagName: 'text', selector: `ct${i}` });
-        if (hasTag) markup.push({ tagName: 'text', selector: `tg${i}` });
+        markup.push(
+            { tagName: 'rect', selector: `rr${i}` },
+            { tagName: 'text', selector: `cn${i}` },
+            { tagName: 'text', selector: `ct${i}` },
+        );
+        if (hasIcon) markup.push({ tagName: 'text', selector: `ic${i}` });
 
-        attrs[`rr${i}`] = { x: 0, y: y0, width: NODE_W, height: COL_H, fill: rowFill, stroke: 'none' };
-        if (hasTag) attrs[`tg${i}`] = { text: tagText, x: tx(RADIUS + 8), y: ty(ym, 9), fill: tagFill, 'font-size': 9, 'font-weight': 'bold', 'text-anchor': 'start' };
-        attrs[`cn${i}`] = { text: col.name, x: nameX, y: ty(ym, 11), fill: nameFill, 'font-size': 11, 'text-anchor': 'start' };
-        attrs[`ct${i}`] = { text: col.datatype || '', x: tx(NODE_W - 10), y: ty(ym, 10), fill: rc.colType, 'font-size': 10, 'text-anchor': 'end' };
+        attrs[`rr${i}`] = { x: 0, y: y0, width: NODE_W, height: COL_H, fill: rc.row, stroke: 'none' };
+        attrs[`cn${i}`] = {
+            text: col.name,
+            x: nameX, y: ty(ym, 12),
+            fill: nameFill,
+            'font-size': 12,
+            'font-weight': isPk ? '600' : '400',
+            'text-anchor': 'start',
+        };
+        attrs[`ct${i}`] = {
+            text: col.datatype || '',
+            x: tx(NODE_W - 10), y: ty(ym, 11),
+            fill: rc.colType,
+            'font-size': 11,
+            'text-anchor': 'end',
+            'font-style': 'italic',
+        };
+        if (hasIcon) {
+            attrs[`ic${i}`] = {
+                text: iconChar,
+                x: tx(12), y: ty(ym, 11),
+                fill: iconFill,
+                'font-size': 11,
+                'text-anchor': 'start',
+            };
+        }
     });
 
     return { markup, attrs, width: NODE_W, height: h };
@@ -217,15 +276,110 @@ function updateShadowFilter(svgEl, theme) {
         defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
         svgEl.insertBefore(defs, svgEl.firstChild);
     }
-    const opacity = theme === 'light' ? 0.12 : 0.7;
+    const opacity = theme === 'light' ? 0.08 : 0.50;
     defs.innerHTML =
-        `<filter id="qs-shadow" x="-30%" y="-30%" width="160%" height="160%">`
-        + `<feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="rgba(0,0,0,${opacity})"/>`
+        `<filter id="qs-shadow" x="-25%" y="-25%" width="150%" height="150%">`
+        + `<feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="rgba(0,0,0,${opacity})"/>`
         + `</filter>`;
+}
+
+// ── Edge highlight / animation ────────────────────────────────────
+
+function getEdgeLinePath(graph, cell) {
+    const view = graph.findViewByCell(cell);
+    if (!view) return null;
+    // X6 v2 marks attrs-bound elements with data-selector
+    return view.container.querySelector('[data-selector="line"]')
+        || view.container.querySelector('path');
+}
+
+function startEdgeHighlight(graph, cell) {
+    const el = getEdgeLinePath(graph, cell);
+    if (el) el.classList.add('qs-edge-hl');
+}
+
+function stopEdgeHighlight(graph, cell) {
+    const el = getEdgeLinePath(graph, cell);
+    if (el) el.classList.remove('qs-edge-hl');
+}
+
+function clearHighlight(graph) {
+    for (const cell of _activeEdgeCells) stopEdgeHighlight(graph, cell);
+    _activeEdgeCells   = [];
+    _highlightedNodeId = null;
+    if (_flowTimer) { clearTimeout(_flowTimer); _flowTimer = null; }
+}
+
+// Walk up the DOM from the clicked SVG element to find the first data-selector
+function clickedSelector(e) {
+    let el = e.target;
+    while (el && el.getAttribute) {
+        const s = el.getAttribute('data-selector');
+        if (s) return s;
+        el = el.parentElement;
+    }
+    return null;
+}
+
+// ── Edge style + crow's foot markers ─────────────────────────────
+
+function edgeStyle(mandatory) {
+    const theme = currentTheme();
+    const color = theme === 'light'
+        ? (mandatory ? '#94A3B8' : '#CBD5E1')
+        : (mandatory ? '#475569' : '#2D3A4E');
+
+    // Source (1/PK side): single perpendicular tick  |
+    const srcPath = 'M 0 -4 L 0 4';
+
+    // Target (N/FK side) — compact crow's foot like dbdiagram:
+    //   mandatory  → |<  pre-tick (4 px) + three-tine fork (5 px deep, ±3 amplitude)
+    //   optional   → ○<  small circle (r=2.5, 10 px out) + same fork
+    const tgtPath = mandatory
+        ? 'M 0 -3 L -5 0 L 0 3 M 0 0 L -5 0 M -2 -3 L -2 3'
+        : 'M 0 -3 L -5 0 L 0 3 M 0 0 L -5 0 M -13 0 a 2.5 2.5 0 1 0 5 0 a 2.5 2.5 0 1 0 -5 0';
+
+    return {
+        line: {
+            stroke: color,
+            strokeWidth: 1.5,
+            strokeDasharray: mandatory ? '' : '7 4',
+            sourceMarker: { tagName: 'path', d: srcPath, stroke: color, fill: 'none', strokeWidth: 1.5 },
+            targetMarker: { tagName: 'path', d: tgtPath, stroke: color, fill: 'none', strokeWidth: 1.5 },
+        },
+    };
+}
+
+function edgeLabels(mandatory) {
+    const theme = currentTheme();
+    const fill  = ROW_COLORS[theme].labelColor;
+    // Custom markup: plain text only, no background rect
+    const lbl   = [{ tagName: 'text', selector: 'label' }];
+    const base  = {
+        fill, fontSize: 10,
+        'font-family': 'monospace', 'font-weight': '600',
+        'text-anchor': 'middle', 'dominant-baseline': 'middle',
+    };
+    return [
+        {
+            markup:   lbl,
+            attrs:    { label: { ...base, text: '1' } },
+            // 25 px absolute from source — past the source marker (5 px)
+            position: { distance: 25, offset: 10 },
+        },
+        {
+            markup:   lbl,
+            attrs:    { label: { ...base, text: mandatory ? '1..*' : '0..*' } },
+            // -25 px from target — past the crow's foot marker (max 17 px)
+            position: { distance: -25, offset: 10 },
+        },
+    ];
 }
 
 export function initGraph() {
     if (state.x6graph) return;
+    injectErdAnimCSS();
+
     const X6 = window.X6;
     const erdContainer = document.getElementById('erd-container');
     if (!X6 || !X6.Graph) {
@@ -234,11 +388,11 @@ export function initGraph() {
     }
     const theme = currentTheme();
     const { Graph } = X6;
+    erdContainer.style.background = GRAPH_BG[theme];
     state.x6graph = new Graph({
         container:   erdContainer,
         width:       erdContainer.clientWidth  || 800,
         height:      erdContainer.clientHeight || 600,
-        background:  { color: GRAPH_BG[theme] },
         grid:        false,
         mousewheel:  { enabled: true, zoomAtMousePosition: true, factor: 1.1, minScale: 0.15, maxScale: 4 },
         panning:     { enabled: true },
@@ -249,35 +403,76 @@ export function initGraph() {
     const svgEl = erdContainer.querySelector('svg');
     if (svgEl) updateShadowFilter(svgEl, theme);
 
-    state.x6graph.on('node:click', ({ cell }) => {
-        capturePositions();
-        const id = cell.id;
-        if (state.collapsed.has(id)) state.collapsed.delete(id);
-        else state.collapsed.add(id);
-        try { localStorage.setItem(LS_ERD_COL, JSON.stringify([...state.collapsed])); } catch (_) {}
-        if (state.lastErdData) renderErdCells(state.lastErdData, true);
+    state.x6graph.on('node:click', ({ cell, e }) => {
+        // Compute click position relative to the node (in graph coords)
+        const rect    = erdContainer.getBoundingClientRect();
+        const zoom    = state.x6graph.zoom();
+        const pan     = state.x6graph.translate();          // { tx, ty }
+        const graphX  = (e.clientX - rect.left - pan.tx) / zoom;
+        const graphY  = (e.clientY - rect.top  - pan.ty) / zoom;
+        const nodePos = cell.getPosition();
+        const relX    = graphX - nodePos.x;
+        const relY    = graphY - nodePos.y;
+
+        const inHeader = relY >= 0 && relY < HEADER_H;
+        const inToggle = inHeader && relX > NODE_W - 24;   // toggle glyph is far right
+
+        if (inToggle) {
+            // Toggle glyph → collapse / expand
+            capturePositions();
+            const id = cell.id;
+            if (state.collapsed.has(id)) state.collapsed.delete(id);
+            else state.collapsed.add(id);
+            try { localStorage.setItem(LS_ERD_COL, JSON.stringify([...state.collapsed])); } catch (_) {}
+            if (state.lastErdData) renderErdCells(state.lastErdData, true);
+        } else if (inHeader) {
+            // Header click → toggle highlight on all connected edges
+            if (_highlightedNodeId === cell.id) {
+                clearHighlight(state.x6graph);
+            } else {
+                clearHighlight(state.x6graph);
+                _highlightedNodeId = cell.id;
+                const connected = state.x6graph.getConnectedEdges(cell);
+                _activeEdgeCells = [...connected];
+                _flowTimer = setTimeout(() => {
+                    for (const edge of connected) startEdgeHighlight(state.x6graph, edge);
+                }, 30);
+            }
+        }
+        // Body row click: no action
     });
 
     state.x6graph.on('node:moved', () => capturePositions());
-}
 
-function edgeStyle(mandatory) {
-    const theme = currentTheme();
-    const color = theme === 'light'
-        ? (mandatory ? 'rgba(60,90,140,0.65)'  : 'rgba(80,110,160,0.4)')
-        : (mandatory ? 'rgba(160,160,190,0.6)' : 'rgba(140,140,160,0.4)');
-    return {
-        line: {
-            stroke: color,
-            strokeWidth: 1.5,
-            strokeDasharray: mandatory ? '' : '6 4',
-            sourceMarker: { tagName: 'path', d: 'M 0 -6 L 0 6', stroke: color, fill: 'none', strokeWidth: 1.5 },
-            targetMarker: { tagName: 'path', d: 'M -12 -7 L 0 0 L -12 7 M 0 0 L -12 0', stroke: color, fill: 'none', strokeWidth: 1.5 },
-        },
-    };
+    // Edge click: toggle highlight + flow animation
+    state.x6graph.on('edge:click', ({ cell }) => {
+        const alreadySelected = _activeEdgeCells.length === 1 && _activeEdgeCells[0].id === cell.id;
+        clearHighlight(state.x6graph);
+        if (!alreadySelected) {
+            _activeEdgeCells = [cell];
+            _flowTimer = setTimeout(() => startEdgeHighlight(state.x6graph, cell), 30);
+        }
+    });
+
+    state.x6graph.on('blank:click', () => clearHighlight(state.x6graph));
+
+    // Resize graph canvas when the container changes size (split-bar drag, window resize).
+    // graph.resize() keeps the SVG canvas sized to the container. CSS background on the
+    // container covers the rest — no X6 background rect needed.
+    const ro = new ResizeObserver(() => {
+        if (!state.x6graph) return;
+        const w = erdContainer.clientWidth;
+        const h = erdContainer.clientHeight;
+        if (w > 0 && h > 0) {
+            state.x6graph.resize(w, h);
+            erdContainer.style.background = GRAPH_BG[currentTheme()];
+        }
+    });
+    ro.observe(erdContainer);
 }
 
 export function renderErdCells(data, keepPositions) {
+    clearHighlight(state.x6graph);
     state.x6graph.clearCells();
     const erdMeta = buildErdMeta(data);
 
@@ -289,18 +484,19 @@ export function renderErdCells(data, keepPositions) {
 
     for (const link of data.links) {
         try {
+            const mandatory = link.mandatory !== false;
             state.x6graph.addEdge({
                 source:    { cell: link.source },
                 target:    { cell: link.target },
-                attrs:     edgeStyle(link.mandatory !== false),
+                attrs:     edgeStyle(mandatory),
                 router:    { name: 'orth' },
-                connector: { name: 'rounded', args: { radius: 8 } },
+                connector: { name: 'rounded', args: { radius: 12 } },
             });
         } catch (e) { console.error('addEdge failed:', e); }
     }
 
     if (!keepPositions) {
-        state.x6graph.zoomToFit({ padding: 40, maxScale: 1 });
+        state.x6graph.zoomToFit({ padding: 48, maxScale: 1 });
         state.x6graph.centerContent();
     }
 }
@@ -308,8 +504,8 @@ export function renderErdCells(data, keepPositions) {
 export function applyErdTheme() {
     if (!state.x6graph) return;
     const theme = currentTheme();
-    state.x6graph.drawBackground({ color: GRAPH_BG[theme] });
     const erdContainer = document.getElementById('erd-container');
+    if (erdContainer) erdContainer.style.background = GRAPH_BG[theme];
     const svgEl = erdContainer && erdContainer.querySelector('svg');
     if (svgEl) updateShadowFilter(svgEl, theme);
     if (state.lastErdData) renderErdCells(state.lastErdData, true);
@@ -326,7 +522,7 @@ export function renderERD(data) {
     }
     renderErdCells(data, hadSaved);
     if (hadSaved) {
-        state.x6graph.zoomToFit({ padding: 40, maxScale: 1 });
+        state.x6graph.zoomToFit({ padding: 48, maxScale: 1 });
         state.x6graph.centerContent();
     }
 }
