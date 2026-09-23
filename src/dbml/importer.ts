@@ -99,9 +99,10 @@ interface FkEdge {
 }
 
 interface HierarchyNode {
-    table:    DbmlTable;
-    children: HierarchyNode[];
-    fks:      FkEdge[];   // non-hierarchy FK → emitted as /fk
+    table:       DbmlTable;
+    children:    HierarchyNode[];
+    fks:         FkEdge[];   // non-hierarchy FK → emitted as /fk
+    parentFkCol: string;     // actual FK column that established the parent edge (to skip in emit)
 }
 
 interface CollapseResult {
@@ -247,9 +248,10 @@ export class DBMLImporter {
             const srcField = srcTable?.fields.find(f => f.name === fromCol);
             const mandatory = Boolean(srcField?.not_null);
 
-            // Standard naming: child.parent_id → parent.parent_id
-            const isStandard = fromCol === `${toTable}_id`
-                            || fromCol.toLowerCase() === `${toTable.toLowerCase()}_id`;
+            // Standard naming: the FK column is either `parentTable_id` or
+            // `singularize(parentTable)_id` (ExpreSQL generates the latter).
+            const isStandard = fromCol.toLowerCase() === `${toTable.toLowerCase()}_id`
+                            || fromCol.toLowerCase() === `${singularize(toTable).toLowerCase()}_id`;
 
             edges.push({
                 fromTable:  fromEp.tableName,
@@ -268,32 +270,30 @@ export class DBMLImporter {
     // ── Hierarchy reconstruction ──────────────────────────────────────────────
 
     private buildHierarchy(tables: DbmlTable[], edges: FkEdge[]): HierarchyNode[] {
-        // parentOf[childName] = parentName, only for standard FK edges
-        const parentOf = new Map<string, string>();
+        // parentOf[childName] = { parent, fkCol } for standard FK edges only
+        const parentOf = new Map<string, { parent: string; fkCol: string }>();
 
         for (const edge of edges) {
             if (!edge.isStandard) continue;
-            // A table can have at most one parent in the hierarchy
             if (!parentOf.has(edge.fromTable)) {
-                parentOf.set(edge.fromTable, edge.toTable);
+                parentOf.set(edge.fromTable, { parent: edge.toTable, fkCol: edge.fromCol });
             }
         }
 
-        // Root tables: no parent
         const rootTables = tables.filter(t => !parentOf.has(t.name));
 
         const buildNode = (table: DbmlTable): HierarchyNode => {
             const children = tables
-                .filter(t => parentOf.get(t.name) === table.name)
+                .filter(t => parentOf.get(t.name)?.parent === table.name)
                 .map(buildNode);
 
-            // Non-standard FKs for this table → explicit /fk
             const fks = edges.filter(e =>
                 e.fromTable === table.name &&
-                !(e.isStandard && parentOf.get(table.name) === e.toTable)
+                !(e.isStandard && parentOf.get(table.name)?.parent === e.toTable)
             );
 
-            return { table, children, fks };
+            const parentFkCol = parentOf.get(table.name)?.fkCol ?? '';
+            return { table, children, fks, parentFkCol };
         };
 
         return rootTables.map(buildNode);
@@ -366,7 +366,7 @@ export class DBMLImporter {
 
     // ── Table node emission ───────────────────────────────────────────────────
 
-    private emitNode(node: HierarchyNode, depth: number, parentTableName?: string): string[] {
+    private emitNode(node: HierarchyNode, depth: number): string[] {
         const indent = '  '.repeat(depth);
         const lines: string[]  = [];
         const { table } = node;
@@ -394,9 +394,9 @@ export class DBMLImporter {
         if (headerDirectives.length) header += ' ' + headerDirectives.join(' ');
         lines.push(header);
 
-        // Columns (pass parentTableName so standard FK col is skipped)
+        // Columns — skip the field that was used as the parent FK (node.parentFkCol)
         for (const field of remainingFields) {
-            const line = this.emitField(field, indent + '  ', table, parentTableName);
+            const line = this.emitField(field, indent + '  ', table, node.parentFkCol);
             if (line !== null) lines.push(line);
         }
 
@@ -423,9 +423,9 @@ export class DBMLImporter {
             lines.push(fkLine);
         }
 
-        // Children (recursive — pass this table's name as parent)
+        // Children (recursive)
         for (const child of node.children) {
-            lines.push(...this.emitNode(child, depth + 1, table.name));
+            lines.push(...this.emitNode(child, depth + 1));
         }
 
         return lines;
@@ -437,18 +437,18 @@ export class DBMLImporter {
         field: DbmlField,
         indent: string,
         table: DbmlTable,
-        parentTableName?: string,
+        parentFkCol: string,   // actual FK column that established the parent edge
     ): string | null {
-        // Skip auto-generated PK (named `<tableName>_id` with pk=true)
-        const expectedPk = `${table.name}_id`.toLowerCase();
-        if (field.pk && field.name.toLowerCase() === expectedPk) return null;
-
-        // Skip standard parent FK column — ExpreSQL generates it automatically
-        // (e.g., users_id in orders when orders is a child of users)
-        if (parentTableName) {
-            const expectedFk = `${parentTableName}_id`.toLowerCase();
-            if (field.name.toLowerCase() === expectedFk) return null;
+        // Skip auto-generated PK — ExpreSQL generates the PK column automatically.
+        // Skip 'id' (ExpreSQL default) or '<tableName>_id' (round-trip style).
+        if (field.pk) {
+            const n = field.name.toLowerCase();
+            if (n === 'id' || n === `${table.name.toLowerCase()}_id`) return null;
         }
+
+        // Skip the parent FK column — ExpreSQL regenerates it automatically
+        // from the hierarchy nesting (exact match on the actual column name).
+        if (parentFkCol && field.name.toLowerCase() === parentFkCol.toLowerCase()) return null;
 
         const typePart = this.resolveType(field);
         if (typePart === null) return null;  // field handled elsewhere (e.g. enum converted to /check)
@@ -569,4 +569,12 @@ export class DBMLImporter {
 
 function escapeRegex(s: string): string {
     return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Basic English singularization for FK column name detection.
+function singularize(name: string): string {
+    if (name.endsWith('ies')) return name.slice(0, -3) + 'y';
+    if (name.endsWith('ses') || name.endsWith('xes') || name.endsWith('zes')) return name.slice(0, -2);
+    if (name.endsWith('s') && !name.endsWith('ss')) return name.slice(0, -1);
+    return name;
 }

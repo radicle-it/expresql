@@ -174,7 +174,7 @@ var t = /* @__PURE__ */ new Set([
 				if (r.relation === i.relation && r.relation === "*") continue;
 				a = r, o = i;
 			}
-			let s = a.fieldNames[0] ?? "", c = o.tableName, l = o.fieldNames[0] ?? "", u = !!e.tables.find((e) => e.name === a.tableName)?.fields.find((e) => e.name === s)?.not_null, d = s === `${c}_id` || s.toLowerCase() === `${c.toLowerCase()}_id`;
+			let s = a.fieldNames[0] ?? "", c = o.tableName, l = o.fieldNames[0] ?? "", u = !!e.tables.find((e) => e.name === a.tableName)?.fields.find((e) => e.name === s)?.not_null, d = s.toLowerCase() === `${c.toLowerCase()}_id` || s.toLowerCase() === `${f(c).toLowerCase()}_id`;
 			t.push({
 				fromTable: a.tableName,
 				fromCol: s,
@@ -189,11 +189,15 @@ var t = /* @__PURE__ */ new Set([
 	}
 	buildHierarchy(e, t) {
 		let n = /* @__PURE__ */ new Map();
-		for (let e of t) e.isStandard && (n.has(e.fromTable) || n.set(e.fromTable, e.toTable));
+		for (let e of t) e.isStandard && (n.has(e.fromTable) || n.set(e.fromTable, {
+			parent: e.toTable,
+			fkCol: e.fromCol
+		}));
 		let r = e.filter((e) => !n.has(e.name)), i = (r) => ({
 			table: r,
-			children: e.filter((e) => n.get(e.name) === r.name).map(i),
-			fks: t.filter((e) => e.fromTable === r.name && !(e.isStandard && n.get(r.name) === e.toTable))
+			children: e.filter((e) => n.get(e.name)?.parent === r.name).map(i),
+			fks: t.filter((e) => e.fromTable === r.name && !(e.isStandard && n.get(r.name)?.parent === e.toTable)),
+			parentFkCol: n.get(r.name)?.fkCol ?? ""
 		});
 		return r.map(i);
 	}
@@ -230,18 +234,16 @@ var t = /* @__PURE__ */ new Set([
 	emitNode(e, t) {
 		let n = "  ".repeat(t), r = [], { table: i } = e, { remainingFields: a, directives: o, tenantDetected: s } = this.collapseKnownColumns(i.fields, e.fks, i.name);
 		s && (this.tenantGlobal = !0);
-		let c = `${n}${this.prefix ? i.name.replace(RegExp(`^${d(this.prefix)}_`, "i"), "") : i.name}`;
-		i.note && (c += ` [${i.note}]`), r.push(c);
-		for (let e of a) {
-			let t = this.emitField(e, n + "  ", i);
-			t !== null && r.push(t);
+		let c = this.prefix ? i.name.replace(RegExp(`^${d(this.prefix)}_`, "i"), "") : i.name, l = [...o, ...this.emitTableMetaDirectivesList(i)], u = `${n}${c}`;
+		i.note && (u += ` [${i.note}]`), l.length && (u += " " + l.join(" ")), r.push(u);
+		for (let t of a) {
+			let a = this.emitField(t, n + "  ", i, e.parentFkCol);
+			a !== null && r.push(a);
 		}
 		for (let e of i.indexes ?? []) {
 			let t = this.emitIndex(e, n + "  ");
 			t && r.push(t);
 		}
-		for (let e of o) r.push(`${n}  ${e}`);
-		r.push(...this.emitTableMetaDirectives(i, n + "  "));
 		for (let t of e.fks) {
 			if (t.fromTable !== i.name || t.fromCol.toLowerCase() === "tenant_id" && s) continue;
 			let e = this.prefix ? t.toTable.replace(RegExp(`^${d(this.prefix)}_`, "i"), "") : t.toTable, a = `${n}  ${t.fromCol} /fk ${e}`;
@@ -250,9 +252,12 @@ var t = /* @__PURE__ */ new Set([
 		for (let n of e.children) r.push(...this.emitNode(n, t + 1));
 		return r;
 	}
-	emitField(e, t, n) {
-		let r = `${n.name}_id`.toLowerCase();
-		if (e.pk && e.name.toLowerCase() === r) return null;
+	emitField(e, t, n, r) {
+		if (e.pk) {
+			let t = e.name.toLowerCase();
+			if (t === "id" || t === `${n.name.toLowerCase()}_id`) return null;
+		}
+		if (r && e.name.toLowerCase() === r.toLowerCase()) return null;
 		let i = this.resolveType(e);
 		if (i === null) return null;
 		let a = [], { type: o, checkDirective: s } = i;
@@ -263,8 +268,8 @@ var t = /* @__PURE__ */ new Set([
 		s && a.push(s), e.metadata && (e.metadata.esql_case === "upper" && a.push("/upper"), e.metadata.esql_case === "lower" && a.push("/lower"));
 		let c = "";
 		e.note && (c = ` [${e.note}]`);
-		let l = a.length ? " " + a.join(" ") : "";
-		return `${t}${e.name} ${o}${l}${c}`;
+		let l = a.length ? " " + a.join(" ") : "", u = o ? ` ${o}` : "";
+		return `${t}${e.name}${u}${l}${c}`;
 	}
 	resolveType(t) {
 		let n = t.type.type_name ?? "", r = t.type.args ?? void 0, i = this.enumMap.get(n);
@@ -282,13 +287,16 @@ var t = /* @__PURE__ */ new Set([
 		}
 		return e.pk ? `${t}/pk ${n}` : e.unique ? `${t}/unique ${n}` : `${t}/idx ${n}`;
 	}
-	emitTableMetaDirectives(e, t) {
-		let n = [], r = e.metadata ?? {};
-		return r.esql_auditcols === "yes" && n.push(`${t}/auditcols`), r.esql_rowversion === "yes" && n.push(`${t}/rowversion`), r.esql_rowkey === "yes" && n.push(`${t}/rowkey`), r.esql_versioned === "yes" && n.push(`${t}/versioned`), (r.esql_rest === "yes" || r.esql_ords === "yes") && n.push(`${t}/rest`), r.esql_audit === "yes" && n.push(`${t}/audit`), r.esql_auditlog === "yes" && n.push(`${t}/auditlog`), r.esql_immutable === "yes" && n.push(`${t}/immutable`), r.esql_soda === "yes" && n.push(`${t}/soda`), r.esql_compress === "yes" && n.push(`${t}/compress`), r.esql_flashback && n.push(`${t}/flashback`), r.esql_api && n.push(`${t}/api ${r.esql_api}`), r.esql_businesskey && n.push(`${t}/businesskey ${r.esql_businesskey}`), r.esql_lockmode && n.push(`${t}/lockmode ${r.esql_lockmode}`), r.esql_notenantid === "yes" && n.push(`${t}/notenantid`), r.esql_history === "yes" && n.push(`${t}/history`), r.esql_aggregate === "yes" && n.push(`${t}/aggregate`), n;
+	emitTableMetaDirectivesList(e) {
+		let t = [], n = e.metadata ?? {};
+		return n.esql_auditcols === "yes" && t.push("/auditcols"), n.esql_rowversion === "yes" && t.push("/rowversion"), n.esql_rowkey === "yes" && t.push("/rowkey"), n.esql_versioned === "yes" && t.push("/versioned"), (n.esql_rest === "yes" || n.esql_ords === "yes") && t.push("/rest"), n.esql_audit === "yes" && t.push("/audit"), n.esql_auditlog === "yes" && t.push("/auditlog"), n.esql_immutable === "yes" && t.push("/immutable"), n.esql_soda === "yes" && t.push("/soda"), n.esql_compress === "yes" && t.push("/compress"), n.esql_flashback && t.push("/flashback"), n.esql_api && t.push(`/api ${n.esql_api}`), n.esql_businesskey && t.push(`/businesskey ${n.esql_businesskey}`), n.esql_lockmode && t.push(`/lockmode ${n.esql_lockmode}`), n.esql_notenantid === "yes" && t.push("/notenantid"), n.esql_history === "yes" && t.push("/history"), n.esql_aggregate === "yes" && t.push("/aggregate"), t;
 	}
 };
 function d(e) {
 	return e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function f(e) {
+	return e.endsWith("ies") ? e.slice(0, -3) + "y" : e.endsWith("ses") || e.endsWith("xes") || e.endsWith("zes") ? e.slice(0, -2) : e.endsWith("s") && !e.endsWith("ss") ? e.slice(0, -1) : e;
 }
 //#endregion
 export { u as DBMLImporter };
