@@ -362,6 +362,37 @@ function extractDbmlProjectMeta(dbml: string): Record<string, string> {
     return meta;
 }
 
+// @dbml/core rejects freestanding [ ... ] blocks inside Table bodies.
+// This function strips them from the raw DBML text before parsing and
+// returns both the cleaned DBML and a per-table metadata map.
+function stripTableMetaBlocks(dbml: string): {
+    cleaned: string;
+    tableMetaMap: Map<string, Record<string, string>>;
+} {
+    const tableMetaMap = new Map<string, Record<string, string>>();
+    // Match each Table block (handles nested braces for indexes)
+    const cleaned = dbml.replace(
+        /^(Table\s+(\S+)[^\n]*\{)([\s\S]*?)^(\})/gm,
+        (_full, header: string, rawName: string, body: string, closing: string) => {
+            const name = rawName.replace(/^["'`]|["'`]$/g, '');
+            const meta: Record<string, string> = {};
+            // Strip freestanding [ esql_*: "..." ] blocks from the body
+            const stripped = body.replace(
+                /^\s*\[\s*((?:\s*esql_\w+\s*:\s*"[^"]*"\s*)*)\]\s*$/gm,
+                (_block, inner: string) => {
+                    for (const m of inner.matchAll(/\s*(esql_\w+)\s*:\s*"([^"]*)"/g)) {
+                        meta[m[1]] = m[2];
+                    }
+                    return '';   // remove the block from the cleaned DBML
+                },
+            );
+            if (Object.keys(meta).length > 0) tableMetaMap.set(name, meta);
+            return header + stripped + closing;
+        },
+    );
+    return { cleaned, tableMetaMap };
+}
+
 export async function fromDBML(
     dbmlStr: string,
     options?: {
@@ -374,14 +405,25 @@ export async function fromDBML(
     const { Parser } = await import('@dbml/core') as { Parser: new () => { parse(s: string, fmt: string): unknown } };
     const { DBMLImporter } = await import('./dbml/importer.js');
 
+    // Strip table-level esql_* meta blocks before parsing (unsupported by @dbml/core)
+    const { cleaned: cleanedDbml, tableMetaMap } = stripTableMetaBlocks(dbmlStr);
+
     let db: unknown;
     try {
-        db = new Parser().parse(dbmlStr, 'dbmlv2');
+        db = new Parser().parse(cleanedDbml, 'dbmlv2');
     } catch (e: unknown) {
         const msg = e instanceof Error ? e.message
             : (e as { diags?: Array<{ message: string }> })?.diags?.map(d => d.message).join('; ')
             ?? String(e);
         throw new Error(`DBML parse error: ${msg}`);
+    }
+
+    // Inject extracted table metadata into the parsed AST
+    for (const schema of (db as { schemas: Array<{ tables: Array<{ name: string; metadata: Record<string, string> }> }> }).schemas) {
+        for (const table of schema.tables) {
+            const meta = tableMetaMap.get(table.name);
+            if (meta) Object.assign(table.metadata ??= {}, meta);
+        }
     }
 
     // Extract esql_* properties from the raw Project block (@dbml/core discards custom keys)

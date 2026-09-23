@@ -462,8 +462,16 @@ export class DBMLGenerator {
 
         // Column-level custom properties
         const meta: Record<string, string> = {};
-        if (node.isOption('upper')) meta['esql_case'] = 'upper';
-        if (node.isOption('lower')) meta['esql_case'] = 'lower';
+        if (node.isOption('upper'))      meta['esql_case']       = 'upper';
+        if (node.isOption('lower'))      meta['esql_case']       = 'lower';
+        if (node.isOption('invincible')) meta['esql_invincible'] = 'yes';
+        if (node.isOption('insert'))     meta['esql_insert']     = 'yes';
+        const domainVal = node.isOption('domain') ? node.getOptionValue('domain') : null;
+        if (domainVal)                   meta['esql_domain']     = String(domainVal);
+        if (node.isOption('values')) {
+            const vals = node.getValues('values');
+            if (vals) meta['esql_values'] = vals;
+        }
 
         return {
             name,
@@ -538,6 +546,8 @@ export class DBMLGenerator {
         flag('compress');
         flag('versioned');
         flag('businesskey');
+        flag('bridge');
+        if (node.isOption('apx') || node.isOption('apex')) m['esql_apx'] = 'yes';
 
         if (node.isOption('rest'))   m['esql_ords']    = 'yes';
         if (node.isOption('flashback')) m['esql_fda']  = node.getOptionValue('flashback') as string ?? 'yes';
@@ -664,7 +674,7 @@ export class DBMLGenerator {
         if (col.checkExpr) settings.push(`check: \`${col.checkExpr}\``);
         if (col.note)      settings.push(`note: '${escStr(col.note)}'`);
         if (col.meta) {
-            for (const [k, v] of Object.entries(col.meta)) settings.push(`${k}: "${escStr(v)}"`);
+            for (const [k, v] of Object.entries(col.meta)) settings.push(`${k}: "${escDblStr(v)}"`);
         }
         return `  ${col.name} ${col.type}${settings.length ? ` [${settings.join(', ')}]` : ''}`;
     }
@@ -682,4 +692,9 @@ export class DBMLGenerator {
 
 function escStr(s: string): string {
     return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+// For metadata values wrapped in double quotes (column-level [key: "value"])
+function escDblStr(s: string): string {
+    return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }

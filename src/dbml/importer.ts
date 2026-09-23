@@ -392,11 +392,10 @@ export class DBMLImporter {
             ? table.name.replace(new RegExp(`^${escapeRegex(this.prefix)}_`, 'i'), '')
             : table.name;
 
-        // Collect table-level directives (go on the header line in ESQL syntax)
-        const headerDirectives = [
-            ...directives,                                    // from reverse expansion
-            ...this.emitTableMetaDirectivesList(table),       // from round-trip metadata
-        ];
+        // Collect table-level directives (go on the header line in ESQL syntax).
+        // Filter meta directives that the collapse already detected from actual columns.
+        const metaDirs = this.emitTableMetaDirectivesList(table).filter(d => !directives.includes(d));
+        const headerDirectives = [...directives, ...metaDirs];
 
         // Table header: name [note] /directive1 /directive2 ...
         let header = `${indent}${rawName}`;
@@ -497,8 +496,13 @@ export class DBMLImporter {
 
         // Round-trip metadata
         if (field.metadata) {
-            if (field.metadata['esql_case'] === 'upper') directives.push('/upper');
-            if (field.metadata['esql_case'] === 'lower') directives.push('/lower');
+            const fm = field.metadata;
+            if (fm['esql_case'] === 'upper')   directives.push('/upper');
+            if (fm['esql_case'] === 'lower')   directives.push('/lower');
+            if (fm['esql_invincible'] === 'yes') directives.push('/invincible');
+            if (fm['esql_insert']    === 'yes') directives.push('/insert');
+            if (fm['esql_domain'])             directives.push(`/domain ${fm['esql_domain']}`);
+            if (fm['esql_values'])             directives.push(`/values ${fm['esql_values']}`);
         }
 
         // Note as inline ESQL comment
@@ -574,6 +578,8 @@ export class DBMLImporter {
         if (m['esql_notenantid'] === 'yes') dirs.push('/notenantid');
         if (m['esql_history'] === 'yes')    dirs.push('/history');
         if (m['esql_aggregate'] === 'yes')  dirs.push('/aggregate');
+        if (m['esql_bridge'] === 'yes')     dirs.push('/bridge');
+        if (m['esql_apx'] === 'yes')        dirs.push('/apx');
 
         return dirs;
     }

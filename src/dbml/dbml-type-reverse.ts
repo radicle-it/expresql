@@ -15,7 +15,8 @@ export function fromDbmlType(typeName: string, args?: string | null): string {
         case 'varchar2':
         case 'character varying':
         case 'nvarchar':
-            return args ? `vc${args}` : 'vc';
+            // 4000 is the default ExpreSQL varchar size — omit the explicit suffix
+            return (args && args !== '4000') ? `vc${args}` : 'vc';
 
         case 'char':
         case 'nchar':
