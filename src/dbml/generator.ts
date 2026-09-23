@@ -12,6 +12,7 @@
  */
 
 import type { DdlContext, IDdlNode } from '../compiler/types.js';
+import { singular }                  from '../utils/naming.js';
 import { toDbmlType }                from './type-map.js';
 import {
     expandAuditCols,
@@ -150,6 +151,14 @@ export class DBMLGenerator {
         return { project, enums, tables, refs, tableGroups };
     }
 
+    // Returns the PK column name of a node identified by raw (unprefixed) table name.
+    // Falls back to 'id' when the target table is not in the forest (e.g. external ref).
+    private pkColFor(rawName: string): string {
+        const node = this.ctx.forest.find(n => n.parseName() === rawName)
+                  ?? this.ctx.forest.flatMap(n => n.children).find(n => n.parseName() === rawName);
+        return node?.getPkName() ?? 'id';
+    }
+
     private tableName(rawName: string): string {
         const p = this.prefix;
         const sep = p && !p.endsWith('_') ? '_' : '';
@@ -205,7 +214,8 @@ export class DBMLGenerator {
                 const childRaw  = child.parseName();
                 const childName = this.tableName(childRaw);
                 const childQual = this.schema ? `${this.schema}.${childName}` : childName;
-                const fkCol     = `${tblName}_id`;
+                // ExpreSQL generates the FK column as singular(parentTable)_id (e.g. user_id for users)
+                const fkCol     = (singular(tblName) ?? tblName) + '_id';
                 const mandatory = !child.isOption('optional');
 
                 refs.push({
@@ -247,7 +257,7 @@ export class DBMLGenerator {
                         fromTable: qualName,
                         fromCols:  [fkColName],
                         toTable:   targetQual,
-                        toCols:    [`${targetTbl}_id`],
+                        toCols:    [this.pkColFor(fkTarget)],
                         operator:  '>',
                         mandatory: child.isOption('nn'),
                         delete:    child.isOption('cascade')  ? 'cascade'
@@ -267,7 +277,7 @@ export class DBMLGenerator {
                         fromTable: qualName,
                         fromCols:  [dimFkCol],
                         toTable:   dimQual,
-                        toCols:    [`${dimTbl}_id`],
+                        toCols:    [this.pkColFor(dimRaw)],
                         operator:  '>',
                         mandatory: child.isOption('nn'),
                     });

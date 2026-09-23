@@ -10549,6 +10549,9 @@ var nt = class {
 			tableGroups: i
 		};
 	}
+	pkColFor(e) {
+		return (this.ctx.forest.find((t) => t.parseName() === e) ?? this.ctx.forest.flatMap((e) => e.children).find((t) => t.parseName() === e))?.getPkName() ?? "id";
+	}
 	tableName(e) {
 		let t = this.prefix, n = t && !t.endsWith("_") ? "_" : "";
 		return t ? t + n + e : e;
@@ -10558,8 +10561,8 @@ var nt = class {
 		return this.schema ? `${this.schema}.${t}` : t;
 	}
 	processTable(e, t, n, r, i) {
-		let a = e.parseName(), o = this.tableName(a), s = this.schema ? `${this.schema}.${o}` : o, c = [], l = [], u = e.getPkName() ?? `${o}_id`;
-		if (c.push(this.makePkColumn(u)), this.globalTenant && !e.isOption("notenantid")) {
+		let a = e.parseName(), o = this.tableName(a), s = this.schema ? `${this.schema}.${o}` : o, c = [], u = [], d = e.getPkName() ?? `${o}_id`;
+		if (c.push(this.makePkColumn(d)), this.globalTenant && !e.isOption("notenantid")) {
 			c.push(this.expandedToCol(tt()));
 			let e = this.tenantRef ? this.qualifiedName(this.tenantRef) : this.schema ? `${this.schema}.tenants` : "tenants";
 			r.push({
@@ -10574,23 +10577,23 @@ var nt = class {
 		}
 		for (let a of e.children) if (a.children.length > 0) {
 			this.processTable(a, t, n, r, i);
-			let e = a.parseName(), c = this.tableName(e), l = this.schema ? `${this.schema}.${c}` : c, d = `${o}_id`, f = !a.isOption("optional");
+			let e = a.parseName(), c = this.tableName(e), u = this.schema ? `${this.schema}.${c}` : c, f = (l(o) ?? o) + "_id", p = !a.isOption("optional");
 			r.push({
-				name: `${c}_${d}_fk`,
-				fromTable: l,
-				fromCols: [d],
+				name: `${c}_${f}_fk`,
+				fromTable: u,
+				fromCols: [f],
 				toTable: s,
-				toCols: [u],
+				toCols: [d],
 				operator: ">",
-				mandatory: f,
+				mandatory: p,
 				delete: a.isOption("cascade") ? "cascade" : a.isOption("setnull") ? "set null" : void 0
 			});
 		} else {
 			let e = this.buildColumn(a, o, t);
-			e && (c.push(e), a.isOption("unique") && l.push({
+			e && (c.push(e), a.isOption("unique") && u.push({
 				cols: [a.parseName()],
 				unique: !0
-			}), a.isOption("idx") && l.push({ cols: [a.parseName()] }));
+			}), a.isOption("idx") && u.push({ cols: [a.parseName()] }));
 			let n = a.refId?.();
 			if (n) {
 				let e = this.tableName(n), t = this.schema ? `${this.schema}.${e}` : e, i = a.parseName();
@@ -10599,7 +10602,7 @@ var nt = class {
 					fromTable: s,
 					fromCols: [i],
 					toTable: t,
-					toCols: [`${e}_id`],
+					toCols: [this.pkColFor(n)],
 					operator: ">",
 					mandatory: a.isOption("nn"),
 					delete: a.isOption("cascade") ? "cascade" : a.isOption("setnull") ? "set null" : void 0
@@ -10612,23 +10615,23 @@ var nt = class {
 					fromTable: s,
 					fromCols: [i],
 					toTable: n,
-					toCols: [`${t}_id`],
+					toCols: [this.pkColFor(e)],
 					operator: ">",
 					mandatory: a.isOption("nn")
 				});
 			}
 		}
-		let d = this.globalAudit || e.hasAuditCols(), f = this.globalRowVer || e.hasRowVersion(), p = this.globalRowKey || e.hasRowKey();
-		if (d) for (let e of Ze({
+		let f = this.globalAudit || e.hasAuditCols(), p = this.globalRowVer || e.hasRowVersion(), m = this.globalRowKey || e.hasRowKey();
+		if (f) for (let e of Ze({
 			createdcol: this.createdcol,
 			createdbycol: this.createdbycol,
 			updatedcol: this.updatedcol,
 			updatedbycol: this.updatedbycol,
 			auditdate: this.auditDateType || void 0
 		})) c.push(this.expandedToCol(e));
-		if (f && c.push(this.expandedToCol(Qe())), p && c.push(this.expandedToCol($e())), e.isOption("versioned")) for (let e of et()) c.push(this.expandedToCol(e));
-		let m = e.getTransColumns?.() ?? [];
-		if (m.length > 0) {
+		if (p && c.push(this.expandedToCol(Qe())), m && c.push(this.expandedToCol($e())), e.isOption("versioned")) for (let e of et()) c.push(this.expandedToCol(e));
+		let h = e.getTransColumns?.() ?? [];
+		if (h.length > 0) {
 			let e = `${o}_trans`, t = this.schema ? `${this.schema}.${e}` : e, i = [
 				{
 					name: `${e}_id`,
@@ -10647,7 +10650,7 @@ var nt = class {
 					notNull: !0
 				}
 			];
-			for (let e of m) {
+			for (let e of h) {
 				let t = e._inferTypeFull();
 				i.push({
 					name: e.parseName(),
@@ -10671,20 +10674,20 @@ var nt = class {
 				fromTable: t,
 				fromCols: [`${o}_id`],
 				toTable: s,
-				toCols: [u],
+				toCols: [d],
 				operator: ">",
 				mandatory: !0,
 				delete: "cascade"
 			});
 		}
-		let h = this.buildTableMeta(e, d, f, p), g = e.comment ?? e.getAnnotationValue("DESCRIPTION") ?? e.getAnnotationValue("description"), _ = e.getAnnotationValue("TGROUP") ?? e.getAnnotationValue("tgroup");
-		_ && (i.has(_) || i.set(_, []), i.get(_).push(s)), n.push({
+		let g = this.buildTableMeta(e, f, p, m), _ = e.comment ?? e.getAnnotationValue("DESCRIPTION") ?? e.getAnnotationValue("description"), v = e.getAnnotationValue("TGROUP") ?? e.getAnnotationValue("tgroup");
+		v && (i.has(v) || i.set(v, []), i.get(v).push(s)), n.push({
 			name: o,
 			schema: this.schema || null,
-			note: g ?? void 0,
+			note: _ ?? void 0,
 			columns: c,
-			indexes: l,
-			meta: Object.keys(h).length ? h : void 0
+			indexes: u,
+			meta: Object.keys(g).length ? g : void 0
 		});
 	}
 	makePkColumn(e) {
