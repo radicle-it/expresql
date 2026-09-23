@@ -10560,14 +10560,22 @@ var nt = class {
 		let t = this.tableName(e);
 		return this.schema ? `${this.schema}.${t}` : t;
 	}
-	processTable(e, t, n, r, i) {
-		let a = e.parseName(), o = this.tableName(a), s = this.schema ? `${this.schema}.${o}` : o, c = [], u = [], d = e.getPkName() ?? `${o}_id`;
-		if (c.push(this.makePkColumn(d)), this.globalTenant && !e.isOption("notenantid")) {
-			c.push(this.expandedToCol(tt()));
+	fkColType() {
+		let e = this.pkMode.toLowerCase();
+		return e === "identity" || e === "identitydatatype" || e === "seq" ? "int" : "varchar(36)";
+	}
+	processTable(e, t, n, r, i, a) {
+		let o = e.parseName(), s = this.tableName(o), c = this.schema ? `${this.schema}.${s}` : s, u = [], d = [], f = e.getPkName() ?? `${s}_id`;
+		if (u.push(this.makePkColumn(f)), a && u.push({
+			name: a.col,
+			type: this.fkColType(),
+			notNull: a.mandatory
+		}), this.globalTenant && !e.isOption("notenantid")) {
+			u.push(this.expandedToCol(tt()));
 			let e = this.tenantRef ? this.qualifiedName(this.tenantRef) : this.schema ? `${this.schema}.tenants` : "tenants";
 			r.push({
-				name: `${o}_tenant_id_fk`,
-				fromTable: s,
+				name: `${s}_tenant_id_fk`,
+				fromTable: c,
 				fromCols: ["tenant_id"],
 				toTable: e,
 				toCols: ["tenants_id"],
@@ -10576,30 +10584,32 @@ var nt = class {
 			});
 		}
 		for (let a of e.children) if (a.children.length > 0) {
-			this.processTable(a, t, n, r, i);
-			let e = a.parseName(), c = this.tableName(e), u = this.schema ? `${this.schema}.${c}` : c, f = (l(o) ?? o) + "_id", p = !a.isOption("optional");
-			r.push({
-				name: `${c}_${f}_fk`,
+			let e = a.parseName(), o = this.tableName(e), u = this.schema ? `${this.schema}.${o}` : o, d = (l(s) ?? s) + "_id", p = !a.isOption("optional");
+			this.processTable(a, t, n, r, i, {
+				col: d,
+				mandatory: p
+			}), r.push({
+				name: `${o}_${d}_fk`,
 				fromTable: u,
-				fromCols: [f],
-				toTable: s,
-				toCols: [d],
+				fromCols: [d],
+				toTable: c,
+				toCols: [f],
 				operator: ">",
 				mandatory: p,
 				delete: a.isOption("cascade") ? "cascade" : a.isOption("setnull") ? "set null" : void 0
 			});
 		} else {
-			let e = this.buildColumn(a, o, t);
-			e && (c.push(e), a.isOption("unique") && u.push({
+			let e = this.buildColumn(a, s, t);
+			e && (u.push(e), a.isOption("unique") && d.push({
 				cols: [a.parseName()],
 				unique: !0
-			}), a.isOption("idx") && u.push({ cols: [a.parseName()] }));
+			}), a.isOption("idx") && d.push({ cols: [a.parseName()] }));
 			let n = a.refId?.();
 			if (n) {
 				let e = this.tableName(n), t = this.schema ? `${this.schema}.${e}` : e, i = a.parseName();
 				r.push({
-					name: `${o}_${i}_fk`,
-					fromTable: s,
+					name: `${s}_${i}_fk`,
+					fromTable: c,
 					fromCols: [i],
 					toTable: t,
 					toCols: [this.pkColFor(n)],
@@ -10611,8 +10621,8 @@ var nt = class {
 			if (a.isMany2One()) {
 				let e = a.parseName(), t = this.tableName(e), n = this.schema ? `${this.schema}.${t}` : t, i = `${t}_id`;
 				r.push({
-					name: `${o}_${i}_star_fk`,
-					fromTable: s,
+					name: `${s}_${i}_star_fk`,
+					fromTable: c,
 					fromCols: [i],
 					toTable: n,
 					toCols: [this.pkColFor(e)],
@@ -10621,18 +10631,18 @@ var nt = class {
 				});
 			}
 		}
-		let f = this.globalAudit || e.hasAuditCols(), p = this.globalRowVer || e.hasRowVersion(), m = this.globalRowKey || e.hasRowKey();
-		if (f) for (let e of Ze({
+		let p = this.globalAudit || e.hasAuditCols(), m = this.globalRowVer || e.hasRowVersion(), h = this.globalRowKey || e.hasRowKey();
+		if (p) for (let e of Ze({
 			createdcol: this.createdcol,
 			createdbycol: this.createdbycol,
 			updatedcol: this.updatedcol,
 			updatedbycol: this.updatedbycol,
 			auditdate: this.auditDateType || void 0
-		})) c.push(this.expandedToCol(e));
-		if (p && c.push(this.expandedToCol(Qe())), m && c.push(this.expandedToCol($e())), e.isOption("versioned")) for (let e of et()) c.push(this.expandedToCol(e));
-		let h = e.getTransColumns?.() ?? [];
-		if (h.length > 0) {
-			let e = `${o}_trans`, t = this.schema ? `${this.schema}.${e}` : e, i = [
+		})) u.push(this.expandedToCol(e));
+		if (m && u.push(this.expandedToCol(Qe())), h && u.push(this.expandedToCol($e())), e.isOption("versioned")) for (let e of et()) u.push(this.expandedToCol(e));
+		let g = e.getTransColumns?.() ?? [];
+		if (g.length > 0) {
+			let e = `${s}_trans`, t = this.schema ? `${this.schema}.${e}` : e, i = [
 				{
 					name: `${e}_id`,
 					type: "int",
@@ -10640,7 +10650,7 @@ var nt = class {
 					increment: !0
 				},
 				{
-					name: `${o}_id`,
+					name: `${s}_id`,
 					type: "int",
 					notNull: !0
 				},
@@ -10650,7 +10660,7 @@ var nt = class {
 					notNull: !0
 				}
 			];
-			for (let e of h) {
+			for (let e of g) {
 				let t = e._inferTypeFull();
 				i.push({
 					name: e.parseName(),
@@ -10662,32 +10672,32 @@ var nt = class {
 			n.push({
 				name: e,
 				schema: this.schema || null,
-				note: `Translation table for ${o}`,
+				note: `Translation table for ${s}`,
 				columns: i,
 				indexes: [{
-					cols: [`${o}_id`, "lang"],
+					cols: [`${s}_id`, "lang"],
 					unique: !0
 				}],
 				meta: { esql_trans: "yes" }
 			}), r.push({
-				name: `${e}_${o}_id_fk`,
+				name: `${e}_${s}_id_fk`,
 				fromTable: t,
-				fromCols: [`${o}_id`],
-				toTable: s,
-				toCols: [d],
+				fromCols: [`${s}_id`],
+				toTable: c,
+				toCols: [f],
 				operator: ">",
 				mandatory: !0,
 				delete: "cascade"
 			});
 		}
-		let g = this.buildTableMeta(e, f, p, m), _ = e.comment ?? e.getAnnotationValue("DESCRIPTION") ?? e.getAnnotationValue("description"), v = e.getAnnotationValue("TGROUP") ?? e.getAnnotationValue("tgroup");
-		v && (i.has(v) || i.set(v, []), i.get(v).push(s)), n.push({
-			name: o,
+		let _ = this.buildTableMeta(e, p, m, h), v = e.comment ?? e.getAnnotationValue("DESCRIPTION") ?? e.getAnnotationValue("description"), y = e.getAnnotationValue("TGROUP") ?? e.getAnnotationValue("tgroup");
+		y && (i.has(y) || i.set(y, []), i.get(y).push(c)), n.push({
+			name: s,
 			schema: this.schema || null,
-			note: _ ?? void 0,
-			columns: c,
-			indexes: u,
-			meta: Object.keys(g).length ? g : void 0
+			note: v ?? void 0,
+			columns: u,
+			indexes: d,
+			meta: Object.keys(_).length ? _ : void 0
 		});
 	}
 	makePkColumn(e) {

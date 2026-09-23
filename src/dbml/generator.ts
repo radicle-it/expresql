@@ -170,12 +170,18 @@ export class DBMLGenerator {
         return this.schema ? `${this.schema}.${tbl}` : tbl;
     }
 
+    private fkColType(): string {
+        const mode = this.pkMode.toLowerCase();
+        return (mode === 'identity' || mode === 'identitydatatype' || mode === 'seq') ? 'int' : 'varchar(36)';
+    }
+
     private processTable(
-        node:     IDdlNode,
-        enums:    DbmlEnum[],
-        tables:   DbmlTable[],
-        refs:     DbmlRef[],
-        groupMap: Map<string, string[]>,
+        node:      IDdlNode,
+        enums:     DbmlEnum[],
+        tables:    DbmlTable[],
+        refs:      DbmlRef[],
+        groupMap:  Map<string, string[]>,
+        parentFk?: { col: string; mandatory: boolean },
     ): void {
         const rawName  = node.parseName();
         const tblName  = this.tableName(rawName);
@@ -187,6 +193,11 @@ export class DBMLGenerator {
         // ── Injected PK column ────────────────────────────────────────────────
         const pkColName = node.getPkName() ?? `${tblName}_id`;
         columns.push(this.makePkColumn(pkColName));
+
+        // ── Injected parent FK column (for nested child tables) ───────────────
+        if (parentFk) {
+            columns.push({ name: parentFk.col, type: this.fkColType(), notNull: parentFk.mandatory });
+        }
 
         // ── Injected tenant_id ────────────────────────────────────────────────
         if (this.globalTenant && !node.isOption('notenantid')) {
@@ -208,15 +219,15 @@ export class DBMLGenerator {
         // ── Child columns and sub-tables ──────────────────────────────────────
         for (const child of node.children) {
             if (child.children.length > 0) {
-                // Sub-table → recurse, then add parent→child FK
-                this.processTable(child, enums, tables, refs, groupMap);
-
                 const childRaw  = child.parseName();
                 const childName = this.tableName(childRaw);
                 const childQual = this.schema ? `${this.schema}.${childName}` : childName;
                 // ExpreSQL generates the FK column as singular(parentTable)_id (e.g. user_id for users)
                 const fkCol     = (singular(tblName) ?? tblName) + '_id';
                 const mandatory = !child.isOption('optional');
+
+                // Sub-table → recurse, injecting the parent FK column into the child
+                this.processTable(child, enums, tables, refs, groupMap, { col: fkCol, mandatory });
 
                 refs.push({
                     name:      `${childName}_${fkCol}_fk`,
