@@ -172,7 +172,7 @@ export class DBMLGenerator {
 
     private fkColType(): string {
         const mode = this.pkMode.toLowerCase();
-        return (mode === 'identity' || mode === 'identitydatatype' || mode === 'seq') ? 'int' : 'varchar(36)';
+        return (mode === 'identity' || mode === 'identitydatatype' || mode === 'seq') ? 'int' : 'varchar2(36)';
     }
 
     private processTable(
@@ -398,7 +398,7 @@ export class DBMLGenerator {
             return { name: pkColName, type: 'int', pk: true, default: `\`${seqName}.NEXTVAL\`` };
         }
         // guid (default)
-        return { name: pkColName, type: 'varchar(36)', pk: true, default: '`sys_guid()`' };
+        return { name: pkColName, type: 'varchar2(36)', pk: true, default: '`sys_guid()`' };
     }
 
     // ── Column building ───────────────────────────────────────────────────────

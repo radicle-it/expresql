@@ -10425,8 +10425,8 @@ var Ye = {
 //#region src/dbml/type-map.ts
 function Xe(e) {
 	switch (e.base) {
-		case "varchar": return e.varcharLen ? `varchar(${e.varcharLen})` : "varchar";
-		case "number": return e.numericSpec ? `decimal${e.numericSpec}` : "decimal";
+		case "varchar": return e.varcharLen ? `varchar2(${e.varcharLen})` : "varchar2";
+		case "number": return e.numericSpec ? `number${e.numericSpec}` : "number";
 		case "integer": return "int";
 		case "date": return "date";
 		case "timestamp": return "timestamp";
@@ -10562,7 +10562,7 @@ var nt = class {
 	}
 	fkColType() {
 		let e = this.pkMode.toLowerCase();
-		return e === "identity" || e === "identitydatatype" || e === "seq" ? "int" : "varchar(36)";
+		return e === "identity" || e === "identitydatatype" || e === "seq" ? "int" : "varchar2(36)";
 	}
 	processTable(e, t, n, r, i, a) {
 		let o = e.parseName(), s = this.tableName(o), c = this.schema ? `${this.schema}.${s}` : s, u = [], d = [], f = e.getPkName() ?? `${s}_id`;
@@ -10714,7 +10714,7 @@ var nt = class {
 			default: `\`${this.prefix ? this.prefix.toUpperCase() + "_SEQ" : "APP_SEQ"}.NEXTVAL\``
 		} : {
 			name: e,
-			type: "varchar(36)",
+			type: "varchar2(36)",
 			pk: !0,
 			default: "`sys_guid()`"
 		};

@@ -6,8 +6,8 @@ import type { SemanticType } from '../compiler/types.js';
  */
 export function toDbmlType(st: SemanticType): string {
     switch (st.base) {
-        case 'varchar':   return st.varcharLen ? `varchar(${st.varcharLen})` : 'varchar';
-        case 'number':    return st.numericSpec ? `decimal${st.numericSpec}` : 'decimal';
+        case 'varchar':   return st.varcharLen ? `varchar2(${st.varcharLen})` : 'varchar2';
+        case 'number':    return st.numericSpec ? `number${st.numericSpec}` : 'number';
         case 'integer':   return 'int';
         case 'date':      return 'date';
         case 'timestamp': return 'timestamp';
