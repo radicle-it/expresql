@@ -3,80 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QuickERD — DiagramPreview (Mermaid)</title>
-
-    <link rel="stylesheet" href="../../dist/quick-erd.css">
-
+    <title>ExpreSQL — ERD preview (Mermaid)</title>
     <style>
-        html, body {
-            height: 100%;
-            width: 100%;
-            padding: 0;
-            margin: 0;
-        }
-
-        .container {
-            display: flex;
-            height: 100%;
-        }
-
-        #sql {
-            width: 15%;
-            padding: 20px;
+        html, body { height: 100%; width: 100%; padding: 0; margin: 0; font-family: sans-serif; }
+        .container { display: flex; height: 100%; }
+        #esql {
+            width: 18%;
+            padding: 16px;
             overflow: auto;
             font-size: 13px;
-            border-right: 1px solid #e7e3e1;
+            font-family: monospace;
+            border-right: 1px solid #ddd;
+            background: #f8f8f8;
+            white-space: pre;
         }
-
-        #quickERD {
-            width: 85%;
-            height: 100%;
+        #diagram {
+            flex: 1;
+            padding: 20px;
+            overflow: auto;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
         }
-
-        :root {
-            --qs-diagram-table-background-color: #FFF;
-            --qs-diagram-font-family: var(--a-base-font-family, sans-serif);
-            --qs-diagram-table-border-color: #f1efed;
-            --qs-diagram-table-name-text-color: rgb(22 21 19);
-            --qs-diagram-table-column-text-color: rgba(22, 21, 19, .9);
-            --qs-diagram-table-data-type-text-color: rgba(22, 21, 19, .5);
-            --qs-diagram-table-separator-color: #e7e3e1;
-        }
-
         @media (prefers-color-scheme: dark) {
-            html, body {
-                background: #312D2A;
-                color: white;
-            }
-
-            :root {
-                --qs-diagram-table-background-color: #4a4541;
-                --qs-diagram-font-family: var(--a-base-font-family, sans-serif);
-                --qs-diagram-table-border-color: #55504c;
-                --qs-diagram-table-text-color: #fcfbfa;
-                --qs-diagram-table-name-text-color: white;
-                --qs-diagram-table-column-text-color: rgb(255 255 255 / 90%);
-                --qs-diagram-table-data-type-text-color: rgb(255 255 255 / 60%);
-                --qs-diagram-table-separator-color: #55504c;
-            }
+            html, body { background: #1e1e2e; color: #cdd6f4; }
+            #esql { background: #181825; border-color: #313244; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="sql">
-            <pre></pre>
-        </div>
-        <div id="quickERD"></div>
+        <div id="esql"></div>
+        <div id="diagram"><div id="mermaid-target"></div></div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <script type="module">
-        import { toERD } from '../../dist/quick-sql.js';
-        import { DiagramPreview } from '../../dist/quick-erd.js';
+        import { toERD } from '../../dist/expresql.js';
 
-        const input =
-`
-departments {GROUP "HR"}
+        const input = `departments {GROUP "HR"}
     name /nn
     location
     country
@@ -84,27 +49,52 @@ employees {GROUP "HR"}
     departments_id /fk departments
     name /nn vc50
     email /lower
-    cost center num
-    date hired
+    cost_center num
+    date_hired date
     job vc255
 projects {GROUP "PM"}
     name /nn vc100
     budget num
-    start date
+    start_date date
 tasks {GROUP "PM"}
     projects_id /fk projects
     name /nn vc255
     status vc20
-    assigned to vc100
+    assigned_to vc100
 
-view emp_v departments employees
+view emp_v departments employees`;
 
-# settings = { "prefix": null, "semantics": "CHAR", "DV": false }
-`
-        const data = toERD(input);
-        new DiagramPreview( data, '#quickERD' );
+        document.getElementById('esql').textContent = input;
 
-        document.querySelector( '#sql > pre' ).innerText = input;
+        function erdToMermaid(erd) {
+            const safeId = s => s.replace(/[^a-zA-Z0-9_]/g, '_');
+            const lines = ['erDiagram'];
+            for (const item of erd.items) {
+                lines.push(`    ${safeId(item.name)} {`);
+                for (const col of item.columns) {
+                    const t = col.datatype.replace(/[^a-zA-Z0-9_(),.]/g, '_');
+                    lines.push(`        ${t} ${safeId(col.name)}`);
+                }
+                lines.push('    }');
+            }
+            const seen = new Set();
+            for (const link of erd.links) {
+                const key = link.source + '->' + link.target;
+                if (seen.has(key)) continue;
+                seen.add(key);
+                const card = link.mandatory ? '||--o{' : '|o--o{';
+                lines.push(`    ${safeId(link.source)} ${card} ${safeId(link.target)} : ""`);
+            }
+            return lines.join('\n');
+        }
+
+        const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'loose' });
+
+        const erd = toERD(input);
+        const mmd = erdToMermaid(erd);
+        const { svg } = await mermaid.render('erd-svg', mmd);
+        document.getElementById('mermaid-target').innerHTML = svg;
     </script>
 </body>
 </html>
