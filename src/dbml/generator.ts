@@ -581,13 +581,15 @@ export class DBMLGenerator {
         set('esql_prefix',     str('prefix'));
         set('esql_pk',         str('pk'));
         set('esql_schema',     str('schema'));
-        set('esql_api',        str('api'));
-        set('esql_ifc',        str('ifc'));
+        // Only emit api/ifc when non-default (default is 'no' / unset)
+        const apiVal = opt('api'); if (apiVal && apiVal !== 'no') m['esql_api'] = String(apiVal);
+        const ifcVal = opt('ifc'); if (ifcVal && ifcVal !== 'none') m['esql_ifc'] = String(ifcVal);
         set('esql_auditcols',  yesN('auditcols'));
         set('esql_rowversion', yesN('rowversion'));
         set('esql_rowkey',     yesN('rowkey'));
         set('esql_tenantid',   this.globalTenant ? 'yes' : null);
-        set('esql_semantics',  str('semantics'));
+        // Only emit semantics when non-default ('CHAR' is the Oracle default)
+        const semVal = opt('semantics'); if (semVal && semVal !== 'CHAR') m['esql_semantics'] = String(semVal);
         return m;
     }
 

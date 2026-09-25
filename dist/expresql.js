@@ -10798,7 +10798,13 @@ var nt = class {
 		}, i = (t, n) => {
 			n && (e[t] = n);
 		};
-		return i("esql_prefix", r("prefix")), i("esql_pk", r("pk")), i("esql_schema", r("schema")), i("esql_api", r("api")), i("esql_ifc", r("ifc")), i("esql_auditcols", n("auditcols")), i("esql_rowversion", n("rowversion")), i("esql_rowkey", n("rowkey")), i("esql_tenantid", this.globalTenant ? "yes" : null), i("esql_semantics", r("semantics")), e;
+		i("esql_prefix", r("prefix")), i("esql_pk", r("pk")), i("esql_schema", r("schema"));
+		let a = t("api");
+		a && a !== "no" && (e.esql_api = String(a));
+		let o = t("ifc");
+		o && o !== "none" && (e.esql_ifc = String(o)), i("esql_auditcols", n("auditcols")), i("esql_rowversion", n("rowversion")), i("esql_rowkey", n("rowkey")), i("esql_tenantid", this.globalTenant ? "yes" : null);
+		let s = t("semantics");
+		return s && s !== "CHAR" && (e.esql_semantics = String(s)), e;
 	}
 	emitDBML(e) {
 		let t = [];
