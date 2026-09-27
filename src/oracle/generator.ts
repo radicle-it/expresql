@@ -449,7 +449,15 @@ export class OracleDDLGenerator extends BaseGenerator {
         // concurrent duplicate grant via DUP_VAL_ON_INDEX, not just its own check-first.
         if (node.isOption('bridge')) {
             const fkCols = Object.keys(node.fks ?? {});
-            if (fkCols.length === 2)
+            // A table-level /unique on exactly the same two columns (any order) already
+            // gives the DB the constraint grant_rec relies on: emitting _uk_bridge as
+            // well would be a second unique on the same column set (ORA-02261 at
+            // install time), not a stronger guarantee.
+            const tableUnqCols = cutUnq === null ? [] : cutUnq.split(',').map(c => c.trim().toLowerCase()).filter(c => c !== '');
+            const coveredByTableUnique = fkCols.length === 2
+                && tableUnqCols.length === 2
+                && fkCols.every(c => tableUnqCols.includes(c.toLowerCase()));
+            if (fkCols.length === 2 && !coveredByTableUnique)
                 ret += 'alter table ' + objName + ' add constraint ' + cstObjName + this._naming.uk + '_bridge unique (' + fkCols.join(', ') + ');\n\n';
         }
 
@@ -813,8 +821,12 @@ export class OracleDDLGenerator extends BaseGenerator {
                 const bkCol = node.isOption('businesskey')
                     ? (node.getOptionValue('businesskey') ?? '').trim().toLowerCase() : '';
                 if (bkCol !== '' && node.findChild(bkCol) !== null) {
+                    // On the base expression, not on is_current: Oracle refuses a
+                    // function-based index over a virtual column (ORA-54034), and
+                    // is_current is exactly "case when <vtCol> is null then 1 end".
+                    const curUkVtCol = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
                     output += `create unique index ${objName}_${bkCol}_cur_uk on ${objName} `
-                        + `(case when is_current = 1 then ${bkCol} end);\n\n`;
+                        + `(case when ${curUkVtCol} is null then ${bkCol} end);\n\n`;
 
                     // /businesskey, db >= 26 (26ai+) only: CREATE ASSERTION is a
                     // recent SQL-standard feature, not available on older target

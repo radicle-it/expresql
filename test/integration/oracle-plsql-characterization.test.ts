@@ -118,7 +118,11 @@ widgets /api full+hks
         // — see doc/user/expresql-grammar.md. generateVersionedTrigger() itself is
         // unchanged here (this direct call bypasses generateFullDDL's new "skip when
         // layered" gating, which lives in generator.ts, not in the trigger renderer).
-        expected: '33132:871570592aec3d5b558fe74d1f5e052d020215e413732ce266e2ac88ce0c8638',
+        // Fingerprint updated again (2.1.1): _svc.change_rec now forces
+        // l_rec.<vtCol> := null before create_rec (the next version always opens
+        // open) — same fix that drops a declared <vtCol> from _app/_rst change_rec's
+        // flat parameters, which this fixture (no declared valid_to) does not exercise.
+        expected: '33220:98893fd30a27b51ae5ec687526ea3196164dcf643b6f0d1194858dce43056934',
     },
     {
         name: 'immutable TAPI with REST interface',

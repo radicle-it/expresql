@@ -26,7 +26,7 @@ export class OracleRestRenderer {
         let r = `create or replace package ${rst} as\n\n`;
         r += `${tab}procedure get;\n`;
         r += `${tab}procedure get_all;\n`;
-        for (const col of node.children.filter(c => c.isOption('unique')))
+        for (const col of node.children.filter(c => c.children.length === 0 && c.isOption('unique')))
             r += `${tab}procedure get_by_${col.parseName().toLowerCase()};\n`;
         r += `${tab}procedure ins;\n`;
         if (isVersioned) {
@@ -149,7 +149,7 @@ export class OracleRestRenderer {
         r += excTail + `${tab}end get_all;\n\n`;
 
         // get_by_<unique> — same JSON shape as get(), looked up by :p_<col> instead of :p_id
-        for (const col of node.children.filter(c => c.isOption('unique'))) {
+        for (const col of node.children.filter(c => c.children.length === 0 && c.isOption('unique'))) {
             const cn = col.parseName().toLowerCase();
             const getByColCall = hasSvc ? `${svc}.get_by_${cn}` : `p_get_by_${cn}`;
             r += `${tab}procedure get_by_${cn} is\n`;
@@ -293,7 +293,10 @@ export class OracleRestRenderer {
             const getCurrentCall = hasSvc ? `${svc}.get_current` : 'p_get_current';
             const getAsOfCall    = hasSvc ? `${svc}.get_as_of`   : 'p_get_as_of';
             const historyCall    = hasSvc ? `${svc}.history`     : 'p_history';
-            const changeCols     = rstCols.filter(({ name }) => name !== bkCol);
+            // The next version is always open: a declared <vtCol> column stays out of
+            // the body's attributes (the body's '$.<vtCol>' is the CLOSE instant of the
+            // current version, see below), exactly as the key stays out of it.
+            const changeCols     = rstCols.filter(({ name }) => name !== bkCol && name !== vtCol);
 
             // get_current — same JSON shape as get(), looked up by :p_<key> instead of :p_id
             r += `${tab}procedure get_current is\n`;

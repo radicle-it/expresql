@@ -10,6 +10,49 @@ maintained by Radicle IT, released under the same Universal Permissive
 License v1.0. Versions and entries below `1.2.15` are inherited from the
 upstream project.
 
+## [Unreleased]
+
+### Bug Fixes
+
+Four generator defects found on 2026-09-27 while generating a real module
+(`ocean-code`, `twg_`: 25 tables, `/versioned /businesskey`, `/bridge`,
+`/aggregate`) and installing its output on Oracle 26ai. Each one is pinned by
+a regression test in `test/integration/tapi-layered.test.ts` ("2.1.1 — …").
+
+- **`/versioned /businesskey` with a declared close column** — declaring
+  `valid_from`/`valid_to` (or a custom `/versioned <col>`) explicitly made
+  `_app.change_rec` (and `_rst.change_rec`'s body attributes) carry the close
+  column twice: once as a flat column parameter, once as the close-instant
+  parameter `p_<vtCol>` (PLS-00410 duplicate formal parameter), and the body
+  copied `p_<vtCol>` into the *new* version row, closing it at birth. Now the
+  declared `<vtCol>` is excluded from `change_rec`'s flat parameters/body
+  attributes (`p_<vtCol>` keeps its single meaning: when the current version
+  closes), a declared `valid_from` stays a normal parameter (a backdated
+  version is legitimate), and `_svc.change_rec` forces `l_rec.<vtCol> := null`
+  so the next version always opens open whatever `p_rec` carried.
+- **`/bridge` + table-level `/unique` on the same two columns** — both a
+  `_uk` and a `_uk_bridge` constraint were emitted on the identical column
+  set (ORA-02261 at install time). The bridge constraint is now skipped when
+  a table-level `/unique` already covers exactly the two FK columns, in any
+  order; a `/unique` on a different column set still gets both.
+- **Table-level `/unique` on a nested table** — the nested table node carries
+  the `unique` option like a column does, so the parent's natural-key reads
+  gained a `get_by_<child>` on a non-existent column (PLS-00302) at every
+  layer (`_dal`/`_svc`/`_app`/`_rst`). Natural-key candidates are now columns
+  only (`children.length === 0`), in the table model and in the REST
+  interface's own scan.
+- **`/businesskey` current-key index on a virtual column** — `<table>_<key>_cur_uk`
+  was `case when is_current = 1 then <key> end`, a function-based index over
+  the virtual `is_current` column, which Oracle rejects (ORA-54034). The index
+  now uses the base expression `case when <vtCol> is null then <key> end`
+  (same predicate `is_current` is defined on; custom `/versioned <col>` names
+  honored). The non-overlap `CREATE ASSERTION` (26ai+) is unchanged.
+
+Characterization fingerprint for "versioned business-key TAPI with APP and
+REST interfaces" updated for the `_svc.change_rec` change. `npm test` (legacy
+`test/regression_test.js`) is not present on this branch; `npm run test:ts`
+is the suite that gates these changes (1121 tests).
+
 ## [2.0.1] - 2026-05-08
 
 ### Bug Fixes

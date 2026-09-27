@@ -321,6 +321,7 @@ export class OracleServiceRenderer {
             r += `${tab}begin\n`;
             r += `${tab}${tab}l_current := get_current(p_${bkCol} => p_${bkCol});\n`;
             r += `${tab}${tab}l_rec.${bkCol} := p_${bkCol};\n`;
+            r += `${tab}${tab}l_rec.${vtCol} := null;  -- the next version opens open, whatever p_rec carried\n`;
             r += `${tab}${tab}close_version(\n`;
             r += `${tab}${tab}${tab}p_id       => l_current.${pkNm},\n`;
             r += `${tab}${tab}${tab}p_${vtCol} => p_${vtCol}`;

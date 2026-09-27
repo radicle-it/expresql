@@ -1907,10 +1907,20 @@ customer_dim /api /versioned /businesskey code
   row_version num /nn
 ```
 
+**Declaring the version columns yourself** (`valid_from date /nn`, `valid_to date`
+— e.g. to keep DATE instead of TIMESTAMP, or to backdate a version) is
+supported: `valid_from` becomes an ordinary parameter of `ins`/`change_rec`
+(the new version can start in the past), while the declared close column is
+**left out** of `change_rec`'s flat parameters and body attributes — its only
+parameter is `p_<vtCol>`, the instant the *current* version closes; the next
+version always opens open (`_svc.change_rec` forces `<vtCol>` to null before
+`create_rec`, whatever `p_rec` carried). Before 2.1.1 a declared close column
+was emitted twice in `change_rec` (PLS-00410).
+
 **Beyond what `/versioned` already generates, a unique index:**
 
 ```sql
-create unique index customer_dim_code_cur_uk on customer_dim (case when is_current = 1 then code end);
+create unique index customer_dim_code_cur_uk on customer_dim (case when valid_to is null then code end);
 ```
 
 Oracle's function-based unique index makes "at most one current row per key" a database-level guarantee, not just a convention the TAPI's own orchestration (below) happens to follow — two concurrent `create_rec` calls for the same `code` without a `change_rec`/`close_version` in between will not both succeed silently.
@@ -2010,6 +2020,11 @@ end history;
 
 ## 27. Natural-key reads with `/unique`: `get_by_<col>` through every layer
 
+> Only **columns** marked `/unique` become natural keys. A *nested table*
+> carrying a table-level `/unique a, b` (a composite constraint on the child)
+> is not a `get_by_` of its parent — before 2.1.1 it produced a
+> `get_by_<child>` on a column that does not exist (PLS-00302).
+
 `/unique` (§Column Directives) always generated `get_by_<col>` in `_dal` — but for a lookup/reference table (states, types, codes, categories), the _most common_ read is by that natural key, not by the surrogate PK, and until now `_dal` was the only layer that had it: a plain layered `/api` table left `get_by_<col>` unreachable from APEX (`_app`) or REST (`_rst`), and — on `service`/`lookup` tiers, where there is no `_dal` at all — unreachable from anywhere. No new directive: this is unconditional for any table with at least one `/unique` column, on every tier.
 
 **Input:**
@@ -2075,6 +2090,12 @@ Deliberately out of scope here (left for when a concrete need emerges, same prin
 ---
 
 ## 28. N:M associative tables with `/bridge`
+
+> `/bridge` adds `<table>_uk_bridge unique (left, right)` by itself. If the
+> table also declares a table-level `/unique left, right` (same two columns,
+> any order), only that one is emitted — two unique constraints on the same
+> column set would fail at install time (ORA-02261, fixed in 2.1.1). A
+> table-level `/unique` on a *different* column set keeps both.
 
 A pure associative table (`user_role(user_id, role_id)`) rarely has a meaningful "update" — the relationship exists or it doesn't — and the generic CRUD `ins`/`upd`/`del` says nothing about what the table is actually _for_. `/bridge` adds the vocabulary a caller actually wants: `grant`/`revoke`/`has`/`list`. Like `/versioned` (§8, §26) and unlike `/immutable`, this is **additive, not a replacement** — `create_rec`/`update_rec`/`delete_rec` and `ins`/`upd`/`del` remain fully generated; `/bridge` gives you a better-shaped alternative alongside them, not instead of them.
 

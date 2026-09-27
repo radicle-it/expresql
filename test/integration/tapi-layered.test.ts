@@ -2668,7 +2668,7 @@ describe('businesskey (SCD2) — DDL', () => {
 
     test('unique index enforces at most one current row per business key', () => {
         const out = ddl(CUSTOMER_DIM_QSQL);
-        expect(out).toContain('create unique index customer_dim_code_cur_uk on customer_dim (case when is_current = 1 then code end);');
+        expect(out).toContain('create unique index customer_dim_code_cur_uk on customer_dim (case when valid_to is null then code end);');
     });
 
     test('no such index when /businesskey is absent (plain /versioned)', () => {
@@ -2697,7 +2697,7 @@ describe('businesskey (SCD2) — non-overlap ASSERTION (db: 26ai+)', () => {
   code vc20 /nn
   name vc200 /nn
 # settings = {"api": "layered", "db": "26ai"}`);
-        expect(out).toContain('create unique index customer_dim_code_cur_uk on customer_dim (case when is_current = 1 then code end);');
+        expect(out).toContain('create unique index customer_dim_code_cur_uk on customer_dim (case when valid_to is null then code end);');
         expect(out).toContain(
             'create assertion customer_dim_code_no_overlap\n'
             + 'check (\n'
@@ -3255,4 +3255,131 @@ describe('aggregate — degraded tiers / edge cases', () => {
         expect(out).not.toContain('orders_agg');
     });
 
+});
+
+// ── 2.1.1 fixes found generating a real module (ocean-code twg_, 2026-09-27) ──
+// Four generator defects, each reproduced here in its minimal form and pinned so
+// they cannot come back: (1) a declared <vtCol> column doubled change_rec's
+// p_<vtCol> parameter, (2) /bridge + table-level /unique on the same two columns
+// emitted the same unique twice (ORA-02261), (3) a nested table carrying a
+// table-level /unique became a get_by_<child> on its parent (PLS-00302),
+// (4) cur_uk was a functional index on the virtual is_current column (ORA-54034).
+
+describe('2.1.1 — /versioned with a declared close column (change_rec parameter shape)', () => {
+    const DECLARED = `\
+v /api lookup+hks /versioned /businesskey k
+  k num /nn
+  name vc10 /nn
+  valid_from date /nn
+  valid_to date
+# settings = {"api": "layered", "db": "26ai"}`;
+
+    test('_app.change_rec has exactly one p_valid_to (the close instant), valid_from stays a parameter', () => {
+        const out = ddl(DECLARED);
+        const spec = segment(out, 'create or replace package v_app as', 'end v_app;');
+        const change = segment(spec, 'procedure change_rec (', ');');
+        expect((change.match(/p_valid_to /g) ?? []).length).toBe(1);
+        expect(change).toContain('p_valid_to      in  v.valid_to%type default systimestamp');
+        expect(change).toContain('p_valid_from    in  v.valid_from%type');
+    });
+
+    test('_app.change_rec body never copies p_valid_to into the new version row', () => {
+        const out = ddl(DECLARED);
+        const body = segment(out, 'create or replace package body v_app as', 'end v_app;');
+        const change = segment(body, 'procedure change_rec (', 'end change_rec;');
+        expect(change).toContain('l_current.valid_to := p_valid_to;');
+        expect(change).not.toContain('l_row.valid_to := p_valid_to;');
+        expect(change).toContain('l_row.valid_from := p_valid_from;');
+    });
+
+    test('_svc.change_rec opens the next version open even if p_rec carries a close date', () => {
+        const out = ddl(`v /api full+hks /versioned /businesskey k
+  k num /nn
+  name vc10 /nn
+# settings = {"api": "layered"}`);
+        const body = segment(out, 'create or replace package body v_svc as', 'end v_svc;');
+        expect(body).toContain('l_rec.valid_to := null;');
+    });
+
+    test('_rst.change_rec body attributes exclude the declared close column', () => {
+        const out = ddl(`v /api full+hks /versioned /businesskey k
+  k num /nn
+  name vc10 /nn
+  valid_to date
+# settings = {"api": "layered", "interface": "rest"}`);
+        const body = segment(out, 'create or replace package body v_rst as', 'end v_rst;');
+        const change = segment(body, 'procedure change_rec is', 'end change_rec;');
+        expect(change).toContain("l_rec.name := json_value(l_body, '$.name');");
+        expect(change).not.toContain("l_rec.valid_to := json_value(l_body, '$.valid_to');");
+        expect(change).toContain("p_valid_to => coalesce(json_value(l_body, '$.valid_to' returning v.valid_to%type), systimestamp)");
+    });
+});
+
+describe('2.1.1 — /bridge with a table-level /unique on the same two columns', () => {
+    const BRIDGE = `\
+link /api lookup+hks /bridge /unique a_id, b_id
+  a_id num /nn /fk a
+  b_id num /nn /fk b
+a /api lookup+hks
+  x vc10
+b /api lookup+hks
+  y vc10
+# settings = {"api": "layered"}`;
+
+    test('one unique constraint, not two on the same columns', () => {
+        const out = ddl(BRIDGE);
+        expect(out).toContain('alter table link add constraint link_uk unique (a_id,b_id);');
+        expect(out).not.toContain('link_uk_bridge');
+    });
+
+    test('order of the /unique columns does not matter', () => {
+        const out = ddl(BRIDGE.replace('/unique a_id, b_id', '/unique b_id, a_id'));
+        expect(out).not.toContain('link_uk_bridge');
+    });
+
+    test('a different table-level /unique keeps the bridge constraint', () => {
+        const out = ddl(BRIDGE.replace('/unique a_id, b_id', '/unique a_id, note').replace('  a_id num /nn /fk a\n', '  a_id num /nn /fk a\n  note vc10\n'));
+        expect(out).toContain('link_uk_bridge unique (a_id, b_id)');
+    });
+});
+
+describe('2.1.1 — table-level /unique on a nested table is not a natural key of the parent', () => {
+    const NESTED = `\
+hdr /api lookup+hks /aggregate /unique a, b
+  a num /nn
+  b vc10 /nn
+  child /api lookup+hks /unique hdr_id, n
+    hdr_id num /nn /fk hdr
+    n num /nn
+# settings = {"api": "layered"}`;
+
+    test('no get_by_child anywhere; the child keeps its own composite unique', () => {
+        const out = ddl(NESTED);
+        expect(out).not.toContain('get_by_child');
+        expect(out).toContain('alter table child add constraint child_uk unique (hdr_id,n);');
+        expect(out).toContain('alter table hdr add constraint hdr_uk unique (a,b);');
+    });
+
+    test('a real column-level /unique on the parent still gets its get_by_<col>', () => {
+        const out = ddl(NESTED.replace('  a num /nn\n', '  a num /nn /unique\n'));
+        expect(out).toContain('procedure get_by_a (');
+        expect(out).not.toContain('get_by_child');
+    });
+});
+
+describe('2.1.1 — cur_uk is built on the close column, not on the virtual is_current', () => {
+    test('default close column', () => {
+        const out = ddl(`customer_dim /api /versioned /businesskey code
+  code vc20 /nn
+# settings = {"api": "layered"}`);
+        expect(out).toContain('create unique index customer_dim_code_cur_uk on customer_dim (case when valid_to is null then code end);');
+        expect(out).not.toContain('case when is_current = 1 then code end');
+    });
+
+    test('custom close column', () => {
+        const out = ddl(`policies /api /versioned closed_at /businesskey policy_no
+  policy_no vc20 /nn
+# settings = {"api": "layered"}`);
+        expect(out).toContain('create unique index policies_policy_no_cur_uk on policies (case when closed_at is null then policy_no end);');
+    });
 });

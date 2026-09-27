@@ -125,7 +125,9 @@ export class OracleTableApiAnalyzer {
                 nullable: !col.isOption('nn'),
             })),
         ];
-        const unique = node.children.filter(c => c.isOption('unique'));
+        // Columns only: a nested table declared with a table-level "/unique a, b" is a
+        // child node with the same option, and must not become a get_by_<child>.
+        const unique = node.children.filter(c => c.children.length === 0 && c.isOption('unique'));
         const configuredDimensions = this.ctx.getOptionValue('dimensioncolumns') as Record<string, string> | null;
         const dimensionScopes: OracleDimensionScope[] = [];
         if (configuredDimensions != null && typeof configuredDimensions === 'object') {

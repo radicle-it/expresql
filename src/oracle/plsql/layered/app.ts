@@ -153,10 +153,14 @@ export class OracleAppRenderer {
             r += `\n${tab});\n\n`;
 
             // change_rec: same flat IN shape as ins() (appCols already include p_<key>
-            // at its natural position) plus p_<vtCol> and the new version's p_id OUT.
+            // at its natural position) minus <vtCol> when it is a declared column — the
+            // next version is always open, and p_<vtCol> below is the CLOSE instant of
+            // the current one (declaring the column used to emit the parameter twice) —
+            // plus that p_<vtCol> and the new version's p_id OUT.
             r += `${tab}procedure change_rec (\n`;
             const changeLines: string[] = [];
-            changeLines.push(...renderInputParameterLines(tbl, appCols, appPadWidth));
+            const changeCols = appCols.filter(({ name }) => name !== vtCol);
+            changeLines.push(...renderInputParameterLines(tbl, changeCols, appPadWidth));
             changeLines.push(`${tab}${tab}p_${vtCol.padEnd(appPadWidth)} in  ${tbl}.${vtCol}%type default systimestamp`);
             changeLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
             r += changeLines.join(',\n') + `\n${tab});\n\n`;
@@ -429,14 +433,15 @@ export class OracleAppRenderer {
 
             r += `${tab}procedure change_rec (\n`;
             const changeLines: string[] = [];
-            changeLines.push(...renderInputParameterLines(tbl, appCols, appPadWidth));
+            const changeCols = appCols.filter(({ name }) => name !== vtCol);
+            changeLines.push(...renderInputParameterLines(tbl, changeCols, appPadWidth));
             changeLines.push(`${tab}${tab}p_${vtCol.padEnd(appPadWidth)} in  ${tbl}.${vtCol}%type default systimestamp`);
             changeLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
             r += changeLines.join(',\n') + `\n${tab}) is\n`;
             if (hasSvc) {
                 r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
                 r += `${tab}begin\n`;
-                r += renderRecordAssignments(appCols.map(({ name }) => name), 'l_rec', name => `p_${name}`);
+                r += renderRecordAssignments(changeCols.map(({ name }) => name), 'l_rec', name => `p_${name}`);
                 r += `${tab}${tab}${svc}.change_rec(\n`;
                 r += `${tab}${tab}${tab}p_${bkCol} => p_${bkCol},\n`;
                 r += `${tab}${tab}${tab}p_rec => l_rec,\n`;
@@ -456,7 +461,7 @@ export class OracleAppRenderer {
                 r += renderBeforeOperation('close', 'l_current', dimCols.length > 0, hkCall);
                 r += `${tab}${tab}p_close_row(p_id => l_current.${pkNm}, p_${vtCol} => l_current.${vtCol}, p_row => l_current);\n`;
                 r += renderAfterOperation('close', 'l_current', hkCall);
-                r += renderRecordAssignments(appCols.map(({ name }) => name), 'l_row', name => `p_${name}`);
+                r += renderRecordAssignments(changeCols.map(({ name }) => name), 'l_row', name => `p_${name}`);
                 r += renderBeforeOperation('insert', 'l_row', dimCols.length > 0, hkCall);
                 r += `${tab}${tab}p_insert_row(p_row => l_row);\n`;
                 r += renderAfterOperation('insert', 'l_row', hkCall);
