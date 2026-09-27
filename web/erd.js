@@ -335,9 +335,12 @@ function edgeStyle(mandatory) {
     // Target (N/FK side) — compact crow's foot like dbdiagram:
     //   mandatory  → |<  pre-tick (4 px) + three-tine fork (5 px deep, ±3 amplitude)
     //   optional   → ○<  small circle (r=2.5, 10 px out) + same fork
+    //
+    // X6 v2 applies rotate(180) to targetMarker, so X coords are negated on render.
+    // We use positive X here; after rotation they become negative (= outward from node).
     const tgtPath = mandatory
-        ? 'M 0 -3 L -5 0 L 0 3 M 0 0 L -5 0 M -2 -3 L -2 3'
-        : 'M 0 -3 L -5 0 L 0 3 M 0 0 L -5 0 M -13 0 a 2.5 2.5 0 1 0 5 0 a 2.5 2.5 0 1 0 -5 0';
+        ? 'M 0 -3 L 5 0 L 0 3 M 0 0 L 5 0 M 2 -3 L 2 3'
+        : 'M 0 -3 L 5 0 L 0 3 M 0 0 L 5 0 M 13 0 a 2.5 2.5 0 1 0 -5 0 a 2.5 2.5 0 1 0 5 0';
 
     return {
         line: {
@@ -486,8 +489,8 @@ export function renderErdCells(data, keepPositions) {
         try {
             const mandatory = link.mandatory !== false;
             state.x6graph.addEdge({
-                source:    { cell: link.source },
-                target:    { cell: link.target },
+                source:    { cell: link.source, connectionPoint: { name: 'boundary' } },
+                target:    { cell: link.target, connectionPoint: { name: 'boundary' } },
                 attrs:     edgeStyle(mandatory),
                 router:    { name: 'orth' },
                 connector: { name: 'rounded', args: { radius: 12 } },

@@ -5,7 +5,7 @@ function e(e, t) {
 		case "varchar":
 		case "varchar2":
 		case "character varying":
-		case "nvarchar": return t ? `vc${t}` : "vc";
+		case "nvarchar": return t && t !== "4000" ? `vc${t}` : "vc";
 		case "char":
 		case "nchar": return t ? `vc${t}` : "vc4";
 		case "int":
@@ -122,7 +122,7 @@ var t = /* @__PURE__ */ new Set([
 	"is_active"
 ]), u = class {
 	constructor(e = {}) {
-		this.tenantGlobal = !1, this.prefix = e.prefix ?? "", this.schemaOpt = e.schema ?? null, this.enumMap = /* @__PURE__ */ new Map();
+		this.tenantGlobal = !1, this.prefix = e.prefix ?? "", this.schemaOpt = e.schema ?? null, this.enumMap = /* @__PURE__ */ new Map(), this.projectMeta = e.projectMeta ?? {};
 	}
 	convert(e) {
 		let t = [];
@@ -137,12 +137,12 @@ var t = /* @__PURE__ */ new Set([
 		return t.join("\n").trimEnd();
 	}
 	emitSettings(e, t) {
-		let n = [], r = (e.databaseType ?? "").toLowerCase();
-		(r.includes("23") || r.includes("ai")) && n.push("db: \"23ai\"");
-		let i = this.schemaOpt ?? (t.name === "public" ? null : t.name);
-		i && n.push(`schema: ${i}`), this.prefix && n.push(`prefix: ${this.prefix}`);
-		let a = this.detectPkMode(t.tables);
-		return a !== "guid" && n.push(`pk: ${a}`), this.tenantGlobal && n.push("tenantid: yes"), n.length ? `# settings = { ${n.join(", ")} }` : "";
+		let n = [], r = this.projectMeta, i = (e.databaseType ?? "").toLowerCase();
+		(i.includes("23") || i.includes("ai")) && n.push("db: \"23ai\"");
+		let a = this.schemaOpt ?? (t.name === "public" ? null : t.name);
+		a && n.push(`schema: ${a}`), this.prefix && n.push(`prefix: ${this.prefix}`);
+		let o = r.esql_pk ?? this.detectPkMode(t.tables);
+		return o !== "guid" && n.push(`pk: ${o}`), (this.tenantGlobal || r.esql_tenantid === "yes") && n.push("tenantid: yes"), r.esql_auditcols === "yes" && n.push("auditcols: yes"), r.esql_rowversion === "yes" && n.push("rowversion: yes"), r.esql_rowkey === "yes" && n.push("rowkey: yes"), r.esql_api && n.push(`api: ${r.esql_api}`), r.esql_ifc && n.push(`ifc: ${r.esql_ifc}`), r.esql_semantics && n.push(`semantics: ${r.esql_semantics}`), n.length ? `# settings = { ${n.join(", ")} }` : "";
 	}
 	detectPkMode(e) {
 		for (let t of e) {
@@ -234,12 +234,12 @@ var t = /* @__PURE__ */ new Set([
 	emitNode(e, t) {
 		let n = "  ".repeat(t), r = [], { table: i } = e, { remainingFields: a, directives: o, tenantDetected: s } = this.collapseKnownColumns(i.fields, e.fks, i.name);
 		s && (this.tenantGlobal = !0);
-		let c = this.prefix ? i.name.replace(RegExp(`^${d(this.prefix)}_`, "i"), "") : i.name, l = [...o, ...this.emitTableMetaDirectivesList(i)], u = `${n}${c}`;
-		i.note && (u += ` [${i.note}]`), l.length && (u += " " + l.join(" ")), r.push(u);
-		let f = /* @__PURE__ */ new Map();
-		for (let t of e.fks) t.fromTable === i.name && (t.fromCol.toLowerCase() === "tenant_id" && s || f.set(t.fromCol.toLowerCase(), t));
+		let c = this.prefix ? i.name.replace(RegExp(`^${d(this.prefix)}_`, "i"), "") : i.name, l = this.emitTableMetaDirectivesList(i).filter((e) => !o.includes(e)), u = [...o, ...l], f = `${n}${c}`;
+		i.note && (f += ` [${i.note}]`), u.length && (f += " " + u.join(" ")), r.push(f);
+		let p = /* @__PURE__ */ new Map();
+		for (let t of e.fks) t.fromTable === i.name && (t.fromCol.toLowerCase() === "tenant_id" && s || p.set(t.fromCol.toLowerCase(), t));
 		for (let t of a) {
-			let a = this.emitField(t, n + "  ", i, e.parentFkCol, f);
+			let a = this.emitField(t, n + "  ", i, e.parentFkCol, p);
 			a !== null && r.push(a);
 		}
 		for (let e of i.indexes ?? []) {
@@ -268,7 +268,10 @@ var t = /* @__PURE__ */ new Set([
 			let e = this.prefix ? l.toTable.replace(RegExp(`^${d(this.prefix)}_`, "i"), "") : l.toTable;
 			o.push(`/fk ${e}`), l.onDelete === "cascade" && o.push("/cascade"), l.onDelete === "set null" && o.push("/setnull");
 		}
-		e.metadata && (e.metadata.esql_case === "upper" && o.push("/upper"), e.metadata.esql_case === "lower" && o.push("/lower"));
+		if (e.metadata) {
+			let t = e.metadata;
+			t.esql_case === "upper" && o.push("/upper"), t.esql_case === "lower" && o.push("/lower"), t.esql_invincible === "yes" && o.push("/invincible"), t.esql_insert === "yes" && o.push("/insert"), t.esql_domain && o.push(`/domain ${t.esql_domain}`), t.esql_values && o.push(`/values ${t.esql_values}`);
+		}
 		let u = "";
 		e.note && (u = ` [${e.note}]`);
 		let f = o.length ? " " + o.join(" ") : "", p = s ? ` ${s}` : "";
@@ -292,7 +295,7 @@ var t = /* @__PURE__ */ new Set([
 	}
 	emitTableMetaDirectivesList(e) {
 		let t = [], n = e.metadata ?? {};
-		return n.esql_auditcols === "yes" && t.push("/auditcols"), n.esql_rowversion === "yes" && t.push("/rowversion"), n.esql_rowkey === "yes" && t.push("/rowkey"), n.esql_versioned === "yes" && t.push("/versioned"), (n.esql_rest === "yes" || n.esql_ords === "yes") && t.push("/rest"), n.esql_audit === "yes" && t.push("/audit"), n.esql_auditlog === "yes" && t.push("/auditlog"), n.esql_immutable === "yes" && t.push("/immutable"), n.esql_soda === "yes" && t.push("/soda"), n.esql_compress === "yes" && t.push("/compress"), n.esql_flashback && t.push("/flashback"), n.esql_api && t.push(`/api ${n.esql_api}`), n.esql_businesskey && t.push(`/businesskey ${n.esql_businesskey}`), n.esql_lockmode && t.push(`/lockmode ${n.esql_lockmode}`), n.esql_notenantid === "yes" && t.push("/notenantid"), n.esql_history === "yes" && t.push("/history"), n.esql_aggregate === "yes" && t.push("/aggregate"), t;
+		return n.esql_auditcols === "yes" && t.push("/auditcols"), n.esql_rowversion === "yes" && t.push("/rowversion"), n.esql_rowkey === "yes" && t.push("/rowkey"), n.esql_versioned === "yes" && t.push("/versioned"), (n.esql_rest === "yes" || n.esql_ords === "yes") && t.push("/rest"), n.esql_audit === "yes" && t.push("/audit"), n.esql_auditlog === "yes" && t.push("/auditlog"), n.esql_immutable === "yes" && t.push("/immutable"), n.esql_soda === "yes" && t.push("/soda"), n.esql_compress === "yes" && t.push("/compress"), n.esql_flashback && t.push("/flashback"), n.esql_api && t.push(`/api ${n.esql_api}`), n.esql_businesskey && t.push(`/businesskey ${n.esql_businesskey}`), n.esql_lockmode && t.push(`/lockmode ${n.esql_lockmode}`), n.esql_notenantid === "yes" && t.push("/notenantid"), n.esql_history === "yes" && t.push("/history"), n.esql_aggregate === "yes" && t.push("/aggregate"), n.esql_bridge === "yes" && t.push("/bridge"), n.esql_apx === "yes" && t.push("/apx"), t;
 	}
 };
 function d(e) {
