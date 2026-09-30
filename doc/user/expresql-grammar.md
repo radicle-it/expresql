@@ -451,6 +451,7 @@ The available settings are listed in the below sections.
 | `createdCol` | ✓ | | |
 | `datalimit` | ✓ | | |
 | `date` | | ✓ | Oracle DATE type variant. Db2 always maps `d` → `DATE`. |
+| `dateonly` | | ✓ | `yes`: every `DATE` column gets `CHECK (col = trunc(col))` — a DATE is a day. |
 | `db` | | ✓ | Oracle version targeting (11g → 26ai). |
 | `dialect` | ✓ | | Selects the SQL dialect. |
 | `drop` | ✓ | | Oracle: `DROP … CASCADE CONSTRAINTS`. Db2: `DROP … IF EXISTS`. |
@@ -792,6 +793,34 @@ name.
 
 By default all DATE columns created using the Oracle DATE datatype. Use this
 setting to override this default.
+
+### dateonly
+
+> **Dialect:** Oracle only.
+
+**Possible Values**: `yes`, `no`  
+**Default Value**: `no`
+
+Declares that a `DATE` column holds a **calendar day**, never an instant: every
+column whose generated type is `DATE` gets an inline constraint
+`<prefix><table>_<column>_day_ck check (<column> = trunc(<column>))`, so a time
+part other than midnight is rejected. Instants are declared as
+`timestamp with local time zone` (or `tswltz`), which is converted to the
+reader's session time zone; a day must not be, or it would shift by a day for a
+reader west of the writer. Timestamp columns and the audit columns are never
+checked (declare the audit type with [`auditdate`](#auditcols), e.g.
+`auditdate: "timestamp with local time zone"`, which also switches the audit
+triggers to `systimestamp`). Compare a day with today computed in the right
+time zone (`trunc(current_date)` for the session), not with `trunc(sysdate)`,
+which is the server's day (UTC on Autonomous Database).
+
+```text
+# settings = { dateonly: yes, auditcols: yes, auditdate: "timestamp with local time zone" }
+
+ordinance
+  issue_date  date /nn          -- day: ordinance_issue_date_day_ck
+  signed_at   timestamp with local time zone   -- instant: no check
+```
 
 ### db
 

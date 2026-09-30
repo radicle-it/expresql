@@ -10942,6 +10942,11 @@ var it = {
 			nt
 		]
 	},
+	dateonly: {
+		label: "DATE Columns Hold Days",
+		value: "no",
+		check: ["yes", "no"]
+	},
 	db: {
 		label: "Database Version",
 		value: "not set"
@@ -12377,7 +12382,7 @@ var Gt = class extends fe {
 				t += " default on null " + e;
 			} else a.includes(i.toLowerCase()) ? t += " default on null " + i : t += " default on null " + r + i + r;
 		}
-		if ((e.isOption("nn") || e.indexOf("not") + 1 === e.indexOf("null")) && e.indexOf("pk") < 0 && (t += " not null"), (e.isOption("hidden") || e.isOption("invincible")) && (t += " invisible"), n.isNativeBoolean || (t += e.genConstraint(r)), n.needsBoolCheck && (t += "\n" + this._cpad(e) + "constraint " + a(this._ddl.objPrefix("no schema"), n.parent_child) + ` check (${e.parseName()} in ('Y','N'))`), e.isOption("between")) {
+		if ((e.isOption("nn") || e.indexOf("not") + 1 === e.indexOf("null")) && e.indexOf("pk") < 0 && (t += " not null"), (e.isOption("hidden") || e.isOption("invincible")) && (t += " invisible"), n.isNativeBoolean || (t += e.genConstraint(r)), n.needsBoolCheck && (t += "\n" + this._cpad(e) + "constraint " + a(this._ddl.objPrefix("no schema"), n.parent_child) + ` check (${e.parseName()} in ('Y','N'))`), this._ddl.optionEQvalue("dateonly", !0) && /^date\b/i.test(t) && (t += "\n" + this._cpad(e) + "constraint " + a(this._ddl.objPrefix("no schema"), n.parent_child, "_day_ck") + ` check (${e.parseName()} = trunc(${e.parseName()}))`), e.isOption("between")) {
 			let r = e.getBetweenClause() ?? "";
 			t += " constraint " + a(n.parent_child, this._naming.bet) + "\n", t += "           check (" + e.parseName() + " between " + r + ")";
 		}

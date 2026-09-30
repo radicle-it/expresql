@@ -826,6 +826,20 @@ describe('Oracle 23ai+ features', () => {
         expect(out).not.toContain(':= sysdate');
     });
 
+    test('dateonly:yes adds a midnight CHECK to every DATE column, never to timestamps or audit columns', () => {
+        const out = ddl(`# settings = {"dateonly":"yes","auditcols":"Y","auditdate":"timestamp with local time zone"}\nevents\n    day_ref date /nn\n    closes_on date\n    happened_at timestamp with local time zone`);
+        expect(out).toContain('constraint events_day_ref_day_ck check (day_ref = trunc(day_ref))');
+        expect(out).toContain('constraint events_closes_on_day_ck check (closes_on = trunc(closes_on))');
+        expect(out).not.toContain('happened_at = trunc');
+        expect(out).not.toContain('created = trunc');
+        expect(out).not.toContain('updated = trunc');
+    });
+
+    test('dateonly defaults to no: DATE columns get no midnight CHECK', () => {
+        const out = ddl(`events\n    day_ref date`);
+        expect(out).not.toContain('_day_ck');
+    });
+
     test('JSON relational duality view (db >= 23)', () => {
         const out = ddl(`# settings = {"db":"23ai"}\ndepartments\n    name\n    employees\n        first_name\n        last_name\n        salary num\n\ndv dept_emp_dv departments employees`);
         expect(out).toContain('create or replace json relational duality view');

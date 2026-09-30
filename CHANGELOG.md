@@ -12,6 +12,16 @@ upstream project.
 
 ## [Unreleased]
 
+### Features
+
+- **`dateonly: yes` setting (Oracle)** — every `DATE` column gets an inline
+  `<prefix><table>_<column>_day_ck check (<column> = trunc(<column>))`: a
+  `DATE` holds a calendar day, instants are declared as
+  `timestamp with local time zone`. Timestamps and audit columns are never
+  checked. Asked on 2026-09-30 by `ocean-code` (days vs instants rule, doc
+  `00-moduli-applicativi.md` §1.4d there); pinned by two tests in
+  `test/integration/small.test.ts`. Default `no`: output unchanged.
+
 ### Bug Fixes
 
 Four generator defects found on 2026-09-27 while generating a real module

@@ -10942,6 +10942,11 @@ var Y = {
 			Ke
 		]
 	},
+	dateonly: {
+		label: "DATE Columns Hold Days",
+		value: "no",
+		check: ["yes", "no"]
+	},
 	db: {
 		label: "Database Version",
 		value: "not set"

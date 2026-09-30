@@ -64,6 +64,7 @@ const defaultOptions: OptionsRecord = {
     language:         { label: 'Data Language',                 value: 'EN',      check: ['EN','JP','KO'] },
     datalimit:        { label: 'Data Limit Rows',               value: 10000 },
     date:             { label: 'Date Data Type',                value: 'DATE',    check: ['DATE','TIMESTAMP',tswtz,tswltz] },
+    dateonly:         { label: 'DATE Columns Hold Days',        value: 'no',      check: ['yes','no'] },
     db:               { label: 'Database Version',              value: 'not set' },
     dv:               { label: 'Duality View',                  value: 'no',      check: ['yes','no'] },
     drop:             { label: 'Include Drops',                 value: 'no',      check: ['yes','no'] },

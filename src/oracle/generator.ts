@@ -94,6 +94,12 @@ export class OracleDDLGenerator extends BaseGenerator {
             ret += '\n' + this._cpad(node)
                 + 'constraint ' + concatNames(this._ddl.objPrefix('no schema'), sem.parent_child)
                 + ` check (${node.parseName()} in ('Y','N'))`;
+        // dateonly: yes -- a DATE column holds a calendar day, never an instant (instants are declared
+        // as timestamp with local time zone): a CHECK keeps the time part at midnight
+        if (this._ddl.optionEQvalue('dateonly', true) && /^date\b/i.test(ret))
+            ret += '\n' + this._cpad(node)
+                + 'constraint ' + concatNames(this._ddl.objPrefix('no schema'), sem.parent_child, '_day_ck')
+                + ` check (${node.parseName()} = trunc(${node.parseName()}))`;
         if (node.isOption('between')) {
             const values = node.getBetweenClause() ?? '';
             ret += ' constraint ' + concatNames(sem.parent_child, this._naming.bet) + '\n';
