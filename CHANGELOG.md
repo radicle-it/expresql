@@ -35,6 +35,13 @@ upstream project.
 
 ### Bug Fixes
 
+- **Quotes in table and column comments** — a `'` inside a comment (e.g. `-- the
+  provider's key`) ended the SQL literal of the generated `COMMENT ON` (ORA-03049 on
+  install). Now doubled. Found on `ocean-code`'s `mdp_` module; pinned by a test in
+  `small.test.ts`. Known, not fixed yet: a column named like another table of the
+  module (e.g. `country` next to a `country` table) can make an `/fk <table>` of a
+  third table lose its constraint; renaming the column avoids it.
+
 Four generator defects found on 2026-09-27 while generating a real module
 (`ocean-code`, `twg_`: 25 tables, `/versioned /businesskey`, `/bridge`,
 `/aggregate`) and installing its output on Oracle 26ai. Each one is pinned by

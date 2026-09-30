@@ -518,12 +518,13 @@ export class OracleDDLGenerator extends BaseGenerator {
     _genComments(node: IDdlNode, objName: string): string {
         let ret = '';
         const tableComment = node.getAnnotationValue('DESCRIPTION') || node.comment;
-        if (tableComment !== null) ret += "comment on table " + objName + " is '" + tableComment + "';\n";
+        // a quote inside the comment text is doubled, or the literal ends there (ORA-03049 on "provider's")
+        if (tableComment !== null) ret += "comment on table " + objName + " is '" + tableComment.replace(/'/g, "''") + "';\n";
         for (let i = 0; i < node.children.length; i++) {
             const child = node.children[i];
             const colComment = child.getAnnotationValue('DESCRIPTION') || child.comment;
             if (colComment !== null && child.children.length === 0)
-                ret += "comment on column " + objName + '.' + child.parseName() + " is '" + colComment + "';\n";
+                ret += "comment on column " + objName + '.' + child.parseName() + " is '" + colComment.replace(/'/g, "''") + "';\n";
         }
         return ret;
     }

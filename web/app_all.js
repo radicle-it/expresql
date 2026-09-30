@@ -509,8 +509,8 @@ no delete until 16 days after insert`;o!==``&&a!==``&&(a=`
 `)}for(let n=0;n<e.children.length;n++){let r=e.children[n];r.children.length===0&&r.inferType()===`geometry`&&(i+=`create index `+t+`_si`+a+++` on `+t+` (`+r.parseName()+`)
 `,i+=`    indextype is mdsys.spatial_index_v2;
 
-`)}return i}_genComments(e,t){let n=``,r=e.getAnnotationValue(`DESCRIPTION`)||e.comment;r!==null&&(n+=`comment on table `+t+` is '`+r+`';
-`);for(let r=0;r<e.children.length;r++){let i=e.children[r],a=i.getAnnotationValue(`DESCRIPTION`)||i.comment;a!==null&&i.children.length===0&&(n+=`comment on column `+t+`.`+i.parseName()+` is '`+a+`';
+`)}return i}_genComments(e,t){let n=``,r=e.getAnnotationValue(`DESCRIPTION`)||e.comment;r!==null&&(n+=`comment on table `+t+` is '`+r.replace(/'/g,`''`)+`';
+`);for(let r=0;r<e.children.length;r++){let i=e.children[r],a=i.getAnnotationValue(`DESCRIPTION`)||i.comment;a!==null&&i.children.length===0&&(n+=`comment on column `+t+`.`+i.parseName()+` is '`+a.replace(/'/g,`''`)+`';
 `)}return n}parseType(e){if(e.children!==null&&0<e.children.length)return`table`;let t=e.inferType();if(t===`view`||t===`dv`)return t;if(e.parent===null)return`table`;let n=e._inferTypeFull();return this._buildColumnConstraints(e,this._toOracleType(n),n)}generateTable(e){if(e.children.length===0&&0<e.apparentDepth()){let t=$;return e.parent!==void 0&&e.parent!==null&&(t+=` `.repeat(e.parent.maxChildNameLen()-e.parseName().length)),e.parseName()+t+this.parseType(e)}e.lateInitFks();let t=this._ddl.objPrefix()+e.parseName(),n=this._ddl.objPrefix(`no schema`)+e.parseName();if(e.isOption(`soda`)){let e=`create table `+t+` (
 `;return e+=$+`id              varchar2(255`+this._ddl.semantics()+`) not null
 `,e+=$+`                constraint `+n+`_id_pk primary key,

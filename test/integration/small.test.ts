@@ -855,6 +855,11 @@ describe('Oracle 23ai+ features', () => {
         expect(out).toContain('happened_at    timestamp with local time zone');
     });
 
+    test('a quote in a column comment is doubled in COMMENT ON (was an unterminated literal)', () => {
+        const out = ddl(`things\n    key vc60  -- the provider's key`);
+        expect(out).toContain("comment on column things.key is ' the provider''s key';");
+    });
+
     test('dateonly defaults to no: DATE columns get no midnight CHECK', () => {
         const out = ddl(`events\n    day_ref date`);
         expect(out).not.toContain('_day_ck');

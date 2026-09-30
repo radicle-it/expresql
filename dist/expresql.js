@@ -12632,10 +12632,10 @@ var Gt = class extends fe {
 	}
 	_genComments(e, t) {
 		let n = "", r = e.getAnnotationValue("DESCRIPTION") || e.comment;
-		r !== null && (n += "comment on table " + t + " is '" + r + "';\n");
+		r !== null && (n += "comment on table " + t + " is '" + r.replace(/'/g, "''") + "';\n");
 		for (let r = 0; r < e.children.length; r++) {
 			let i = e.children[r], a = i.getAnnotationValue("DESCRIPTION") || i.comment;
-			a !== null && i.children.length === 0 && (n += "comment on column " + t + "." + i.parseName() + " is '" + a + "';\n");
+			a !== null && i.children.length === 0 && (n += "comment on column " + t + "." + i.parseName() + " is '" + a.replace(/'/g, "''") + "';\n");
 		}
 		return n;
 	}
