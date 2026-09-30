@@ -21,6 +21,12 @@ upstream project.
   checked. Asked on 2026-09-30 by `ocean-code` (days vs instants rule, doc
   `00-moduli-applicativi.md` §1.4d there); pinned by two tests in
   `test/integration/small.test.ts`. Default `no`: output unchanged.
+- **Audit columns of an `/immutable` table with a time zone `auditdate`** —
+  Oracle rejects `timestamp with [local] time zone` in immutable and blockchain
+  tables (ORA-05730, verified on 26ai): those tables now get plain `timestamp`
+  audit columns holding UTC, written with `sys_extract_utc(systimestamp)`;
+  every other table keeps the configured type. Found on `ocean-code`'s
+  `twg_order_log`; pinned by a test in `test/integration/small.test.ts`.
 
 ### Bug Fixes
 

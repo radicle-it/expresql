@@ -482,7 +482,12 @@ var re = class {
 		return t && e.push(`sys_context('${t}','USER')`), this._ctx.optionEQvalue("apex", "yes") && e.push("sys_context('APEX$SESSION','APP_USER')"), e.push("user"), e.length === 1 ? "user" : `coalesce(${e.join(",")})`;
 	}
 	auditSysDateFn() {
-		return String(this._ctx.getOptionValue("auditdate") || this._ctx.getOptionValue("Date Data Type") || "").toLowerCase().indexOf("timestamp") >= 0 ? "systimestamp" : "sysdate";
+		let e = String(this._ctx.getOptionValue("auditdate") || this._ctx.getOptionValue("Date Data Type") || "");
+		return this.isOption("immutable") && /time zone/i.test(e) ? "sys_extract_utc(systimestamp)" : e.toLowerCase().indexOf("timestamp") >= 0 ? "systimestamp" : "sysdate";
+	}
+	auditColumnType() {
+		let e = String(this._ctx.getOptionValue("auditdate") || this._ctx.getOptionValue("Date Data Type") || "").toLowerCase();
+		return this.isOption("immutable") && /time zone/.test(e) ? "timestamp" : e;
 	}
 	indexOf(e, t, n = 0) {
 		let r = e.toLowerCase();
@@ -9849,15 +9854,15 @@ var de = class {
 				name: "row_version",
 				datatype: "integer"
 			}), this._ddl.optionEQvalue("Audit Columns", "yes") || o.includes("/AUDITCOLS")) {
-				let t = this._ddl.getOptionValue("auditdate") || "";
-				t ||= this._ddl.getOptionValue("Date Data Type") ?? "date";
+				let t = r.auditColumnType();
+				t ||= "date";
 				let n = {
 					base: t.toLowerCase(),
 					colName: "",
 					needsBoolCheck: !1,
 					isNativeBoolean: !1,
 					parent_child: ""
-				}, r = {
+				}, i = {
 					base: "varchar",
 					varcharLen: 255,
 					colName: "",
@@ -9870,13 +9875,13 @@ var de = class {
 					datatype: this.colType(n)
 				}), e.columns.push({
 					name: this._ddl.getOptionValue("createdbycol"),
-					datatype: this.colType(r)
+					datatype: this.colType(i)
 				}), e.columns.push({
 					name: this._ddl.getOptionValue("updatedcol"),
 					datatype: this.colType(n)
 				}), e.columns.push({
 					name: this._ddl.getOptionValue("updatedbycol"),
-					datatype: this.colType(r)
+					datatype: this.colType(i)
 				});
 			}
 			this._ddl.optionEQvalue("tenantid", !0) && !r.isOption("notenantid") && r.findChild("tenant_id") === null && e.columns.push({
@@ -12520,7 +12525,7 @@ var Ut = class extends de {
 	}
 	_genAuditColumns(e) {
 		if (!e.hasAuditCols()) return "";
-		let t = String(this._ddl.getOptionValue("auditdate") || this._ddl.getOptionValue("Date Data Type") || "").toLowerCase(), n = "", r = String(this._ddl.getOptionValue("createdcol") ?? "");
+		let t = e.auditColumnType(), n = "", r = String(this._ddl.getOptionValue("createdcol") ?? "");
 		n += x + r + x + " ".repeat(e.maxChildNameLen() - r.length) + t + " not null,\n";
 		let i = String(this._ddl.getOptionValue("createdbycol") ?? "");
 		n += x + i + x + " ".repeat(e.maxChildNameLen() - i.length) + `varchar2(255${this._ddl.semantics()}) not null,\n`;

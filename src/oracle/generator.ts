@@ -335,7 +335,7 @@ export class OracleDDLGenerator extends BaseGenerator {
 
     _genAuditColumns(node: IDdlNode): string {
         if (!node.hasAuditCols()) return '';
-        let auditDateType = String(this._ddl.getOptionValue('auditdate') || this._ddl.getOptionValue('Date Data Type') || '').toLowerCase();
+        const auditDateType = node.auditColumnType();
         let ret = '';
         const created = String(this._ddl.getOptionValue('createdcol') ?? '');
         ret += tab + created + tab + ' '.repeat(node.maxChildNameLen() - created.length) + auditDateType + ' not null,\n';

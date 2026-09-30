@@ -107,6 +107,7 @@ export interface IDdlNode {
 
     // Structural predicates (audit/rowkey/rowversion)
     hasAuditCols():   boolean;
+    auditColumnType(): string;
     hasRowVersion():  boolean;
     hasRowKey():      boolean;
 

@@ -153,8 +153,8 @@ export abstract class BaseGenerator implements DDLGenerator {
             if (this._ddl.optionEQvalue('rowVersion', 'yes') || nodeContent.includes('/ROWVERSION'))
                 item.columns.push({ name: 'row_version', datatype: 'integer' });
             if (this._ddl.optionEQvalue('Audit Columns', 'yes') || nodeContent.includes('/AUDITCOLS')) {
-                let auditBase = (this._ddl.getOptionValue('auditdate') as string | null) || '';
-                if (!auditBase) auditBase = this._ddl.getOptionValue('Date Data Type') as string ?? 'date';
+                let auditBase = node.auditColumnType();
+                if (!auditBase) auditBase = 'date';
                 const auditSem: SemanticType = { base: auditBase.toLowerCase(), colName: '', needsBoolCheck: false, isNativeBoolean: false, parent_child: '' };
                 const vc255:    SemanticType = { base: 'varchar', varcharLen: 255, colName: '', needsBoolCheck: false, isNativeBoolean: false, parent_child: '' };
                 item.columns.push({ name: this._ddl.getOptionValue('createdcol')   as string, datatype: this.colType(auditSem) });

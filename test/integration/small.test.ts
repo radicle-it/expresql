@@ -835,6 +835,16 @@ describe('Oracle 23ai+ features', () => {
         expect(out).not.toContain('updated = trunc');
     });
 
+    test('immutable table with a time zone auditdate: audit columns are TIMESTAMP in UTC (ORA-05730)', () => {
+        const out = ddl(`# settings = {"db":"26ai","auditcols":"Y","auditdate":"timestamp with local time zone"}\nlog /immutable\n    note vc100\nplain\n    note vc100`);
+        const logDdl = out.slice(out.indexOf('create immutable table log'), out.indexOf('no drop until', out.indexOf('create immutable table log')));
+        expect(logDdl).toMatch(/created\s+timestamp not null/);
+        expect(logDdl).not.toContain('time zone');
+        expect(out).toContain(':new.created := sys_extract_utc(systimestamp);');
+        const plainDdl = out.slice(out.indexOf('create table plain'), out.indexOf(');', out.indexOf('create table plain')));
+        expect(plainDdl).toContain('timestamp with local time zone not null');
+    });
+
     test('dateonly defaults to no: DATE columns get no midnight CHECK', () => {
         const out = ddl(`events\n    day_ref date`);
         expect(out).not.toContain('_day_ck');

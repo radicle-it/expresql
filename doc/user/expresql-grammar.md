@@ -810,7 +810,12 @@ reader's session time zone; a day must not be, or it would shift by a day for a
 reader west of the writer. Timestamp columns and the audit columns are never
 checked (declare the audit type with [`auditdate`](#auditcols), e.g.
 `auditdate: "timestamp with local time zone"`, which also switches the audit
-triggers to `systimestamp`). Compare a day with today computed in the right
+triggers to `systimestamp`). Exception: an `/immutable` table accepts neither
+`timestamp with time zone` nor `timestamp with local time zone` (Oracle
+ORA-05730, blockchain tables too), so with a time zone `auditdate` its audit
+columns are generated as plain `timestamp` holding **UTC**, written with
+`sys_extract_utc(systimestamp)`; display them with
+`from_tz(created, 'UTC') at local`. Compare a day with today computed in the right
 time zone (`trunc(current_date)` for the session), not with `trunc(sysdate)`,
 which is the server's day (UTC on Autonomous Database).
 

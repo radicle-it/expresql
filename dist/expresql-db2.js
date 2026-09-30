@@ -482,7 +482,12 @@ var O = class {
 		return t && e.push(`sys_context('${t}','USER')`), this._ctx.optionEQvalue("apex", "yes") && e.push("sys_context('APEX$SESSION','APP_USER')"), e.push("user"), e.length === 1 ? "user" : `coalesce(${e.join(",")})`;
 	}
 	auditSysDateFn() {
-		return String(this._ctx.getOptionValue("auditdate") || this._ctx.getOptionValue("Date Data Type") || "").toLowerCase().indexOf("timestamp") >= 0 ? "systimestamp" : "sysdate";
+		let e = String(this._ctx.getOptionValue("auditdate") || this._ctx.getOptionValue("Date Data Type") || "");
+		return this.isOption("immutable") && /time zone/i.test(e) ? "sys_extract_utc(systimestamp)" : e.toLowerCase().indexOf("timestamp") >= 0 ? "systimestamp" : "sysdate";
+	}
+	auditColumnType() {
+		let e = String(this._ctx.getOptionValue("auditdate") || this._ctx.getOptionValue("Date Data Type") || "").toLowerCase();
+		return this.isOption("immutable") && /time zone/.test(e) ? "timestamp" : e;
 	}
 	indexOf(e, t, n = 0) {
 		let r = e.toLowerCase();
@@ -9849,15 +9854,15 @@ var fe = class {
 				name: "row_version",
 				datatype: "integer"
 			}), this._ddl.optionEQvalue("Audit Columns", "yes") || o.includes("/AUDITCOLS")) {
-				let t = this._ddl.getOptionValue("auditdate") || "";
-				t ||= this._ddl.getOptionValue("Date Data Type") ?? "date";
+				let t = r.auditColumnType();
+				t ||= "date";
 				let n = {
 					base: t.toLowerCase(),
 					colName: "",
 					needsBoolCheck: !1,
 					isNativeBoolean: !1,
 					parent_child: ""
-				}, r = {
+				}, i = {
 					base: "varchar",
 					varcharLen: 255,
 					colName: "",
@@ -9870,13 +9875,13 @@ var fe = class {
 					datatype: this.colType(n)
 				}), e.columns.push({
 					name: this._ddl.getOptionValue("createdbycol"),
-					datatype: this.colType(r)
+					datatype: this.colType(i)
 				}), e.columns.push({
 					name: this._ddl.getOptionValue("updatedcol"),
 					datatype: this.colType(n)
 				}), e.columns.push({
 					name: this._ddl.getOptionValue("updatedbycol"),
-					datatype: this.colType(r)
+					datatype: this.colType(i)
 				});
 			}
 			this._ddl.optionEQvalue("tenantid", !0) && !r.isOption("notenantid") && r.findChild("tenant_id") === null && e.columns.push({
