@@ -845,6 +845,16 @@ describe('Oracle 23ai+ features', () => {
         expect(plainDdl).toContain('timestamp with local time zone not null');
     });
 
+    test('auditutc:yes -- audit columns are TIMESTAMP in UTC on every table, immutable included; other columns untouched', () => {
+        const out = ddl(`# settings = {"db":"26ai","auditcols":"Y","auditutc":"yes"}\nlog /immutable\n    note vc100\nplain\n    happened_at timestamp with local time zone`);
+        expect(out).not.toMatch(/created\s+timestamp with/);
+        expect(out).toMatch(/created\s+timestamp not null/);
+        expect(out).toContain(':new.created := sys_extract_utc(systimestamp);');
+        expect(out).toContain(':new.updated := sys_extract_utc(systimestamp);');
+        expect(out).not.toContain(':= systimestamp;');
+        expect(out).toContain('happened_at    timestamp with local time zone');
+    });
+
     test('dateonly defaults to no: DATE columns get no midnight CHECK', () => {
         const out = ddl(`events\n    day_ref date`);
         expect(out).not.toContain('_day_ck');

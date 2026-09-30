@@ -482,10 +482,12 @@ var O = class {
 		return t && e.push(`sys_context('${t}','USER')`), this._ctx.optionEQvalue("apex", "yes") && e.push("sys_context('APEX$SESSION','APP_USER')"), e.push("user"), e.length === 1 ? "user" : `coalesce(${e.join(",")})`;
 	}
 	auditSysDateFn() {
+		if (this._ctx.optionEQvalue("auditutc", !0)) return "sys_extract_utc(systimestamp)";
 		let e = String(this._ctx.getOptionValue("auditdate") || this._ctx.getOptionValue("Date Data Type") || "");
 		return this.isOption("immutable") && /time zone/i.test(e) ? "sys_extract_utc(systimestamp)" : e.toLowerCase().indexOf("timestamp") >= 0 ? "systimestamp" : "sysdate";
 	}
 	auditColumnType() {
+		if (this._ctx.optionEQvalue("auditutc", !0)) return "timestamp";
 		let e = String(this._ctx.getOptionValue("auditdate") || this._ctx.getOptionValue("Date Data Type") || "").toLowerCase();
 		return this.isOption("immutable") && /time zone/.test(e) ? "timestamp" : e;
 	}
@@ -10899,6 +10901,11 @@ var Y = {
 	auditdate: {
 		label: "Audit Column Date Type",
 		value: ""
+	},
+	auditutc: {
+		label: "Audit Columns in UTC",
+		value: "no",
+		check: ["yes", "no"]
 	},
 	aienrichment: {
 		label: "AI Enrichment",

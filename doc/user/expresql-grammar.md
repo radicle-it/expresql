@@ -451,6 +451,7 @@ The available settings are listed in the below sections.
 | `createdCol` | ✓ | | |
 | `datalimit` | ✓ | | |
 | `date` | | ✓ | Oracle DATE type variant. Db2 always maps `d` → `DATE`. |
+| `auditutc` | | ✓ | `yes`: audit columns are `TIMESTAMP` holding UTC, written with `sys_extract_utc(systimestamp)`, on every table. |
 | `dateonly` | | ✓ | `yes`: every `DATE` column gets `CHECK (col = trunc(col))` — a DATE is a day. |
 | `db` | | ✓ | Oracle version targeting (11g → 26ai). |
 | `dialect` | ✓ | | Selects the SQL dialect. |
@@ -793,6 +794,24 @@ name.
 
 By default all DATE columns created using the Oracle DATE datatype. Use this
 setting to override this default.
+
+### auditutc
+
+> **Dialect:** Oracle only.
+
+**Possible Values**: `yes`, `no`  
+**Default Value**: `no`
+
+Audit columns (`created`, `updated`) become `TIMESTAMP` holding **UTC** on
+every table, written by the audit triggers with `sys_extract_utc(systimestamp)`.
+It overrides [`auditdate`](#auditcols). One rule for every table: immutable and
+blockchain tables reject time zone types (ORA-05730), a UTC `TIMESTAMP` is
+accepted everywhere, and an audit value reads the same whoever reads it
+(session, job, REST, SQL tool). Show it in the reader's zone only where it is
+displayed: `from_tz(created, 'UTC') at local`; compare it with
+`sys_extract_utc(systimestamp)`, never with `systimestamp` or `sysdate`.
+Business instants stay `timestamp with local time zone`, days stay `date`
+(see [`dateonly`](#dateonly)).
 
 ### dateonly
 

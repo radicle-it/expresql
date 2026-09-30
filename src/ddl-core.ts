@@ -57,6 +57,7 @@ const defaultOptions: OptionsRecord = {
     updatedcol:       { label: 'Updated Column Name',           value: 'updated' },
     updatedbycol:     { label: 'Updated By Column Name',        value: 'updated_by' },
     auditdate:        { label: 'Audit Column Date Type',        value: '' },
+    auditutc:         { label: 'Audit Columns in UTC',          value: 'no',      check: ['yes','no'] },
     aienrichment:     { label: 'AI Enrichment',                 value: 'no',      check: ['yes','no'] },
     boolean:          { label: 'Boolean Datatype',              value: 'not set', check: ['yn','native'] },
     genpk:            { label: 'Auto Primary Key',              value: 'yes',     check: ['yes','no'] },

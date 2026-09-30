@@ -277,6 +277,8 @@ export class DdlNode implements IDdlNode {
     }
 
     auditSysDateFn(): string {
+        // auditutc: yes -- audit columns are TIMESTAMP holding UTC on every table (one rule, immutable tables included)
+        if (this._ctx.optionEQvalue('auditutc', true)) return 'sys_extract_utc(systimestamp)';
         const auditDateType = String(this._ctx.getOptionValue('auditdate') || this._ctx.getOptionValue('Date Data Type') || '');
         // an immutable (or blockchain) table accepts neither time zone type (ORA-05730): its audit
         // columns fall back to a plain TIMESTAMP holding UTC, see auditColumnType()
@@ -288,6 +290,7 @@ export class DdlNode implements IDdlNode {
      *  immutable table, where Oracle rejects TIMESTAMP WITH [LOCAL] TIME ZONE (ORA-05730) and the
      *  columns become TIMESTAMP in UTC (written with sys_extract_utc(systimestamp)). */
     auditColumnType(): string {
+        if (this._ctx.optionEQvalue('auditutc', true)) return 'timestamp';
         const t = String(this._ctx.getOptionValue('auditdate') || this._ctx.getOptionValue('Date Data Type') || '').toLowerCase();
         if (this.isOption('immutable') && /time zone/.test(t)) return 'timestamp';
         return t;

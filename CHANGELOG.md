@@ -14,6 +14,11 @@ upstream project.
 
 ### Features
 
+- **`auditutc: yes` setting (Oracle)** — audit columns are `TIMESTAMP`
+  holding UTC on every table, written with `sys_extract_utc(systimestamp)`;
+  overrides `auditdate`. One rule for immutable and ordinary tables alike.
+  Decided on 2026-09-30 in `ocean-code` (audit data: UTC; business instants:
+  local time zone; days: `DATE`); pinned by a test in `small.test.ts`.
 - **`dateonly: yes` setting (Oracle)** — every `DATE` column gets an inline
   `<prefix><table>_<column>_day_ck check (<column> = trunc(<column>))`: a
   `DATE` holds a calendar day, instants are declared as
