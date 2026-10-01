@@ -94,8 +94,36 @@ export class OracleAggregateRenderer {
             return lines;
         };
 
+        // ── <master>_agg_hks (2.1.2) ──────────────────────────────────────────
+        // The hooks of the aggregate level (ocean-code rule §1.6: a hook belongs to the level whose rule it
+        // protects, and is named after the package it hooks). One before_/after_ pair per add_/remove_ of a
+        // detail with a _svc tier (the record handed to the hook is that service's t_rec): before_add_ may
+        // read and change the record and raise to refuse; after_add_/after_remove_ see the outcome. Emitted
+        // before the _agg package, which calls it; generated once, its body is written by hand. A hook never
+        // calls its own _agg nor anything above it.
+        const hookable = ds.filter(d => d.hasSvc && d.canWrite);
+        const hks = agg + '_hks';
+        let r = '';
+        if (hookable.length > 0) {
+            const sig = (d: Detail, kind: 'before_add' | 'after_add' | 'before_remove' | 'after_remove'): string =>
+                kind === 'before_add'
+                    ? `${tab}procedure before_add_${d.detailTbl} (p_master_id in ${mTbl}.${mPkNm}%type, p_rec in out nocopy ${d.dSvc}.t_rec)`
+                    : `${tab}procedure ${kind}_${d.detailTbl} (p_master_id in ${mTbl}.${mPkNm}%type, p_${d.dPkNm} in ${d.detailTbl}.${d.dPkNm}%type)`;
+            const kinds = (d: Detail): Array<'before_add' | 'after_add' | 'before_remove' | 'after_remove'> =>
+                d.canDelete ? ['before_add', 'after_add', 'before_remove', 'after_remove'] : ['before_add', 'after_add'];
+            r += `create or replace package ${hks} as\n\n`;
+            for (const d of hookable)
+                for (const k of kinds(d)) r += sig(d, k) + `;\n`;
+            r += `\nend ${bareName(hks)};\n/\n\n`;
+            r += `create or replace package body ${hks} as\n`;
+            r += `-- warning: this file is generated once and must not be overwritten\n`;
+            for (const d of hookable)
+                for (const k of kinds(d)) r += `\n` + sig(d, k) + ` is\n${tab}begin\n${tab}${tab}null;\n${tab}end ${k}_${d.detailTbl};\n`;
+            r += `\nend ${bareName(hks)};\n/\n\n`;
+        }
+
         // ── spec ─────────────────────────────────────────────────────────────
-        let r = `create or replace package ${agg} as\n\n`;
+        r += `create or replace package ${agg} as\n\n`;
         for (const d of ds) {
             if (!d.canWrite) {
                 // No PL/SQL-callable create target: detail's tier has no _svc, and
@@ -130,11 +158,15 @@ export class OracleAggregateRenderer {
                     r += `${tab}${tab}l_rec.${d.fkCol} := p_master_id;\n`;
                     for (const { name } of d.cols)
                         r += `${tab}${tab}l_rec.${name} := p_${name};\n`;
+                    if (d.pkIsUserDefined) r += `${tab}${tab}l_rec.${d.dPkNm} := p_${d.dPkNm};\n`;
+                    r += `${tab}${tab}${hks}.before_add_${d.detailTbl}(p_master_id => p_master_id, p_rec => l_rec);\n`;
+                    r += `${tab}${tab}l_rec.${d.fkCol} := p_master_id;   -- the hook may change the row, never its master\n`;
                     if (d.pkIsUserDefined) {
-                        r += `${tab}${tab}l_rec.${d.dPkNm} := p_${d.dPkNm};\n`;
                         r += `${tab}${tab}${d.dSvc}.create_rec(p_rec => l_rec, x_id => l_rec.${d.dPkNm});\n`;
+                        r += `${tab}${tab}${hks}.after_add_${d.detailTbl}(p_master_id => p_master_id, p_${d.dPkNm} => l_rec.${d.dPkNm});\n`;
                     } else {
                         r += `${tab}${tab}${d.dSvc}.create_rec(p_rec => l_rec, x_id => x_id);\n`;
+                        r += `${tab}${tab}${hks}.after_add_${d.detailTbl}(p_master_id => p_master_id, p_${d.dPkNm} => x_id);\n`;
                     }
                 } else {
                     r += `${tab}begin\n`;
@@ -164,9 +196,13 @@ export class OracleAggregateRenderer {
                 r += `${tab}${tab}if l_owner is null or l_owner != p_master_id then\n`;
                 r += `${tab}${tab}${tab}raise_application_error(-20002, '[NOT_FOUND] ${d.detailTbl}: ${d.dPkNm}=' || p_${d.dPkNm} || ' does not belong to ${mTbl} ' || p_master_id);\n`;
                 r += `${tab}${tab}end if;\n`;
-                r += d.hasSvc
-                    ? `${tab}${tab}${d.dSvc}.delete_rec(p_id => p_${d.dPkNm});\n`
-                    : `${tab}${tab}${d.dApp}.del(p_id => p_${d.dPkNm});\n`;
+                if (d.hasSvc) {
+                    r += `${tab}${tab}${hks}.before_remove_${d.detailTbl}(p_master_id => p_master_id, p_${d.dPkNm} => p_${d.dPkNm});\n`;
+                    r += `${tab}${tab}${d.dSvc}.delete_rec(p_id => p_${d.dPkNm});\n`;
+                    r += `${tab}${tab}${hks}.after_remove_${d.detailTbl}(p_master_id => p_master_id, p_${d.dPkNm} => p_${d.dPkNm});\n`;
+                } else {
+                    r += `${tab}${tab}${d.dApp}.del(p_id => p_${d.dPkNm});\n`;
+                }
                 r += `${tab}end remove_${d.detailTbl};\n`;
             }
             r += `\n${tab}function list_${d.detailTbl} (p_master_id in ${mTbl}.${mPkNm}%type) return sys_refcursor is\n`;

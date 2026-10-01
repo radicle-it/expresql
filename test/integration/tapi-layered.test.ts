@@ -3171,7 +3171,7 @@ describe('aggregate — full+hks tier', () => {
 
     test('_agg body: add_ builds t_rec, forces the FK to p_master_id, and calls the detail\'s own create_rec', () => {
         const out = ddl(ORDERS_QSQL);
-        const aggBody = segment(out, 'create or replace package body orders_agg', 'end orders_agg;');
+        const aggBody = segment(out, 'create or replace package body orders_agg as', 'end orders_agg;');
         const addBody = segment(aggBody, 'procedure add_order_lines (', 'end add_order_lines;');
         expect(addBody).toContain('l_rec order_lines_svc.t_rec;');
         expect(addBody).toContain('l_rec.order_id := p_master_id;');
@@ -3181,7 +3181,7 @@ describe('aggregate — full+hks tier', () => {
 
     test('_agg body: remove_ checks ownership via the detail\'s _rls view before calling delete_rec', () => {
         const out = ddl(ORDERS_QSQL);
-        const aggBody = segment(out, 'create or replace package body orders_agg', 'end orders_agg;');
+        const aggBody = segment(out, 'create or replace package body orders_agg as', 'end orders_agg;');
         const removeBody = segment(aggBody, 'procedure remove_order_lines (', 'end remove_order_lines;');
         expect(removeBody).toContain('select order_id into l_owner from order_lines_rls where id = p_id;');
         expect(removeBody).toContain('when no_data_found then');
@@ -3192,7 +3192,7 @@ describe('aggregate — full+hks tier', () => {
 
     test('_agg body: list_ selects from the detail\'s _rls view filtered by the FK', () => {
         const out = ddl(ORDERS_QSQL);
-        const aggBody = segment(out, 'create or replace package body orders_agg', 'end orders_agg;');
+        const aggBody = segment(out, 'create or replace package body orders_agg as', 'end orders_agg;');
         const listBody = segment(aggBody, 'function list_order_lines (p_master_id in orders.id%type) return sys_refcursor is', 'end list_order_lines;');
         expect(listBody).toContain('open l_cur for select * from order_lines_rls where order_id = p_master_id;');
     });
@@ -3214,6 +3214,61 @@ describe('aggregate — full+hks tier', () => {
 
 });
 
+// 2.1.2 — the hooks of the aggregate level: <master>_agg_hks (ocean-code rule §1.6), one before_/after_ pair per
+// add_/remove_ of a detail with a _svc, emitted before the _agg package that calls it, generated once.
+describe('aggregate — <master>_agg_hks', () => {
+
+    test('hook package: before_/after_ add and remove per detail, emitted before the _agg package', () => {
+        const out = ddl(ORDERS_QSQL);
+        const hksSpec = segment(out, 'create or replace package orders_agg_hks', 'end orders_agg_hks;');
+        expect(hksSpec).toContain('procedure before_add_order_lines (p_master_id in orders.id%type, p_rec in out nocopy order_lines_svc.t_rec);');
+        expect(hksSpec).toContain('procedure after_add_order_lines (p_master_id in orders.id%type, p_id in order_lines.id%type);');
+        expect(hksSpec).toContain('procedure before_remove_order_lines (p_master_id in orders.id%type, p_id in order_lines.id%type);');
+        expect(hksSpec).toContain('procedure after_remove_order_lines (p_master_id in orders.id%type, p_id in order_lines.id%type);');
+        expect(out.indexOf('create or replace package orders_agg_hks')).toBeLessThan(out.indexOf('create or replace package orders_agg as'));
+        const hksBody = segment(out, 'create or replace package body orders_agg_hks', 'end orders_agg_hks;');
+        expect(hksBody).toContain('-- warning: this file is generated once and must not be overwritten');
+        expect(hksBody).toContain('null;');
+    });
+
+    test('add_ calls before_add_ with the record, keeps the FK, then after_add_ with the new id', () => {
+        const out = ddl(ORDERS_QSQL);
+        const addBody = segment(segment(out, 'create or replace package body orders_agg as', 'end orders_agg;'), 'procedure add_order_lines (', 'end add_order_lines;');
+        const before = addBody.indexOf('orders_agg_hks.before_add_order_lines(p_master_id => p_master_id, p_rec => l_rec);');
+        const create = addBody.indexOf('order_lines_svc.create_rec(p_rec => l_rec, x_id => x_id);');
+        const after  = addBody.indexOf('orders_agg_hks.after_add_order_lines(p_master_id => p_master_id, p_id => x_id);');
+        expect(before).toBeGreaterThan(-1);
+        expect(before).toBeLessThan(create);
+        expect(create).toBeLessThan(after);
+        expect(addBody.slice(before, create)).toContain('l_rec.order_id := p_master_id;');
+    });
+
+    test('remove_ calls before_remove_ after the ownership check and after_remove_ after delete_rec', () => {
+        const out = ddl(ORDERS_QSQL);
+        const removeBody = segment(segment(out, 'create or replace package body orders_agg as', 'end orders_agg;'), 'procedure remove_order_lines (', 'end remove_order_lines;');
+        const owner  = removeBody.indexOf('if l_owner is null or l_owner != p_master_id then');
+        const before = removeBody.indexOf('orders_agg_hks.before_remove_order_lines(p_master_id => p_master_id, p_id => p_id);');
+        const del    = removeBody.indexOf('order_lines_svc.delete_rec(p_id => p_id);');
+        const after  = removeBody.indexOf('orders_agg_hks.after_remove_order_lines(p_master_id => p_master_id, p_id => p_id);');
+        expect(owner).toBeLessThan(before);
+        expect(before).toBeLessThan(del);
+        expect(del).toBeLessThan(after);
+    });
+
+    test('a /versioned detail (no remove_) gets only the add hooks', () => {
+        const out = ddl(`orders /api /aggregate
+  customer_id num /nn
+  order_states /api service+hks /versioned
+     state vc20 /nn
+# settings = {"api": "layered"}`);
+        if (!out.includes('create or replace package orders_agg_hks')) return;   // tier without _svc: nothing to hook
+        const hksSpec = segment(out, 'create or replace package orders_agg_hks', 'end orders_agg_hks;');
+        expect(hksSpec).toContain('before_add_order_states');
+        expect(hksSpec).not.toContain('remove_order_states');
+    });
+
+});
+
 describe('aggregate — degraded tiers / edge cases', () => {
 
     test('no /aggregate: no _agg package at all', () => {
@@ -3228,7 +3283,7 @@ describe('aggregate — degraded tiers / edge cases', () => {
 
     test('lookup tier detail (no _svc): add_/remove_ call the detail\'s _app instead', () => {
         const out = ddl('orders /api /aggregate\n  customer_id num /nn\n  order_lines /api lookup\n     sku vc50 /nn\n# settings = {"api": "layered"}');
-        const aggBody = segment(out, 'create or replace package body orders_agg', 'end orders_agg;');
+        const aggBody = segment(out, 'create or replace package body orders_agg as', 'end orders_agg;');
         const addBody = segment(aggBody, 'procedure add_order_lines (', 'end add_order_lines;');
         expect(addBody).not.toContain('order_lines_svc');
         expect(addBody).toContain('order_lines_app.ins(');
@@ -3239,7 +3294,7 @@ describe('aggregate — degraded tiers / edge cases', () => {
 
     test('rest-only interface + lookup-tier detail: no _svc and no _app — add_/remove_ skipped, list_ still generated', () => {
         const out = ddl('orders /api /aggregate\n  customer_id num /nn\n  order_lines /api lookup\n     sku vc50 /nn\n# settings = {"api": "layered", "interface": "rest"}');
-        const aggBody = segment(out, 'create or replace package body orders_agg', 'end orders_agg;');
+        const aggBody = segment(out, 'create or replace package body orders_agg as', 'end orders_agg;');
         expect(aggBody).not.toContain('procedure add_order_lines');
         expect(aggBody).not.toContain('procedure remove_order_lines');
         expect(aggBody).toContain('function list_order_lines');

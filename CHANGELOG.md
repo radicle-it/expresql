@@ -14,6 +14,15 @@ upstream project.
 
 ### Features
 
+- **`/aggregate`: `<master>_agg_hks`, the hooks of the aggregate level (Oracle)** — generated once,
+  emitted before `<master>_agg`; per detail with a `_svc`: `before_add_<detail>` (the detail's
+  `t_rec` in out: validate, normalize, raise to refuse; the FK is forced back to the master),
+  `after_add_<detail>`, and with `remove_` also `before_remove_`/`after_remove_<detail>` (after
+  the ownership check). `add_`/`remove_` call them around the detail's `create_rec`/`delete_rec`.
+  From the `ocean-code` package-level rule (§1.6, 2026-10-01): a hook belongs to the level whose
+  rule it protects and is named after the package it hooks. Tests in `tapi-layered.test.ts`,
+  characterization fingerprint updated (1131 green).
+
 - **`/versioned /businesskey`: start/end uniques and a window check instead of
   `<bk>_cur_uk` (Oracle)** — `<t>_from_uk unique (<bk>, valid_from)`,
   `<t>_to_uk unique (<bk>, <close col>)` and `<t>_window_ck check (<close col> is

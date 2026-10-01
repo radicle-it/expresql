@@ -11689,27 +11689,41 @@ var Ct = class {
 			e.pkIsUserDefined && n.push(`${x}${x}p_${e.dPkNm}`.padEnd(x.length * 2 + 2 + t) + `in  ${e.detailTbl}.${e.dPkNm}%type`);
 			for (let { name: r, nullable: i } of e.cols) n.push(`${x}${x}p_${r}`.padEnd(x.length * 2 + 2 + t) + `in  ${e.detailTbl}.${r}%type${i ? " default null" : ""}`);
 			return e.pkIsUserDefined || n.push(`${x}${x}x_id`.padEnd(x.length * 2 + 2 + t) + `out ${e.detailTbl}.${e.dPkNm}%type`), n;
-		}, l = `create or replace package ${a} as\n\n`;
-		for (let e of s) e.canWrite || (l += `${x}-- ${e.detailTbl}: no add_/remove_ (no _svc and no _app to call — rest-only interface + lookup-family tier)\n\n`), e.canWrite && (l += `${x}procedure add_${e.detailTbl} (\n`, l += c(e).join(",\n") + `\n${x});\n\n`), e.canDelete && (l += `${x}procedure remove_${e.detailTbl} (\n`, l += `${x}${x}p_master_id in ${r}.${i}%type,\n`, l += `${x}${x}p_${e.dPkNm} in ${e.detailTbl}.${e.dPkNm}%type\n`, l += `${x});\n\n`), l += `${x}function list_${e.detailTbl} (p_master_id in ${r}.${i}%type) return sys_refcursor;\n\n`;
-		l += `end ${U(a)};\n/\n`, l += `\ncreate or replace package body ${a} as\n`;
+		}, l = s.filter((e) => e.hasSvc && e.canWrite), u = a + "_hks", d = "";
+		if (l.length > 0) {
+			let e = (e, t) => t === "before_add" ? `${x}procedure before_add_${e.detailTbl} (p_master_id in ${r}.${i}%type, p_rec in out nocopy ${e.dSvc}.t_rec)` : `${x}procedure ${t}_${e.detailTbl} (p_master_id in ${r}.${i}%type, p_${e.dPkNm} in ${e.detailTbl}.${e.dPkNm}%type)`, t = (e) => e.canDelete ? [
+				"before_add",
+				"after_add",
+				"before_remove",
+				"after_remove"
+			] : ["before_add", "after_add"];
+			d += `create or replace package ${u} as\n\n`;
+			for (let n of l) for (let r of t(n)) d += e(n, r) + ";\n";
+			d += `\nend ${U(u)};\n/\n\n`, d += `create or replace package body ${u} as\n`, d += "-- warning: this file is generated once and must not be overwritten\n";
+			for (let n of l) for (let r of t(n)) d += "\n" + e(n, r) + ` is\n${x}begin\n${x}${x}null;\n${x}end ${r}_${n.detailTbl};\n`;
+			d += `\nend ${U(u)};\n/\n\n`;
+		}
+		d += `create or replace package ${a} as\n\n`;
+		for (let e of s) e.canWrite || (d += `${x}-- ${e.detailTbl}: no add_/remove_ (no _svc and no _app to call — rest-only interface + lookup-family tier)\n\n`), e.canWrite && (d += `${x}procedure add_${e.detailTbl} (\n`, d += c(e).join(",\n") + `\n${x});\n\n`), e.canDelete && (d += `${x}procedure remove_${e.detailTbl} (\n`, d += `${x}${x}p_master_id in ${r}.${i}%type,\n`, d += `${x}${x}p_${e.dPkNm} in ${e.detailTbl}.${e.dPkNm}%type\n`, d += `${x});\n\n`), d += `${x}function list_${e.detailTbl} (p_master_id in ${r}.${i}%type) return sys_refcursor;\n\n`;
+		d += `end ${U(a)};\n/\n`, d += `\ncreate or replace package body ${a} as\n`;
 		for (let e of s) {
 			if (e.canWrite) {
-				if (l += `\n${x}procedure add_${e.detailTbl} (\n`, l += c(e).join(",\n") + `\n${x}) is\n`, e.hasSvc) {
-					l += `${x}${x}l_rec ${e.dSvc}.t_rec;\n`, l += `${x}begin\n`, l += `${x}${x}l_rec.${e.fkCol} := p_master_id;\n`;
-					for (let { name: t } of e.cols) l += `${x}${x}l_rec.${t} := p_${t};\n`;
-					e.pkIsUserDefined ? (l += `${x}${x}l_rec.${e.dPkNm} := p_${e.dPkNm};\n`, l += `${x}${x}${e.dSvc}.create_rec(p_rec => l_rec, x_id => l_rec.${e.dPkNm});\n`) : l += `${x}${x}${e.dSvc}.create_rec(p_rec => l_rec, x_id => x_id);\n`;
+				if (d += `\n${x}procedure add_${e.detailTbl} (\n`, d += c(e).join(",\n") + `\n${x}) is\n`, e.hasSvc) {
+					d += `${x}${x}l_rec ${e.dSvc}.t_rec;\n`, d += `${x}begin\n`, d += `${x}${x}l_rec.${e.fkCol} := p_master_id;\n`;
+					for (let { name: t } of e.cols) d += `${x}${x}l_rec.${t} := p_${t};\n`;
+					e.pkIsUserDefined && (d += `${x}${x}l_rec.${e.dPkNm} := p_${e.dPkNm};\n`), d += `${x}${x}${u}.before_add_${e.detailTbl}(p_master_id => p_master_id, p_rec => l_rec);\n`, d += `${x}${x}l_rec.${e.fkCol} := p_master_id;   -- the hook may change the row, never its master\n`, e.pkIsUserDefined ? (d += `${x}${x}${e.dSvc}.create_rec(p_rec => l_rec, x_id => l_rec.${e.dPkNm});\n`, d += `${x}${x}${u}.after_add_${e.detailTbl}(p_master_id => p_master_id, p_${e.dPkNm} => l_rec.${e.dPkNm});\n`) : (d += `${x}${x}${e.dSvc}.create_rec(p_rec => l_rec, x_id => x_id);\n`, d += `${x}${x}${u}.after_add_${e.detailTbl}(p_master_id => p_master_id, p_${e.dPkNm} => x_id);\n`);
 				} else {
-					l += `${x}begin\n`, l += `${x}${x}${e.dApp}.ins(\n`;
+					d += `${x}begin\n`, d += `${x}${x}${e.dApp}.ins(\n`;
 					let t = [`${x}${x}${x}p_${e.fkCol} => p_master_id`];
 					e.pkIsUserDefined && t.push(`${x}${x}${x}p_${e.dPkNm} => p_${e.dPkNm}`);
 					for (let { name: n } of e.cols) t.push(`${x}${x}${x}p_${n} => p_${n}`);
-					e.pkIsUserDefined || t.push(`${x}${x}${x}p_${e.dPkNm} => x_id`), l += t.join(",\n") + `\n${x}${x});\n`;
+					e.pkIsUserDefined || t.push(`${x}${x}${x}p_${e.dPkNm} => x_id`), d += t.join(",\n") + `\n${x}${x});\n`;
 				}
-				l += `${x}end add_${e.detailTbl};\n`;
+				d += `${x}end add_${e.detailTbl};\n`;
 			}
-			e.canDelete && (l += `\n${x}procedure remove_${e.detailTbl} (\n`, l += `${x}${x}p_master_id in ${r}.${i}%type,\n`, l += `${x}${x}p_${e.dPkNm} in ${e.detailTbl}.${e.dPkNm}%type\n`, l += `${x}) is\n`, l += `${x}${x}l_owner ${e.detailTbl}.${e.fkCol}%type;\n`, l += `${x}begin\n`, l += `${x}${x}begin\n`, l += `${x}${x}${x}select ${e.fkCol} into l_owner from ${e.dRls} where ${e.dPkNm} = p_${e.dPkNm};\n`, l += `${x}${x}exception\n`, l += `${x}${x}${x}when no_data_found then\n`, l += `${x}${x}${x}${x}raise_application_error(-20002, '[NOT_FOUND] ${e.detailTbl}: record not found (${e.dPkNm}=' || p_${e.dPkNm} || ')');\n`, l += `${x}${x}end;\n`, l += `${x}${x}if l_owner is null or l_owner != p_master_id then\n`, l += `${x}${x}${x}raise_application_error(-20002, '[NOT_FOUND] ${e.detailTbl}: ${e.dPkNm}=' || p_${e.dPkNm} || ' does not belong to ${r} ' || p_master_id);\n`, l += `${x}${x}end if;\n`, l += e.hasSvc ? `${x}${x}${e.dSvc}.delete_rec(p_id => p_${e.dPkNm});\n` : `${x}${x}${e.dApp}.del(p_id => p_${e.dPkNm});\n`, l += `${x}end remove_${e.detailTbl};\n`), l += `\n${x}function list_${e.detailTbl} (p_master_id in ${r}.${i}%type) return sys_refcursor is\n`, l += `${x}${x}l_cur sys_refcursor;\n`, l += `${x}begin\n`, l += `${x}${x}open l_cur for select * from ${e.dRls} where ${e.fkCol} = p_master_id;\n`, l += `${x}${x}return l_cur;\n`, l += `${x}end list_${e.detailTbl};\n`;
+			e.canDelete && (d += `\n${x}procedure remove_${e.detailTbl} (\n`, d += `${x}${x}p_master_id in ${r}.${i}%type,\n`, d += `${x}${x}p_${e.dPkNm} in ${e.detailTbl}.${e.dPkNm}%type\n`, d += `${x}) is\n`, d += `${x}${x}l_owner ${e.detailTbl}.${e.fkCol}%type;\n`, d += `${x}begin\n`, d += `${x}${x}begin\n`, d += `${x}${x}${x}select ${e.fkCol} into l_owner from ${e.dRls} where ${e.dPkNm} = p_${e.dPkNm};\n`, d += `${x}${x}exception\n`, d += `${x}${x}${x}when no_data_found then\n`, d += `${x}${x}${x}${x}raise_application_error(-20002, '[NOT_FOUND] ${e.detailTbl}: record not found (${e.dPkNm}=' || p_${e.dPkNm} || ')');\n`, d += `${x}${x}end;\n`, d += `${x}${x}if l_owner is null or l_owner != p_master_id then\n`, d += `${x}${x}${x}raise_application_error(-20002, '[NOT_FOUND] ${e.detailTbl}: ${e.dPkNm}=' || p_${e.dPkNm} || ' does not belong to ${r} ' || p_master_id);\n`, d += `${x}${x}end if;\n`, e.hasSvc ? (d += `${x}${x}${u}.before_remove_${e.detailTbl}(p_master_id => p_master_id, p_${e.dPkNm} => p_${e.dPkNm});\n`, d += `${x}${x}${e.dSvc}.delete_rec(p_id => p_${e.dPkNm});\n`, d += `${x}${x}${u}.after_remove_${e.detailTbl}(p_master_id => p_master_id, p_${e.dPkNm} => p_${e.dPkNm});\n`) : d += `${x}${x}${e.dApp}.del(p_id => p_${e.dPkNm});\n`, d += `${x}end remove_${e.detailTbl};\n`), d += `\n${x}function list_${e.detailTbl} (p_master_id in ${r}.${i}%type) return sys_refcursor is\n`, d += `${x}${x}l_cur sys_refcursor;\n`, d += `${x}begin\n`, d += `${x}${x}open l_cur for select * from ${e.dRls} where ${e.fkCol} = p_master_id;\n`, d += `${x}${x}return l_cur;\n`, d += `${x}end list_${e.detailTbl};\n`;
 		}
-		return l += `\nend ${U(a)};\n/\n`, l;
+		return d += `\nend ${U(a)};\n/\n`, d;
 	}
 };
 //#endregion
