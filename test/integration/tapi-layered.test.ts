@@ -2666,14 +2666,24 @@ customer_dim /api /versioned /businesskey code
 
 describe('businesskey (SCD2) — DDL', () => {
 
-    test('unique index enforces at most one current row per business key', () => {
+    test('one start and one end per business key, no inverted window (at most one open version via to_uk)', () => {
         const out = ddl(CUSTOMER_DIM_QSQL);
-        expect(out).toContain('create unique index customer_dim_code_cur_uk on customer_dim (case when valid_to is null then code end);');
+        expect(out).toContain('alter table customer_dim add constraint customer_dim_from_uk unique (code, valid_from);');
+        expect(out).toContain('alter table customer_dim add constraint customer_dim_to_uk unique (code, valid_to);');
+        expect(out).toContain('alter table customer_dim add constraint customer_dim_window_ck check (valid_to is null or valid_to > valid_from);');
+        expect(out).not.toContain('cur_uk');
     });
 
-    test('no such index when /businesskey is absent (plain /versioned)', () => {
+    test('no such constraints when /businesskey is absent (plain /versioned)', () => {
         const out = ddl(`policies /api /versioned\n  code vc20 /nn`);
-        expect(out).not.toContain('cur_uk');
+        expect(out).not.toContain('_to_uk');
+        expect(out).not.toContain('_window_ck');
+    });
+
+    test('custom /versioned close column in to_uk and window_ck', () => {
+        const out = ddl(`policies /api /versioned closed_at /businesskey policy_no\n  policy_no vc20 /nn\n# settings = {"api": "layered"}`);
+        expect(out).toContain('alter table policies add constraint policies_to_uk unique (policy_no, closed_at);');
+        expect(out).toContain('alter table policies add constraint policies_window_ck check (closed_at is null or closed_at > valid_from);');
     });
 
 });
@@ -2697,7 +2707,7 @@ describe('businesskey (SCD2) — non-overlap ASSERTION (db: 26ai+)', () => {
   code vc20 /nn
   name vc200 /nn
 # settings = {"api": "layered", "db": "26ai"}`);
-        expect(out).toContain('create unique index customer_dim_code_cur_uk on customer_dim (case when valid_to is null then code end);');
+        expect(out).toContain('alter table customer_dim add constraint customer_dim_to_uk unique (code, valid_to);');
         expect(out).toContain(
             'create assertion customer_dim_code_no_overlap\n'
             + 'check (\n'
@@ -2723,12 +2733,12 @@ describe('businesskey (SCD2) — non-overlap ASSERTION (db: 26ai+)', () => {
         expect(out).not.toContain('nvl(d2.valid_to');
     });
 
-    test('below 26ai (e.g. 23ai): cur_uk still generated, no assertion at all', () => {
+    test('below 26ai (e.g. 23ai): start/end uniques still generated, no assertion at all', () => {
         const out = ddl(`customer_dim /api /versioned /businesskey code
   code vc20 /nn
   name vc200 /nn
 # settings = {"api": "layered", "db": "23ai"}`);
-        expect(out).toContain('cur_uk');
+        expect(out).toContain('customer_dim_to_uk');
         expect(out).not.toContain('create assertion');
     });
 
@@ -3367,12 +3377,12 @@ hdr /api lookup+hks /aggregate /unique a, b
     });
 });
 
-describe('2.1.1 — cur_uk is built on the close column, not on the virtual is_current', () => {
+describe('2.1.2 — the open-version rule is built on the close column, not on the virtual is_current', () => {
     test('default close column', () => {
         const out = ddl(`customer_dim /api /versioned /businesskey code
   code vc20 /nn
 # settings = {"api": "layered"}`);
-        expect(out).toContain('create unique index customer_dim_code_cur_uk on customer_dim (case when valid_to is null then code end);');
+        expect(out).toContain('alter table customer_dim add constraint customer_dim_to_uk unique (code, valid_to);');
         expect(out).not.toContain('case when is_current = 1 then code end');
     });
 
@@ -3380,6 +3390,6 @@ describe('2.1.1 — cur_uk is built on the close column, not on the virtual is_c
         const out = ddl(`policies /api /versioned closed_at /businesskey policy_no
   policy_no vc20 /nn
 # settings = {"api": "layered"}`);
-        expect(out).toContain('create unique index policies_policy_no_cur_uk on policies (case when closed_at is null then policy_no end);');
+        expect(out).toContain('alter table policies add constraint policies_to_uk unique (policy_no, closed_at);');
     });
 });

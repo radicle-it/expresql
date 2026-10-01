@@ -828,16 +828,23 @@ export class OracleDDLGenerator extends BaseGenerator {
                 const bkCol = node.isOption('businesskey')
                     ? (node.getOptionValue('businesskey') ?? '').trim().toLowerCase() : '';
                 if (bkCol !== '' && node.findChild(bkCol) !== null) {
-                    // On the base expression, not on is_current: Oracle refuses a
-                    // function-based index over a virtual column (ORA-54034), and
-                    // is_current is exactly "case when <vtCol> is null then 1 end".
+                    // One start and one end per business key, no empty or inverted window
+                    // (2.1.2, replaces the former <bk>_cur_uk function-based index): a NULL
+                    // close column still takes part in a composite UNIQUE when the key is
+                    // set, so <bk>_to_uk also allows at most ONE open version per key --
+                    // what cur_uk did -- and additionally rules out two versions closing
+                    // (or starting) at the same instant. Plain constraints, no index over
+                    // the virtual is_current (ORA-54034).
                     const curUkVtCol = (String(node.getOptionValue('versioned') ?? '').trim() || 'valid_to').toLowerCase();
-                    output += `create unique index ${objName}_${bkCol}_cur_uk on ${objName} `
-                        + `(case when ${curUkVtCol} is null then ${bkCol} end);\n\n`;
+                    output += `-- /versioned: one start and one end per ${bkCol} (the open version included: a NULL ${curUkVtCol}\n`
+                        + `-- still takes part in a composite UNIQUE when ${bkCol} is set), no empty or inverted window\n`
+                        + `alter table ${objName} add constraint ${objName}_from_uk unique (${bkCol}, valid_from);\n`
+                        + `alter table ${objName} add constraint ${objName}_to_uk unique (${bkCol}, ${curUkVtCol});\n`
+                        + `alter table ${objName} add constraint ${objName}_window_ck check (${curUkVtCol} is null or ${curUkVtCol} > valid_from);\n\n`;
 
                     // /businesskey, db >= 26 (26ai+) only: CREATE ASSERTION is a
                     // recent SQL-standard feature, not available on older target
-                    // versions — cur_uk above (unconditional, all versions) only
+                    // versions — to_uk above (unconditional, all versions) only
                     // catches two concurrently OPEN rows for the same key; it says
                     // nothing about two historical (or one historical + one open)
                     // rows whose [valid_from, vtCol) windows overlap, which a raw

@@ -14,6 +14,17 @@ upstream project.
 
 ### Features
 
+- **`/versioned /businesskey`: start/end uniques and a window check instead of
+  `<bk>_cur_uk` (Oracle)** — `<t>_from_uk unique (<bk>, valid_from)`,
+  `<t>_to_uk unique (<bk>, <close col>)` and `<t>_window_ck check (<close col> is
+  null or <close col> > valid_from)`. A NULL close column still takes part in a
+  composite UNIQUE when the key is set, so `to_uk` keeps "at most one open
+  version per key" (what the function-based `cur_uk` index did) and also rules
+  out two versions starting or ending at the same instant; plain constraints, no
+  index over the virtual `is_current`. The 26ai assertion is unchanged. Decided in
+  `ocean-code` (rule §1.4c, 2026-09-30), where these lines had been added by hand
+  after generation; tests in `tapi-layered.test.ts` (1127 green).
+
 - **`auditutc: yes` setting (Oracle)** — audit columns are `TIMESTAMP`
   holding UTC on every table, written with `sys_extract_utc(systimestamp)`;
   overrides `auditdate`. One rule for immutable and ordinary tables alike.

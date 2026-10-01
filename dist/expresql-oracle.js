@@ -12845,7 +12845,7 @@ var Ut = class extends de {
 				let i = e.isOption("businesskey") ? (e.getOptionValue("businesskey") ?? "").trim().toLowerCase() : "";
 				if (i !== "" && e.findChild(i) !== null) {
 					let t = (String(e.getOptionValue("versioned") ?? "").trim() || "valid_to").toLowerCase();
-					n += `create unique index ${r}_${i}_cur_uk on ${r} (case when ${t} is null then ${i} end);\n\n`;
+					n += `-- /versioned: one start and one end per ${i} (the open version included: a NULL ${t}\n-- still takes part in a composite UNIQUE when ${i} is set), no empty or inverted window\nalter table ${r} add constraint ${r}_from_uk unique (${i}, valid_from);\nalter table ${r} add constraint ${r}_to_uk unique (${i}, ${t});\nalter table ${r} add constraint ${r}_window_ck check (${t} is null or ${t} > valid_from);\n\n`;
 					let a = this._ddl.getOptionValue("db");
 					if (a && a.length > 0 && 26 <= (o(a) ?? 0)) {
 						let t = (String(e.getOptionValue("versioned") ?? "").trim() || "valid_to").toLowerCase(), a = (e.getGenIdColName() ?? e.getExplicitPkName() ?? "id").toLowerCase();
