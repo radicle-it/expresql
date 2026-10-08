@@ -12446,7 +12446,7 @@ var Gt = class extends le {
 		}
 		if ((e.isOption("nn") || e.indexOf("not") + 1 === e.indexOf("null")) && e.indexOf("pk") < 0 && (t += " not null"), (e.isOption("hidden") || e.isOption("invincible")) && (t += " invisible"), n.isNativeBoolean || (t += e.genConstraint(r)), n.needsBoolCheck && (t += "\n" + this._cpad(e) + "constraint " + a(this._ddl.objPrefix("no schema"), n.parent_child) + ` check (${e.parseName()} in ('Y','N'))`), this._ddl.optionEQvalue("dateonly", !0) && /^date\b/i.test(t) && (t += "\n" + this._cpad(e) + "constraint " + a(this._ddl.objPrefix("no schema"), n.parent_child, "_day_ck") + ` check (${e.parseName()} = trunc(${e.parseName()}))`), e.isOption("between")) {
 			let r = e.getBetweenClause() ?? "";
-			t += " constraint " + a(n.parent_child, this._naming.bet) + "\n", t += "           check (" + e.parseName() + " between " + r + ")";
+			t += " constraint " + a(this._ddl.objPrefix("no schema"), n.parent_child, this._naming.bet) + "\n", t += "           check (" + e.parseName() + " between " + r + ")";
 		}
 		if (e.isOption("pk")) {
 			let r = t.startsWith("number") ? " " + this._pkTypeModifier(this._ddl.objPrefix() + e.parent.parseName()) : " not null";
@@ -13217,8 +13217,8 @@ var qt = class {
 			let o = n.isOption("check") ? n.getValues("check") : n.getValues("values"), s = a(r.objPrefix("no schema"), `${t}_${l}`, b.ck);
 			i.push(X("add_column", t, `alter table ${e} add constraint ${s} check (${l} in (${o}));\n`, l));
 		} else if (n.isOption("between")) {
-			let r = n.getBetweenClause() ?? "", o = a(`${t}_${l}`, b.bet);
-			i.push(X("add_column", t, `alter table ${e} add constraint ${o} check (${l} between ${r});\n`, l));
+			let o = n.getBetweenClause() ?? "", s = a(r.objPrefix("no schema"), `${t}_${l}`, b.bet);
+			i.push(X("add_column", t, `alter table ${e} add constraint ${s} check (${l} between ${o});\n`, l));
 		}
 		if (n.isOption("unique") || n.isOption("uk")) {
 			let n = `${e}_${l}${b.unq}`, r = `create unique index ${n} on ${e} (${l});\n`;
@@ -13273,14 +13273,14 @@ var qt = class {
 		let w = n.isOption("check") || n.isOption("values"), T = r.isOption("check") || r.isOption("values"), E = n.isOption("between"), D = r.isOption("between"), O = w ? JSON.stringify(n.parseValues()) : E ? n.getBetweenClause() : null;
 		if (O !== (T ? JSON.stringify(r.parseValues()) : D ? r.getBetweenClause() : null)) {
 			if (O !== null) {
-				let n = E ? a(`${t}_${g}`, b.bet) : a(i.objPrefix("no schema"), `${t}_${g}`, b.ck);
+				let n = E ? a(i.objPrefix("no schema"), `${t}_${g}`, b.bet) : a(i.objPrefix("no schema"), `${t}_${g}`, b.ck);
 				s.push(X("modify_column", t, `alter table ${e} drop constraint ${n};\n`, g));
 			}
 			if (T) {
 				let n = T && r.isOption("check") ? r.getValues("check") : r.getValues("values"), i = a(o.objPrefix("no schema"), `${t}_${g}`, b.ck);
 				s.push(X("modify_column", t, `alter table ${e} add constraint ${i} check (${g} in (${n}));\n`, g));
 			} else if (D) {
-				let n = r.getBetweenClause() ?? "", i = a(`${t}_${g}`, b.bet);
+				let n = r.getBetweenClause() ?? "", i = a(o.objPrefix("no schema"), `${t}_${g}`, b.bet);
 				s.push(X("modify_column", t, `alter table ${e} add constraint ${i} check (${g} between ${n});\n`, g));
 			}
 		}

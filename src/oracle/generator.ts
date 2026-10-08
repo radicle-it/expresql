@@ -102,7 +102,9 @@ export class OracleDDLGenerator extends BaseGenerator {
                 + ` check (${node.parseName()} = trunc(${node.parseName()}))`;
         if (node.isOption('between')) {
             const values = node.getBetweenClause() ?? '';
-            ret += ' constraint ' + concatNames(sem.parent_child, this._naming.bet) + '\n';
+            // the object prefix like every other constraint of a column (_ck, _day_ck): without it two modules with a
+            // table of the same name (port, provider) would give the same constraint name in one schema
+            ret += ' constraint ' + concatNames(this._ddl.objPrefix('no schema'), sem.parent_child, this._naming.bet) + '\n';
             ret += '           check (' + node.parseName() + ' between ' + values + ')';
         }
         if (node.isOption('pk')) {

@@ -629,7 +629,7 @@ export class OracleDiffGenerator implements DiffGenerator {
                 colName));
         } else if (col.isOption('between')) {
             const between = col.getBetweenClause() ?? '';
-            const betName = concatNames(`${tbl}_${colName}`, DEFAULT_NAMING.bet);
+            const betName = concatNames(ctx.objPrefix('no schema'), `${tbl}_${colName}`, DEFAULT_NAMING.bet);
             stmts.push(mk('add_column', tbl,
                 `alter table ${objName} add constraint ${betName} check (${colName} between ${between});\n`,
                 colName));
@@ -771,7 +771,7 @@ export class OracleDiffGenerator implements DiffGenerator {
         if (oldConstrSig !== newConstrSig) {
             if (oldConstrSig !== null) {
                 const oldCkName = oldHasBet
-                    ? concatNames(`${tbl}_${colName}`, DEFAULT_NAMING.bet)
+                    ? concatNames(oldCtx.objPrefix('no schema'), `${tbl}_${colName}`, DEFAULT_NAMING.bet)
                     : concatNames(oldCtx.objPrefix('no schema'), `${tbl}_${colName}`, DEFAULT_NAMING.ck);
                 stmts.push(mk('modify_column', tbl,
                     `alter table ${objName} drop constraint ${oldCkName};\n`, colName));
@@ -784,7 +784,7 @@ export class OracleDiffGenerator implements DiffGenerator {
                     colName));
             } else if (newHasBet) {
                 const between = newCol.getBetweenClause() ?? '';
-                const betName = concatNames(`${tbl}_${colName}`, DEFAULT_NAMING.bet);
+                const betName = concatNames(newCtx.objPrefix('no schema'), `${tbl}_${colName}`, DEFAULT_NAMING.bet);
                 stmts.push(mk('modify_column', tbl,
                     `alter table ${objName} add constraint ${betName} check (${colName} between ${between});\n`,
                     colName));

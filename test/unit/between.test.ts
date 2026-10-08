@@ -1,5 +1,5 @@
 /**
- * /between with signed and decimal bounds (2026-10-08). The lexer makes "-90" two tokens ("-", "90"): the bounds
+ * /between with signed and decimal bounds, and the name of its constraint (2026-10-08). The lexer makes "-90" two tokens ("-", "90"): the bounds
  * used to be read as the token after /between and the third one, which gave "check (lat between - and and)".
  */
 import { describe, test, expect } from 'vitest';
@@ -18,6 +18,12 @@ describe('/between bounds', () => {
     });
     test('negative bounds on both sides, with other options after', () => {
         expect(ddl('  t num(4,1) /between -40 and -5 /nn\n')).toContain('check (t between -40 and -5)');
+    });
+    test('the constraint takes the object prefix, like the _ck of a column', () => {
+        expect(ddl('  lat num(9,6) /between -90 and 90\n')).toContain('constraint zz_thing_lat_bet');
+    });
+    test('no prefix, no prefix in the name either', () => {
+        expect(toDDL('thing\n  n num(3,0) /between 0 and 9\n').toLowerCase()).toContain('constraint thing_n_bet');
     });
     test('decimal bounds', () => {
         expect(ddl('  p num(5,2) /between 0.5 and 99.5\n')).toContain('check (p between 0.5 and 99.5)');
