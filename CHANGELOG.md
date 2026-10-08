@@ -14,6 +14,12 @@ upstream project.
 
 ### Bug Fixes
 
+- **`/between`: the constraint takes the object prefix** — `<prefix>_<table>_<column>_bet`, like the `_ck` of a
+  column and every other constraint: it was `<table>_<column>_bet`, so two modules with a table of the same name (a
+  `port` or a `provider` in two modules of one schema) gave the same constraint name. The same rule in the diff
+  generator (add and drop of a `/between`). **A database generated before** keeps the old names: rename them
+  (`alter table <t> rename constraint <table>_<column>_bet to <prefix>_<table>_<column>_bet`) before using the diff
+  generator on it. Found by `ocean-code` (2026-10-08). 2 tests in `test/unit/between.test.ts` (1142 green).
 - **`/between` with a signed bound** — `/between -90 and 90` generated `check (lat between - and and)`: the
   bounds were read as the token after `/between` and the third one, and the lexer makes `-90` two tokens.
   `getBetweenClause` now reads them with `listValues`, which joins the tokens of one value (also decimals and
