@@ -49,7 +49,15 @@ export class OraclePlsqlBuilder {
     }
 
     generateAggregatePackage(node: IDdlNode): string {
-        return this.aggregate.generate(node);
+        const agg = this.aggregate.generate(node);
+        if (!agg) return agg;
+        // 2.1.3 — then the _app bodies of its details that write through it (deferred by the layered renderer)
+        let r = agg;
+        for (const { detailNode } of this.tableApi.analyze(node).aggregateDetails) {
+            const body = this.layered.generateDeferredAppBody(detailNode);
+            if (body) r += '\n' + body;
+        }
+        return r;
     }
 
     generateTAPI(node: IDdlNode): string {

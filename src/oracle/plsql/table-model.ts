@@ -23,6 +23,13 @@ export interface OracleAggregateDetail {
     fkCol: string;
 }
 
+/** 2.1.3 — the master of a detail nested under a /aggregate table: its _app delegates writes to <master>_agg */
+export interface OracleAggregateMaster {
+    masterTable: string;
+    masterPk: string;
+    fkCol: string;
+}
+
 export interface OracleTableApiModel {
     node: IDdlNode;
     names: {
@@ -67,6 +74,7 @@ export interface OracleTableApiModel {
     businessKeyColumn: string;
     bridge: OracleBridgeModel | null;
     aggregateDetails: OracleAggregateDetail[];
+    aggregateMaster: OracleAggregateMaster | null;
     pkIsUserDefined: boolean;
 }
 
@@ -168,6 +176,21 @@ export class OracleTableApiAnalyzer {
             }
         }
 
+        // 2.1.3 — this table is a detail of a /aggregate master: the same FK test as aggregateDetails, seen from below
+        let aggregateMaster: OracleAggregateMaster | null = null;
+        const parent = node.parent;
+        if (parent !== null && parent.isOption('aggregate') && node.children.length > 0) {
+            const masterName = parent.parseName().toLowerCase();
+            const fkCol = Object.keys(node.fks ?? {}).find(fk => (node.fks![fk] ?? '').toLowerCase() === masterName);
+            if (fkCol !== undefined) {
+                aggregateMaster = {
+                    masterTable: (this.ctx.objPrefix() + parent.parseName()).toLowerCase(),
+                    masterPk: (parent.getPkName() ?? 'id').toLowerCase(),
+                    fkCol,
+                };
+            }
+        }
+
         const ifc = String(this.ctx.getOptionValue('interface') ?? 'app').toLowerCase();
         const hasDal = tier === 'full' || tier === 'full+hks';
         const hasHks = tier.endsWith('+hks');
@@ -209,6 +232,7 @@ export class OracleTableApiAnalyzer {
             businessKeyColumn,
             bridge,
             aggregateDetails,
+            aggregateMaster,
             pkIsUserDefined: serviceColumns.some(c => c.parseName().toLowerCase() === pk),
         };
         this.cache.set(node, model);

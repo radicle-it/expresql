@@ -3269,6 +3269,91 @@ describe('aggregate — <master>_agg_hks', () => {
 
 });
 
+// 2.1.3 — a detail is written through its aggregate: <master>_agg.update_<detail> (with its hooks), and the
+// detail's own _app delegates ins/upd/del to <master>_agg, so the rules of the aggregate hold whatever the entry
+// point (ocean-code rule §1.3). Its _app body is emitted after the _agg package that it calls.
+describe('aggregate — the detail is written through the aggregate (2.1.3)', () => {
+
+    test('update_<detail>: spec with the record and row_version, ownership check, hooks around update_rec', () => {
+        const out = ddl(ORDERS_QSQL);
+        const aggSpec = segment(out, 'create or replace package orders_agg as', 'end orders_agg;');
+        const updSig = segment(aggSpec, 'procedure update_order_lines (', ');');
+        expect(updSig).toContain('p_master_id in orders.id%type');
+        expect(updSig).toContain('p_id in order_lines.id%type');
+        expect(updSig).toContain('p_rec in order_lines_svc.t_rec');
+        const body = segment(segment(out, 'create or replace package body orders_agg as', 'end orders_agg;'), 'procedure update_order_lines (', 'end update_order_lines;');
+        const owner  = body.indexOf('if l_owner is null or l_owner != p_master_id then');
+        const before = body.indexOf('orders_agg_hks.before_update_order_lines(p_master_id => p_master_id, p_id => p_id, p_rec => l_rec);');
+        const upd    = body.indexOf('order_lines_svc.update_rec(p_id => p_id, p_rec => l_rec');
+        const after  = body.indexOf('orders_agg_hks.after_update_order_lines(p_master_id => p_master_id, p_id => p_id);');
+        expect(owner).toBeGreaterThan(-1);
+        expect(owner).toBeLessThan(before);
+        expect(before).toBeLessThan(upd);
+        expect(upd).toBeLessThan(after);
+        expect(body.slice(before, upd)).toContain('l_rec.order_id := p_master_id;');
+        const hksSpec = segment(out, 'create or replace package orders_agg_hks', 'end orders_agg_hks;');
+        expect(hksSpec).toContain('procedure before_update_order_lines (p_master_id in orders.id%type, p_id in order_lines.id%type, p_rec in out nocopy order_lines_svc.t_rec);');
+        expect(hksSpec).toContain('procedure after_update_order_lines (p_master_id in orders.id%type, p_id in order_lines.id%type);');
+    });
+
+    test('the detail _app keeps its spec and delegates ins/upd/del to the aggregate', () => {
+        const out = ddl(ORDERS_QSQL);
+        const appSpec = segment(out, 'create or replace package order_lines_app', 'end order_lines_app;');
+        expect(appSpec).toContain('procedure ins (');
+        expect(appSpec).toContain('procedure upd (');
+        expect(appSpec).toContain('procedure del (p_id in order_lines.id%type);');
+        const appBody = segment(out, 'create or replace package body order_lines_app as', 'end order_lines_app;');
+        const ins = segment(appBody, 'procedure ins (', 'end ins;');
+        expect(ins).toContain('orders_agg.add_order_lines(');
+        expect(ins).toContain('p_master_id => p_order_id');
+        expect(ins).toContain('x_id => p_id');
+        expect(ins).not.toContain('order_lines_svc.create_rec');
+        const upd = segment(appBody, 'procedure upd (', 'end upd;');
+        expect(upd).toContain('orders_agg.update_order_lines(');
+        expect(upd).toContain('p_master_id => p_order_id');
+        expect(upd).not.toContain('order_lines_svc.update_rec');
+        const del = segment(appBody, 'procedure del (', 'end del;');
+        expect(del).toContain('select max(order_id) into l_master from order_lines_rls where id = p_id;');
+        expect(del).toContain('orders_agg.remove_order_lines(p_master_id => l_master, p_id => p_id);');
+        // reads stay on the service
+        expect(segment(appBody, 'procedure get (', 'end get;')).toContain('order_lines_svc.get(');
+    });
+
+    test('the detail _app body is emitted after the _agg package it calls (the spec stays in place)', () => {
+        const out = ddl(ORDERS_QSQL);
+        const spec = out.indexOf('create or replace package order_lines_app as');
+        const agg  = out.indexOf('create or replace package body orders_agg as');
+        const body = out.indexOf('create or replace package body order_lines_app as');
+        expect(spec).toBeGreaterThan(-1);
+        expect(spec).toBeLessThan(agg);
+        expect(agg).toBeLessThan(body);
+        expect(out.split('create or replace package body order_lines_app as').length).toBe(2);   // once
+    });
+
+    test('a /versioned detail: only ins goes through the aggregate (no update_/remove_ there)', () => {
+        const out = ddl(`orders /api /aggregate
+  customer_id num /nn
+  order_states /api service+hks /versioned
+     state vc20 /nn
+# settings = {"api": "layered"}`);
+        const aggSpec = segment(out, 'create or replace package orders_agg as', 'end orders_agg;');
+        expect(aggSpec).not.toContain('update_order_states');
+        const appBody = segment(out, 'create or replace package body order_states_app as', 'end order_states_app;');
+        expect(segment(appBody, 'procedure ins (', 'end ins;')).toContain('orders_agg.add_order_states(');
+        if (appBody.includes('procedure upd (')) expect(segment(appBody, 'procedure upd (', 'end upd;')).toContain('order_states_svc.update_rec(');
+    });
+
+    test('a detail without a _svc (lookup tier) does not delegate: its _app is what the _agg calls', () => {
+        const out = ddl('orders /api /aggregate\n  customer_id num /nn\n  order_lines /api lookup\n     sku vc50 /nn\n# settings = {"api": "layered"}');
+        const appBody = segment(out, 'create or replace package body order_lines_app as', 'end order_lines_app;');
+        expect(appBody).not.toContain('orders_agg.');
+        const aggBody = segment(out, 'create or replace package body orders_agg as', 'end orders_agg;');
+        expect(aggBody).toContain('order_lines_app.ins(');
+        expect(aggBody).not.toContain('update_order_lines');
+    });
+
+});
+
 describe('aggregate — degraded tiers / edge cases', () => {
 
     test('no /aggregate: no _agg package at all', () => {

@@ -209,6 +209,14 @@ export class OracleAppRenderer {
         const auditCols = this.auditColumnNames();
         const lockDef      = model.lockDefaults;
         const hkCall    = createHookNameResolver(hk, hasHks);
+        // 2.1.3 — a detail of a /aggregate master writes through the aggregate (ocean-code rule §1.3: a page reaches a
+        // detail through its aggregate, so the rules of the aggregate and its _agg_hks hold whatever the entry point).
+        // Only with a _svc: without one the _agg calls this _app itself, and delegating back would loop.
+        const aggM      = hasSvc ? model.aggregateMaster : null;
+        const aggPkg    = aggM ? aggM.masterTable + '_agg' : '';
+        const aggCols   = aggM ? appCols.filter(({ name }) => name !== aggM.fkCol) : [];
+        // a /versioned detail has add_ only in its aggregate (no update_/remove_): its upd/del stay on its _svc
+        const aggChange = aggM !== null && !isVersioned;
 
         // Column width computed per table instead of a fixed padEnd(13) — same reasoning as _generateAppSpec.
         const appPadWidth = parameterWidth(13, [
@@ -293,7 +301,14 @@ export class OracleAppRenderer {
         insLines.push(...renderInputParameterLines(tbl, appCols, appPadWidth));
         if (!pkIsUserDefined) insLines.push(`${tab}${tab}p_id           out ${tbl}.${pkNm}%type`);
         r += insLines.join(',\n') + `\n${tab}) is\n`;
-        if (hasSvc) {
+        if (aggM) {
+            r += `${tab}begin\n`;
+            const callLines: string[] = [`${tab}${tab}${tab}p_master_id => p_${aggM.fkCol}`];
+            if (pkIsUserDefined) callLines.push(`${tab}${tab}${tab}p_${pkNm} => p_id`);
+            for (const { name } of aggCols) callLines.push(`${tab}${tab}${tab}p_${name} => p_${name}`);
+            if (!pkIsUserDefined) callLines.push(`${tab}${tab}${tab}x_id => p_id`);
+            r += `${tab}${tab}${aggPkg}.add_${tbl}(\n` + callLines.join(',\n') + `\n${tab}${tab});\n`;
+        } else if (hasSvc) {
             r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
             if (pkIsUserDefined) r += `${tab}${tab}l_xid ${tbl}.${pkNm}%type;\n`;
             r += `${tab}begin\n`;
@@ -357,7 +372,17 @@ export class OracleAppRenderer {
             updLines.push(...renderInputParameterLines(tbl, appCols, appPadWidth));
             if (hasVer) updLines.push(`${tab}${tab}p_row_version  in  ${tbl}.row_version%type`);
             r += updLines.join(',\n') + `\n${tab}) is\n`;
-            if (hasSvc) {
+            if (aggM && aggChange) {
+                r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
+                r += `${tab}begin\n`;
+                r += renderRecordAssignments(appCols.map(({ name }) => name), 'l_rec', name => `p_${name}`);
+                r += `${tab}${tab}${aggPkg}.update_${tbl}(\n`;
+                r += `${tab}${tab}${tab}p_master_id => p_${aggM.fkCol},\n`;
+                r += `${tab}${tab}${tab}p_${pkNm} => p_id,\n`;
+                r += `${tab}${tab}${tab}p_rec => l_rec`;
+                if (hasVer) r += `,\n${tab}${tab}${tab}p_row_version => p_row_version`;
+                r += `\n${tab}${tab});\n`;
+            } else if (hasSvc) {
                 r += `${tab}${tab}l_rec ${svc}.t_rec;\n`;
                 r += `${tab}begin\n`;
                 r += renderRecordAssignments(appCols.map(({ name }) => name), 'l_rec', name => `p_${name}`);
@@ -384,8 +409,13 @@ export class OracleAppRenderer {
             // del
             r += `${tab}procedure del (p_id in ${tbl}.${pkNm}%type) is\n`;
             if (!hasSvc) r += `${tab}${tab}l_row ${tbl}%rowtype;\n`;
+            if (aggM && aggChange) r += `${tab}${tab}l_master ${tbl}.${aggM.fkCol}%type;\n`;
             r += `${tab}begin\n`;
-            if (hasSvc) {
+            if (aggM && aggChange) {
+                // the master of the row, as the user sees it: remove_ checks it again and raises [NOT_FOUND] when absent
+                r += `${tab}${tab}select max(${aggM.fkCol}) into l_master from ${tbl}_rls where ${pkNm} = p_id;\n`;
+                r += `${tab}${tab}${aggPkg}.remove_${tbl}(p_master_id => l_master, p_${pkNm} => p_id);\n`;
+            } else if (hasSvc) {
                 r += `${tab}${tab}${svc}.delete_rec(p_id => p_id);\n`;
             } else {
                 r += `${tab}${tab}l_row := p_get_by_id(p_id => p_id);\n`;

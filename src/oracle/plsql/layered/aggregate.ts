@@ -58,6 +58,8 @@ export class OracleAggregateRenderer {
             hasSvc: boolean;
             canWrite: boolean;   // some flat-param create target exists (_svc or _app)
             canDelete: boolean;  // canWrite AND not /versioned or /immutable
+            canUpdate: boolean;  // 2.1.3: a _svc to update through AND not /versioned or /immutable
+            hasVer: boolean;     // the detail has row_version (optimistic locking in update_rec)
         };
         const ds: Detail[] = details.map(({ detailNode, detailTbl, fkCol }) => {
             const { hasSvc } = this._tierInfo(detailNode);
@@ -74,6 +76,8 @@ export class OracleAggregateRenderer {
                 hasSvc,
                 canWrite,
                 canDelete: canWrite && !narrowed,
+                canUpdate: hasSvc && !narrowed,
+                hasVer: this.analyzer.analyze(detailNode).features.versionColumn,
             };
         });
 
@@ -94,6 +98,26 @@ export class OracleAggregateRenderer {
             return lines;
         };
 
+        // 2.1.3 — update_<detail>: a detail changed in place, through its own update_rec, after the same ownership check
+        // as remove_ (a row of another master is [NOT_FOUND]: a detail never moves to another master through here)
+        const updateSig = (d: Detail): string =>
+            `${tab}procedure update_${d.detailTbl} (\n` +
+            `${tab}${tab}p_master_id in ${mTbl}.${mPkNm}%type,\n` +
+            `${tab}${tab}p_${d.dPkNm} in ${d.detailTbl}.${d.dPkNm}%type,\n` +
+            `${tab}${tab}p_rec in ${d.dSvc}.t_rec` +
+            (d.hasVer ? `,\n${tab}${tab}p_row_version in ${d.detailTbl}.row_version%type` : '') +
+            `\n${tab})`;
+        const ownerCheck = (d: Detail): string =>
+            `${tab}${tab}begin\n` +
+            `${tab}${tab}${tab}select ${d.fkCol} into l_owner from ${d.dRls} where ${d.dPkNm} = p_${d.dPkNm};\n` +
+            `${tab}${tab}exception\n` +
+            `${tab}${tab}${tab}when no_data_found then\n` +
+            `${tab}${tab}${tab}${tab}raise_application_error(-20002, '[NOT_FOUND] ${d.detailTbl}: record not found (${d.dPkNm}=' || p_${d.dPkNm} || ')');\n` +
+            `${tab}${tab}end;\n` +
+            `${tab}${tab}if l_owner is null or l_owner != p_master_id then\n` +
+            `${tab}${tab}${tab}raise_application_error(-20002, '[NOT_FOUND] ${d.detailTbl}: ${d.dPkNm}=' || p_${d.dPkNm} || ' does not belong to ${mTbl} ' || p_master_id);\n` +
+            `${tab}${tab}end if;\n`;
+
         // ── <master>_agg_hks (2.1.2) ──────────────────────────────────────────
         // The hooks of the aggregate level (ocean-code rule §1.6: a hook belongs to the level whose rule it
         // protects, and is named after the package it hooks). One before_/after_ pair per add_/remove_ of a
@@ -105,12 +129,19 @@ export class OracleAggregateRenderer {
         const hks = agg + '_hks';
         let r = '';
         if (hookable.length > 0) {
-            const sig = (d: Detail, kind: 'before_add' | 'after_add' | 'before_remove' | 'after_remove'): string =>
+            type Kind = 'before_add' | 'after_add' | 'before_update' | 'after_update' | 'before_remove' | 'after_remove';
+            const sig = (d: Detail, kind: Kind): string =>
                 kind === 'before_add'
                     ? `${tab}procedure before_add_${d.detailTbl} (p_master_id in ${mTbl}.${mPkNm}%type, p_rec in out nocopy ${d.dSvc}.t_rec)`
+                    : kind === 'before_update'
+                    ? `${tab}procedure before_update_${d.detailTbl} (p_master_id in ${mTbl}.${mPkNm}%type, p_${d.dPkNm} in ${d.detailTbl}.${d.dPkNm}%type, p_rec in out nocopy ${d.dSvc}.t_rec)`
                     : `${tab}procedure ${kind}_${d.detailTbl} (p_master_id in ${mTbl}.${mPkNm}%type, p_${d.dPkNm} in ${d.detailTbl}.${d.dPkNm}%type)`;
-            const kinds = (d: Detail): Array<'before_add' | 'after_add' | 'before_remove' | 'after_remove'> =>
-                d.canDelete ? ['before_add', 'after_add', 'before_remove', 'after_remove'] : ['before_add', 'after_add'];
+            // 2.1.3: before_/after_update_ around update_ (a detail changed in place, e.g. a row of an editable grid)
+            const kinds = (d: Detail): Kind[] => [
+                'before_add', 'after_add',
+                ...(d.canUpdate ? ['before_update', 'after_update'] as Kind[] : []),
+                ...(d.canDelete ? ['before_remove', 'after_remove'] as Kind[] : []),
+            ];
             r += `create or replace package ${hks} as\n\n`;
             for (const d of hookable)
                 for (const k of kinds(d)) r += sig(d, k) + `;\n`;
@@ -136,6 +167,7 @@ export class OracleAggregateRenderer {
                 r += `${tab}procedure add_${d.detailTbl} (\n`;
                 r += addParams(d).join(',\n') + `\n${tab});\n\n`;
             }
+            if (d.canUpdate) r += updateSig(d) + `;\n\n`;
             if (d.canDelete) {
                 r += `${tab}procedure remove_${d.detailTbl} (\n`;
                 r += `${tab}${tab}p_master_id in ${mTbl}.${mPkNm}%type,\n`;
@@ -179,6 +211,18 @@ export class OracleAggregateRenderer {
                     r += callLines.join(',\n') + `\n${tab}${tab});\n`;
                 }
                 r += `${tab}end add_${d.detailTbl};\n`;
+            }
+            if (d.canUpdate) {
+                r += `\n` + updateSig(d) + ` is\n`;
+                r += `${tab}${tab}l_owner ${d.detailTbl}.${d.fkCol}%type;\n`;
+                r += `${tab}${tab}l_rec   ${d.dSvc}.t_rec := p_rec;\n`;
+                r += `${tab}begin\n`;
+                r += ownerCheck(d);
+                r += `${tab}${tab}${hks}.before_update_${d.detailTbl}(p_master_id => p_master_id, p_${d.dPkNm} => p_${d.dPkNm}, p_rec => l_rec);\n`;
+                r += `${tab}${tab}l_rec.${d.fkCol} := p_master_id;   -- the hook may change the row, never its master\n`;
+                r += `${tab}${tab}${d.dSvc}.update_rec(p_id => p_${d.dPkNm}, p_rec => l_rec` + (d.hasVer ? `, p_row_version => p_row_version` : '') + `);\n`;
+                r += `${tab}${tab}${hks}.after_update_${d.detailTbl}(p_master_id => p_master_id, p_${d.dPkNm} => p_${d.dPkNm});\n`;
+                r += `${tab}end update_${d.detailTbl};\n`;
             }
             if (d.canDelete) {
                 r += `\n${tab}procedure remove_${d.detailTbl} (\n`;

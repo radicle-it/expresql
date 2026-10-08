@@ -159,7 +159,7 @@ user_role /api full+hks /bridge
 # settings = { api: layered }`,
         table: 'orders',
         render: (builder, node) => builder.generateAggregatePackage(node),
-        expected: '3737:c224b7a33ee59928476bdebf6abcab40fb341995cc6da5d52f8a0d34de5c0629',
+        expected: '7635:a7ab9c80fb886bdb5179e6b57fb477dec5d8019ea29706e9b3665ab9a172365a',
     },
     {
         name: 'trigger and ORDS generation',

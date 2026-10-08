@@ -14,6 +14,20 @@ upstream project.
 
 ### Features
 
+- **`/aggregate`: a detail is written through its aggregate (Oracle, 2.1.3)** — `<master>_agg` gets
+  `update_<detail>(p_master_id, p_<pk>, p_rec <detail>_svc.t_rec[, p_row_version])`: the same ownership
+  check as `remove_` (a row of another master is `[NOT_FOUND]`), then `before_update_<detail>` (record in
+  out, FK forced back to the master), the detail's `update_rec`, `after_update_<detail>` — both new hooks in
+  `<master>_agg_hks`. And the `_app` of a detail **with a `_svc`** delegates its writes to the aggregate:
+  `ins` → `add_`, `upd` → `update_`, `del` → `remove_` (the master read from `<detail>_rls`); reads stay on
+  the `_svc`, the spec is unchanged, so pages and callers do not change. Its body is emitted by the
+  aggregate pass right after `<master>_agg` (the spec stays in place), so every object compiles in order.
+  A `/versioned` detail delegates `ins` only (its aggregate has no `update_`/`remove_`); a detail without a
+  `_svc` does not delegate (the `_agg` calls its `_app`, delegating back would loop). From the
+  `ocean-code` package rule (11-livelli-package-e-log.md §1.3): a page reaches a detail through its
+  aggregate, so the aggregate's rules hold whatever the entry point. 5 tests in `tapi-layered.test.ts`,
+  characterization fingerprint updated (1136 green).
+
 - **`/aggregate`: `<master>_agg_hks`, the hooks of the aggregate level (Oracle)** — generated once,
   emitted before `<master>_agg`; per detail with a `_svc`: `before_add_<detail>` (the detail's
   `t_rec` in out: validate, normalize, raise to refuse; the FK is forced back to the master),
