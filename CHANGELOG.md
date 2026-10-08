@@ -12,6 +12,14 @@ upstream project.
 
 ## [Unreleased]
 
+### Bug Fixes
+
+- **`/between` with a signed bound** — `/between -90 and 90` generated `check (lat between - and and)`: the
+  bounds were read as the token after `/between` and the third one, and the lexer makes `-90` two tokens.
+  `getBetweenClause` now reads them with `listValues`, which joins the tokens of one value (also decimals and
+  options after the range). Found by `ocean-code` (latitude and longitude of a port, 2026-10-08). 4 tests in
+  `test/unit/between.test.ts` (1140 green).
+
 ### Features
 
 - **`/aggregate`: a detail is written through its aggregate (Oracle, 2.1.3)** — `<master>_agg` gets

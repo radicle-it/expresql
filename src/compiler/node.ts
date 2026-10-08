@@ -751,8 +751,10 @@ export class DdlNode implements IDdlNode {
 
     getBetweenClause(): string | null {
         if (!this.isOption('between')) return null;
-        const bi = this.indexOf('between');
-        return this.src[bi + 1].getValue() + ' and ' + this.src[bi + 3].getValue();
+        // the bounds through listValues, which joins the tokens of one value: a signed bound such as -90 is two
+        // tokens for the lexer, and reading src[bi + 1] / src[bi + 3] gave "between - and and"
+        const bounds = this.listValues('between');
+        return bounds[0] + ' and ' + bounds[1];
     }
 
     parseValues(): (string | number)[] | null {
