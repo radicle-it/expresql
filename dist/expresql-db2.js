@@ -722,8 +722,8 @@ var O = class {
 	}
 	getBetweenClause() {
 		if (!this.isOption("between")) return null;
-		let e = this.indexOf("between");
-		return this.src[e + 1].getValue() + " and " + this.src[e + 3].getValue();
+		let e = this.listValues("between");
+		return e[0] + " and " + e[1];
 	}
 	parseValues() {
 		if (this.isOption("check")) return this.listValues("check");
