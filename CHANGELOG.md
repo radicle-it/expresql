@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.1.2 — 2026-10-09
+
+- Oracle: no `create index` on a `/unique` foreign-key column — the unique constraint already indexes it, and a second index on the same column list raises ORA-01408 at deploy.
+
 ## ExpreSQL fork
 
 ExpreSQL is a fork of [Oracle's Quick SQL](https://github.com/oracle/quicksql)
