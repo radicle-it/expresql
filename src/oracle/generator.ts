@@ -438,8 +438,12 @@ export class OracleDDLGenerator extends BaseGenerator {
                 const col = fk ?? (singular(node.fks![fk]) + '_id');
                 // a /unique foreign-key column already has the index of its unique constraint: a second index on
                 // the same column fails with ORA-01408 (2.1.2)
-                const fkChild = node.children.find((c) => c.name === col);
-                if (fkChild && (fkChild.isOption('unique') || fkChild.isOption('uk'))) continue;
+                let uniqueFk = false;
+                for (const c in node.children) {
+                    const child = node.children[c];
+                    if (fk === child.parseName() && (child.isOption('unique') || child.isOption('uk'))) uniqueFk = true;
+                }
+                if (uniqueFk) continue;
                 if (num === 1) ret += '-- table index\n';
                 // Skip tenant prefix when: tenantid off, this table is supra-tenant,
                 // FK column IS tenant_id (bug guard), or the FK target is supra-tenant.

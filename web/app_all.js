@@ -503,7 +503,7 @@ no delete until 16 days after insert`;o!==``&&a!==``&&(a=`
 
 `}return s}_genMultiColFkAlters(e,t){let n=this._ddl.objPrefix(`no schema`)+e.parseName(),r=``;for(let i in e.fks)if(0<i.indexOf(`,`)){let a=e.fks[i];r+=`alter table `+t+` add constraint `+a+`_`+n+`_fk foreign key (`+i+`) references `+a+`;
 
-`}return r}_genIndexes(e,t,n){let r=this._ddl.objPrefix(`no schema`)+e.parseName(),i=``,a=1,o=this._ddl.optionEQvalue(`tenantid`,!0),s=e.isOption(`notenantid`);for(let n in e.fks)if(!e.isMany2One()){let r=n??t9(e.fks[n])+`_id`,c=e.children.find(e=>e.name===r);if(c&&(c.isOption(`unique`)||c.isOption(`uk`)))continue;a===1&&(i+=`-- table index
+`}return r}_genIndexes(e,t,n){let r=this._ddl.objPrefix(`no schema`)+e.parseName(),i=``,a=1,o=this._ddl.optionEQvalue(`tenantid`,!0),s=e.isOption(`notenantid`);for(let n in e.fks)if(!e.isMany2One()){let r=n??t9(e.fks[n])+`_id`,c=!1;for(let t in e.children){let r=e.children[t];n===r.parseName()&&(r.isOption(`unique`)||r.isOption(`uk`))&&(c=!0)}if(c)continue;a===1&&(i+=`-- table index
 `);let l=this._ddl.find(e.fks[n]),u=l!==null&&l.isOption(`notenantid`),d=!o||s||r===`tenant_id`||u?r:`tenant_id, ${r}`;i+=`create index `+t+this._naming.idx+a+++` on `+t+` (`+d+`);
 
 `}let c=e.getOptionValue(`pk`);c&&(i+=`alter table `+t+` add constraint `+r+this._naming.pk+` primary key (`+c+`);

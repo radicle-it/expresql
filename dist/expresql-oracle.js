@@ -12640,8 +12640,12 @@ var Ut = class extends le {
 	_genIndexes(e, t, r) {
 		let i = this._ddl.objPrefix("no schema") + e.parseName(), a = "", o = 1, s = this._ddl.optionEQvalue("tenantid", !0), c = e.isOption("notenantid");
 		for (let r in e.fks) if (!e.isMany2One()) {
-			let i = r ?? n(e.fks[r]) + "_id", l = e.children.find((e) => e.name === i);
-			if (l && (l.isOption("unique") || l.isOption("uk"))) continue;
+			let i = r ?? n(e.fks[r]) + "_id", l = !1;
+			for (let t in e.children) {
+				let n = e.children[t];
+				r === n.parseName() && (n.isOption("unique") || n.isOption("uk")) && (l = !0);
+			}
+			if (l) continue;
 			o === 1 && (a += "-- table index\n");
 			let u = this._ddl.find(e.fks[r]), d = u !== null && u.isOption("notenantid"), f = !s || c || i === "tenant_id" || d ? i : `tenant_id, ${i}`;
 			a += "create index " + t + this._naming.idx + o++ + " on " + t + " (" + f + ");\n\n";
