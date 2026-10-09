@@ -12513,28 +12513,29 @@ var Gt = class extends le {
 				i += x + x + " ".repeat(e.maxChildNameLen()) + "constraint " + r + "_" + a + this._naming.fk + "\n";
 				let t = "";
 				e.isOption("cascade") ? t = " on delete cascade" : e.isOption("setnull") && (t = " on delete set null");
-				let n = "";
-				for (let r in e.children) {
-					let i = e.children[r];
-					if (a === i.parseName()) {
-						(i.isOption("nn") || i.isOption("notnull")) && (n = Ut), i.isOption("cascade") ? t = " on delete cascade" : i.isOption("setnull") && (t = " on delete set null");
+				let n = "", s = "";
+				for (let i in e.children) {
+					let o = e.children[i];
+					if (a === o.parseName()) {
+						(o.isOption("nn") || o.isOption("notnull")) && (n = Ut), o.isOption("cascade") ? t = " on delete cascade" : o.isOption("setnull") && (t = " on delete set null"), (o.isOption("unique") || o.isOption("uk")) && (s = "\n" + x + x + " ".repeat(e.maxChildNameLen()) + "constraint " + r + "_" + a + this._naming.unq + " unique");
 						break;
 					}
 				}
-				t ||= this._globalOnDelete(), i += x + x + " ".repeat(e.maxChildNameLen()) + "references " + p + o + t + n + ",\n";
+				t ||= this._globalOnDelete(), i += x + x + " ".repeat(e.maxChildNameLen()) + "references " + p + o + t + n + s + ",\n";
 			} else {
 				let n = "", s = "";
 				e.isOption("cascade") ? s = " on delete cascade" : e.isOption("setnull") && (s = " on delete set null");
+				let c = "";
 				for (let t in e.children) {
-					let r = e.children[t];
-					if (a === r.parseName()) {
-						(r.isOption("nn") || r.isOption("notnull")) && (n = Ut), r.isOption("cascade") ? s = " on delete cascade" : r.isOption("setnull") && (s = " on delete set null");
+					let i = e.children[t];
+					if (a === i.parseName()) {
+						(i.isOption("nn") || i.isOption("notnull")) && (n = Ut), i.isOption("cascade") ? s = " on delete cascade" : i.isOption("setnull") && (s = " on delete set null"), (i.isOption("unique") || i.isOption("uk")) && (c = "\n" + x + x + " ".repeat(e.maxChildNameLen()) + "constraint " + r + "_" + a + this._naming.unq + " unique");
 						break;
 					}
 				}
-				i += n + ",\n", s ||= this._globalOnDelete();
-				let c = "alter table " + t + " add constraint " + r + "_" + a + "_fk foreign key (" + a + ") references " + p + o + s + ";\n";
-				this._ddl.postponedAltersSet.has(c) || (this._ddl.postponedAlters.push(c), this._ddl.postponedAltersSet.add(c));
+				i += n + c + ",\n", s ||= this._globalOnDelete();
+				let l = "alter table " + t + " add constraint " + r + "_" + a + "_fk foreign key (" + a + ") references " + p + o + s + ";\n";
+				this._ddl.postponedAltersSet.has(l) || (this._ddl.postponedAlters.push(l), this._ddl.postponedAltersSet.add(l));
 			}
 		}
 		return i;

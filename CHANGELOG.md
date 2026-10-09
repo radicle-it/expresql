@@ -10,6 +10,16 @@ maintained by Radicle IT, released under the same Universal Permissive
 License v1.0. Versions and entries below `1.2.15` are inherited from the
 upstream project.
 
+## [2.1.1] - 2026-10-09
+
+### Fixed
+
+- Oracle: `/unique` (or `/uk`) on a foreign-key column was silently dropped (the inline
+  `references` constraint was the only one rendered). Now the column gets a second inline
+  constraint `<prefix>_<table>_<column>_unq unique`, in both the inline and the postponed
+  (`alter table ... add constraint ... foreign key`) branches. Found by the `flw_` module of
+  ocean-code (one draft per model, one owner per definition).
+
 ## [Unreleased]
 
 ### Bug Fixes

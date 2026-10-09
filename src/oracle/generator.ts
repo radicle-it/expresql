@@ -233,32 +233,40 @@ export class OracleDDLGenerator extends BaseGenerator {
                 if (node.isOption('cascade')) onDelete = ' on delete cascade';
                 else if (node.isOption('setnull')) onDelete = ' on delete set null';
                 let notNull = '';
+                let unique = '';
                 for (const c in node.children) {
                     const child = node.children[c];
                     if (fk === child.parseName()) {
                         if (child.isOption('nn') || child.isOption('notnull')) notNull = NOT_NULL_LOWER;
                         if (child.isOption('cascade')) onDelete = ' on delete cascade';
                         else if (child.isOption('setnull')) onDelete = ' on delete set null';
+                        // /unique on a foreign-key column (one draft per model, one owner per definition): a second
+                        // inline constraint after the reference (2026-10-09; before, the option was silently dropped)
+                        if (child.isOption('unique') || child.isOption('uk'))
+                            unique = '\n' + tab + tab + ' '.repeat(node.maxChildNameLen()) + 'constraint ' + cstObjName + '_' + fk + this._naming.unq + ' unique';
                         break;
                     }
                 }
                 if (!onDelete) onDelete = this._globalOnDelete();
-                ret += tab + tab + ' '.repeat(node.maxChildNameLen()) + 'references ' + refPrefix + parent + onDelete + notNull + ',\n';
+                ret += tab + tab + ' '.repeat(node.maxChildNameLen()) + 'references ' + refPrefix + parent + onDelete + notNull + unique + ',\n';
             } else {
                 let notNull = '';
                 let onDelete = '';
                 if (node.isOption('cascade')) onDelete = ' on delete cascade';
                 else if (node.isOption('setnull')) onDelete = ' on delete set null';
+                let unique = '';
                 for (const c in node.children) {
                     const child = node.children[c];
                     if (fk === child.parseName()) {
                         if (child.isOption('nn') || child.isOption('notnull')) notNull = NOT_NULL_LOWER;
                         if (child.isOption('cascade')) onDelete = ' on delete cascade';
                         else if (child.isOption('setnull')) onDelete = ' on delete set null';
+                        if (child.isOption('unique') || child.isOption('uk'))
+                            unique = '\n' + tab + tab + ' '.repeat(node.maxChildNameLen()) + 'constraint ' + cstObjName + '_' + fk + this._naming.unq + ' unique';
                         break;
                     }
                 }
-                ret += notNull + ',\n';
+                ret += notNull + unique + ',\n';
                 if (!onDelete) onDelete = this._globalOnDelete();
                 const alter = 'alter table ' + objName + ' add constraint ' + cstObjName + '_' + fk + '_fk foreign key (' + fk + ') references ' + refPrefix + parent + onDelete + ';\n';
                 if (!this._ddl.postponedAltersSet.has(alter)) {
