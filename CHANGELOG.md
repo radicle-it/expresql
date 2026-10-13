@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.1.3 — 2026-10-13
+
+- Compiler: a type word inside a `/check` or `/values` list is a value, not the type of the column. `kind vc10 /check TEXT, NUMBER, DATE, FLAG` became a `date` column (with the midnight check of `dateonly`), and `NUMERIC` a `number`: the type keywords (`date`, `num…`, `vc`, `yn`/`boolean`, `vector`) are now read only between the name and the first `/option` (`DdlNode.indexOfType`). Found by the `ast_` module of ocean-code (the kind of the value of a feature).
+
 ## 2.1.2 — 2026-10-09
 
 - Oracle: no `create index` on a `/unique` foreign-key column — the unique constraint already indexes it, and a second index on the same column list raises ORA-01408 at deploy.

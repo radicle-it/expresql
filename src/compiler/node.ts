@@ -306,6 +306,17 @@ export class DdlNode implements IDdlNode {
         return -1;
     }
 
+    /**
+     * A type keyword counts only in the type section of a column, between the name and the first /option: a value of
+     * a /check or /values list (status in NUMBER, DATE, NUMERIC...) is not a type (2026-10-13: "data_type vc10
+     * /check TEXT, NUMBER, DATE, FLAG" became a date column with a midnight check, then a number).
+     */
+    indexOfType(token: string, isPrefix?: boolean, startFrom = 0): number {
+        const pos = this.indexOf(token, isPrefix, startFrom);
+        if (this._slashPos === undefined) this._slashPos = this.indexOf('/');
+        return (pos < 0 || (0 <= this._slashPos && this._slashPos <= pos)) ? -1 : pos;
+    }
+
     occursBeforeOption(token: string, isPrefix?: boolean): boolean {
         const tokenPos = this.indexOf(token, isPrefix);
         if (tokenPos <= 0) return false;
@@ -428,7 +439,7 @@ export class DdlNode implements IDdlNode {
         let varcharLen: number = (colName.endsWith('_name') || colName.startsWith('name') || colName.startsWith('email'))
             ? (this._ctx.getOptionValue('namelen') as number) || 255
             : 4000;
-        const vcPos = this.indexOf('vc', true, 1);  // skip name token at pos 0
+        const vcPos = this.indexOfType('vc', true, 1);  // skip name token at pos 0
         if (0 < vcPos) {
             let vcArg = src[vcPos].value.substring('vc'.length);
             if (vcArg === '') {
@@ -440,7 +451,7 @@ export class DdlNode implements IDdlNode {
         let base = 'varchar';
 
         // Phase 2: numeric by column name convention
-        const datePos  = this.indexOf('date');
+        const datePos  = this.indexOfType('date');
         if (this._slashPos === undefined) this._slashPos = this.indexOf('/');
         const slashPos = this._slashPos;
         if (_nameImpliesNumeric(colName, src, vcPos, datePos, slashPos, this.indexOf('pk')))
@@ -465,7 +476,8 @@ export class DdlNode implements IDdlNode {
         // an explicit declaration so it always wins.
         const hasExplicitType = vcPos > 0 || this.occursBeforeOption('int', true) || vector !== null;
         const isBooleanName  = !hasExplicitType && (colName.endsWith('_yn') || colName.startsWith('is_'));
-        const hasBoolKeyword = boolTypes.some(bt => 0 < this.indexOf(bt));
+        // the keyword before the options, or the directive itself (/boolean, /yn): never a value of a /check list
+        const hasBoolKeyword = boolTypes.some(bt => 0 < this.indexOfType(bt) || this.isOption(bt));
         if (isBooleanName || hasBoolKeyword) {
             base       = 'varchar';
             varcharLen = 1;
@@ -484,7 +496,7 @@ export class DdlNode implements IDdlNode {
         // Phase 5: phone_number + num(precision)
         if (this.indexOf('phone_number') === 0) base = 'number';
         let numericSpec: string | undefined;
-        const numFrom = this.indexOf('num', true, 1);  // skip name token at pos 0
+        const numFrom = this.indexOfType('num', true, 1);  // skip name token at pos 0
         if (0 < numFrom) {
             base = 'number';
             const numTo = this.indexOf(')');
@@ -547,7 +559,7 @@ export class DdlNode implements IDdlNode {
     }
 
     vectorType(mnemonics: string): string | null {
-        const vectPos = this.indexOf(mnemonics, true);
+        const vectPos = this.indexOfType(mnemonics, true, 1);
         const src = this.src;
         if (0 < vectPos) {
             let dim = src[vectPos].value.substring(mnemonics.length);
