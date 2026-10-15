@@ -3,6 +3,15 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.2.0 — 2026-10-15
+
+- Oracle: **`/import [insert|upsert|update]`** on a table with a service (`service+hks`, `full+hks`) generates, after every API and every `_agg`, the importer of the table for the `imp_` module of ocean-code (its doc 38, phase I2): `<t>_key_vw` (the id and the business key flattened over the `_rls` views: a key column that is a foreign key becomes the key of the table it points to, with its name as prefix), `<t>_imp` (`describe`, the fields as json; `load(p_job_id, p_dry_run)`, the loop of `imp_load_svc` with one savepoint per row; `register_target` / `unregister_target` through `imp_registry_uc`) and `<t>_imp_app` (`check_job`, `load`, `register_target`, `unregister_target`). A row is converted with `imp_convert_svc` by the type of its column (TEXT with its length, INTEGER, DECIMAL, DAY, INSTANT, FLAG, a `/check` as a closed vocabulary), its foreign keys are resolved by the business key of the table they point to (`[IMP_LOOKUP]`, `[IMP_LOOKUP_PARTIAL]`, `[IMP_LOOKUP_AMBIGUOUS]`), the row is found by the table's business key (a `/unique` column, `{import_key 'y'}` to choose among more, or a table `/unique a, b`), the mode decides (`[IMP_EXISTS]`, `[IMP_NOT_FOUND]`), an update changes only the mapped fields (`UNCHANGED` when nothing changes), and the write goes through `<t>_svc` (hooks, permissions, RLS).
+- Column annotations read by `/import`: `{import 'col, col'}` on a foreign key to a table of another model (the columns of its `<ref>_key_vw`, compared as text), `{import 'no'}` (not importable), `{label 'X'}`, `{label_it 'Y'}`; on the table `{label}`, `{label_it}`, `{resource 'R'}` (the resource of `aut_`, default the table name).
+- **`/keyview`** generates only the key view of a table, for the tables other models point to.
+- A declaration the importer cannot honour is an error of generation (the CLI exits 1 with the reason): a foreign key to another model without `{import '…'}`, a required foreign key left out, a table without a service, a `/versioned` table, a detail of an `/aggregate` (their importers are written by hand), `upsert`/`update` without a business key, an unknown mode.
+- CLI: the process exits only once stdout is written. `process.exit` right after a large `console.log` cut the output read from a pipe or `$(…)` (1,482 lines of 6,495, no error).
+- Without `/import` and `/keyview` every model of ocean-code (35) generates the same text as 2.1.4, the line of the version aside.
+
 ## 2.1.4 — 2026-10-15
 
 - Compiler: the timestamp types are shortened (`timestamp` → `ts`, `… with time zone` → `tswtz`, `… with local time zone` → `tswltz`) only where a type is written, between the name and the first `/option` or `--` comment. `data_type vc20 /check NUMERIC, VARCHAR, DATE, TIMESTAMP, CLOB` generated `check (data_type in (…,'ts',…))`: the value `TIMESTAMP` was refused at runtime. Found by the `bic_` module of ocean-code (the BICC column types of a data store); every other model of ocean-code generates the same text.

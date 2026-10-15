@@ -2,6 +2,7 @@ import type { Naming } from '../compiler/node.js';
 import type { DdlContext, IDdlNode } from '../compiler/types.js';
 import { OracleLegacyTapiBuilder } from './plsql/legacy-tapi.js';
 import { OracleAggregateRenderer } from './plsql/layered/aggregate.js';
+import { OracleImportRenderer } from './plsql/layered/importer.js';
 import { OracleLayeredTapiRenderer } from './plsql/layered/orchestrator.js';
 import { generateRestEnable } from './plsql/ords.js';
 import { OracleTableApiAnalyzer } from './plsql/table-model.js';
@@ -23,6 +24,7 @@ export class OraclePlsqlBuilder {
     private tableApi:   OracleTableApiAnalyzer;
     private aggregate:  OracleAggregateRenderer;
     private layered:    OracleLayeredTapiRenderer;
+    private importer:   OracleImportRenderer;
 
     constructor(
         private ctx: DdlContext,
@@ -33,6 +35,7 @@ export class OraclePlsqlBuilder {
         this.tableApi   = new OracleTableApiAnalyzer(ctx);
         this.aggregate  = new OracleAggregateRenderer(this.tableApi);
         this.layered    = new OracleLayeredTapiRenderer(ctx, this.tableApi);
+        this.importer   = new OracleImportRenderer(ctx, this.tableApi);
     }
 
     restEnable(node: IDdlNode): string              { return generateRestEnable(this.ctx, node); }
@@ -58,6 +61,11 @@ export class OraclePlsqlBuilder {
             if (body) r += '\n' + body;
         }
         return r;
+    }
+
+    /** 2.2.0 — /import, /keyview: the key views, the importers and their interfaces (after every API and _agg) */
+    generateImports(descendants: IDdlNode[]): string {
+        return this.importer.generateAll(descendants);
     }
 
     generateTAPI(node: IDdlNode): string {

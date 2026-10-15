@@ -69,6 +69,7 @@ const tableDirectives = [
     ,'businesskey'
     ,'bridge'
     ,'aggregate'
+    ,'import','keyview'
     ,'unique','uk'
     ,'pk'
     ,'cascade','setnull'

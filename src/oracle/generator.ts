@@ -682,6 +682,7 @@ export class OracleDDLGenerator extends BaseGenerator {
     generateTAPI(node: IDdlNode): string               { return this._plsql.generateTAPI(node); }
     generateLayeredTAPI(node: IDdlNode): string        { return this._plsql.generateLayeredTAPI(node); }
     generateAggregatePackage(node: IDdlNode): string   { return this._plsql.generateAggregatePackage(node); }
+    generateImports(descendants: IDdlNode[]): string  { return this._plsql.generateImports(descendants); }
     generateTenantCtxSpec(prefix: string): string       { return this._plsql.generateTenantCtxSpec(prefix); }
     generateTenantCtxBody(prefix: string): string       { return this._plsql.generateTenantCtxBody(prefix); }
     generateTenantBootstrapSpec(prefix: string): string { return this._plsql.generateTenantBootstrapSpec(prefix); }
@@ -821,6 +822,11 @@ export class OracleDDLGenerator extends BaseGenerator {
             const agg = this.generateAggregatePackage(node);
             if (agg) { if (j++ === 0) output += '-- APIs\n'; output += agg + '\n'; }
         }
+
+        // 2.2.0 — /import, /keyview: a third pass, after every table's API and every _agg (an importer writes
+        // through <table>_svc, a key view reads the _rls views of the tables its key points to)
+        const imports = this.generateImports(descendants);
+        if (imports) { if (j++ === 0) output += '-- APIs\n'; output += '-- importers (/import)\n' + imports + '\n'; }
 
         // Views
         j = 0;

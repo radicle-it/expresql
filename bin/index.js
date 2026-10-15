@@ -50,7 +50,9 @@ try {
         console.log(new expresql(text).getDDL());
     }
 
-    process.exit(0);
+    // 2.2.0 — exit only once stdout is written: process.exit right after a large console.log cut the output when it
+    // went to a pipe or a file (1,482 lines of 6,495, no error)
+    process.stdout.write('', () => process.exit(0));
 
 } catch (e) {
     console.error(e instanceof Error ? e.message : e);
