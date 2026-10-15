@@ -98,8 +98,17 @@ describe('/import: what is generated', () => {
         expect(out).toContain('"field_name":"currency_code","label":"Currency","data_type":"TEXT","required":"N","key":"N","lookup":"ref_currency_key_vw(code)"');
         expect(out).toContain('"labels":{"it":"Nome"}');
     });
+    test('a long load in a one-off job of the scheduler (2.3.0)', () => {
+        expect(out).toContain("procedure load (p_job_id in number, p_dry_run in boolean default false, p_commit_rows in pls_integer default null);");
+        expect(out).toContain("imp_load_svc.queue(p_job_id, c_target);");
+        expect(out).toContain("job_action => 'ZZ_ITEM_IMP.RUN_JOB'");
+        expect(out).toContain("auto_drop => true, enabled => false");
+        expect(out).toContain("load(p_job_id, p_commit_rows => imp_load_svc.commit_rows);");
+        expect(out).toContain("imp_load_svc.fail_job(p_job_id, dbms_utility.format_error_stack);");
+        expect(out).toContain("if imp_load_svc.async_wanted(p_job_id) then");
+    });
     test('the loop of imp_load_svc', () => {
-        expect(out).toContain("imp_load_svc.begin_load(p_job_id, c_target, p_dry_run);");
+        expect(out).toContain("imp_load_svc.begin_load(p_job_id, c_target, p_dry_run, p_commit_rows);");
         expect(out).toContain('imp_load_svc.row_failed;');
         expect(out).toContain('exit when imp_load_svc.stop_now;');
         expect(out).toContain('zz_item_imp.load(p_job_id, p_dry_run => true);');

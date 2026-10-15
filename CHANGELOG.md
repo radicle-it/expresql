@@ -3,6 +3,15 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.3.0 — 2026-10-15
+
+- `/import`: a long load in a job of the scheduler (phase I5 of doc 38 of ocean-code). `<t>_imp.load` takes
+  `p_commit_rows`; `load_async` queues the import (`imp_load_svc.queue`) and creates a one-off job `IMP_LOAD_<id>`
+  (auto drop) whose action is `<t>_imp.run_job` -- the module that owns the importer creates it, no name travels as
+  data; `run_job` puts the owner of the import in session (`imp_load_svc.begin_job`), loads with a commit every
+  `imp_load_svc.commit_rows` rows, and keeps why it failed (`fail_job`). `<t>_imp_app.load` goes to the job above
+  `IMP_SYNC_MAX_ROWS` rows (`imp_load_svc.async_wanted`).
+
 ## 2.2.1 — 2026-10-15
 
 - `/import`: `{import 'auto'}` on a required column the service fills when it is empty (a number from a series): it

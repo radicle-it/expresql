@@ -447,8 +447,13 @@ export class OracleImportRenderer {
         r += `${tab}-- import of imp_ written through ${m.service}, one savepoint per row (imp_load_svc)\n\n`;
         r += `${tab}-- the fields of the file as json (imp_registry_uc.register_target, the template of the pages)\n`;
         r += `${tab}function describe return clob;\n\n`;
-        r += `${tab}-- loads (or with p_dry_run tries and rolls back) the rows not written yet of import p_job_id\n`;
-        r += `${tab}procedure load (p_job_id in number, p_dry_run in boolean default false);\n\n`;
+        r += `${tab}-- loads (or with p_dry_run tries and rolls back) the rows not written yet of import p_job_id; p_commit_rows: a\n`;
+        r += `${tab}-- commit every n rows (a job of the scheduler)\n`;
+        r += `${tab}procedure load (p_job_id in number, p_dry_run in boolean default false, p_commit_rows in pls_integer default null);\n\n`;
+        r += `${tab}-- 2.3.0: the load in a job of the scheduler (IMP_LOAD_<id>, dropped when done): queued by imp_load_svc, run as\n`;
+        r += `${tab}-- the owner of the import by run_job\n`;
+        r += `${tab}procedure load_async (p_job_id in number);\n`;
+        r += `${tab}procedure run_job (p_job_id in number);\n\n`;
         r += `${tab}-- what this table offers to import, in imp_target (the seed of the module)\n`;
         r += `${tab}procedure register_target;\n`;
         r += `${tab}procedure unregister_target;\n\n`;
@@ -599,11 +604,11 @@ export class OracleImportRenderer {
         r += `${tab}end load_row;\n\n`;
 
         // the loop
-        r += `${tab}procedure load (p_job_id in number, p_dry_run in boolean default false) is\n`;
+        r += `${tab}procedure load (p_job_id in number, p_dry_run in boolean default false, p_commit_rows in pls_integer default null) is\n`;
         r += `${t2}l_action varchar2(20);\n`;
         r += `${t2}l_id     number;\n`;
         r += `${tab}begin\n`;
-        r += `${t2}imp_load_svc.begin_load(p_job_id, c_target, p_dry_run);\n`;
+        r += `${t2}imp_load_svc.begin_load(p_job_id, c_target, p_dry_run, p_commit_rows);\n`;
         r += `${t2}while imp_load_svc.next_row loop\n`;
         r += `${t3}begin\n`;
         r += `${t4}l_id := load_row(l_action);\n`;
@@ -615,6 +620,31 @@ export class OracleImportRenderer {
         r += `${t2}end loop;\n`;
         r += `${t2}imp_load_svc.end_load;\n`;
         r += `${tab}end load;\n\n`;
+
+        // 2.3.0 -- a load too long for the page: a one-off job of the scheduler, created by the module that owns the
+        // importer (no name travels as data: the action is this package)
+        const jobAction = `${m.importer.toUpperCase()}.RUN_JOB`;
+        r += `${tab}procedure load_async (p_job_id in number) is\n`;
+        r += `${t2}l_name varchar2(128) := 'IMP_LOAD_' || p_job_id;\n`;
+        r += `${tab}begin\n`;
+        r += `${t2}imp_load_svc.queue(p_job_id, c_target);\n`;
+        r += `${t2}dbms_scheduler.create_job(job_name => l_name, job_type => 'STORED_PROCEDURE', job_action => '${jobAction}',\n`;
+        r += `${t2}                          number_of_arguments => 1, auto_drop => true, enabled => false,\n`;
+        r += `${t2}                          comments => 'A load of imp_ (00-docs/38 §13): import ' || p_job_id || ', dropped when done');\n`;
+        r += `${t2}dbms_scheduler.set_job_argument_value(job_name => l_name, argument_position => 1, argument_value => to_char(p_job_id));\n`;
+        r += `${t2}dbms_scheduler.enable(l_name);\n`;
+        r += `${tab}end load_async;\n\n`;
+        r += `${tab}procedure run_job (p_job_id in number) is\n`;
+        r += `${tab}begin\n`;
+        r += `${t2}imp_load_svc.begin_job(p_job_id);\n`;
+        r += `${t2}load(p_job_id, p_commit_rows => imp_load_svc.commit_rows);\n`;
+        r += `${t2}imp_load_svc.end_job;\n`;
+        r += `${tab}exception when others then\n`;
+        r += `${t2}rollback;\n`;
+        r += `${t2}imp_load_svc.fail_job(p_job_id, dbms_utility.format_error_stack);\n`;
+        r += `${t2}imp_load_svc.end_job;\n`;
+        r += `${t2}raise;\n`;
+        r += `${tab}end run_job;\n\n`;
 
         // describe and the registration
         const fields = this.fields(m);
@@ -655,7 +685,7 @@ export class OracleImportRenderer {
         let r = `create or replace package ${m.app} as\n`;
         r += `${tab}-- the interface of the importer of ${m.table} (generated, /import): the pages, a test, REST at the end\n`;
         r += `${tab}procedure check_job (p_job_id in number);     -- the dry run: every rule, nothing written\n`;
-        r += `${tab}procedure load      (p_job_id in number);\n`;
+        r += `${tab}procedure load      (p_job_id in number);     -- in a job of the scheduler above IMP_SYNC_MAX_ROWS rows\n`;
         r += `${tab}procedure register_target;\n`;
         r += `${tab}procedure unregister_target;\n`;
         r += `end ${m.app};\n/\n`;
@@ -666,7 +696,9 @@ export class OracleImportRenderer {
         const m = this.model(node);
         let r = `create or replace package body ${m.app} as\n\n`;
         r += `${tab}procedure check_job (p_job_id in number) is\n${tab}begin\n${tab}${tab}${m.importer}.load(p_job_id, p_dry_run => true);\n${tab}end check_job;\n\n`;
-        r += `${tab}procedure load (p_job_id in number) is\n${tab}begin\n${tab}${tab}${m.importer}.load(p_job_id);\n${tab}end load;\n\n`;
+        r += `${tab}procedure load (p_job_id in number) is\n${tab}begin\n`;
+        r += `${tab}${tab}if imp_load_svc.async_wanted(p_job_id) then\n${tab}${tab}${tab}${m.importer}.load_async(p_job_id);\n`;
+        r += `${tab}${tab}else\n${tab}${tab}${tab}${m.importer}.load(p_job_id);\n${tab}${tab}end if;\n${tab}end load;\n\n`;
         r += `${tab}procedure register_target is\n${tab}begin\n${tab}${tab}${m.importer}.register_target;\n${tab}end register_target;\n\n`;
         r += `${tab}procedure unregister_target is\n${tab}begin\n${tab}${tab}${m.importer}.unregister_target;\n${tab}end unregister_target;\n\n`;
         r += `end ${m.app};\n/\n`;
