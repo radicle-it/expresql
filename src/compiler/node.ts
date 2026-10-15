@@ -138,12 +138,16 @@ export class DdlNode implements IDdlNode {
         this._ctx    = ctx;
         this.comment = null;
 
+        // the timestamp types are shortened only where a type is written: between the name and the first /option or
+        // -- comment. A /check or /values list keeps its words (TIMESTAMP is a value there, 2.1.4) and so does a comment
         function normalizeContent(ddlLine: string): string {
-            let ret = ddlLine;
+            const cut = ddlLine.search(/\s(\/|--)/);
+            let ret = cut < 0 ? ddlLine : ddlLine.substring(0, cut);
+            const rest = cut < 0 ? '' : ddlLine.substring(cut);
             ret = ret.replace(/ timestamp with local time zone/gi, ' tswltz');
             ret = ret.replace(/ timestamp with time zone/gi, ' tswtz');
             ret = ret.replace(/ timestamp/gi, ' ts');
-            return ret;
+            return ret + rest;
         }
 
         this.content = normalizeContent(inputLine);

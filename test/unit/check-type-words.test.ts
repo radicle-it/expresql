@@ -34,6 +34,17 @@ describe('type words inside a /check list', () => {
         expect(out).toContain('born_day_ck');
         expect(out).toMatch(/n\s+number\(5\)/);
     });
+    test('TIMESTAMP as a value stays TIMESTAMP, not the abbreviation ts (2.1.4)', () => {
+        const out = ddl('  data_type vc20 /check NUMERIC, VARCHAR, DATE, TIMESTAMP, CLOB\n');
+        expect(out).toMatch(/data_type\s+varchar2\(20 char\)/);
+        expect(out).toContain("check (data_type in ('numeric','varchar','date','timestamp','clob'))");
+    });
+    test('the timestamp types written as types are still read', () => {
+        const out = ddl('  at timestamp with local time zone /nn\n  tz timestamp with time zone\n  ts0 timestamp -- a timestamp\n');
+        expect(out).toMatch(/at\s+timestamp with local time zone not null/);
+        expect(out).toMatch(/tz\s+timestamp with time zone/);
+        expect(out).toMatch(/ts0\s+timestamp\b/);
+    });
     test('a column named like a type keeps its inferred type', () => {
         expect(ddl('  date\n')).toMatch(/date\s+date\b/);
     });

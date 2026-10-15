@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.1.4 — 2026-10-15
+
+- Compiler: the timestamp types are shortened (`timestamp` → `ts`, `… with time zone` → `tswtz`, `… with local time zone` → `tswltz`) only where a type is written, between the name and the first `/option` or `--` comment. `data_type vc20 /check NUMERIC, VARCHAR, DATE, TIMESTAMP, CLOB` generated `check (data_type in (…,'ts',…))`: the value `TIMESTAMP` was refused at runtime. Found by the `bic_` module of ocean-code (the BICC column types of a data store); every other model of ocean-code generates the same text.
+
 ## 2.1.3 — 2026-10-13
 
 - Compiler: a type word inside a `/check` or `/values` list is a value, not the type of the column. `kind vc10 /check TEXT, NUMBER, DATE, FLAG` became a `date` column (with the midnight check of `dateonly`), and `NUMERIC` a `number`: the type keywords (`date`, `num…`, `vc`, `yn`/`boolean`, `vector`) are now read only between the name and the first `/option` (`DdlNode.indexOfType`). Found by the `ast_` module of ocean-code (the kind of the value of a feature).
