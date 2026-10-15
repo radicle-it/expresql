@@ -10,6 +10,7 @@ import { OracleTableApiAnalyzer } from '../table-model.js';
  *     name         vc200 /nn {label_it 'Nome'}
  *     currency_id  num /fk ref_currency {import 'code'}  -- in the file: currency_code, resolved through ref_currency_key_vw
  *     note         vc4000 {import 'no'}                  -- not importable
+ *     doc_no       vc30 /nn /unique {import 'auto'}      -- required, but the service fills it when the file has none
  *
  * generates, after the API of every table:
  *   <t>_key_vw      id + the business key flattened (a key column that is a foreign key becomes the key of the table it
@@ -324,7 +325,8 @@ export class OracleImportRenderer {
         for (const col of api.columns.service) {
             const name = col.parseName().toLowerCase();
             if (name === api.names.pk) continue;
-            if ((col.getAnnotationValue('import') ?? '').toLowerCase() === 'no') continue;
+            const ann = (col.getAnnotationValue('import') ?? '').trim().toLowerCase();
+            if (ann === 'no') continue;
             const sem = semanticOf(col);
             const sqlType = sem.base;
             if (sem.base.toLowerCase() === 'clob') clobColumns.add(name);
@@ -342,7 +344,7 @@ export class OracleImportRenderer {
                     labelIt: col.getAnnotationValue('label_it'),
                     type,
                     maxLength,
-                    required: col.isOption('nn') && !hasDefault,
+                    required: col.isOption('nn') && !hasDefault && ann !== 'auto',   // {import 'auto'}: the service fills it
                     key: keyColumns.includes(name),
                     lookup: null,
                     allowed: type === 'FLAG' ? [] : allowed,
@@ -569,19 +571,21 @@ export class OracleImportRenderer {
         r += `${t2}-- an update: the row as it is, then only the fields of the file\n`;
         r += `${t2}l_row := ${m.service}.get(l_id);\n`;
         for (const c of params) r += `${t2}l_rec.${c} := l_row.${c};\n`;
-        const same = (c: string) => m.clobColumns.has(c)
-            ? `(l_rec.${c} is null and l_new.${c} is null or nvl(dbms_lob.compare(l_rec.${c}, l_new.${c}), 1) = 0)`
-            : `(l_rec.${c} = l_new.${c} or l_rec.${c} is null and l_new.${c} is null)`;
+        // 2.2.1 — changed, never "not same": with a null on one side "not (a = b or …)" is null, and an empty field
+        // given a value by the file was UNCHANGED (found by req_request.amount)
+        const changed = (c: string) => m.clobColumns.has(c)
+            ? `(l_rec.${c} is null and l_new.${c} is not null or l_rec.${c} is not null and l_new.${c} is null or dbms_lob.compare(l_rec.${c}, l_new.${c}) != 0)`
+            : `(l_rec.${c} != l_new.${c} or l_rec.${c} is null and l_new.${c} is not null or l_rec.${c} is not null and l_new.${c} is null)`;
         for (const p of m.plain) {
             if (m.keyColumns.includes(p.column)) continue;
-            r += `${t2}if imp_load_svc.mapped(${sqlString(p.field.name)}) and not ${same(p.column)} then\n`;
+            r += `${t2}if imp_load_svc.mapped(${sqlString(p.field.name)}) and ${changed(p.column)} then\n`;
             r += `${t3}l_rec.${p.column} := l_new.${p.column};\n${t3}l_changed := true;\n`;
             r += `${t2}end if;\n`;
         }
         for (const f of m.foreign) {
             if (m.keyColumns.includes(f.column)) continue;
             const cond = f.fields.map(x => `imp_load_svc.mapped(${sqlString(x.name)})`).join(' or ');
-            r += `${t2}if (${cond}) and not ${same(f.column)} then\n`;
+            r += `${t2}if (${cond}) and ${changed(f.column)} then\n`;
             r += `${t3}l_rec.${f.column} := l_new.${f.column};\n${t3}l_changed := true;\n`;
             r += `${t2}end if;\n`;
         }

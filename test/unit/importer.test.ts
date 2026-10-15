@@ -85,7 +85,7 @@ describe('/import: what is generated', () => {
         expect(out).toContain("p_key_fields    => 'company_code,code'");
     });
     test('the update changes only the mapped fields, UNCHANGED when nothing changes', () => {
-        expect(out).toContain("if imp_load_svc.mapped('qty') and not (l_rec.qty = l_new.qty or l_rec.qty is null and l_new.qty is null) then");
+        expect(out).toContain("if imp_load_svc.mapped('qty') and (l_rec.qty != l_new.qty or l_rec.qty is null and l_new.qty is not null or l_rec.qty is not null and l_new.qty is null) then");
         expect(out).toContain("zz_item_svc.update_rec(l_id, l_rec, l_row.row_version);");
         expect(out).toContain("x_action := 'UNCHANGED';");
     });
@@ -103,6 +103,16 @@ describe('/import: what is generated', () => {
         expect(out).toContain('imp_load_svc.row_failed;');
         expect(out).toContain('exit when imp_load_svc.stop_now;');
         expect(out).toContain('zz_item_imp.load(p_job_id, p_dry_run => true);');
+    });
+});
+
+describe('/import: {import \'auto\'}', () => {
+    test('a required column the service fills is imported, never required to insert', () => {
+        const out = ddl("doc /api service+hks /import upsert\n  doc_no vc30 /nn /unique {import 'auto'}\n  title vc200 /nn\n");
+        expect(out).toContain("l_new.doc_no := imp_convert_svc.to_text(imp_load_svc.value('doc_no'), 'doc_no', 30);");
+        expect(out).not.toContain("[IMP_REQUIRED] doc_no: a value is required");
+        expect(out).toContain("[IMP_REQUIRED] title: a value is required");
+        expect(out).toContain('"field_name":"doc_no","label":"Doc no","data_type":"TEXT","max_length":30,"required":"N","key":"Y"');
     });
 });
 

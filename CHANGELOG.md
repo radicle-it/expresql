@@ -3,6 +3,15 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.2.1 — 2026-10-15
+
+- `/import`: `{import 'auto'}` on a required column the service fills when it is empty (a number from a series): it
+  is imported and can be the business key, but an insert does not require it. Found by `req_request.request_no` of
+  ocean-code (phase I3 of its doc 38).
+- `/import`: an update tells a changed field with `a != b or a is null and b is not null or a is not null and b is
+  null`. The 2.2.0 test `not (a = b or a is null and b is null)` is null when one side is null, so an empty field the
+  file gave a value stayed as it was and the row was `UNCHANGED` (found by `req_request.amount` on the database).
+
 ## 2.2.0 — 2026-10-15
 
 - Oracle: **`/import [insert|upsert|update]`** on a table with a service (`service+hks`, `full+hks`) generates, after every API and every `_agg`, the importer of the table for the `imp_` module of ocean-code (its doc 38, phase I2): `<t>_key_vw` (the id and the business key flattened over the `_rls` views: a key column that is a foreign key becomes the key of the table it points to, with its name as prefix), `<t>_imp` (`describe`, the fields as json; `load(p_job_id, p_dry_run)`, the loop of `imp_load_svc` with one savepoint per row; `register_target` / `unregister_target` through `imp_registry_uc`) and `<t>_imp_app` (`check_job`, `load`, `register_target`, `unregister_target`). A row is converted with `imp_convert_svc` by the type of its column (TEXT with its length, INTEGER, DECIMAL, DAY, INSTANT, FLAG, a `/check` as a closed vocabulary), its foreign keys are resolved by the business key of the table they point to (`[IMP_LOOKUP]`, `[IMP_LOOKUP_PARTIAL]`, `[IMP_LOOKUP_AMBIGUOUS]`), the row is found by the table's business key (a `/unique` column, `{import_key 'y'}` to choose among more, or a table `/unique a, b`), the mode decides (`[IMP_EXISTS]`, `[IMP_NOT_FOUND]`), an update changes only the mapped fields (`UNCHANGED` when nothing changes), and the write goes through `<t>_svc` (hooks, permissions, RLS).
