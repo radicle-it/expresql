@@ -3,6 +3,16 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.4.0 — 2026-10-15
+
+- `/import`: the undo of a loaded import (phase I7 of doc 38 of ocean-code). `load_row` gives `imp_load_svc.row_done`
+  an image of what it wrote: the `row_version` after the write and, for an update, the values before of the fields it
+  changed (days and instants as ISO text). `<t>_imp.undo` and `<t>_imp_app.undo` take the rows back in the reverse
+  order through `<t>_svc` -- an inserted row deleted, an updated one given its values back -- after
+  `imp_load_svc.check_version` (a record changed after the import stops the undo); `imp_load_svc` makes it all or
+  nothing. The image of an update keeps the version before it too, and an undone update says the version it left
+  (`row_undone`): the import before it is rebased, so two imports of the same record are undone the later first.
+
 ## 2.3.1 — 2026-10-15
 
 - `/import`: a row without its business key is refused only to `UPDATE`. With `UPSERT` it is a new row: an

@@ -17,10 +17,13 @@ import { OracleTableApiAnalyzer } from '../table-model.js';
  *                   points to, with its name as prefix), over the _rls views: the port that resolves a code
  *   <t>_imp         the importer (service level): describe (the fields as json), load (the loop of imp_load_svc, one
  *                   savepoint per row), register_target / unregister_target (imp_registry_uc)
- *   <t>_imp_app     the interface: check_job (the dry run), load, register_target, unregister_target
+ *   <t>_imp_app     the interface: check_job (the dry run), load, undo, register_target, unregister_target
  * The importer converts with imp_convert_svc, resolves the foreign keys by their business key, finds the row by the
  * table's business key, decides INSERT / UPSERT / UPDATE, changes only the mapped fields and writes through <t>_svc
  * (hooks, permissions, RLS). It calls the imp_ module of ocean-code (imp_load_svc, imp_convert_svc, imp_registry_uc).
+ * 2.4.0: every written row gives imp_load_svc an image (the row_version after the write, the values before of the
+ * fields an update changed); undo takes a loaded import back -- the inserted rows deleted, the updated ones given their
+ * values back, all through <t>_svc, never a record changed after the import (imp_load_svc.check_version).
  * /keyview alone generates the key view of a table other modules point to.
  * A declaration the importer cannot honour is an error of generation (thrown), never a wrong package.
  */
@@ -131,6 +134,24 @@ function allowedValues(col: IDdlNode): string[] {
     return values
         .filter((v): v is string | number => v !== null)
         .map(v => String(v).replace(/^'(.*)'$/, '$1'));
+}
+
+/** 2.4.0 -- a value of the image (the undo): days and instants as ISO text, the rest as json scalars */
+function imagePut(type: FieldType | 'NUMBER', clob: boolean, v: string): string {
+    if (type === 'DAY') return `to_char(${v}, 'YYYY-MM-DD"T"HH24:MI:SS')`;
+    if (type === 'INSTANT') return `to_char(cast(${v} as timestamp with time zone), 'YYYY-MM-DD"T"HH24:MI:SS.FF6TZH:TZM')`;
+    return v;
+}
+function imageGet(type: FieldType | 'NUMBER', clob: boolean, obj: string, key: string): string {
+    const k = sqlString(key);
+    switch (type) {
+        case 'DAY':     return `to_date(${obj}.get_string(${k}), 'YYYY-MM-DD"T"HH24:MI:SS')`;
+        case 'INSTANT': return `to_timestamp_tz(${obj}.get_string(${k}), 'YYYY-MM-DD"T"HH24:MI:SS.FF6TZH:TZM')`;
+        case 'INTEGER':
+        case 'DECIMAL':
+        case 'NUMBER':  return `${obj}.get_number(${k})`;
+        default:        return clob ? `${obj}.get_clob(${k})` : `${obj}.get_string(${k})`;
+    }
 }
 
 /** the PL/SQL expression converting the text of a field to the column's type */
@@ -454,6 +475,9 @@ export class OracleImportRenderer {
         r += `${tab}-- the owner of the import by run_job\n`;
         r += `${tab}procedure load_async (p_job_id in number);\n`;
         r += `${tab}procedure run_job (p_job_id in number);\n\n`;
+        r += `${tab}-- 2.4.0: takes a loaded import back (imp_load_svc.begin_undo): the inserted rows deleted, the updated ones given\n`;
+        r += `${tab}-- their values back, in the reverse order, all or nothing; a record changed after the import stops it\n`;
+        r += `${tab}procedure undo (p_job_id in number);\n\n`;
         r += `${tab}-- what this table offers to import, in imp_target (the seed of the module)\n`;
         r += `${tab}procedure register_target;\n`;
         r += `${tab}procedure unregister_target;\n\n`;
@@ -507,12 +531,13 @@ export class OracleImportRenderer {
         }
 
         // one row
-        r += `${tab}function load_row (x_action out varchar2) return number is\n`;
+        r += `${tab}function load_row (x_action out varchar2, x_image out clob) return number is\n`;
         r += `${t2}l_new     ${m.service}.t_rec;\n`;
         r += `${t2}l_rec     ${m.service}.t_rec;\n`;
         r += `${t2}l_row     ${m.table}%rowtype;\n`;
         r += `${t2}l_id      ${m.table}.${m.pk}%type;\n`;
         r += `${t2}l_changed boolean := false;\n`;
+        r += `${t2}l_before  json_object_t := json_object_t();   -- 2.4.0: the values before of the changed fields (the undo)\n`;
         r += `${tab}begin\n`;
         r += `${t2}-- the values of the file (a field without a column stays null)\n`;
         for (const p of m.plain) {
@@ -569,6 +594,7 @@ export class OracleImportRenderer {
             r += `${t3}end if;\n`;
         }
         r += `${t3}${m.service}.create_rec(l_new, l_id);\n`;
+        r += `${t3}x_image := imp_load_svc.image(${m.hasVersion ? `${m.service}.get(l_id).row_version` : 'null'});\n`;
         r += `${t3}x_action := 'INSERTED';\n`;
         r += `${t3}return l_id;\n`;
         r += `${t2}end if;\n`;
@@ -586,6 +612,7 @@ export class OracleImportRenderer {
         for (const p of m.plain) {
             if (m.keyColumns.includes(p.column)) continue;
             r += `${t2}if imp_load_svc.mapped(${sqlString(p.field.name)}) and ${changed(p.column)} then\n`;
+            r += `${t3}l_before.put(${sqlString(p.column)}, ${imagePut(p.field.type, m.clobColumns.has(p.column), `l_rec.${p.column}`)});\n`;
             r += `${t3}l_rec.${p.column} := l_new.${p.column};\n${t3}l_changed := true;\n`;
             r += `${t2}end if;\n`;
         }
@@ -593,11 +620,13 @@ export class OracleImportRenderer {
             if (m.keyColumns.includes(f.column)) continue;
             const cond = f.fields.map(x => `imp_load_svc.mapped(${sqlString(x.name)})`).join(' or ');
             r += `${t2}if (${cond}) and ${changed(f.column)} then\n`;
+            r += `${t3}l_before.put(${sqlString(f.column)}, l_rec.${f.column});\n`;
             r += `${t3}l_rec.${f.column} := l_new.${f.column};\n${t3}l_changed := true;\n`;
             r += `${t2}end if;\n`;
         }
         r += `${t2}if l_changed then\n`;
         r += `${t3}${m.service}.update_rec(l_id, l_rec${m.hasVersion ? ', l_row.row_version' : ''});\n`;
+        r += `${t3}x_image := imp_load_svc.image(${m.hasVersion ? `${m.service}.get(l_id).row_version, l_before, p_before_version => l_row.row_version` : 'null, l_before'});\n`;
         r += `${t3}x_action := 'UPDATED';\n`;
         r += `${t2}else\n`;
         r += `${t3}x_action := 'UNCHANGED';\n`;
@@ -609,12 +638,13 @@ export class OracleImportRenderer {
         r += `${tab}procedure load (p_job_id in number, p_dry_run in boolean default false, p_commit_rows in pls_integer default null) is\n`;
         r += `${t2}l_action varchar2(20);\n`;
         r += `${t2}l_id     number;\n`;
+        r += `${t2}l_image  clob;\n`;
         r += `${tab}begin\n`;
         r += `${t2}imp_load_svc.begin_load(p_job_id, c_target, p_dry_run, p_commit_rows);\n`;
         r += `${t2}while imp_load_svc.next_row loop\n`;
         r += `${t3}begin\n`;
-        r += `${t4}l_id := load_row(l_action);\n`;
-        r += `${t4}imp_load_svc.row_done(l_action, l_id);\n`;
+        r += `${t4}l_id := load_row(l_action, l_image);\n`;
+        r += `${t4}imp_load_svc.row_done(l_action, l_id, l_image);\n`;
         r += `${t3}exception when others then\n`;
         r += `${t4}imp_load_svc.row_failed;\n`;
         r += `${t3}end;\n`;
@@ -647,6 +677,45 @@ export class OracleImportRenderer {
         r += `${t2}imp_load_svc.end_job;\n`;
         r += `${t2}raise;\n`;
         r += `${tab}end run_job;\n\n`;
+
+        // 2.4.0 -- the undo: the rows the import wrote, the last first, through the service; a record changed after the
+        // import (its row_version) stops it, and imp_load_svc takes everything back to begin_undo
+        r += `${tab}procedure undo (p_job_id in number) is\n`;
+        r += `${t2}l_row ${m.table}%rowtype;\n`;
+        r += `${t2}l_rec ${m.service}.t_rec;\n`;
+        r += `${t2}l_old json_object_t;\n`;
+        r += `${tab}begin\n`;
+        r += `${t2}imp_load_svc.begin_undo(p_job_id, c_target);\n`;
+        r += `${t2}while imp_load_svc.next_undo loop\n`;
+        r += `${t3}l_row := ${m.service}.get(imp_load_svc.undo_record_id);\n`;
+        if (m.hasVersion) r += `${t3}imp_load_svc.check_version(l_row.row_version);\n`;
+        r += `${t3}if imp_load_svc.undo_action = 'INSERTED' then\n`;
+        r += `${t4}${m.service}.delete_rec(l_row.${m.pk});\n`;
+        r += `${t4}imp_load_svc.row_undone;\n`;
+        r += `${t3}else\n`;
+        r += `${t4}l_old := imp_load_svc.undo_before;\n`;
+        for (const c of params) r += `${t4}l_rec.${c} := l_row.${c};\n`;
+        for (const p of m.plain) {
+            if (m.keyColumns.includes(p.column)) continue;
+            r += `${t4}if l_old.has(${sqlString(p.column)}) then\n`;
+            r += `${t4}${tab}l_rec.${p.column} := ${imageGet(p.field.type, m.clobColumns.has(p.column), 'l_old', p.column)};\n`;
+            r += `${t4}end if;\n`;
+        }
+        for (const f of m.foreign) {
+            if (m.keyColumns.includes(f.column)) continue;
+            r += `${t4}if l_old.has(${sqlString(f.column)}) then\n`;
+            r += `${t4}${tab}l_rec.${f.column} := ${imageGet('NUMBER', false, 'l_old', f.column)};\n`;
+            r += `${t4}end if;\n`;
+        }
+        r += `${t4}${m.service}.update_rec(l_row.${m.pk}, l_rec${m.hasVersion ? ', l_row.row_version' : ''});\n`;
+        // the record as the import before this one left it: that import is rebased on the new version (imp_load_svc)
+        r += `${t4}imp_load_svc.row_undone(${m.hasVersion ? `${m.service}.get(l_row.${m.pk}).row_version` : ''});\n`;
+        r += `${t3}end if;\n`;
+        r += `${t2}end loop;\n`;
+        r += `${t2}imp_load_svc.end_undo;\n`;
+        r += `${tab}exception when others then\n`;
+        r += `${t2}imp_load_svc.undo_failed;\n`;
+        r += `${tab}end undo;\n\n`;
 
         // describe and the registration
         const fields = this.fields(m);
@@ -688,6 +757,7 @@ export class OracleImportRenderer {
         r += `${tab}-- the interface of the importer of ${m.table} (generated, /import): the pages, a test, REST at the end\n`;
         r += `${tab}procedure check_job (p_job_id in number);     -- the dry run: every rule, nothing written\n`;
         r += `${tab}procedure load      (p_job_id in number);     -- in a job of the scheduler above IMP_SYNC_MAX_ROWS rows\n`;
+        r += `${tab}procedure undo      (p_job_id in number);     -- 2.4.0: the loaded import taken back, all or nothing\n`;
         r += `${tab}procedure register_target;\n`;
         r += `${tab}procedure unregister_target;\n`;
         r += `end ${m.app};\n/\n`;
@@ -701,6 +771,7 @@ export class OracleImportRenderer {
         r += `${tab}procedure load (p_job_id in number) is\n${tab}begin\n`;
         r += `${tab}${tab}if imp_load_svc.async_wanted(p_job_id) then\n${tab}${tab}${tab}${m.importer}.load_async(p_job_id);\n`;
         r += `${tab}${tab}else\n${tab}${tab}${tab}${m.importer}.load(p_job_id);\n${tab}${tab}end if;\n${tab}end load;\n\n`;
+        r += `${tab}procedure undo (p_job_id in number) is\n${tab}begin\n${tab}${tab}${m.importer}.undo(p_job_id);\n${tab}end undo;\n\n`;
         r += `${tab}procedure register_target is\n${tab}begin\n${tab}${tab}${m.importer}.register_target;\n${tab}end register_target;\n\n`;
         r += `${tab}procedure unregister_target is\n${tab}begin\n${tab}${tab}${m.importer}.unregister_target;\n${tab}end unregister_target;\n\n`;
         r += `end ${m.app};\n/\n`;

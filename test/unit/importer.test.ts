@@ -108,6 +108,29 @@ describe('/import: what is generated', () => {
         expect(out).toContain("imp_load_svc.fail_job(p_job_id, dbms_utility.format_error_stack);");
         expect(out).toContain("if imp_load_svc.async_wanted(p_job_id) then");
     });
+    test('the image of a written row and the undo (2.4.0)', () => {
+        expect(out).toContain('function load_row (x_action out varchar2, x_image out clob) return number is');
+        expect(out).toContain('x_image := imp_load_svc.image(zz_item_svc.get(l_id).row_version);');
+        expect(out).toContain("l_before.put('name', l_rec.name);");
+        expect(out).toContain("l_before.put('valid_from', to_char(l_rec.valid_from, 'YYYY-MM-DD\"T\"HH24:MI:SS'));");
+        expect(out).toContain("l_before.put('seen_at', to_char(cast(l_rec.seen_at as timestamp with time zone), 'YYYY-MM-DD\"T\"HH24:MI:SS.FF6TZH:TZM'));");
+        expect(out).toContain("l_before.put('currency_id', l_rec.currency_id);");
+        expect(out).toContain('x_image := imp_load_svc.image(zz_item_svc.get(l_id).row_version, l_before, p_before_version => l_row.row_version);');
+        expect(out).toContain('imp_load_svc.row_undone(zz_item_svc.get(l_row.id).row_version);');
+        expect(out).toContain('imp_load_svc.row_done(l_action, l_id, l_image);');
+        expect(out).toContain('procedure undo (p_job_id in number);');
+        expect(out).toContain('imp_load_svc.begin_undo(p_job_id, c_target);');
+        expect(out).toContain('imp_load_svc.check_version(l_row.row_version);');
+        expect(out).toContain('zz_item_svc.delete_rec(l_row.id);');
+        expect(out).toContain("l_rec.qty := l_old.get_number('qty');");
+        expect(out).toContain("l_rec.valid_from := to_date(l_old.get_string('valid_from'), 'YYYY-MM-DD\"T\"HH24:MI:SS');");
+        expect(out).toContain("l_rec.seen_at := to_timestamp_tz(l_old.get_string('seen_at'), 'YYYY-MM-DD\"T\"HH24:MI:SS.FF6TZH:TZM');");
+        expect(out).toContain("l_rec.name := l_old.get_string('name');");
+        expect(out).not.toContain("l_old.has('code')");                       // the key never changes
+        expect(out).toContain('zz_item_svc.update_rec(l_row.id, l_rec, l_row.row_version);');
+        expect(out).toContain('imp_load_svc.undo_failed;');
+        expect(out).toContain('zz_item_imp.undo(p_job_id);');
+    });
     test('the loop of imp_load_svc', () => {
         expect(out).toContain("imp_load_svc.begin_load(p_job_id, c_target, p_dry_run, p_commit_rows);");
         expect(out).toContain('imp_load_svc.row_failed;');
