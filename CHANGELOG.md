@@ -3,6 +3,12 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.3.1 — 2026-10-15
+
+- `/import`: a row without its business key is refused only to `UPDATE`. With `UPSERT` it is a new row: an
+  `{import 'auto'}` key is filled by the service (a product without a code gets one from its series), a required key
+  is refused by the insert. Found by `prd_product` of ocean-code (phase I6 of its doc 38).
+
 ## 2.3.0 — 2026-10-15
 
 - `/import`: a long load in a job of the scheduler (phase I5 of doc 38 of ocean-code). `<t>_imp.load` takes

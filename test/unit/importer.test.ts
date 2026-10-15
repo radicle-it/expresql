@@ -79,6 +79,7 @@ describe('/import: what is generated', () => {
         expect(out).toContain('select max(t.id) into l_id from zz_item_rls t where t.code = l_new.code;');
         expect(out).toContain("[IMP_NOT_FOUND] code");
         expect(out).toContain("[IMP_EXISTS] code");
+        expect(out).toContain("elsif imp_load_svc.mode_code = 'UPDATE' then");     // 2.3.1: an empty key with UPSERT is a new row
     });
     test('a composite key with a foreign key: the key fields of the file and the search on the raw columns', () => {
         expect(out).toContain("t.company_id = l_new.company_id and t.code = l_new.code");

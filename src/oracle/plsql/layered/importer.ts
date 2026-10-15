@@ -541,7 +541,9 @@ export class OracleImportRenderer {
             r += `${t2}-- the row with this business key (${m.keyColumns.join(', ')}), among the ones this user sees\n`;
             r += `${t2}if ${notNull} then\n`;
             r += `${t3}select max(t.${m.pk}) into l_id from ${m.table}_rls t where ${where};\n`;
-            r += `${t2}elsif imp_load_svc.mode_code != 'INSERT' then\n`;
+            // 2.3.1 -- an empty key is refused only to UPDATE: with UPSERT the row is new (an {import 'auto'} key from the
+            // service, a required one refused by the insert)
+            r += `${t2}elsif imp_load_svc.mode_code = 'UPDATE' then\n`;
             r += `${t3}raise_application_error(-20844, '[IMP_REQUIRED] ${m.keyFields[0]}: the business key is required to update');\n`;
             r += `${t2}end if;\n`;
             const shown = m.keyFields.map(k => `imp_load_svc.value(${sqlString(k)})`).join(` || ' / ' || `);
