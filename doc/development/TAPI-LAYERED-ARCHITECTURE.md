@@ -392,8 +392,8 @@ CREATE OR REPLACE PACKAGE BODY doctors_svc AS
         l_row.name      := p_rec.name;
         l_row.specialty := p_rec.specialty;
         l_row.email     := p_rec.email;
-        doctors_hks.validate(p_operation => 'INSERT', p_row => l_row);
         doctors_hks.before_insert(p_row => l_row);
+        doctors_hks.validate(p_operation => 'INSERT', p_row => l_row);
         p_insert_row(p_row => l_row);       -- private, replaces doctors_dal.insert_row
         doctors_hks.after_insert(p_row => l_row);
         x_id := l_row.id;
@@ -417,8 +417,8 @@ CREATE OR REPLACE PACKAGE BODY doctors_svc AS
         l_row.specialty   := p_rec.specialty;
         l_row.email       := p_rec.email;
         l_row.row_version := p_row_version;
-        doctors_hks.validate(p_operation => 'UPDATE', p_row => l_row);
         doctors_hks.before_update(p_row => l_row);
+        doctors_hks.validate(p_operation => 'UPDATE', p_row => l_row);
         p_update_row(p_row => l_row);       -- private, replaces doctors_dal.update_row
         doctors_hks.after_update(p_row => l_row);
     EXCEPTION
@@ -766,12 +766,12 @@ BEGIN
     l_row.specialty := p_rec.specialty;
     l_row.email     := p_rec.email;
 
-    -- validate, before_insert, insert_row, after_insert all execute in the
+    -- before_insert, validate, insert_row, after_insert all execute in the
     -- same open transaction. If any step raises, the exception propagates to
     -- the IFC boundary (APX or RST package), which is responsible for rollback
     -- policy. Neither the INSERT nor the audit record is committed.
-    doctors_hks.validate(p_operation => 'INSERT', p_row => l_row);
     doctors_hks.before_insert(p_row => l_row);
+    doctors_hks.validate(p_operation => 'INSERT', p_row => l_row);
     doctors_dal.insert_row(p_row => l_row);
     doctors_hks.after_insert(p_row => l_row);
 
@@ -805,8 +805,8 @@ BEGIN
     l_row.email     := p_rec.email;
     l_row.row_version := p_row_version; -- carry OCC guard into the %ROWTYPE
 
-    doctors_hks.validate(p_operation => 'UPDATE', p_row => l_row);
     doctors_hks.before_update(p_row => l_row);
+    doctors_hks.validate(p_operation => 'UPDATE', p_row => l_row);
     doctors_dal.update_row(p_row => l_row);   -- DAL raises stale_data if version mismatch
     doctors_hks.after_update(p_row => l_row);
 
@@ -895,7 +895,8 @@ The parameter type for `before_delete` and `after_delete` depends on whether `_d
 ```sql
 CREATE OR REPLACE PACKAGE doctors_hks AS
 
-    -- Called before any DML. Raise raise_application_error() to veto.
+    -- Called last before the DML, after before_<op> (2.6.0): it judges the values
+    -- actually written. Raise raise_application_error() to veto.
     -- p_operation: 'INSERT' | 'UPDATE' | 'DELETE'
     -- p_row may be modified (normalisation, computed fields).
     PROCEDURE validate (
@@ -903,8 +904,9 @@ CREATE OR REPLACE PACKAGE doctors_hks AS
         p_row       IN OUT NOCOPY doctors%ROWTYPE
     );
 
-    -- Called after validation, before DML. May further enrich p_row.
-    -- Raising here vetoes the operation — all within the same transaction.
+    -- Called after chk_rbac, before validate (2.6.0). May prepare p_row: whatever
+    -- it changes is still checked by validate. Raising here vetoes the operation —
+    -- all within the same transaction.
     PROCEDURE before_insert (p_row IN OUT NOCOPY doctors%ROWTYPE);
     PROCEDURE before_update (p_row IN OUT NOCOPY doctors%ROWTYPE);
 

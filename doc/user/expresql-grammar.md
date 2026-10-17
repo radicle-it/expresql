@@ -696,10 +696,13 @@ Generated call order in `invoices_svc` (same shape for insert/update/delete/clos
 
 ```sql
 invoices_hks.chk_rbac(p_operation => 'insert', p_row => l_row);
-invoices_hks.chk_rls(p_row => l_row);
-invoices_hks.validate(p_operation => 'insert', p_row => l_row);
 invoices_hks.before_insert(p_row => l_row);
+invoices_hks.validate(p_operation => 'insert', p_row => l_row);
+invoices_hks.chk_rls(p_row => l_row);
 ```
+
+The permission comes first, before any hook code; `validate` and `chk_rls` come last, right before the write, so they
+judge the values actually written, whatever `before_<op>` changed (2.6.0; until 2.5.0 they ran before `before_<op>`).
 
 ### auditcols
 

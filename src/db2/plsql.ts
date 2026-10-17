@@ -294,8 +294,8 @@ export class Db2PlsqlBuilder {
         out += `    begin\n`;
         out += `        set p_status = 'ERROR';\n`;
         out += `    end;\n`;
-        if (hasHks) out += `    call ${tbl}_hks.p_validate('INSERT', '');\n`;
         if (hasHks) out += `    call ${tbl}_hks.p_before_insert('');\n`;
+        if (hasHks) out += `    call ${tbl}_hks.p_validate('INSERT', '');\n`;
         if (hasDal) {
             out += `    call ${tbl}_dal.p_insert_row(`;
             const allCols = [...fkCols.map(fk => `p_${fk}`), ...svcCols.map(c => `p_${c.parseName()}`), `p_${pkNm}`];
@@ -323,8 +323,8 @@ export class Db2PlsqlBuilder {
         out += `    begin\n`;
         out += `        set p_status = 'ERROR';\n`;
         out += `    end;\n`;
-        if (hasHks) out += `    call ${tbl}_hks.p_validate('UPDATE', '');\n`;
         if (hasHks) out += `    call ${tbl}_hks.p_before_update('');\n`;
+        if (hasHks) out += `    call ${tbl}_hks.p_validate('UPDATE', '');\n`;
         if (hasDal) {
             out += `    call ${tbl}_dal.p_update_row(p_${pkNm}`;
             for (const fk of fkCols) out += `, p_${fk}`;
@@ -405,8 +405,8 @@ export class Db2PlsqlBuilder {
             out += args.join(', ') + `);\n`;
         } else {
             out += `    -- private insert (absorbed from absent _svc)\n`;
-            if (hasHks) out += `    call ${tbl}_hks.p_validate('INSERT', '');\n`;
             if (hasHks) out += `    call ${tbl}_hks.p_before_insert('');\n`;
+            if (hasHks) out += `    call ${tbl}_hks.p_validate('INSERT', '');\n`;
             if (hasDal) {
                 out += `    call ${tbl}_dal.p_insert_row(`;
                 const allCols = [...fkCols.map(fk => `p_${fk}`), ...svcCols.map(c => `p_${c.parseName()}`), `p_${pkNm}`];
@@ -437,8 +437,8 @@ export class Db2PlsqlBuilder {
             out += `, p_status);\n`;
         } else {
             out += `    -- private update (absorbed from absent _svc)\n`;
-            if (hasHks) out += `    call ${tbl}_hks.p_validate('UPDATE', '');\n`;
             if (hasHks) out += `    call ${tbl}_hks.p_before_update('');\n`;
+            if (hasHks) out += `    call ${tbl}_hks.p_validate('UPDATE', '');\n`;
             if (hasDal) {
                 out += `    call ${tbl}_dal.p_update_row(p_${pkNm}`;
                 for (const fk of fkCols) out += `, p_${fk}`;

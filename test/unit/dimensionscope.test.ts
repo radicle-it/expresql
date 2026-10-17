@@ -17,9 +17,10 @@
  *     column configured in `dimensioncolumns` — absent otherwise, never an
  *     empty stub.
  *  3. `_svc` (or the absorbed private-hook form on tiers without `_svc`/`_hks`)
- *     calls `chk_rbac` then `chk_rls` (when present) before `validate`, for
- *     insert/update/delete (and close, for `/versioned` tables) — same
- *     ordering for every operation, on every tier.
+ *     calls `chk_rbac` first, then `before_<op>`, then `validate`, then
+ *     `chk_rls` (when present) right before the write, for insert/update/delete
+ *     (and close, for `/versioned` tables) — same ordering for every operation,
+ *     on every tier (2.6.0: validate and scope judge the values written).
  *  4. EVERY table gets a `<table>_rls` view, unconditionally — the
  *     presentation layer (APEX regions, a future REST surface, this table's
  *     own DAL) must never read a table directly, only a view, even with
@@ -137,7 +138,7 @@ describe('chk_rls — conditional on dimensioncolumns', () => {
 
 // ── 3. _svc call ordering — chk_rbac, chk_rls, then validate ───────────────
 
-describe('_svc — chk_rbac/chk_rls precede validate, for every operation', () => {
+describe('_svc — chk_rbac first, validate then chk_rls last before the write, for every operation', () => {
     test('insert (p_do_create)', () => {
         const out = ddl(SCOPED_QSQL);
         const svcBody = segment(out, 'create or replace package body widgets_svc', 'end widgets_svc;');
@@ -147,8 +148,8 @@ describe('_svc — chk_rbac/chk_rls precede validate, for every operation', () =
         expect(idxRbac).toBeGreaterThan(-1);
         expect(idxRls).toBeGreaterThan(-1);
         expect(idxValidate).toBeGreaterThan(-1);
-        expect(idxRbac).toBeLessThan(idxRls);
-        expect(idxRls).toBeLessThan(idxValidate);
+        expect(idxRbac).toBeLessThan(idxValidate);
+        expect(idxValidate).toBeLessThan(idxRls);
     });
 
     test('update', () => {
@@ -167,8 +168,8 @@ describe('_svc — chk_rbac/chk_rls precede validate, for every operation', () =
         const idxValidate = svcBody.indexOf("widgets_hks.validate(p_operation => 'delete'");
         const idxBefore   = svcBody.indexOf('widgets_hks.before_delete(p_id => p_id)');
         expect(idxRbac).toBeGreaterThan(-1);
-        expect(idxRbac).toBeLessThan(idxValidate);
-        expect(idxValidate).toBeLessThan(idxBefore);
+        expect(idxRbac).toBeLessThan(idxBefore);
+        expect(idxBefore).toBeLessThan(idxValidate);
     });
 
     test('no chk_rls call at all for a table without a configured dimension column', () => {
@@ -313,7 +314,7 @@ widgets /api service
         expect(svcBody).toContain("sec_pkg.require_dimension_scope(p_dimension_type => 'company', p_code => to_char(p_row.company_id));");
     });
 
-    test('p_do_create calls p_chk_rbac then p_chk_rls then p_validate, no _hks reference', () => {
+    test('p_do_create calls p_chk_rbac then p_validate then p_chk_rls, no _hks reference', () => {
         const out = ddl(qsql);
         const svcBody = segment(out, 'create or replace package body widgets_svc', 'end widgets_svc;');
         const doCreate = segment(svcBody, 'procedure p_do_create', 'end p_do_create;');
@@ -321,8 +322,8 @@ widgets /api service
         const idxRls      = doCreate.indexOf('p_chk_rls(');
         const idxValidate = doCreate.indexOf('p_validate(');
         expect(idxRbac).toBeGreaterThan(-1);
-        expect(idxRbac).toBeLessThan(idxRls);
-        expect(idxRls).toBeLessThan(idxValidate);
+        expect(idxRbac).toBeLessThan(idxValidate);
+        expect(idxValidate).toBeLessThan(idxRls);
         expect(doCreate).not.toContain('widgets_hks');
     });
 

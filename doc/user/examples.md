@@ -1853,9 +1853,9 @@ begin
     l_row.company_id := p_rec.company_id;
     l_row.amount := p_rec.amount;
     invoices_hks.chk_rbac(p_operation => 'insert', p_row => l_row);
-    invoices_hks.chk_rls(p_row => l_row);
-    invoices_hks.validate(p_operation => 'insert', p_row => l_row);
     invoices_hks.before_insert(p_row => l_row);
+    invoices_hks.validate(p_operation => 'insert', p_row => l_row);
+    invoices_hks.chk_rls(p_row => l_row);
     invoices_dal.insert_row(p_row => l_row);
     invoices_hks.after_insert(p_row => l_row);
 end p_do_create;
@@ -1873,9 +1873,9 @@ procedure delete_rec (p_id in invoices.id%type) is
 begin
     l_row := invoices_dal.get_by_id(p_id => p_id);
     invoices_hks.chk_rbac(p_operation => 'delete', p_row => l_row);
-    invoices_hks.chk_rls(p_row => l_row);
-    invoices_hks.validate(p_operation => 'delete', p_row => l_row);
     invoices_hks.before_delete(p_id => p_id);
+    invoices_hks.validate(p_operation => 'delete', p_row => l_row);
+    invoices_hks.chk_rls(p_row => l_row);
     invoices_dal.delete_row(p_id => p_id);
     invoices_hks.after_delete(p_id => p_id);
 end delete_rec;
@@ -2148,8 +2148,8 @@ begin
     l_row.user_id := p_user_id;
     l_row.role_id := p_role_id;
     user_role_hks.chk_rbac(p_operation => 'grant', p_row => l_row);
-    user_role_hks.validate(p_operation => 'grant', p_row => l_row);
     user_role_hks.before_grant(p_row => l_row);
+    user_role_hks.validate(p_operation => 'grant', p_row => l_row);
     user_role_dal.grant_row(p_row => l_row);
     user_role_hks.after_grant(p_row => l_row);
     x_id := l_row.id;

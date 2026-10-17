@@ -61,7 +61,7 @@ employees /api full+hks /auditlog app_audit_log
 # settings = { api: layered }`,
         table: 'employees',
         render: (builder, node) => builder.generateLayeredTAPI(node),
-        expected: '15385:c97561c05a95ebae8f76b3fc583b68ccb7335f4bf45577e5a8a44c9331df2674',
+        expected: '15385:ebe1a5bea9e0ef5d3648e7db5683b40a63da4624c191db05ccc06127cc6ad673',
     },
     {
         name: 'service tier with REST interface and absorbed DAL/hooks',
@@ -72,7 +72,7 @@ employees /api full+hks /auditlog app_audit_log
 # settings = { interface: rest }`,
         table: 'orders',
         render: (builder, node) => builder.generateLayeredTAPI(node),
-        expected: '11966:0392d8bbf4f9ce6f818cc17f7cfd2794eec3bfa0a98a09fe3228de38c413b1e0',
+        expected: '11966:b57459b2d980b9af2658fea49f5e83ac5bc0c308ad0053520eb5b49b4f25467f',
     },
     {
         name: 'lookup tier with both interfaces',
@@ -82,7 +82,7 @@ employees /api full+hks /auditlog app_audit_log
 # settings = { interface: both }`,
         table: 'lookup_codes',
         render: (builder, node) => builder.generateLayeredTAPI(node),
-        expected: '18278:fabc43fbdd9a6b381c9529a627e64e244df0b053171038090f4e2dd94e559104',
+        expected: '18278:12ed1cc140ca4467616b7fda4fadf8b27b11e280fd7c3b210473b2ff9da7a33a',
     },
     {
         name: 'tenant and dimension scoped layered TAPI',
@@ -101,7 +101,7 @@ widgets /api full+hks
             builder.generateTenantBootstrapSpec('') +
             builder.generateTenantBootstrapBody('') +
             builder.generateLayeredTAPI(node),
-        expected: '12466:271ee39ac4c9ba54833706b37304f0ffadf82b4eaedf426b98d3e02cba7f7dfc',
+        expected: '12466:37cefa29ac2b97e1b4f86f5e278ca40b962c48dd01afa0489e1be5f4252f26d0',
     },
     {
         name: 'versioned business-key TAPI with APP and REST interfaces',
@@ -122,7 +122,7 @@ widgets /api full+hks
         // l_rec.<vtCol> := null before create_rec (the next version always opens
         // open) — same fix that drops a declared <vtCol> from _app/_rst change_rec's
         // flat parameters, which this fixture (no declared valid_to) does not exercise.
-        expected: '33220:98893fd30a27b51ae5ec687526ea3196164dcf643b6f0d1194858dce43056934',
+        expected: '33220:4fa2b6fa267f8ae01b5d7e362e7521bee03ae8c02d0ef3f75e31ea1967a3f594',
     },
     {
         name: 'immutable TAPI with REST interface',
@@ -133,7 +133,7 @@ widgets /api full+hks
         table: 'events',
         render: (builder, node) =>
             builder.generateImmutableTrigger(node) + builder.generateLayeredTAPI(node),
-        expected: '9084:cdbfd02b387282e219d9ae26f631849ca4aad4a8572bce09e315f4a5b77e679e',
+        expected: '9084:d31081a3de0add856cb361173049705e93017d13f878cb31499905d8dd0b4bc4',
     },
     {
         name: 'bridge TAPI',
@@ -146,7 +146,7 @@ user_role /api full+hks /bridge
   role_id /fk roles /nn`,
         table: 'user_role',
         render: (builder, node) => builder.generateLayeredTAPI(node),
-        expected: '15916:d082aa4d54d5db3d1e4f26a074aaa10dd5d0a4832a9137602af37dfbb2eed198',
+        expected: '15916:acf95923b67a2d693cd0cfddbb2cab6b24d1e5c448dfbcfe20cca6f783aeea93',
     },
     {
         name: 'aggregate package',

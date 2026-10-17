@@ -3,6 +3,17 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.6.0 — 2026-10-17
+
+- The order of the hooks around a write, on every tier (`full+hks`, `full`, `service+hks`, `service`, `lookup+hks`,
+  `lookup`), every interface (`app`, `rest`) and every operation (insert, update, delete, close, grant, revoke):
+  `chk_rbac → before_<op> → validate → chk_rls → (the write)`. Until 2.5.0 `validate` and `chk_rls` ran before
+  `before_<op>`, so whatever `before_<op>` changed in the row went to the table unchecked. Now the permission is asked
+  before any hook code, and the rules and the scope judge the values actually written (ocean-code 00-docs/11b). A
+  `before_<op>` sees the row before the defaults and normalisations of `validate`: a hook that needs a normalised value
+  computes it in `validate`. The aggregate's `before_add_/before_update_` were already checked by the detail's service.
+  Db2 follows the same order. `test/integration/hook-order.test.ts` checks every protocol block line by line.
+
 ## 2.5.0 — 2026-10-17
 
 - `/import`: every long operation in a job of the scheduler, not only the load (ocean-code 00-docs/07 PF05).

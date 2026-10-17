@@ -2148,14 +2148,14 @@ describe('versioned layered TAPI — full+hks tier', () => {
         expect(closeVersion).toContain('policies.valid_to%type');
     });
 
-    test('SVC body close_version hook order: validate → before_close → close_row → after_close', () => {
+    test('SVC body close_version hook order: before_close → validate → close_row → after_close', () => {
         const out = ddl(POLICIES_VERSIONED_QSQL);
         const svcBody = segment(out, 'create or replace package body policies_svc', 'end policies_svc;');
         const closeVersion = segment(svcBody, 'procedure close_version', 'end close_version;');
         expect(closeVersion).toContain("'close'");
-        expect(closeVersion.indexOf('policies_hks.validate'))
-            .toBeLessThan(closeVersion.indexOf('policies_hks.before_close'));
         expect(closeVersion.indexOf('policies_hks.before_close'))
+            .toBeLessThan(closeVersion.indexOf('policies_hks.validate'));
+        expect(closeVersion.indexOf('policies_hks.validate'))
             .toBeLessThan(closeVersion.indexOf('policies_dal.close_row'));
         expect(closeVersion.indexOf('policies_dal.close_row'))
             .toBeLessThan(closeVersion.indexOf('policies_hks.after_close'));

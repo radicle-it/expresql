@@ -16,9 +16,9 @@ describe('Oracle operation hook rendering', () => {
     test('renders the complete row-operation protocol', () => {
         expect(renderBeforeOperation('insert', 'l_row', true, hookName)).toBe(
             "        orders_hks.chk_rbac(p_operation => 'insert', p_row => l_row);\n" +
-            '        orders_hks.chk_rls(p_row => l_row);\n' +
+            '        orders_hks.before_insert(p_row => l_row);\n' +
             "        orders_hks.validate(p_operation => 'insert', p_row => l_row);\n" +
-            '        orders_hks.before_insert(p_row => l_row);\n'
+            '        orders_hks.chk_rls(p_row => l_row);\n'
         );
         expect(renderAfterOperation('insert', 'l_row', hookName)).toBe(
             '        orders_hks.after_insert(p_row => l_row);\n'
