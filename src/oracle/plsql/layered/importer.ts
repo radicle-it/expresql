@@ -17,13 +17,19 @@ import { OracleTableApiAnalyzer } from '../table-model.js';
  *                   points to, with its name as prefix), over the _rls views: the port that resolves a code
  *   <t>_imp         the importer (service level): describe (the fields as json), load (the loop of imp_load_svc, one
  *                   savepoint per row), register_target / unregister_target (imp_registry_uc)
- *   <t>_imp_app     the interface: check_job (the dry run), load, undo, register_target, unregister_target
+ *   <t>_imp_app     the interface: check_job (the dry run), load, undo, register_target, unregister_target -- each one
+ *                   now, or in a job of the scheduler when imp_load_svc.async_wanted says the import is too long (2.5.0)
  * The importer converts with imp_convert_svc, resolves the foreign keys by their business key, finds the row by the
  * table's business key, decides INSERT / UPSERT / UPDATE, changes only the mapped fields and writes through <t>_svc
  * (hooks, permissions, RLS). It calls the imp_ module of ocean-code (imp_load_svc, imp_convert_svc, imp_registry_uc).
  * 2.4.0: every written row gives imp_load_svc an image (the row_version after the write, the values before of the
  * fields an update changed); undo takes a loaded import back -- the inserted rows deleted, the updated ones given their
  * values back, all through <t>_svc, never a record changed after the import (imp_load_svc.check_version).
+ * 2.5.0: every long operation goes to a job of the scheduler, not only the load (ocean-code 00-docs/07 PF05): submit
+ * queues VALIDATE (the dry run), LOAD or UNDO with imp_load_svc.queue and creates the one-off job, whose action is this
+ * importer's run_job (imp_ never calls an importer: no name travels as data); run_job asks imp_load_svc.job_operation
+ * which one to run, as the owner of the import. The undo stays all or nothing in the job; a job that fails is told by
+ * imp_load_svc.fail_job (a load FAILED, a dry run or an undo back to the status it had).
  * /keyview alone generates the key view of a table other modules point to.
  * A declaration the importer cannot honour is an error of generation (thrown), never a wrong package.
  */
@@ -471,9 +477,9 @@ export class OracleImportRenderer {
         r += `${tab}-- loads (or with p_dry_run tries and rolls back) the rows not written yet of import p_job_id; p_commit_rows: a\n`;
         r += `${tab}-- commit every n rows (a job of the scheduler)\n`;
         r += `${tab}procedure load (p_job_id in number, p_dry_run in boolean default false, p_commit_rows in pls_integer default null);\n\n`;
-        r += `${tab}-- 2.3.0: the load in a job of the scheduler (IMP_LOAD_<id>, dropped when done): queued by imp_load_svc, run as\n`;
-        r += `${tab}-- the owner of the import by run_job\n`;
-        r += `${tab}procedure load_async (p_job_id in number);\n`;
+        r += `${tab}-- 2.5.0: an operation in a job of the scheduler (VALIDATE, LOAD, UNDO; imp_load_svc.job_name, dropped when done):\n`;
+        r += `${tab}-- submit queues it and creates the job, run_job runs it as the owner of the import\n`;
+        r += `${tab}procedure submit (p_job_id in number, p_operation in varchar2);\n`;
         r += `${tab}procedure run_job (p_job_id in number);\n\n`;
         r += `${tab}-- 2.4.0: takes a loaded import back (imp_load_svc.begin_undo): the inserted rows deleted, the updated ones given\n`;
         r += `${tab}-- their values back, in the reverse order, all or nothing; a record changed after the import stops it\n`;
@@ -653,23 +659,29 @@ export class OracleImportRenderer {
         r += `${t2}imp_load_svc.end_load;\n`;
         r += `${tab}end load;\n\n`;
 
-        // 2.3.0 -- a load too long for the page: a one-off job of the scheduler, created by the module that owns the
-        // importer (no name travels as data: the action is this package)
+        // 2.5.0 -- an operation too long for the page: a one-off job of the scheduler, created by the module that owns the
+        // importer (no name travels as data: the action is this package); imp_load_svc admits it, names it and keeps
+        // which operation it is
         const jobAction = `${m.importer.toUpperCase()}.RUN_JOB`;
-        r += `${tab}procedure load_async (p_job_id in number) is\n`;
-        r += `${t2}l_name varchar2(128) := 'IMP_LOAD_' || p_job_id;\n`;
+        r += `${tab}procedure submit (p_job_id in number, p_operation in varchar2) is\n`;
+        r += `${t2}l_name varchar2(128) := imp_load_svc.job_name(p_job_id, p_operation);\n`;
         r += `${tab}begin\n`;
-        r += `${t2}imp_load_svc.queue(p_job_id, c_target);\n`;
+        r += `${t2}imp_load_svc.queue(p_job_id, c_target, p_operation);\n`;
         r += `${t2}dbms_scheduler.create_job(job_name => l_name, job_type => 'STORED_PROCEDURE', job_action => '${jobAction}',\n`;
         r += `${t2}                          number_of_arguments => 1, auto_drop => true, enabled => false,\n`;
-        r += `${t2}                          comments => 'A load of imp_ (00-docs/38 §13): import ' || p_job_id || ', dropped when done');\n`;
+        r += `${t2}                          comments => 'An operation of imp_ (00-docs/38 §19.13): import ' || p_job_id || ', dropped when done');\n`;
         r += `${t2}dbms_scheduler.set_job_argument_value(job_name => l_name, argument_position => 1, argument_value => to_char(p_job_id));\n`;
         r += `${t2}dbms_scheduler.enable(l_name);\n`;
-        r += `${tab}end load_async;\n\n`;
+        r += `${tab}end submit;\n\n`;
         r += `${tab}procedure run_job (p_job_id in number) is\n`;
         r += `${tab}begin\n`;
         r += `${t2}imp_load_svc.begin_job(p_job_id);\n`;
-        r += `${t2}load(p_job_id, p_commit_rows => imp_load_svc.commit_rows);\n`;
+        r += `${t2}case imp_load_svc.job_operation(p_job_id)\n`;
+        r += `${t3}when 'VALIDATE' then load(p_job_id, p_dry_run => true);\n`;
+        r += `${t3}when 'UNDO' then undo(p_job_id);\n`;
+        r += `${t3}else load(p_job_id, p_commit_rows => imp_load_svc.commit_rows);\n`;
+        r += `${t2}end case;\n`;
+        r += `${t2}commit;\n`;
         r += `${t2}imp_load_svc.end_job;\n`;
         r += `${tab}exception when others then\n`;
         r += `${t2}rollback;\n`;
@@ -755,8 +767,9 @@ export class OracleImportRenderer {
         const m = this.model(node);
         let r = `create or replace package ${m.app} as\n`;
         r += `${tab}-- the interface of the importer of ${m.table} (generated, /import): the pages, a test, REST at the end\n`;
+        r += `${tab}-- each one now, or in a job of the scheduler above IMP_SYNC_MAX_ROWS rows (2.5.0: imp_load_svc.async_wanted)\n`;
         r += `${tab}procedure check_job (p_job_id in number);     -- the dry run: every rule, nothing written\n`;
-        r += `${tab}procedure load      (p_job_id in number);     -- in a job of the scheduler above IMP_SYNC_MAX_ROWS rows\n`;
+        r += `${tab}procedure load      (p_job_id in number);\n`;
         r += `${tab}procedure undo      (p_job_id in number);     -- 2.4.0: the loaded import taken back, all or nothing\n`;
         r += `${tab}procedure register_target;\n`;
         r += `${tab}procedure unregister_target;\n`;
@@ -767,11 +780,17 @@ export class OracleImportRenderer {
     generateAppBody(node: IDdlNode): string {
         const m = this.model(node);
         let r = `create or replace package body ${m.app} as\n\n`;
-        r += `${tab}procedure check_job (p_job_id in number) is\n${tab}begin\n${tab}${tab}${m.importer}.load(p_job_id, p_dry_run => true);\n${tab}end check_job;\n\n`;
-        r += `${tab}procedure load (p_job_id in number) is\n${tab}begin\n`;
-        r += `${tab}${tab}if imp_load_svc.async_wanted(p_job_id) then\n${tab}${tab}${tab}${m.importer}.load_async(p_job_id);\n`;
-        r += `${tab}${tab}else\n${tab}${tab}${tab}${m.importer}.load(p_job_id);\n${tab}${tab}end if;\n${tab}end load;\n\n`;
-        r += `${tab}procedure undo (p_job_id in number) is\n${tab}begin\n${tab}${tab}${m.importer}.undo(p_job_id);\n${tab}end undo;\n\n`;
+        // 2.5.0 -- the same choice for the three: now, or submitted to a job of the scheduler
+        const nowOrQueued = (proc: string, op: string, now: string): string => {
+            let x = `${tab}procedure ${proc} (p_job_id in number) is\n${tab}begin\n`;
+            x += `${tab}${tab}if imp_load_svc.async_wanted(p_job_id, '${op}') then\n`;
+            x += `${tab}${tab}${tab}${m.importer}.submit(p_job_id, '${op}');\n`;
+            x += `${tab}${tab}else\n${tab}${tab}${tab}${now};\n${tab}${tab}end if;\n`;
+            return x + `${tab}end ${proc};\n\n`;
+        };
+        r += nowOrQueued('check_job', 'VALIDATE', `${m.importer}.load(p_job_id, p_dry_run => true)`);
+        r += nowOrQueued('load', 'LOAD', `${m.importer}.load(p_job_id)`);
+        r += nowOrQueued('undo', 'UNDO', `${m.importer}.undo(p_job_id)`);
         r += `${tab}procedure register_target is\n${tab}begin\n${tab}${tab}${m.importer}.register_target;\n${tab}end register_target;\n\n`;
         r += `${tab}procedure unregister_target is\n${tab}begin\n${tab}${tab}${m.importer}.unregister_target;\n${tab}end unregister_target;\n\n`;
         r += `end ${m.app};\n/\n`;

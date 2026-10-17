@@ -99,14 +99,25 @@ describe('/import: what is generated', () => {
         expect(out).toContain('"field_name":"currency_code","label":"Currency","data_type":"TEXT","required":"N","key":"N","lookup":"ref_currency_key_vw(code)"');
         expect(out).toContain('"labels":{"it":"Nome"}');
     });
-    test('a long load in a one-off job of the scheduler (2.3.0)', () => {
+    test('every long operation in a one-off job of the scheduler (2.3.0, 2.5.0)', () => {
         expect(out).toContain("procedure load (p_job_id in number, p_dry_run in boolean default false, p_commit_rows in pls_integer default null);");
-        expect(out).toContain("imp_load_svc.queue(p_job_id, c_target);");
+        expect(out).toContain("procedure submit (p_job_id in number, p_operation in varchar2);");
+        expect(out).toContain("l_name varchar2(128) := imp_load_svc.job_name(p_job_id, p_operation);");
+        expect(out).toContain("imp_load_svc.queue(p_job_id, c_target, p_operation);");
         expect(out).toContain("job_action => 'ZZ_ITEM_IMP.RUN_JOB'");
         expect(out).toContain("auto_drop => true, enabled => false");
-        expect(out).toContain("load(p_job_id, p_commit_rows => imp_load_svc.commit_rows);");
+        expect(out).toContain("case imp_load_svc.job_operation(p_job_id)");
+        expect(out).toContain("when 'VALIDATE' then load(p_job_id, p_dry_run => true);");
+        expect(out).toContain("when 'UNDO' then undo(p_job_id);");
+        expect(out).toContain("else load(p_job_id, p_commit_rows => imp_load_svc.commit_rows);");
         expect(out).toContain("imp_load_svc.fail_job(p_job_id, dbms_utility.format_error_stack);");
-        expect(out).toContain("if imp_load_svc.async_wanted(p_job_id) then");
+        // the interface: each command now or submitted
+        expect(out).toContain("if imp_load_svc.async_wanted(p_job_id, 'VALIDATE') then");
+        expect(out).toContain("zz_item_imp.submit(p_job_id, 'VALIDATE');");
+        expect(out).toContain("if imp_load_svc.async_wanted(p_job_id, 'LOAD') then");
+        expect(out).toContain("if imp_load_svc.async_wanted(p_job_id, 'UNDO') then");
+        expect(out).toContain("zz_item_imp.submit(p_job_id, 'UNDO');");
+        expect(out).not.toContain('load_async');
     });
     test('the image of a written row and the undo (2.4.0)', () => {
         expect(out).toContain('function load_row (x_action out varchar2, x_image out clob) return number is');

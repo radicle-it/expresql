@@ -3,6 +3,16 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.5.0 — 2026-10-17
+
+- `/import`: every long operation in a job of the scheduler, not only the load (ocean-code 00-docs/07 PF05).
+  `<t>_imp.load_async` becomes `<t>_imp.submit(job, operation)` -- `VALIDATE` (the dry run), `LOAD`, `UNDO`: it queues
+  the operation (`imp_load_svc.queue`, which admits and checks it) and creates the one-off job named by
+  `imp_load_svc.job_name`, whose action is still `<t>_imp.run_job` (the module that owns the importer creates it, no
+  name travels as data). `run_job` asks `imp_load_svc.job_operation` which one to run, as the owner of the import, and
+  commits when it ends (a dry run and an undo commit nothing themselves). `<t>_imp_app.check_job`, `load` and `undo`
+  each run now or submit, by `imp_load_svc.async_wanted(job, operation)`. Needs the imp_ of ocean-code of 2026-10-17.
+
 ## 2.4.0 — 2026-10-15
 
 - `/import`: the undo of a loaded import (phase I7 of doc 38 of ocean-code). `load_row` gives `imp_load_svc.row_done`
