@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   namespace never contains a dot, so the two forms cannot be confused and a plain name is quoted as before. A wrong
   constant fails to compile, while a wrong literal reads NULL at runtime (ocean-code 00-docs/01c §5).
   `test/unit/usercontext.test.ts`.
+- CLI: `expresql --diff <old.esql> <new.esql>` writes the migration from one version of a model to the next (the same
+  `toDiff` as the web editor's `# ---`): the script on stdout, the warnings on stderr, exit 2 when a statement needs a
+  manual intervention. It writes the structure (`ALTER`, new tables, indexes); the TAPI packages and the triggers are
+  re-created from the model's create script (ocean-code 00-docs/01c §3.2).
 
 ## 2.6.0 — 2026-10-17
 
