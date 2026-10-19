@@ -3,6 +3,9 @@ import lexer, { LexerToken } from './lexer.js';
 import amend_reserved_word from '../oracle/reserved_words.js';
 import type { DdlContext, IDdlNode, SemanticType } from './types.js';
 
+/** usercontext as a PL/SQL constant (pkg.constant) instead of a namespace literal */
+const USERCONTEXT_CONSTANT = /^[A-Za-z][A-Za-z0-9_$#]*\.[A-Za-z][A-Za-z0-9_$#]*$/;
+
 // ── Pre-computed lowercase constants (used only in DdlNode) ──────────────────
 
 const TSWLTZ_LOWER    = 'timestamp with local time zone';
@@ -273,7 +276,9 @@ export class DdlNode implements IDdlNode {
     apexUser(): string {
         const parts: string[] = [];
         const uctx = String(this._ctx.getOptionValue('usercontext') ?? '').trim();
-        if (uctx) parts.push(`sys_context('${uctx}','USER')`);
+        // 2.7.0: a namespace never contains a dot, so a qualified name (pkg.constant) is a PL/SQL constant holding the
+        // namespace, emitted as is -- a wrong name then fails to compile instead of reading NULL (ocean-code 00-docs/01c)
+        if (uctx) parts.push(USERCONTEXT_CONSTANT.test(uctx) ? `sys_context(${uctx},'USER')` : `sys_context('${uctx}','USER')`);
         if (this._ctx.optionEQvalue('apex', 'yes'))
             parts.push("sys_context('APEX$SESSION','APP_USER')");
         parts.push('user');

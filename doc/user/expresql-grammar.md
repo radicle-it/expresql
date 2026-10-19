@@ -724,6 +724,18 @@ Only the namespace name is specified (e.g. `MY_APP_CTX`); the attribute name `'U
 
 When not set, the coalesce chain falls back to the APEX expression if `apex: yes` is active, or to the bare `USER` pseudo-column otherwise.
 
+Since 2.7.0 the value may also be a **PL/SQL constant** holding the namespace, written as a qualified name
+(`pkg.constant`): a namespace never contains a dot, so a qualified name is emitted unquoted. A wrong constant then fails
+to compile instead of reading `NULL` at runtime.
+
+```expresql
+# settings = { auditcols: yes, apex: yes, usercontext: "ctx_const.c_namespace" }
+```
+
+```sql
+:new.created_by := coalesce(sys_context(ctx_const.c_namespace,'USER'),sys_context('APEX$SESSION','APP_USER'),user);
+```
+
 ```expresql
 # settings = { auditcols: yes, apex: yes, usercontext: MY_APP_CTX }
 ```

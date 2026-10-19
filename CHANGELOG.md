@@ -3,6 +3,14 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.7.0 — 2026-10-19
+
+- `usercontext` accepts a PL/SQL constant holding the namespace: a qualified name (`usercontext: "ctx_const.c_namespace"`)
+  is emitted as is in the audit triggers, `sys_context(ctx_const.c_namespace,'USER')`, instead of a quoted literal. A
+  namespace never contains a dot, so the two forms cannot be confused and a plain name is quoted as before. A wrong
+  constant fails to compile, while a wrong literal reads NULL at runtime (ocean-code 00-docs/01c §5).
+  `test/unit/usercontext.test.ts`.
+
 ## 2.6.0 — 2026-10-17
 
 - The order of the hooks around a write, on every tier (`full+hks`, `full`, `service+hks`, `service`, `lookup+hks`,
