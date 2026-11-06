@@ -103,7 +103,12 @@ describe('/import: what is generated', () => {
         expect(out).toContain("procedure load (p_job_id in number, p_dry_run in boolean default false, p_commit_rows in pls_integer default null);");
         expect(out).toContain("procedure submit (p_job_id in number, p_operation in varchar2);");
         expect(out).toContain("l_name varchar2(128) := imp_load_svc.job_name(p_job_id, p_operation);");
-        expect(out).toContain("imp_load_svc.queue(p_job_id, c_target, p_operation);");
+        expect(out).toContain("imp_load_svc.queue(p_job_id, c_target, p_operation, l_claim);");
+        // 2.7.1: the claim of the queueing travels in the job only, as its second argument, to begin_job
+        expect(out).toContain("number_of_arguments => 2, auto_drop => true");
+        expect(out).toContain("argument_position => 2, argument_value => l_claim);");
+        expect(out).toContain("procedure run_job (p_job_id in number, p_claim in varchar2) is");
+        expect(out).toContain("imp_load_svc.begin_job(p_job_id, p_claim);");
         expect(out).toContain("job_action => 'ZZ_ITEM_IMP.RUN_JOB'");
         expect(out).toContain("auto_drop => true, enabled => false");
         expect(out).toContain("case imp_load_svc.job_operation(p_job_id)");

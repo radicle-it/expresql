@@ -3,6 +3,12 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.7.1 — 2026-11-06
+
+- `/import`: the importer hands the claim of `imp_load_svc.queue` (a random secret of the queueing) to its job of the
+  scheduler as the second argument; `run_job(p_job_id, p_claim)` gives it to `imp_load_svc.begin_job` (middleware
+  imp 0.9, codex-015: the job opens the person who queued it only with the claim of that queueing).
+
 ## 2.7.0 — 2026-10-19
 
 - `usercontext` accepts a PL/SQL constant holding the namespace: a qualified name (`usercontext: "ctx_const.c_namespace"`)

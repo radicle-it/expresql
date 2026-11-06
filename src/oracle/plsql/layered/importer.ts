@@ -480,7 +480,7 @@ export class OracleImportRenderer {
         r += `${tab}-- 2.5.0: an operation in a job of the scheduler (VALIDATE, LOAD, UNDO; imp_load_svc.job_name, dropped when done):\n`;
         r += `${tab}-- submit queues it and creates the job, run_job runs it as the owner of the import\n`;
         r += `${tab}procedure submit (p_job_id in number, p_operation in varchar2);\n`;
-        r += `${tab}procedure run_job (p_job_id in number);\n\n`;
+        r += `${tab}procedure run_job (p_job_id in number, p_claim in varchar2);     -- p_claim: the claim of the queueing (imp_load_svc.queue)\n\n`;
         r += `${tab}-- 2.4.0: takes a loaded import back (imp_load_svc.begin_undo): the inserted rows deleted, the updated ones given\n`;
         r += `${tab}-- their values back, in the reverse order, all or nothing; a record changed after the import stops it\n`;
         r += `${tab}procedure undo (p_job_id in number);\n\n`;
@@ -665,17 +665,22 @@ export class OracleImportRenderer {
         const jobAction = `${m.importer.toUpperCase()}.RUN_JOB`;
         r += `${tab}procedure submit (p_job_id in number, p_operation in varchar2) is\n`;
         r += `${t2}l_name varchar2(128) := imp_load_svc.job_name(p_job_id, p_operation);\n`;
+        r += `${t2}l_claim varchar2(32);\n`;
         r += `${tab}begin\n`;
-        r += `${t2}imp_load_svc.queue(p_job_id, c_target, p_operation);\n`;
+        r += `${t2}imp_load_svc.queue(p_job_id, c_target, p_operation, l_claim);\n`;
         r += `${t2}dbms_scheduler.create_job(job_name => l_name, job_type => 'STORED_PROCEDURE', job_action => '${jobAction}',\n`;
-        r += `${t2}                          number_of_arguments => 1, auto_drop => true, enabled => false,\n`;
+        r += `${t2}                          number_of_arguments => 2, auto_drop => true, enabled => false,\n`;
         r += `${t2}                          comments => 'An operation of imp_ (00-docs/38 §19.13): import ' || p_job_id || ', dropped when done');\n`;
         r += `${t2}dbms_scheduler.set_job_argument_value(job_name => l_name, argument_position => 1, argument_value => to_char(p_job_id));\n`;
+        // 2.7.1 -- the claim of the queueing (a random secret imp_load_svc.queue returns) travels in the job only: begin_job
+        // opens the person who queued it with that claim, never with one rebuilt from the import
+        r += `${t2}-- 2026-11-06 (codex-015): the claim of this queueing, in the job only -- begin_job opens the person with it\n`;
+        r += `${t2}dbms_scheduler.set_job_argument_value(job_name => l_name, argument_position => 2, argument_value => l_claim);\n`;
         r += `${t2}dbms_scheduler.enable(l_name);\n`;
         r += `${tab}end submit;\n\n`;
-        r += `${tab}procedure run_job (p_job_id in number) is\n`;
+        r += `${tab}procedure run_job (p_job_id in number, p_claim in varchar2) is\n`;
         r += `${tab}begin\n`;
-        r += `${t2}imp_load_svc.begin_job(p_job_id);\n`;
+        r += `${t2}imp_load_svc.begin_job(p_job_id, p_claim);\n`;
         r += `${t2}case imp_load_svc.job_operation(p_job_id)\n`;
         r += `${t3}when 'VALIDATE' then load(p_job_id, p_dry_run => true);\n`;
         r += `${t3}when 'UNDO' then undo(p_job_id);\n`;

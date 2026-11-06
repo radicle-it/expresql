@@ -1,5 +1,5 @@
 import { n as e } from "./rolldown-runtime-DldpqzEl.js";
-//#region node_modules/@dbml/parse/dist/dbml-parse.mjs
+//#region ../../../../../../../Users/robertocapancioni/github/expresql/node_modules/@dbml/parse/dist/dbml-parse.mjs
 var t = Symbol("PASS_THROUGH"), n = Symbol("UNHANDLED"), r = class e {
 	static create(t, n, r, i) {
 		return new e(t, n, r, i);
