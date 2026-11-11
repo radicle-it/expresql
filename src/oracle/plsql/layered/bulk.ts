@@ -128,15 +128,27 @@ export class OracleBulkRenderer {
         const prefix = absorbed ? 'p_' : '';
         const rowsType = absorbed ? 't_row_view' : 't_rows';
         const addError = absorbed ? 'p_bulk_error' : 'bulk_error';
-        let r = `${tab}bulk_errors exception;\n`;
-        r += `${tab}pragma exception_init(bulk_errors, -24381);\n\n`;
-        if (!absorbed) r += this.renderErrorHelper(addError);
+        let r = this.renderErrorHelper(addError);
         r += this.renderInsertRows(model, prefix, rowsType, addError);
         if (!model.features.immutable) {
             r += this.renderUpdateRows(model, prefix, rowsType, addError);
             r += this.renderDeleteRows(model, prefix, rowsType, addError);
         }
         return r;
+    }
+
+    /**
+     * The declarations of /bulk, which PL/SQL wants before any subprogram of a body: the exception of FORALL ... SAVE
+     * EXCEPTIONS (in the DAL, or in the _svc with the absorbed DML) and, in the _svc, the guard.
+     */
+    generateDeclarations(inService: boolean, withDml: boolean): string {
+        let r = '';
+        if (inService) r += `${tab}g_bulk_busy boolean := false;  -- /bulk: one bulk call at a time on this table\n`;
+        if (withDml) {
+            r += `${tab}bulk_errors exception;\n`;
+            r += `${tab}pragma exception_init(bulk_errors, -24381);\n`;
+        }
+        return r + '\n';
     }
 
     /** Appends one error; an application error keeps its text without the ORA-2xxxx: prefix. */
@@ -343,15 +355,15 @@ export class OracleBulkRenderer {
     // ── _svc body ────────────────────────────────────────────────────────────
 
     /**
-     * The private part the bulk procedures share, emitted at the top of the _svc body (before the absorbed DML,
-     * which uses p_bulk_error): the guard, the error helper, the input checks, the raise of FAIL_FAST and, without
-     * +hks, the stubs of the batch hooks.
+     * The private procedures the bulk procedures share, after the absorbed DML and the hook stubs of the _svc body:
+     * the error helper (with a DAL; the absorbed DML brings its own), the input checks, the raise of FAIL_FAST and,
+     * without +hks, the stubs of the batch hooks.
      */
     generateServicePrivate(node: IDdlNode, hasDal: boolean, hasHks: boolean): string {
         const { tbl } = this.names(node, hasDal);
-        let r = `\n${tab}-- /bulk: private\n\n`;
-        r += `${tab}g_bulk_busy boolean := false;  -- one bulk call at a time on this table (savepoint ${bulkSavepointName(tbl)})\n\n`;
-        r += this.renderErrorHelper('p_bulk_error');
+        let r = `\n${tab}-- /bulk: private (savepoint ${bulkSavepointName(tbl)})\n\n`;
+        // without a DAL the absorbed DML, emitted before, already has it
+        if (hasDal) r += this.renderErrorHelper('p_bulk_error');
         r += `${tab}procedure p_bulk_input (p_message in varchar2) is\n`;
         r += `${tab}begin\n`;
         r += `${tab}${tab}raise_application_error(${BULK_ERRORS.input}, '[BULK_INPUT] ${tbl}: ' || p_message);\n`;

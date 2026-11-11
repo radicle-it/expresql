@@ -525,6 +525,7 @@ export class OracleDalRenderer {
         let r = `create or replace package body ${dal} as\n\n`;
         r += `${tab}resource_busy exception;\n`;
         r += `${tab}pragma exception_init(resource_busy, -54);\n\n`;
+        if (model.features.bulk) r += this.bulk.generateDeclarations(false, true);
         r += this.renderReadRoutines(model, 'package');
         r += this.renderInsertRoutine(model, 'package');
         r += this.renderCloseRoutine(model, 'package');

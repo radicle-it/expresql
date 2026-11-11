@@ -169,9 +169,10 @@ export class OracleServiceRenderer {
 
         let r = `create or replace package body ${svc} as\n`;
 
-        if (model.features.bulk) r += this.bulk.generateServicePrivate(node, hasDal, hasHks);
+        if (model.features.bulk) r += this.bulk.generateDeclarations(true, !hasDal);
         if (!hasDal) r += this.dal.generatePrivateDml(node);
         if (!hasHks) r += this.hooks.generatePrivateStubs(node);
+        if (model.features.bulk) r += this.bulk.generateServicePrivate(node, hasDal, hasHks);
         r += '\n';
 
         // get — routes to get_by_id / lock_by_id / lock_by_id_wait based on p_lock

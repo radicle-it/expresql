@@ -157,6 +157,24 @@ describe('X1-2 /bulk: generation per tier', () => {
     });
 });
 
+// PL/SQL wants the declarations of a body (variables, exceptions, pragmas) before its first subprogram: PLS-00103
+// otherwise. Found on the database by the X1 proof (job 20261111-192611).
+describe('X1-2b /bulk: declarations before subprograms in every package body', () => {
+    for (const tier of ['full+hks', 'full', 'service+hks', 'service']) {
+        test(tier, () => {
+            const out = ddl(TABLE(tier, ' /rowversion') + '# settings = { tenantid: yes }');
+            const bodies = out.split(/\n\/\n/).filter(b => /create or replace package body/.test(b));
+            expect(bodies.length).toBeGreaterThan(0);
+            for (const body of bodies) {
+                const first = body.search(/^    (procedure|function) /m);
+                if (first < 0) continue;
+                const late = /^    (\w+\s+(exception|boolean|pls_integer|number)\b.*;|pragma exception_init)/m.exec(body.slice(first));
+                expect(late?.[0], body.slice(0, 60)).toBeUndefined();
+            }
+        });
+    }
+});
+
 describe('X1-2b /bulk: compilation order', () => {
     test('_svc spec → <t>_bulk_hks spec → its body → _svc body', () => {
         const out = ddl(TABLE('full+hks'));
