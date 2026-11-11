@@ -67,6 +67,7 @@ export interface OracleTableApiModel {
         versioned: boolean;
         immutable: boolean;
         syntheticTenantId: boolean;
+        bulk: boolean;
     };
     dimensionScopes: OracleDimensionScope[];
     lockDefaults: { lock: string; timeout: number };
@@ -76,6 +77,76 @@ export interface OracleTableApiModel {
     aggregateDetails: OracleAggregateDetail[];
     aggregateMaster: OracleAggregateMaster | null;
     pkIsUserDefined: boolean;
+}
+
+/** every argument /api accepts as a layered tier: the six tiers, the legacy alias and the numeric shorthands */
+export const LAYERED_TIER_NAMES = [
+    'full+hks', 'full', 'service+hks', 'service', 'lookup+hks', 'lookup', 'layered',
+    '3h', '3', '2h', '2', '1h', '1',
+];
+
+/**
+ * True when a node gets the layered TAPI: /api with a tier, or /api under the global api: layered. The single test
+ * shared by the generator, its drops and the migration diff.
+ */
+export function isLayeredNode(
+    node: Pick<IDdlNode, 'trimmedContent' | 'getOptionValue'>,
+    ctx: Pick<DdlContext, 'optionEQvalue'>,
+): boolean {
+    if (!node.trimmedContent().toLowerCase().includes('/api')) return false;
+    const apiVal = String(node.getOptionValue('api') ?? '').trim().toLowerCase();
+    return LAYERED_TIER_NAMES.includes(apiVal) || ctx.optionEQvalue('api', 'layered');
+}
+
+/** the packages a tier has: a DAL, external hooks, a service */
+export function tierCapabilities(tier: string): { hasDal: boolean; hasHks: boolean; hasSvc: boolean } {
+    return {
+        hasDal: tier === 'full' || tier === 'full+hks',
+        hasHks: tier.endsWith('+hks'),
+        hasSvc: tier === 'service' || tier === 'service+hks' || tier === 'full' || tier === 'full+hks',
+    };
+}
+
+/** which interface packages the interface setting asks for */
+export function interfaceFlags(ctx: DdlContext): { value: string; app: boolean; rest: boolean } {
+    const value = String(ctx.getOptionValue('interface') ?? 'app').toLowerCase();
+    return {
+        value,
+        app: value === 'app' || value === 'apex' || value === 'both' || value === '',
+        rest: value === 'rest' || value === 'both',
+    };
+}
+
+/**
+ * The packages of a layered table, in the order the drops list them. Reads only the directives (no FK analysis), so
+ * a drop or a diff can name them for a node the generator has not analysed.
+ */
+export function layeredPackageNames(node: IDdlNode, ctx: DdlContext): string[] {
+    const obj = (ctx.objPrefix() + node.parseName()).toLowerCase();
+    const { hasDal, hasHks, hasSvc } = tierCapabilities(normalizeApiTier(node.getOptionValue('api')));
+    const ifc = interfaceFlags(ctx);
+    const pkgs: string[] = [];
+    if (hasDal) pkgs.push(`${obj}_dal`);
+    if (hasHks) pkgs.push(`${obj}_hks`);
+    if (hasHks && hasSvc && node.isOption('bulk')) pkgs.push(`${obj}_bulk_hks`);
+    if (hasSvc) pkgs.push(`${obj}_svc`);
+    if (hasSvc && node.isOption('auditlog')) pkgs.push(`${obj}_aud`);
+    if (ifc.app) pkgs.push(`${obj}_app`);
+    if (ifc.rest) pkgs.push(`${obj}_rst`);
+    return pkgs;
+}
+
+/**
+ * The columns a write sets: foreign keys, then the business columns. A virtual column is computed by the database
+ * and is never written.
+ */
+export function writableColumns(model: OracleTableApiModel): string[] {
+    return [
+        ...model.columns.foreignKeys.map(name => name.toLowerCase()),
+        ...model.columns.service
+            .filter(col => !col.isOption('virtual'))
+            .map(col => col.parseName().toLowerCase()),
+    ];
 }
 
 export function normalizeApiTier(value: string | number | boolean | null): string {
@@ -193,10 +264,8 @@ export class OracleTableApiAnalyzer {
             }
         }
 
-        const ifc = String(this.ctx.getOptionValue('interface') ?? 'app').toLowerCase();
-        const hasDal = tier === 'full' || tier === 'full+hks';
-        const hasHks = tier.endsWith('+hks');
-        const hasSvc = tier === 'service' || tier === 'service+hks' || tier === 'full' || tier === 'full+hks';
+        const ifc = interfaceFlags(this.ctx);
+        const { hasDal, hasHks, hasSvc } = tierCapabilities(tier);
         const model: OracleTableApiModel = {
             node,
             names: {
@@ -212,11 +281,7 @@ export class OracleTableApiAnalyzer {
             },
             tier,
             capabilities: { hasDal, hasHks, hasSvc },
-            interfaces: {
-                value: ifc,
-                app: ifc === 'app' || ifc === 'apex' || ifc === 'both' || ifc === '',
-                rest: ifc === 'rest' || ifc === 'both',
-            },
+            interfaces: ifc,
             columns: { foreignKeys, service: serviceColumns, parameters, unique },
             features: {
                 auditLog: node.isOption('auditlog'),
@@ -227,6 +292,7 @@ export class OracleTableApiAnalyzer {
                 versioned: node.isOption('versioned'),
                 immutable: node.isOption('immutable'),
                 syntheticTenantId: hasSyntheticTenantId(this.ctx, node),
+                bulk: node.isOption('bulk'),
             },
             dimensionScopes,
             lockDefaults: lockDefaults(node),

@@ -1,3 +1,6 @@
+import { bulkRefusal } from '../oracle/plsql/layered/bulk-rules.js';
+import { isLayeredNode } from '../oracle/plsql/table-model.js';
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /** Minimal shape of a parsed node (DdlNode) used by the error-checker. */
@@ -13,6 +16,9 @@ interface ParsedNode {
     indexOf(key: string, flag?: boolean): number;
     getOptionValue(option: string): string | null;
     children: ParsedNode[];
+    parent: ParsedNode | null;
+    trimmedContent(): string;
+    getTransColumns(): unknown[];
 }
 
 /** Minimal shape of the top-level expresql instance passed to checkSyntax. */
@@ -69,6 +75,7 @@ const tableDirectives = [
     ,'businesskey'
     ,'bridge'
     ,'aggregate'
+    ,'bulk'
     ,'import','keyview'
     ,'unique','uk'
     ,'pk'
@@ -93,6 +100,7 @@ const columnDirectives = [
     ,'fk'
     ,'pk'
     ,'trans','translation','translations'
+    ,'virtual'
 ];
 
 // ── Messages ───────────────────────────────────────────────────────────────────
@@ -151,6 +159,7 @@ function checkSyntax(parsed: ParsedContext): SyntaxError[] {
     ret = ret.concat(businesskey_checks(ddl));
     ret = ret.concat(bridge_checks(ddl));
     ret = ret.concat(aggregate_checks(ddl));
+    ret = ret.concat(bulk_checks(ddl));
 
     return ret;
 }
@@ -260,6 +269,26 @@ function aggregate_checks(ddl: ParsedContext): SyntaxError[] {
                 '/aggregate expects at least one nested detail table (a table indented under this one) — none found',
                 new Offset(node.line, node.src[pos].begin),
                 new Offset(node.line, node.src[pos].begin + 'aggregate'.length),
+                'warning'
+            ));
+        }
+    }
+    return ret;
+}
+
+// the generator refuses these combinations (82b §3.8); the editor says why before generating
+function bulk_checks(ddl: ParsedContext): SyntaxError[] {
+    const ret: SyntaxError[] = [];
+    for (const node of ddl.descendants()) {
+        if (node.inferType() !== 'table' || !node.isOption('bulk')) continue;
+        const pos = node.indexOf('bulk');
+        if (pos < 0 || pos >= node.src.length) continue;
+        const why = bulkRefusal(node, isLayeredNode(node, ddl));
+        if (why !== null) {
+            ret.push(new SyntaxError(
+                `/bulk: this table ${why}`,
+                new Offset(node.line, node.src[pos].begin),
+                new Offset(node.line, node.src[pos].begin + 'bulk'.length),
                 'warning'
             ));
         }

@@ -7,6 +7,7 @@ import {
     renderDuplicateValueException,
     renderRecordAssignments,
 } from './rendering.js';
+import type { OracleBulkRenderer } from './bulk.js';
 import { OracleDalRenderer } from './dal.js';
 import { OracleHooksRenderer } from './hooks.js';
 import {
@@ -21,6 +22,7 @@ export class OracleServiceRenderer {
         private analyzer: OracleTableApiAnalyzer,
         private dal: OracleDalRenderer,
         private hooks: OracleHooksRenderer,
+        private bulk: OracleBulkRenderer,
     ) {}
 
     generateSpec(node: IDdlNode): string {
@@ -123,6 +125,7 @@ export class OracleServiceRenderer {
             r += `${tab}function has_${bridge.rightLabel} (p_${bridge.left} in ${tbl}.${bridge.left}%type, p_${bridge.right} in ${tbl}.${bridge.right}%type) return boolean;\n\n`;
             r += `${tab}function list_${bridge.rightLabel} (p_${bridge.left} in ${tbl}.${bridge.left}%type) return sys_refcursor;\n\n`;
         }
+        if (model.features.bulk) r += this.bulk.generateServiceSpec(node, model.capabilities.hasDal);
         r += `end ${bareName(svc)};\n/\n`;
         return r;
     }
@@ -166,6 +169,7 @@ export class OracleServiceRenderer {
 
         let r = `create or replace package body ${svc} as\n`;
 
+        if (model.features.bulk) r += this.bulk.generateServicePrivate(node, hasDal, hasHks);
         if (!hasDal) r += this.dal.generatePrivateDml(node);
         if (!hasHks) r += this.hooks.generatePrivateStubs(node);
         r += '\n';
@@ -374,6 +378,7 @@ export class OracleServiceRenderer {
             r += `${tab}end list_${bridge.rightLabel};\n\n`;
         }
 
+        if (model.features.bulk) r += this.bulk.generateServiceBody(node, hasDal, hasHks);
         r += `end ${bareName(svc)};\n/\n`;
         return r;
     }

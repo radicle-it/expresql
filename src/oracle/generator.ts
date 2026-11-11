@@ -7,6 +7,8 @@ import { BaseGenerator } from '../compiler/base-generator.js';
 import { toOracleType, oraclePkTypeModifier, isDb23 } from './types.js';
 import { OracleViewBuilder } from './view.js';
 import { OraclePlsqlBuilder } from './plsql.js';
+import { isLayeredNode, layeredPackageNames } from './plsql/table-model.js';
+import { checkBulkWithoutLayers } from './plsql/layered/bulk.js';
 
 // ── Local constants ───────────────────────────────────────────────────────────
 
@@ -632,30 +634,8 @@ export class OracleDDLGenerator extends BaseGenerator {
             if (node.isOption('versioned'))
                 ret += 'drop view ' + ifExists + objName + '_current;\n';
             ret += 'drop table ' + ifExists + objName + ' cascade constraints;\n';
-            const hasApiDir = node.trimmedContent().toLowerCase().includes('/api');
-            const apiVal    = String(node.getOptionValue('api') ?? '').trim().toLowerCase();
-            const tierNames = ['full+hks', 'full', 'service+hks', 'service',
-                               'lookup+hks', 'lookup', 'layered',
-                               '3h', '3', '2h', '2', '1h', '1'];
-            const isLayeredNode = hasApiDir && (tierNames.includes(apiVal) || this._ddl.optionEQvalue('api', 'layered'));
-            if (isLayeredNode) {
-                const raw     = apiVal || 'full+hks';
-                const tier    = raw === 'layered' || raw === '3h' ? 'full+hks'
-                              : raw === '3'  ? 'full' : raw === '2h' ? 'service+hks'
-                              : raw === '2'  ? 'service' : raw === '1h' ? 'lookup+hks'
-                              : raw === '1'  ? 'lookup' : raw;
-                const hasDal  = ['full', 'full+hks'].includes(tier);
-                const hasHks  = tier.endsWith('+hks');
-                const hasSvc  = ['service', 'service+hks', 'full', 'full+hks'].includes(tier);
-                const ifc     = String(this._ddl.getOptionValue('interface') ?? 'app').toLowerCase();
-                const genApp  = ifc === 'app' || ifc === 'apex' || ifc === 'both' || ifc === '';
-                const genRst  = ifc === 'rest' || ifc === 'both';
-                if (hasDal) ret += 'drop package ' + ifExists + objName + '_dal;\n';
-                if (hasHks) ret += 'drop package ' + ifExists + objName + '_hks;\n';
-                if (hasSvc) ret += 'drop package ' + ifExists + objName + '_svc;\n';
-                if (node.isOption('auditlog') && hasSvc) ret += 'drop package ' + ifExists + objName + '_aud;\n';
-                if (genApp)  ret += 'drop package ' + ifExists + objName + '_app;\n';
-                if (genRst)  ret += 'drop package ' + ifExists + objName + '_rst;\n';
+            if (isLayeredNode(node, this._ddl)) {
+                for (const pkg of layeredPackageNames(node, this._ddl)) ret += 'drop package ' + ifExists + pkg + ';\n';
             } else if (this._ddl.optionEQvalue('api', 'yes')) {
                 ret += 'drop package ' + ifExists + objName + '_api;\n';
             }
@@ -751,15 +731,7 @@ export class OracleDDLGenerator extends BaseGenerator {
         // Layered-API detection, needed both by the versioned trigger below (skip it
         // when a layered TAPI exists to carry the guard instead) and by the TAPI
         // section further down.
-        const globalLayered = this._ddl.optionEQvalue('api', 'layered');
-        const layeredTiers  = ['full+hks', 'full', 'service+hks', 'service',
-                               'lookup+hks', 'lookup', 'layered',
-                               '3h', '3', '2h', '2', '1h', '1'];
-        const isNodeLayered = (node: DdlNode): boolean => {
-            const hasApiDir  = node.trimmedContent().toLowerCase().includes('/api');
-            const nodeApiVal = (node.getOptionValue('api') ?? '').trim().toLowerCase();
-            return hasApiDir && (layeredTiers.includes(nodeApiVal) || globalLayered);
-        };
+        const isNodeLayered = (node: DdlNode): boolean => isLayeredNode(node, this._ddl);
 
         // Triggers
         let j = 0;
@@ -811,6 +783,7 @@ export class OracleDDLGenerator extends BaseGenerator {
                 const tapi = this.generateLayeredTAPI(node);
                 if (tapi) { if (j++ === 0) output += '-- APIs\n'; output += tapi + '\n'; }
             } else {
+                checkBulkWithoutLayers(node, (this._ddl.objPrefix() + node.parseName()).toLowerCase());
                 const hasApiDir = node.trimmedContent().toLowerCase().includes('/api');
                 if (this._ddl.optionEQvalue('api', false) && !hasApiDir) continue;
                 const tapi = this.generateTAPI(node);

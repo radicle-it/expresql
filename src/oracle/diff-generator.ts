@@ -5,6 +5,7 @@ import { OraclePlsqlBuilder } from './plsql.js';
 import { toOracleType, isDb23 } from './types.js';
 import { DdlNode, DEFAULT_NAMING } from '../compiler/node.js';
 import { concatNames } from '../utils/naming.js';
+import { isLayeredNode, layeredPackageNames } from './plsql/table-model.js';
 
 // ── Step order map ────────────────────────────────────────────────────────────
 
@@ -174,7 +175,7 @@ export class OracleDiffGenerator implements DiffGenerator {
         // Packages (permanent removal)
         const apiKind = this._apiKind(node, ctx);
         if (apiKind === 'layered') {
-            for (const pkg of this._layeredPkgNames(node, ctx))
+            for (const pkg of layeredPackageNames(node, ctx))
                 stmts.push(mk('drop_package', tbl, `drop package ${ifx}${pkg};\n`));
         } else if (apiKind === 'simple') {
             stmts.push(mk('drop_package', tbl, `drop package ${ifx}${objName}_api;\n`));
@@ -1017,86 +1018,51 @@ export class OracleDiffGenerator implements DiffGenerator {
         for (const pkg of this._droppedPkgs(oldNode, newNode, oldCtx, newCtx, oldKind, newKind))
             stmts.push(mk('drop_package', tbl, `drop package ${ifx}${pkg};\n`));
 
-        // Packages that need CREATE OR REPLACE
-        const auditChanged = oldNode.isOption('auditlog') !== newNode.isOption('auditlog');
+        // Packages that need CREATE OR REPLACE: whenever the generated packages differ (2.8.0). Until 2.7.0 only a
+        // change of columns, kind, /auditlog or /apex replaced them, so a change of another directive (/bulk, a
+        // dimension column, the tier, the interface) left the old packages in place.
         const apexChanged  =
             (oldNode.isOption('apex') || oldNode.isOption('apx')) !==
             (newNode.isOption('apex') || newNode.isOption('apx'));
-        const needsReplace = colsChanged || oldKind !== newKind || auditChanged || apexChanged;
-
-        if (newKind === 'layered' && needsReplace) {
-            const plsql = new OraclePlsqlBuilder(newCtx, DEFAULT_NAMING);
-            stmts.push(...this._splitPkgBlocks(plsql.generateLayeredTAPI(newNode), tbl));
-        } else if (newKind === 'simple' && needsReplace) {
-            const plsql = new OraclePlsqlBuilder(newCtx, DEFAULT_NAMING);
-            stmts.push(...this._splitPkgBlocks(plsql.generateTAPI(newNode), tbl));
-        }
+        const newSql = this._packagesSql(newNode, newCtx, newKind);
+        const needsReplace = colsChanged || oldKind !== newKind || apexChanged
+            || this._packagesSql(oldNode, oldCtx, oldKind) !== newSql;
+        if (needsReplace && newSql !== '') stmts.push(...this._splitPkgBlocks(newSql, tbl));
 
         return { stmts, warns };
     }
 
+    /** The packages the generator emits for a table, '' without an API; a model it cannot generate counts as changed. */
+    private _packagesSql(node: IDdlNode, ctx: DdlContext, kind: 'layered' | 'simple' | 'none'): string {
+        if (kind === 'none') return '';
+        try {
+            const plsql = new OraclePlsqlBuilder(ctx, DEFAULT_NAMING);
+            return kind === 'layered' ? plsql.generateLayeredTAPI(node) : plsql.generateTAPI(node);
+        } catch (e) {
+            return `-- not generated: ${(e as Error).message}`;
+        }
+    }
+
     private _apiKind(node: IDdlNode, ctx: DdlContext): 'layered' | 'simple' | 'none' {
-        const hasDir = node.trimmedContent().toLowerCase().includes('/api');
-        if (!hasDir) return 'none';
-        // If /api is present on the node, it's layered (any tier argument)
-        const apiVal = String(node.getOptionValue('api') ?? '').trim().toLowerCase();
-        const isLayeredTier = ['full+hks', 'full', 'service+hks', 'service',
-                               'lookup+hks', 'lookup', 'layered',
-                               '3h', '3', '2h', '2', '1h', '1'].includes(apiVal);
-        if (isLayeredTier) return 'layered';
-        // Legacy: global api:layered setting
-        if (ctx.optionEQvalue('api', 'layered')) return 'layered';
+        if (!node.trimmedContent().toLowerCase().includes('/api')) return 'none';
+        if (isLayeredNode(node, ctx)) return 'layered';
         // /api yes (simple flat TAPI)
+        const apiVal = String(node.getOptionValue('api') ?? '').trim().toLowerCase();
         if (ctx.optionEQvalue('api', 'yes') || apiVal === 'yes') return 'simple';
         return 'none';
     }
 
-    private _layeredPkgNames(node: IDdlNode, ctx: DdlContext): string[] {
-        const obj     = ctx.objPrefix() + node.parseName();
-        const raw     = String(node.getOptionValue('api') ?? 'full+hks').trim().toLowerCase();
-        const tier    = raw === 'layered' || raw === '3h' ? 'full+hks'
-                      : raw === '3'                       ? 'full'
-                      : raw === '2h'                      ? 'service+hks'
-                      : raw === '2'                       ? 'service'
-                      : raw === '1h'                      ? 'lookup+hks'
-                      : raw === '1'                       ? 'lookup'
-                      : raw;
-        const hasDal  = ['full', 'full+hks'].includes(tier);
-        const hasHks  = tier.endsWith('+hks');
-        const hasSvc  = ['service', 'service+hks', 'full', 'full+hks'].includes(tier);
-        const ifc     = String(ctx.getOptionValue('interface') ?? 'app').toLowerCase();
-        const genApp  = ifc === 'app' || ifc === 'apex' || ifc === 'both' || ifc === '';
-        const genRst  = ifc === 'rest' || ifc === 'both';
-
-        const pkgs: string[] = [];
-        if (hasDal) pkgs.push(`${obj}_dal`);
-        if (hasHks) pkgs.push(`${obj}_hks`);
-        if (hasSvc) pkgs.push(`${obj}_svc`);
-        if (genApp)  pkgs.push(`${obj}_app`);
-        if (genRst)  pkgs.push(`${obj}_rst`);
-        if (node.isOption('auditlog') && hasSvc) pkgs.push(`${obj}_aud`);
-        return pkgs;
-    }
-
     private _droppedPkgs(
         oldNode: IDdlNode, newNode: IDdlNode,
-        oldCtx:  DdlContext, _newCtx: DdlContext,
+        oldCtx:  DdlContext, newCtx: DdlContext,
         oldKind: string, newKind: string,
     ): string[] {
-        const dropped: string[] = [];
         const oldObj  = oldCtx.objPrefix() + oldNode.parseName();
-
-        if (oldKind === 'layered' && (newKind === 'simple' || newKind === 'none')) {
-            dropped.push(`${oldObj}_dal`, `${oldObj}_hks`, `${oldObj}_svc`, `${oldObj}_app`);
-            if (oldNode.isOption('auditlog')) dropped.push(`${oldObj}_aud`);
-        } else if (oldKind === 'simple' && (newKind === 'layered' || newKind === 'none')) {
-            dropped.push(`${oldObj}_api`);
-        } else if (oldKind === 'layered' && newKind === 'layered') {
-            if (oldNode.isOption('auditlog') && !newNode.isOption('auditlog'))
-                dropped.push(`${oldObj}_aud`);
-        }
-
-        return dropped;
+        if (oldKind === 'simple' && newKind !== 'simple') return [`${oldObj}_api`];
+        if (oldKind !== 'layered') return [];
+        // every package the old table had and the new one no longer has: the tier, the interface, /auditlog, /bulk
+        const kept = newKind === 'layered' ? new Set(layeredPackageNames(newNode, newCtx)) : new Set<string>();
+        return layeredPackageNames(oldNode, oldCtx).filter(pkg => !kept.has(pkg));
     }
 
     // ── Package block splitting ───────────────────────────────────────────────
@@ -1107,9 +1073,36 @@ export class OracleDiffGenerator implements DiffGenerator {
         for (let part of parts) {
             part = part.trim();
             if (!part) continue;
-            result.push(mk('create_package', tbl, part + '\n/\n'));
+            result.push(mk('create_package', tbl, this._keepHandWrittenBody(part) ?? part + '\n/\n'));
         }
         return result;
+    }
+
+    /**
+     * The bodies of <t>_hks and <t>_bulk_hks are generated once and then written by hand: a migration creates them
+     * only when they do not exist yet, never a create or replace over the hand-written code (2.8.0). Returns null for
+     * any other package.
+     */
+    private _keepHandWrittenBody(block: string): string | null {
+        const m = /^create or replace package body\s+([\w$#."]+_hks)\s+as\b/i.exec(block);
+        if (m === null || /_agg_hks$/i.test(m[1])) return null;
+        const [owner, name] = m[1].includes('.') ? m[1].split('.') : [null, m[1]];
+        const quote = ['~', '#', '!', '^', '|', '@'].find(c => !block.includes(c + "'"));
+        if (quote === undefined) return null;
+        const objects = owner === null
+            ? `user_objects where object_name = upper('${name}')`
+            : `all_objects where owner = upper('${owner}') and object_name = upper('${name}')`;
+        return (
+            `-- ${m[1]}: the body is written by hand, created only when missing\n` +
+            `declare\n` +
+            `    l_count pls_integer;\n` +
+            `begin\n` +
+            `    select count(*) into l_count from ${objects} and object_type = 'PACKAGE BODY';\n` +
+            `    if l_count = 0 then\n` +
+            `        execute immediate q'${quote}${block}${quote}';\n` +
+            `    end if;\n` +
+            `end;\n/\n`
+        );
     }
 
     // ── Idempotency wrappers ──────────────────────────────────────────────────

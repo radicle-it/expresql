@@ -69,3 +69,27 @@ describe('hook order: chk_rbac → before_<op> → validate, on every tier and i
         expect(expectOrder(widgets.slice(0, widgets.indexOf('end widgets_svc;')), true)).toBeGreaterThan(0);
     });
 });
+
+// X1-4 (82b §3.3): a bulk call runs per row the whole scalar sequence, then validate_many, the DML, after_<op> per
+// row and after_many
+describe('hook order: /bulk, the scalar sequence per row then the batch', () => {
+    const OPS: Array<[string, string, string]> = [
+        ['p_create_many', 'insert_rows', 'after_insert'],
+        ['p_update_many', 'update_rows', 'after_update'],
+        ['p_delete_many', 'delete_rows', 'after_delete'],
+    ];
+    for (const tier of ['full+hks', 'full', 'service+hks', 'service']) {
+        test(tier, () => {
+            const out = ddl(`widgets /api ${tier} /bulk\n  name vc100 /nn\n  site vc20\n# settings = { dimensioncolumns: { site: "SITE" } }`);
+            expect(expectOrder(out, true)).toBeGreaterThan(0);
+            for (const [proc, dml, after] of OPS) {
+                const body = out.slice(out.indexOf(`procedure ${proc} (`), out.indexOf(`end ${proc};`));
+                const at = (re: RegExp) => body.search(re);
+                const steps = [/chk_rbac\(/, /chk_rls\(/, /validate_many\(/, new RegExp(`${dml}\\(`), new RegExp(`${after}\\(`), /after_many\(/];
+                const positions = steps.map(at);
+                positions.forEach((p, k) => expect(p, `${proc}: ${steps[k]}`).toBeGreaterThan(-1));
+                expect(positions, proc).toEqual([...positions].sort((a, b) => a - b));
+            }
+        });
+    }
+});

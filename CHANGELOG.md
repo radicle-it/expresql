@@ -3,6 +3,30 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## 2.8.0 — 2026-11-11
+
+- `/bulk` (middleware-docs 82b): `create_many`, `update_many` and `delete_many` in the `_svc` of a table with a service
+  tier. Every row goes through the scalar protocol (`chk_rbac → before_<op> → validate → chk_rls`), then
+  `validate_many`, one `FORALL ... SAVE EXCEPTIONS` per batch (`<t>_dal.insert_rows/update_rows/delete_rows`, absorbed
+  into the `_svc` without a DAL), `after_<op>` per row and `after_many`; the batch hooks in `<t>_bulk_hks`, generated
+  once. A savepoint per call and a guard per table (`[BULK_REENTRANT]`); `FAIL_FAST` raises the first row error with its
+  index, `COLLECT` returns them all with nothing written; any other error rolls back and propagates in both modes. New
+  codes -20005 `[BULK_INPUT]`, -20006 `[BULK_REENTRANT]`, -20007 `[BULK_ROW]`, -20008 `[BULK_ROLLBACK]`. Refused at
+  generation (and shown by the editor, from the same rules): no service, `/versioned`, a detail of an `/aggregate`,
+  `/auditlog`, `/bridge`, `/soda`, `/history`, `/flashback`, translated columns. Without `/bulk` the generated output is
+  unchanged. `test/unit/bulk.test.ts`, `hook-order.test.ts` (bulk paths), `diff.test.ts`.
+- `/virtual <expr>`: a computed column, `generated always as (<expr>) virtual`. 2.8.0 also leaves it out of the DAL's
+  insert and update (it was out of `t_rec` but still written by `insert_row`/`update_row`, ORA-54013), and the editor
+  knows the directive.
+- `--diff`: the packages are replaced whenever the packages generated for the old and the new model differ, not only on
+  a change of columns, kind, `/auditlog` or `/apex`: a change of `/bulk`, of a dimension column, of the tier or of the
+  interface left the old packages in place. The packages no longer generated are dropped (the tier, `/bulk`), from the
+  same list as the generator's drops. The bodies of `<t>_hks` and `<t>_bulk_hks`, written by hand, are created only when
+  missing, never replaced: until 2.7.0 the migration overwrote the body of `_hks` with the empty generated one.
+- The tier logic is one: `isLayeredNode`, `tierCapabilities`, `interfaceFlags` and `layeredPackageNames` in
+  `table-model.ts`, used by the analyser, the generator's drops and the migration (they had three copies, the migration's
+  without the normalisation of the tier).
+
 ## 2.7.1 — 2026-11-06
 
 - `/import`: the importer hands the claim of `imp_load_svc.queue` (a random secret of the queueing) to its job of the

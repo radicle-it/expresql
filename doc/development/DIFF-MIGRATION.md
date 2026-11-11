@@ -182,6 +182,14 @@ Package replacement uses `CREATE OR REPLACE PACKAGE` / `CREATE OR REPLACE PACKAG
 | `/apex` added (layered) | `CREATE OR REPLACE` all layered packages (`_app` included) |
 | `/apex` removed (layered) | `DROP PACKAGE _app` + `CREATE OR REPLACE` remaining four packages |
 | Any column change on a layered table | `CREATE OR REPLACE` all layered packages for that table |
+| Any other change that changes the generated packages (2.8.0): `/bulk`, a dimension column, the tier, the `interface` setting | `CREATE OR REPLACE` all layered packages; `DROP PACKAGE` for the ones no longer generated (e.g. `_dal`/`_hks` going from `full+hks` to `service`, `_bulk_hks` when `/bulk` is removed) |
+
+**Hand-written bodies (2.8.0).** The bodies of `<t>_hks` and `<t>_bulk_hks` are generated once and then written by hand. A
+migration never replaces them: it emits each one inside a PL/SQL block that creates it with `execute immediate` only when
+`user_objects` (`all_objects` for a qualified name) has no `PACKAGE BODY` of that name. Their specs, and every other
+package, are replaced as before. Until 2.7.0 the migration re-emitted the empty generated body of `_hks` with a
+`create or replace`, overwriting the hand-written one. `_agg_hks` is not in the migration (neither are `_agg`, `_imp`,
+`_key_vw`).
 
 > **Why all-or-nothing for replacement**: the dependency graph between DAL/HKS/SVC/APP/AUD is tight — SVC body calls DAL and AUD, APP body calls SVC. Regenerating all packages via `CREATE OR REPLACE` is safe (idempotent) and avoids the risk of stale inter-package references from partial replacement.
 
@@ -330,9 +338,15 @@ function diffPackages(oldTbl, newTbl, ctx):
 Returns `true` when any of the following hold:
 
 - The `/api` option value changed (including `yes` ↔ `layered` transitions)
-- `/auditlog` was added or removed
 - `/apex` was added or removed
 - Any column was added, dropped, or modified on a table that has `/api layered`
+- (2.8.0) The packages generated for the old model differ from those generated for the new one. This covers every
+  directive and setting the packages depend on (`/auditlog`, `/bulk`, dimension columns, tier, interface, a renamed
+  column) without listing them; a model that cannot be generated counts as changed. Until 2.7.0 only the first three
+  points and `/auditlog` were checked, so a change of another directive left the old packages in place.
+
+The packages dropped are `packageNamesOf(old) \ packageNamesOf(new)`, from the same list the generator's own drops use
+(`layeredPackageNames`, normalised tier: `_dal`, `_hks`, `_bulk_hks`, `_svc`, `_aud`, `_app`, `_rst`).
 
 ### diffViews
 

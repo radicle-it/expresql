@@ -1,7 +1,8 @@
 import { tab } from '../../../compiler/node.js';
 import type { DdlContext, IDdlNode } from '../../../compiler/types.js';
 import { bareName } from '../names.js';
-import { OracleTableApiAnalyzer, type OracleTableApiModel } from '../table-model.js';
+import { OracleTableApiAnalyzer, writableColumns, type OracleTableApiModel } from '../table-model.js';
+import type { OracleBulkRenderer } from './bulk.js';
 
 type DalRenderMode = 'absorbed' | 'package';
 
@@ -20,6 +21,7 @@ export class OracleDalRenderer {
     constructor(
         private ctx: DdlContext,
         private analyzer: OracleTableApiAnalyzer,
+        private bulk: OracleBulkRenderer,
     ) {}
 
     private profile(model: OracleTableApiModel, mode: DalRenderMode): DalRenderProfile {
@@ -43,16 +45,8 @@ export class OracleDalRenderer {
         const hasAudit = model.features.auditColumns;
         const synTenantId = model.features.syntheticTenantId;
         const tenantCtxPkg = model.names.tenantContext;
-        const insCols = [
-            ...(synTenantId ? ['tenant_id'] : []),
-            ...model.columns.foreignKeys.map(name => name.toLowerCase()),
-            ...model.columns.service.map(col => col.parseName().toLowerCase()),
-        ];
-        const insVals = [
-            ...(synTenantId ? ['p_row.tenant_id'] : []),
-            ...model.columns.foreignKeys.map(name => `p_row.${name.toLowerCase()}`),
-            ...model.columns.service.map(col => `p_row.${col.parseName().toLowerCase()}`),
-        ];
+        const insCols = [...(synTenantId ? ['tenant_id'] : []), ...writableColumns(model)];
+        const insVals = insCols.map(name => `p_row.${name}`);
 
         let r = `${tab}procedure ${prefix}insert_row (p_row in out nocopy ${tbl}%rowtype) is\n`;
         r += `${tab}begin\n`;
@@ -211,10 +205,7 @@ export class OracleDalRenderer {
         const synTenantId = model.features.syntheticTenantId;
         const tenantCtxPkg = model.names.tenantContext;
         const profile = this.profile(model, mode);
-        const setCols = [
-            ...model.columns.foreignKeys.map(name => `${name.toLowerCase()} = p_row.${name.toLowerCase()}`),
-            ...model.columns.service.map(col => `${col.parseName().toLowerCase()} = p_row.${col.parseName().toLowerCase()}`),
-        ];
+        const setCols = writableColumns(model).map(name => `${name} = p_row.${name}`);
 
         let r = `${tab}procedure ${profile.prefix}update_row (p_row in out nocopy ${tbl}%rowtype) is\n`;
         r += `${tab}${tab}l_id ${profile.idType};\n`;
@@ -455,6 +446,7 @@ export class OracleDalRenderer {
         r += this.renderUpdateDeleteRoutines(model, 'absorbed');
         r += this.renderBusinessKeyReads(model, 'absorbed');
         r += this.renderBridgeRoutines(model, 'absorbed');
+        if (model.features.bulk) r += this.bulk.generateDml(node, 'absorbed');
         return r;
     }
 
@@ -517,6 +509,7 @@ export class OracleDalRenderer {
             r += `${tab}function has_row (p_${bridge.left} in ${tbl}.${bridge.left}%type, p_${bridge.right} in ${tbl}.${bridge.right}%type) return boolean;\n\n`;
             r += `${tab}function list_row (p_${bridge.left} in ${tbl}.${bridge.left}%type) return t_cursor;\n\n`;
         }
+        if (model.features.bulk) r += this.bulk.generateDalSpec(node);
         r += `${tab}c_err_stale_data constant pls_integer := -20001;\n`;
         r += `${tab}c_err_not_found  constant pls_integer := -20002;\n`;
         r += `${tab}c_err_locked     constant pls_integer := -20003;\n`;
@@ -538,6 +531,7 @@ export class OracleDalRenderer {
         r += this.renderUpdateDeleteRoutines(model, 'package');
         r += this.renderBusinessKeyReads(model, 'package');
         r += this.renderBridgeRoutines(model, 'package');
+        if (model.features.bulk) r += this.bulk.generateDml(node, 'package');
         r += `end ${bareName(dal)};\n/\n`;
         return r;
     }

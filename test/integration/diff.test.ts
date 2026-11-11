@@ -947,3 +947,57 @@ describe('PK changes', () => {
         expect(r.statements.some(s => s.kind === 'modify_column' || s.requiresManualIntervention)).toBe(true);
     });
 });
+
+// ── X1-5 (82b §4): the packages follow every directive; hand-written hook bodies are kept ─────────────────────────
+
+describe('packages follow the generated output (2.8.0)', () => {
+    const T = (dirs: string, settings = '') => `widgets /api ${dirs}\n  name vc100 /nn\n  site vc20\n${settings}`;
+    const pkgs = (r: DiffResult) => r.statements.filter(s => s.kind === 'create_package').map(s => s.sql);
+    const drops = (r: DiffResult) => r.statements.filter(s => s.kind === 'drop_package').map(s => s.sql.trim());
+
+    test('adding /bulk replaces the packages and creates <t>_bulk_hks', () => {
+        const r = diff(T('full+hks'), T('full+hks /bulk'));
+        expect(sqlAll(r)).toContain('procedure create_many (');
+        expect(sqlAll(r)).toContain('create or replace package widgets_bulk_hks as');
+        expect(drops(r)).toEqual([]);
+    });
+
+    test('removing /bulk replaces the packages and drops <t>_bulk_hks', () => {
+        const r = diff(T('full+hks /bulk'), T('full+hks'));
+        expect(drops(r)).toEqual(['drop package widgets_bulk_hks;']);
+        expect(pkgs(r).some(s => s.includes('create or replace package widgets_svc as') && !s.includes('_many'))).toBe(true);
+    });
+
+    test('a dimension column alone, without /bulk', () => {
+        const r = diff(T('full+hks'), T('full+hks', '# settings = { dimensioncolumns: { site: "SITE" } }'));
+        expect(sqlAll(r)).toContain('procedure chk_rls (p_row in widgets%rowtype);');
+    });
+
+    test('/auditlog alone, without /bulk', () => {
+        const r = diff(T('full+hks'), T('full+hks /auditlog'));
+        expect(sqlAll(r)).toContain('widgets_aud.log_insert');
+    });
+
+    test('the tier alone, without /bulk: the new packages, the ones no longer generated dropped', () => {
+        const r = diff(T('full+hks'), T('service'));
+        expect(drops(r)).toEqual(['drop package widgets_dal;', 'drop package widgets_hks;']);
+        expect(sqlAll(r)).toContain('-- private DML (absorbed from absent _dal)');
+    });
+
+    test('nothing changed: no package statement', () => {
+        expect(pkgs(diff(T('full+hks /bulk'), T('full+hks /bulk')))).toEqual([]);
+    });
+
+    test('the body of _hks and <t>_bulk_hks is created only when missing, never replaced', () => {
+        const r = diff(T('full+hks'), T('full+hks /bulk', '# settings = { dimensioncolumns: { site: "SITE" } }'));
+        for (const name of ['widgets_hks', 'widgets_bulk_hks']) {
+            const body = pkgs(r).find(s => s.includes(`package body ${name} as`))!;
+            expect(body, name).toContain(`select count(*) into l_count from user_objects where object_name = upper('${name}') and object_type = 'PACKAGE BODY';`);
+            expect(body, name).toContain(`execute immediate q'~create or replace package body ${name} as`);
+            expect(body, name).not.toMatch(/^create or replace package body/);
+        }
+        // the generated bodies are still replaced
+        expect(pkgs(r).some(s => s.startsWith('create or replace package body widgets_svc as'))).toBe(true);
+        expect(pkgs(r).some(s => s.startsWith('create or replace package body widgets_dal as'))).toBe(true);
+    });
+});

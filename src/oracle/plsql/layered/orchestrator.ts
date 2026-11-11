@@ -2,6 +2,7 @@ import type { DdlContext, IDdlNode } from '../../../compiler/types.js';
 import { OracleTableApiAnalyzer } from '../table-model.js';
 import { OracleAppRenderer } from './app.js';
 import { OracleAuditRenderer } from './audit.js';
+import { checkBulk, OracleBulkRenderer } from './bulk.js';
 import { OracleDalRenderer } from './dal.js';
 import { OracleHooksRenderer } from './hooks.js';
 import { OracleRestRenderer } from './rest.js';
@@ -10,6 +11,7 @@ import { OracleServiceRenderer } from './service.js';
 /** Composes the layered TAPI artifacts in dependency order. */
 export class OracleLayeredTapiRenderer {
     private audit:   OracleAuditRenderer;
+    private bulk:    OracleBulkRenderer;
     private dal:     OracleDalRenderer;
     private app:     OracleAppRenderer;
     private hooks:   OracleHooksRenderer;
@@ -21,11 +23,12 @@ export class OracleLayeredTapiRenderer {
         private analyzer: OracleTableApiAnalyzer,
     ) {
         this.audit   = new OracleAuditRenderer(ctx, analyzer);
-        this.dal     = new OracleDalRenderer(ctx, analyzer);
+        this.bulk    = new OracleBulkRenderer(ctx, analyzer);
+        this.dal     = new OracleDalRenderer(ctx, analyzer, this.bulk);
         this.hooks   = new OracleHooksRenderer(analyzer);
         this.app     = new OracleAppRenderer(ctx, analyzer, this.dal, this.hooks);
         this.rest    = new OracleRestRenderer(analyzer, this.dal, this.hooks);
-        this.service = new OracleServiceRenderer(analyzer, this.dal, this.hooks);
+        this.service = new OracleServiceRenderer(analyzer, this.dal, this.hooks, this.bulk);
     }
 
     /**
@@ -60,6 +63,7 @@ export class OracleLayeredTapiRenderer {
         if (node.children.length === 0) return '';
 
         const model = this.analyzer.analyze(node);
+        if (model.features.bulk) checkBulk(model);
         const { hasDal, hasHks, hasSvc } = model.capabilities;
         const hasAudit = model.features.auditLog;
         const genApp = model.interfaces.app;
@@ -74,6 +78,8 @@ export class OracleLayeredTapiRenderer {
             r += this.service.generateSpec(node) + '\n';
             // The audit spec must precede the service body, which references it.
             if (hasAudit) r += this.audit.generateSpec(node) + '\n';
+            // /bulk: the batch hooks take the _svc's types and the _svc body calls them (82b §3.4)
+            if (model.features.bulk && hasHks) r += this.bulk.generateHooksPackage(node) + '\n';
             r += this.service.generateBody(node, hasDal, hasHks) + '\n';
             if (hasAudit) r += this.audit.generateBody(node, hasDal) + '\n';
         }

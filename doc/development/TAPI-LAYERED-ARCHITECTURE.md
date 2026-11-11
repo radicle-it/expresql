@@ -825,6 +825,42 @@ All hook calls and the DAL call execute within the same open database transactio
 - **APX (APEX)**: the APEX framework automatically rolls back the open transaction when an error is raised in a page process. Both the INSERT and the failed audit INSERT are rolled back. Atomicity is preserved by default.
 - **RST (ORDS)**: the ORDS handler catches the exception in its `WHEN OTHERS` block. Before responding to the client, it **must** issue an explicit `ROLLBACK` (see Section 7.2).
 
+### 5.6 Batch writes — `/bulk` (2.8.0)
+
+`/bulk` adds `create_many`, `update_many` and `delete_many` to the `_svc` (middleware-docs `82b`). A batch keeps the scalar
+contract of every row and changes only the DML: one `FORALL ... SAVE EXCEPTIONS` per batch instead of one statement per row.
+
+```
+<t>_svc.create_many / update_many / delete_many
+  0. the guard of the table (a second bulk call while one runs: [BULK_REENTRANT]); savepoint
+  1. input checks                                        -> [BULK_INPUT]
+  2. rows in place, one query on <t>_rls (update, delete) -> [NOT_FOUND] by input index
+  3. per row, the scalar protocol: chk_rbac → before_<op> → validate → chk_rls
+     (COLLECT: a row that fails leaves the batch and reaches no later phase)
+  4. <t>_bulk_hks.validate_many                          -- read only, adds row errors
+  5. any row error: no DML
+  6. FORALL ... SAVE EXCEPTIONS (<t>_dal.insert_rows / update_rows / delete_rows, or absorbed)
+     SQL%BULK_EXCEPTIONS copied first; ORA-00001 -> [DUPLICATE] -20010; a row version that does not match -> [STALE_DATA]
+  7. after_<op> per row, then after_many
+  8. a row error: rollback to the savepoint; FAIL_FAST raises the first one (" (row n)"), COLLECT returns them in x_errors
+     any other error: rollback to the savepoint and the original exception raised again, in both modes
+```
+
+- **Types (spec of `_svc`):** `t_tab` (table of `t_rec`), `t_id_tab`, `t_ver_tab` (with `row_version`), `t_row_view`
+  (the rows by input index, `%rowtype`), `t_err` (`idx`, `code`, `message`) and `t_err_tab`. With a DAL the last three
+  are subtypes of the DAL's types (`t_rows`, `t_err`, `t_err_tab`), so one collection crosses both layers.
+- **Input:** dense collections `1..n`, the same size; a null or repeated id is a row error (the image before the change
+  would be ambiguous). The input index is the identity of a row everywhere: the read of step 2 goes back to it through
+  a map `id → index`, so the order of the query does not matter.
+- **Outputs:** defined only on a normal return. A normal return with `x_errors` empty means the batch is written; with
+  `x_errors` not empty (COLLECT) nothing is written and `x_ids` is empty. After an exception the caller ignores them.
+- **Images:** the RETURNING of the insert (id, `row_version`, creation audit) goes back into the row handed to
+  `after_insert`, as in the scalar path.
+- **Transaction:** no commit. The savepoint covers the call, not the caller: the caller's work before it stays when the
+  batch fails, and a rollback of the caller undoes a batch that succeeded.
+- **The DML** reuses the predicates of `update_row`/`delete_row` (tenant, row version) and the written columns of the
+  scalar insert and update (a `/virtual` column is never written).
+
 ---
 
 ## 6. Layer 3 — Hook Layer (`{entity}_hks`)
@@ -1027,6 +1063,30 @@ CREATE OR REPLACE PACKAGE BODY doctors_hks AS
 END doctors_hks;
 /
 ```
+
+### 6.6 Batch hooks — `<t>_bulk_hks` (2.8.0)
+
+With `/bulk`, the hooks of the whole batch are in their own package, generated once and written by hand like `_hks`.
+Not in `_hks`: adding them to its spec would break the compilation of a body already written by hand.
+
+```sql
+procedure validate_many (p_operation in varchar2, p_rows in <t>_svc.t_row_view, x_errors in out nocopy <t>_svc.t_err_tab);
+procedure after_many    (p_operation in varchar2, p_ids  in <t>_svc.t_id_tab);
+```
+
+`validate_many` runs after every row passed its own hooks and before the write: invariants across rows (a key repeated in
+the batch, a total). The rows are read only; a refused row is added to `x_errors` with its input index. An exception
+raised by either hook is an error of the call: the batch is rolled back and the exception propagates. Without `+hks`
+both are private no-op stubs in the `_svc`. Order of compilation: spec of `_svc` → `<t>_bulk_hks` → body of `_svc`.
+
+**Requirements to adopt `/bulk` on a table:**
+
+1. the row hooks do not read the effects of the DML of other rows of the same batch (every `before` runs before every
+   write, every `after` after them);
+2. no `commit`, `rollback` or DDL in any hook; no autonomous effect that must be undone with the batch (a rollback does
+   not undo it);
+3. the invariants across rows are in `validate_many`;
+4. the table has no `/auditlog` (the audit package commits one autonomous transaction per row).
 
 ---
 
@@ -1535,6 +1595,12 @@ END app_errors;
 /
 ```
 
+**Generated by `/bulk` (2.8.0), in the shared infrastructure range:** `-20005 [BULK_INPUT]` (input refused: a collection
+null, empty or not dense, different sizes, an unknown mode, a null or repeated id), `-20006 [BULK_REENTRANT]` (a bulk call
+on a table while another runs on it), `-20007 [BULK_ROW]` (the first row error in `FAIL_FAST` when its own code is not an
+application error: the Oracle text with ` (row n)`; an application error keeps its code), `-20008 [BULK_ROLLBACK]` (the
+batch could not be rolled back to its savepoint, with the original error in the text).
+
 ### 9.1 Bracketed classification tokens
 
 Every `raise_application_error` call generated for `c_err_stale_data`, `c_err_not_found`, `c_err_locked`, or the `dup_val_on_index` handler prefixes its message with a bracketed token — `[STALE_DATA]`, `[NOT_FOUND]`, `[LOCKED]`, `[DUPLICATE]` — matching the error it is paired with:
@@ -1646,7 +1712,6 @@ The `_hks` body is the only file developers own — generated once and never ove
 - **Row-Level Security (VPD / `DBMS_RLS`)**: Applied below the DAL. VPD predicates silently filter rows — `get_by_id` returning `NO_DATA_FOUND` may mean "not found" or "access denied." If RLS is active, document this distinction for callers.
 - **`RESULT_CACHE`**: Performance tuning, decided after profiling.
 - **TXEventQ / async notifications**: The `after_*` hooks are the integration point when this is needed — the body is replaced to enqueue rather than INSERT.
-- **Bulk DML**: Separate pattern for high-volume operations.
 - **Pagination**: Belongs in the SQL source of APEX reports or the ORDS handler, not in the DAL.
 - **Oracle 23c features**: `BOOLEAN` native type and JSON Schema validation in the DB layer are straightforward improvements for a 23c target. They do not change this architecture.
 
@@ -1693,3 +1758,4 @@ SELECT application_id, page_id, process_name, process_text
 | 1.9     | 2026-05-08 | Roberto Capancioni | §3.4 Degradation rule: explicit principle — each layer calls the one below if present, absorbs it as private procedures if absent; cascading table and per-tier consequences added; `service+hks` complete body example showing private DML section; `lookup+hks` pattern described; `_rst` and `_audit` noted as orthogonal to tier in tier table; §6.3 `_hks` spec: `before/after_delete` parameter type is `_dal.t_id` when `_dal` is present, `table.id%TYPE` otherwise — documented with both variants; §6.4/§6.5 bodies updated with conditional type note; §7.1 `interface` setting: three explicit values (`"apex"` / `"rest"` / `"both"`) replace the previous two-value implicit behaviour; §8 output order updated with `_rst` conditional line; §11 TypeScript: `getOption` → `getOptionValue`; `hasDal` passed to `_generateHksSpec` and `_generateHksBody`; `hasDal`/`hasHks` passed to `_generateSvcBody`; `hasSvc`/`hasDal` passed to `_generateApxBody` and `_generateRstBody`; IFC generation replaced with explicit three-way `interface` switch |
 | 1.10    | 2026-09-10 | Roberto Capancioni | §9.1 added: `raise_application_error` messages for `c_err_stale_data`/`c_err_not_found`/`c_err_locked`/`dup_val_on_index` now carry a bracketed token (`[STALE_DATA]`, `[NOT_FOUND]`, `[LOCKED]`, `[DUPLICATE]`) so callers behind a wrapping layer (e.g. `APEX_EXEC`'s `p_dml_plsql_code`, which re-raises any custom-code exception as a generic `ORA-20987`) can classify the error from message text alone; applied uniformly across every tier, including the degraded/absorbed forms (`_generatePrivateDml`'s `p_get_by_id`/`p_update_row`) and every `dup_val_on_index` site in `_app`'s own `ins`/`upd`, not just `_svc.create_rec` — generator updated in `src/oracle/plsql.ts` |
 | 1.11    | 2026-09-12 | Roberto Capancioni | §4.2/§4.3: DAL `lock_by_id_wait(p_id, p_timeout DEFAULT 5)` added (FOR UPDATE WAIT n via EXECUTE IMMEDIATE — static integer literal constraint documented); §4.2: `lock_by_id` comment updated to reference the new wait variant; §4.3 "When to use" extended to three modes (none/nowait/wait); §5.2: SVC `get` gains `p_lock VARCHAR2 DEFAULT 'none'` and `p_lock_timeout NUMBER DEFAULT 5`, routes to the appropriate DAL function; §7.2.1/§7.2.2: APP `get` signature and body updated — `p_lock`/`p_lock_timeout` IN params added before the OUT params, body delegates to `svc.get`; §7.3: RST `get` procedure shown in full — reads `:lock`/`:lock_timeout` ORDS query-param binds, delegates to `svc.get`; §7.4 new: Pessimistic Locking at the Presentation Layer — fetch-for-edit problem, three-mode selection guide, lock scope and cross-request warning for APEX and REST |
+| 1.12    | 2026-11-11 | Roberto Capancioni | §5.6 batch writes (`/bulk`, ExpreSQL 2.8.0, middleware-docs 82b): `create_many`/`update_many`/`delete_many`, the scalar protocol per row, `validate_many`, one `FORALL ... SAVE EXCEPTIONS`, savepoint per call, guard per table, `FAIL_FAST`/`COLLECT`; §6.6 `<t>_bulk_hks` and the requirements to adopt it; §9 codes -20005..-20008; §12 bulk DML no longer out of scope |
