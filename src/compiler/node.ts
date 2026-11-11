@@ -770,6 +770,19 @@ export class DdlNode implements IDdlNode {
         return value;
     }
 
+    getVirtualExpression(): string | null {
+        if (!this.isOption('virtual')) return null;
+        // Use raw content positions to preserve whitespace inside the SQL expression.
+        const pos = this.indexOf('virtual');
+        if (pos < 2 || this.src[pos - 1].value !== '/') return null;
+        // Find the byte where the 'virtual' keyword ends in the content string.
+        const exprStart = this.src[pos].end;
+        // Find the byte where the next directive starts, or end of content.
+        const nextSlashIdx = this.src.findIndex((t, i) => i > pos && t.value === '/');
+        const exprEnd = nextSlashIdx >= 0 ? this.src[nextSlashIdx].begin : this.content.length;
+        return this.content.substring(exprStart, exprEnd).trim();
+    }
+
     getBetweenClause(): string | null {
         if (!this.isOption('between')) return null;
         // the bounds through listValues, which joins the tokens of one value: a signed bound such as -90 is two

@@ -128,10 +128,12 @@ export class OracleTableApiAnalyzer {
         );
         const parameters: OracleParameterColumn[] = [
             ...foreignKeys.map(name => ({ name: name.toLowerCase(), nullable: true })),
-            ...serviceColumns.map(col => ({
-                name: col.parseName().toLowerCase(),
-                nullable: !col.isOption('nn'),
-            })),
+            ...serviceColumns
+                .filter(col => !col.isOption('virtual'))
+                .map(col => ({
+                    name: col.parseName().toLowerCase(),
+                    nullable: !col.isOption('nn'),
+                })),
         ];
         // Columns only: a nested table declared with a table-level "/unique a, b" is a
         // child node with the same option, and must not become a get_by_<child>.

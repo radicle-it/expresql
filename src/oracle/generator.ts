@@ -64,6 +64,13 @@ export class OracleDDLGenerator extends BaseGenerator {
     }
 
     _buildColumnConstraints(node: IDdlNode, ret: string, sem: SemanticType): string {
+        // Virtual column: emits `type generated always as (expr) virtual` — no other constraints.
+        const virtualExpr = node.getVirtualExpression();
+        if (virtualExpr !== null) {
+            let expr = virtualExpr;
+            if (!expr.startsWith('(')) expr = '(' + expr + ')';
+            return ret + ' generated always as ' + expr + ' virtual';
+        }
         if (node.isOption('unique') || node.isOption('uk')) {
             const parentIsNoTenant = node.parent !== null && node.parent.isOption('notenantid');
             if (!this._ddl.optionEQvalue('tenantid', true) || parentIsNoTenant) {

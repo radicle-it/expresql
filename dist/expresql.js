@@ -724,6 +724,13 @@ var ne = class {
 		}
 		return e;
 	}
+	getVirtualExpression() {
+		if (!this.isOption("virtual")) return null;
+		let e = this.indexOf("virtual");
+		if (e < 2 || this.src[e - 1].value !== "/") return null;
+		let t = this.src[e].end, n = this.src.findIndex((t, n) => n > e && t.value === "/"), r = n >= 0 ? this.src[n].begin : this.content.length;
+		return this.content.substring(t, r).trim();
+	}
 	getBetweenClause() {
 		if (!this.isOption("between")) return null;
 		let e = this.listValues("between");
@@ -12513,7 +12520,7 @@ var Gt = class {
 		let n = (this.ctx.objPrefix() + e.parseName()).toLowerCase(), r = (e.getPkName() ?? "id").toLowerCase(), i = Ut(e.getOptionValue("api")), a = Object.keys(e.fks ?? {}), o = e.children.filter((e) => e.children.length === 0 && e.refId() === null && e.parseName().toLowerCase() !== "row_version"), s = [...a.map((e) => ({
 			name: e.toLowerCase(),
 			nullable: !0
-		})), ...o.map((e) => ({
+		})), ...o.filter((e) => !e.isOption("virtual")).map((e) => ({
 			name: e.parseName().toLowerCase(),
 			nullable: !e.isOption("nn")
 		}))], c = e.children.filter((e) => e.children.length === 0 && e.isOption("unique")), l = this.ctx.getOptionValue("dimensioncolumns"), u = [];
@@ -12794,13 +12801,18 @@ var tn = class extends de {
 		return ht(e, this._ddl.semantics(), H(this._ddl));
 	}
 	_buildColumnConstraints(e, t, n) {
+		let r = e.getVirtualExpression();
+		if (r !== null) {
+			let e = r;
+			return e.startsWith("(") || (e = "(" + e + ")"), t + " generated always as " + e + " virtual";
+		}
 		if (e.isOption("unique") || e.isOption("uk")) {
 			let r = e.parent !== null && e.parent.isOption("notenantid");
 			(!this._ddl.optionEQvalue("tenantid", !0) || r) && (t += "\n", t += this._cpad(e) + "constraint " + a(this._ddl.objPrefix("no schema"), n.parent_child, this._naming.unq) + " unique");
 		}
-		let r = "'";
-		if ((t.startsWith("integer") || t.startsWith("number") || t.startsWith("date")) && (r = ""), e.isOption("default")) {
-			let i = e.getDefaultValue() ?? "", a = [
+		let i = "'";
+		if ((t.startsWith("integer") || t.startsWith("number") || t.startsWith("date")) && (i = ""), e.isOption("default")) {
+			let r = e.getDefaultValue() ?? "", a = [
 				"sysdate",
 				"current_date",
 				"current_timestamp",
@@ -12808,11 +12820,11 @@ var tn = class extends de {
 				"localtimestamp"
 			];
 			if (n.isNativeBoolean) {
-				let e = i.toUpperCase() === "Y" || i.toLowerCase() === "true" ? "true" : "false";
+				let e = r.toUpperCase() === "Y" || r.toLowerCase() === "true" ? "true" : "false";
 				t += " default on null " + e;
-			} else a.includes(i.toLowerCase()) ? t += " default on null " + i : t += " default on null " + r + i + r;
+			} else a.includes(r.toLowerCase()) ? t += " default on null " + r : t += " default on null " + i + r + i;
 		}
-		if ((e.isOption("nn") || e.indexOf("not") + 1 === e.indexOf("null")) && e.indexOf("pk") < 0 && (t += " not null"), (e.isOption("hidden") || e.isOption("invincible")) && (t += " invisible"), n.isNativeBoolean || (t += e.genConstraint(r)), n.needsBoolCheck && (t += "\n" + this._cpad(e) + "constraint " + a(this._ddl.objPrefix("no schema"), n.parent_child) + ` check (${e.parseName()} in ('Y','N'))`), this._ddl.optionEQvalue("dateonly", !0) && /^date\b/i.test(t) && (t += "\n" + this._cpad(e) + "constraint " + a(this._ddl.objPrefix("no schema"), n.parent_child, "_day_ck") + ` check (${e.parseName()} = trunc(${e.parseName()}))`), e.isOption("between")) {
+		if ((e.isOption("nn") || e.indexOf("not") + 1 === e.indexOf("null")) && e.indexOf("pk") < 0 && (t += " not null"), (e.isOption("hidden") || e.isOption("invincible")) && (t += " invisible"), n.isNativeBoolean || (t += e.genConstraint(i)), n.needsBoolCheck && (t += "\n" + this._cpad(e) + "constraint " + a(this._ddl.objPrefix("no schema"), n.parent_child) + ` check (${e.parseName()} in ('Y','N'))`), this._ddl.optionEQvalue("dateonly", !0) && /^date\b/i.test(t) && (t += "\n" + this._cpad(e) + "constraint " + a(this._ddl.objPrefix("no schema"), n.parent_child, "_day_ck") + ` check (${e.parseName()} = trunc(${e.parseName()}))`), e.isOption("between")) {
 			let r = e.getBetweenClause() ?? "";
 			t += " constraint " + a(this._ddl.objPrefix("no schema"), n.parent_child, this._naming.bet) + "\n", t += "           check (" + e.parseName() + " between " + r + ")";
 		}

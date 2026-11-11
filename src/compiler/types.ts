@@ -123,6 +123,7 @@ export interface IDdlNode {
     getDefaultValue():                 string | null;
     getBetweenClause():                string | null;
     getValues(check_or_values: string): string;
+    getVirtualExpression():            string | null;
 
     // Insert / sample data
     parseValues(): (string | number)[] | null;
