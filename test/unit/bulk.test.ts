@@ -136,8 +136,44 @@ describe('X1-2 /bulk: generation per tier', () => {
     test('FORALL errors are copied from SQL%BULK_EXCEPTIONS; a unique violation is [DUPLICATE] -20010', () => {
         const out = ddl(TABLE('service'));
         expect(out).toContain('pragma exception_init(bulk_errors, -24381);');
-        expect(out).toContain("p_bulk_error(x_errors, sql%bulk_exceptions(j).error_index, -20010, '[DUPLICATE] duplicate value on unique constraint.');");
-        expect(out).toContain('sqlerrm(-sql%bulk_exceptions(j).error_code)');
+        expect(out).toContain('l_failed(sql%bulk_exceptions(j).error_index) := sql%bulk_exceptions(j).error_code;');
+        expect(out).toContain("p_bulk_error(x_errors, i, -20010, '[DUPLICATE] duplicate value on unique constraint.');");
+        expect(out).toContain('p_bulk_error(x_errors, i, -l_failed(i), sqlerrm(-l_failed(i)));');
+    });
+
+    // codex-037 X1-DML-01: an exception of the FORALL must not hide the zero-row cases of the same statement
+    test('ORA-24381 keeps the row counts: exceptions and zero rows unified by input index', () => {
+        const out = ddl(TABLE('full', ' /rowversion'));
+        const body = out.slice(out.indexOf('procedure update_rows (p_rows in out nocopy t_rows, x_errors in out nocopy t_err_tab) is'),
+            out.indexOf('end update_rows;', out.indexOf('create or replace package body elements_dal')));
+        const handler = body.slice(body.indexOf('when bulk_errors then'));
+        // copied in the handler too, before any other SQL
+        expect(handler.indexOf('sql%bulk_exceptions(j).error_code')).toBeLessThan(handler.indexOf('sql%bulk_rowcount(i)'));
+        expect(handler.indexOf('sql%bulk_rowcount(i)')).toBeLessThan(handler.indexOf('select 1 into l_dummy'));
+        expect(body.match(/l_count\(i\) := sql%bulk_rowcount\(i\)/g)?.length).toBe(2);
+        // one loop over the input: an exception, else zero rows -- never both for one index
+        expect(body).toMatch(/if l_failed\.exists\(i\) then[\s\S]*elsif l_count\(i\) = 0 then/);
+        // the RETURNING goes back into the images only when no row failed
+        const ins = out.slice(out.indexOf('procedure insert_rows (p_rows in out nocopy t_rows, x_errors in out nocopy t_err_tab) is'));
+        expect(ins).toMatch(/if l_failed\.count = 0 then\n\s*for i in 1 \.\. p_rows\.count loop\n\s*p_rows\(i\)\.id := l_ret_id\(i\);/);
+    });
+
+    // codex-037 X1-COLLECT-01: a null or repeated id takes only its index out of the batch
+    test('a bad id leaves the other indices in play', () => {
+        const out = ddl(TABLE('full+hks'));
+        const read = out.slice(out.indexOf('procedure p_bulk_read ('), out.indexOf('end p_bulk_read;'));
+        expect(read.match(/l_bad\(i\) := true;/g)?.length).toBe(2);
+        expect(read).not.toContain('if x_errors.count > 0 then return; end if;');
+        expect(read).toContain("if x_errors.count > 0 and p_mode = 'FAIL_FAST' then return; end if;");
+        expect(read).toContain('if not x_old.exists(i) and not l_bad.exists(i) then');
+    });
+
+    test('the scalar update_row and the bulk update_rows share the predicates and the zero-row diagnosis', () => {
+        const out = ddl(TABLE('full', ' /rowversion') + '# settings = { tenantid: yes }');
+        expect(out).toContain('where id = l_id\n          and tenant_id = tenant_ctx.get_id\n          and row_version = p_row.row_version;');
+        expect(out).toContain('where id = p_rows(i).id and tenant_id = tenant_ctx.get_id and row_version = p_rows(i).row_version;');
+        expect(out).toContain('select 1 into l_dummy from elements where id = l_id and tenant_id = tenant_ctx.get_id;');
+        expect(out).toContain('select 1 into l_dummy from elements where id = p_rows(i).id and tenant_id = tenant_ctx.get_id;');
     });
 
     test('the savepoint name stays within 128 characters and distinct after shortening', () => {

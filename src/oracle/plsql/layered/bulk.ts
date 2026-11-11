@@ -3,6 +3,7 @@ import type { DdlContext, IDdlNode } from '../../../compiler/types.js';
 import { bareName } from '../names.js';
 import { OracleTableApiAnalyzer, writableColumns, type OracleTableApiModel } from '../table-model.js';
 import { bulkRefusal } from './bulk-rules.js';
+import { renderStaleOrNotFound, rowPredicates } from './dal.js';
 import { renderRecordAssignments } from './rendering.js';
 import {
     createHookNameResolver,
@@ -170,20 +171,63 @@ export class OracleBulkRenderer {
     }
 
     /**
-     * The handler of FORALL ... SAVE EXCEPTIONS: SQL%BULK_EXCEPTIONS is copied first, before any other SQL. A unique
-     * violation becomes [DUPLICATE] -20010 as in the scalar path; any other error keeps its Oracle code.
+     * One FORALL ... SAVE EXCEPTIONS and its outcome by input index, the same for the three operations (82b §3.3 step
+     * 6). Right after the statement -- on the normal path and in the handler of ORA-24381, before any other SQL --
+     * SQL%BULK_EXCEPTIONS and, when the write is checked for zero rows, SQL%BULK_ROWCOUNT are copied. Then one error
+     * per index, in the order of the input: an exception of the DML ([DUPLICATE] -20010 for a unique violation, as the
+     * scalar path; any other its Oracle code), or else zero rows touched ([STALE_DATA] / [NOT_FOUND], the scalar's
+     * distinction). An index with an exception is never also a zero-row case. `after` runs only when no row failed.
      */
-    private renderBulkExceptions(addError: string): string {
-        let r = `${tab}exception\n`;
-        r += `${tab}${tab}when bulk_errors then\n`;
-        r += `${tab}${tab}${tab}for j in 1 .. sql%bulk_exceptions.count loop\n`;
-        r += `${tab}${tab}${tab}${tab}if sql%bulk_exceptions(j).error_code = 1 then\n`;
-        r += `${tab}${tab}${tab}${tab}${tab}${addError}(x_errors, sql%bulk_exceptions(j).error_index, -20010, '[DUPLICATE] duplicate value on unique constraint.');\n`;
+    private renderForall(
+        model: OracleTableApiModel,
+        name: string,
+        rowsParam: string,
+        dml: string,
+        addError: string,
+        { zeroRows = false, declare = '', before = '', after = '' }: { zeroRows?: boolean; declare?: string; before?: string; after?: string } = {},
+    ): string {
+        const pk = model.names.pk;
+        let r = `${tab}procedure ${name} (${rowsParam}, x_errors in out nocopy t_err_tab) is\n`;
+        r += `${tab}${tab}type t_codes is table of pls_integer index by pls_integer;\n`;
+        r += `${tab}${tab}l_failed t_codes;     -- index -> the Oracle error of its DML\n`;
+        if (zeroRows) r += `${tab}${tab}l_count  t_codes;     -- index -> the rows it touched\n`;
+        r += declare;
+        r += `${tab}begin\n`;
+        r += before;
+        const counts = zeroRows
+            ? `${tab}${tab}${tab}for i in 1 .. p_rows.count loop l_count(i) := sql%bulk_rowcount(i); end loop;\n` : '';
+        r += `${tab}${tab}begin\n`;
+        r += `${tab}${tab}${tab}forall i in 1 .. p_rows.count save exceptions\n`;
+        r += indent(dml, 2);
+        r += counts;
+        r += `${tab}${tab}exception\n`;
+        r += `${tab}${tab}${tab}when bulk_errors then\n`;
+        r += `${tab}${tab}${tab}${tab}for j in 1 .. sql%bulk_exceptions.count loop\n`;
+        r += `${tab}${tab}${tab}${tab}${tab}l_failed(sql%bulk_exceptions(j).error_index) := sql%bulk_exceptions(j).error_code;\n`;
+        r += `${tab}${tab}${tab}${tab}end loop;\n`;
+        r += indent(counts, 1);
+        r += `${tab}${tab}end;\n`;
+        r += `${tab}${tab}for i in 1 .. p_rows.count loop\n`;
+        r += `${tab}${tab}${tab}if l_failed.exists(i) then\n`;
+        r += `${tab}${tab}${tab}${tab}if l_failed(i) = 1 then\n`;
+        r += `${tab}${tab}${tab}${tab}${tab}${addError}(x_errors, i, -20010, '[DUPLICATE] duplicate value on unique constraint.');\n`;
         r += `${tab}${tab}${tab}${tab}else\n`;
-        r += `${tab}${tab}${tab}${tab}${tab}${addError}(x_errors, sql%bulk_exceptions(j).error_index, -sql%bulk_exceptions(j).error_code,\n`;
-        r += `${tab}${tab}${tab}${tab}${tab}${tab}sqlerrm(-sql%bulk_exceptions(j).error_code));\n`;
+        r += `${tab}${tab}${tab}${tab}${tab}${addError}(x_errors, i, -l_failed(i), sqlerrm(-l_failed(i)));\n`;
         r += `${tab}${tab}${tab}${tab}end if;\n`;
-        r += `${tab}${tab}${tab}end loop;\n`;
+        if (zeroRows) {
+            r += `${tab}${tab}${tab}elsif l_count(i) = 0 then\n`;
+            r += indent(renderStaleOrNotFound(model, `p_rows(i).${pk}`,
+                `${addError}(x_errors, i, -20001, '[STALE_DATA] row modified by another session. reload and retry.');`,
+                `${addError}(x_errors, i, -20002, '[NOT_FOUND] record ' || p_rows(i).${pk} || ' does not exist.');`), 1);
+        }
+        r += `${tab}${tab}${tab}end if;\n`;
+        r += `${tab}${tab}end loop;\n`;
+        if (after) {
+            r += `${tab}${tab}if l_failed.count = 0 then\n`;
+            r += indent(after, 1);
+            r += `${tab}${tab}end if;\n`;
+        }
+        r += `${tab}end ${name};\n\n`;
         return r;
     }
 
@@ -199,90 +243,40 @@ export class OracleBulkRenderer {
             if (model.features.auditColumns)
                 ret.push(String(this.ctx.getOptionValue('createdcol') ?? 'created'), String(this.ctx.getOptionValue('createdbycol') ?? 'created_by'));
         }
-        let r = `${tab}procedure ${prefix}insert_rows (p_rows in out nocopy ${rowsType}, x_errors in out nocopy t_err_tab) is\n`;
-        for (const c of ret) {
-            r += `${tab}${tab}type t_ret_${c} is table of ${tbl}.${c}%type;\n`;
-            r += `${tab}${tab}l_ret_${c} t_ret_${c};\n`;
-        }
-        if (synTenantId) r += `${tab}${tab}l_tenant_id ${tbl}.tenant_id%type := ${model.names.tenantContext}.get_id;\n`;
-        r += `${tab}begin\n`;
+        let declare = '';
+        for (const c of ret) declare += `${tab}${tab}type t_ret_${c} is table of ${tbl}.${c}%type;\n${tab}${tab}l_ret_${c} t_ret_${c};\n`;
+        let before = '';
         if (synTenantId) {
-            r += `${tab}${tab}for i in 1 .. p_rows.count loop\n`;
-            r += `${tab}${tab}${tab}p_rows(i).tenant_id := l_tenant_id;\n`;
-            r += `${tab}${tab}end loop;\n`;
+            declare += `${tab}${tab}l_tenant_id ${tbl}.tenant_id%type := ${model.names.tenantContext}.get_id;\n`;
+            before = `${tab}${tab}for i in 1 .. p_rows.count loop\n${tab}${tab}${tab}p_rows(i).tenant_id := l_tenant_id;\n${tab}${tab}end loop;\n`;
         }
-        r += `${tab}${tab}forall i in 1 .. p_rows.count save exceptions\n`;
-        if (cols.length > 0) {
-            r += `${tab}${tab}${tab}insert into ${tbl} (${cols.join(', ')})\n`;
-            r += `${tab}${tab}${tab}values (${cols.map(c => `p_rows(i).${c}`).join(', ')})\n`;
-        } else {
-            r += `${tab}${tab}${tab}insert into ${tbl} values (default)\n`;
-        }
-        r += `${tab}${tab}${tab}returning ${ret.join(', ')}\n`;
-        r += `${tab}${tab}${tab}bulk collect into ${ret.map(c => `l_ret_${c}`).join(', ')};\n`;
-        r += `${tab}${tab}for i in 1 .. p_rows.count loop\n`;
-        for (const c of ret) r += `${tab}${tab}${tab}p_rows(i).${c} := l_ret_${c}(i);\n`;
-        r += `${tab}${tab}end loop;\n`;
-        r += this.renderBulkExceptions(addError);
-        r += `${tab}end ${prefix}insert_rows;\n\n`;
-        return r;
-    }
-
-    /** The tenant and optimistic-lock predicates of the scalar update_row, on p_rows(i). */
-    private renderRowPredicates(model: OracleTableApiModel, withVersion: boolean): string {
-        let r = `where ${model.names.pk} = p_rows(i).${model.names.pk}`;
-        if (model.features.syntheticTenantId) r += ` and tenant_id = ${model.names.tenantContext}.get_id`;
-        if (withVersion && model.features.versionColumn) r += ` and row_version = p_rows(i).row_version`;
-        return r;
+        let dml = cols.length > 0
+            ? `${tab}${tab}insert into ${tbl} (${cols.join(', ')})\n${tab}${tab}values (${cols.map(c => `p_rows(i).${c}`).join(', ')})\n`
+            : `${tab}${tab}insert into ${tbl} values (default)\n`;
+        dml += `${tab}${tab}returning ${ret.join(', ')}\n${tab}${tab}bulk collect into ${ret.map(c => `l_ret_${c}`).join(', ')};\n`;
+        // the values of the RETURNING go back into the images only when every row was written
+        let after = `${tab}${tab}for i in 1 .. p_rows.count loop\n`;
+        for (const c of ret) after += `${tab}${tab}${tab}p_rows(i).${c} := l_ret_${c}(i);\n`;
+        after += `${tab}${tab}end loop;\n`;
+        return this.renderForall(model, `${prefix}insert_rows`, `p_rows in out nocopy ${rowsType}`, dml, addError, { declare, before, after });
     }
 
     private renderUpdateRows(model: OracleTableApiModel, prefix: string, rowsType: string, addError: string): string {
-        const tbl = model.names.table;
         const pk = model.names.pk;
         const set = writableColumns(model);
-        const hasVer = model.features.versionColumn;
-        let r = `${tab}procedure ${prefix}update_rows (p_rows in out nocopy ${rowsType}, x_errors in out nocopy t_err_tab) is\n`;
-        if (hasVer) {
-            r += `${tab}${tab}type t_count is table of pls_integer index by pls_integer;\n`;
-            r += `${tab}${tab}l_count t_count;\n`;
-            r += `${tab}${tab}l_dummy pls_integer;\n`;
-        }
-        r += `${tab}begin\n`;
-        r += `${tab}${tab}forall i in 1 .. p_rows.count save exceptions\n`;
         const assignments = set.length > 0 ? set.map(c => `${c} = p_rows(i).${c}`).join(', ') : `${pk} = p_rows(i).${pk}`;
-        r += `${tab}${tab}${tab}update ${tbl} set ${assignments}\n`;
-        r += `${tab}${tab}${tab}${this.renderRowPredicates(model, true)};\n`;
-        if (hasVer) {
-            // the counts first, before any other SQL; then the scalar's distinction: the row exists → [STALE_DATA]
-            r += `${tab}${tab}for i in 1 .. p_rows.count loop\n`;
-            r += `${tab}${tab}${tab}l_count(i) := sql%bulk_rowcount(i);\n`;
-            r += `${tab}${tab}end loop;\n`;
-            r += `${tab}${tab}for i in 1 .. p_rows.count loop\n`;
-            r += `${tab}${tab}${tab}if l_count(i) = 0 then\n`;
-            r += `${tab}${tab}${tab}${tab}begin\n`;
-            r += `${tab}${tab}${tab}${tab}${tab}select 1 into l_dummy from ${tbl} ${this.renderRowPredicates(model, false)};\n`;
-            r += `${tab}${tab}${tab}${tab}${tab}${addError}(x_errors, i, -20001, '[STALE_DATA] row modified by another session. reload and retry.');\n`;
-            r += `${tab}${tab}${tab}${tab}exception\n`;
-            r += `${tab}${tab}${tab}${tab}${tab}when no_data_found then\n`;
-            r += `${tab}${tab}${tab}${tab}${tab}${tab}${addError}(x_errors, i, -20002, '[NOT_FOUND] record ' || p_rows(i).${pk} || ' does not exist.');\n`;
-            r += `${tab}${tab}${tab}${tab}end;\n`;
-            r += `${tab}${tab}${tab}end if;\n`;
-            r += `${tab}${tab}end loop;\n`;
-        }
-        r += this.renderBulkExceptions(addError);
-        r += `${tab}end ${prefix}update_rows;\n\n`;
-        return r;
+        const where = rowPredicates(model, `p_rows(i).${pk}`, 'p_rows(i)', { rowVersion: true }).join(' and ');
+        const dml = `${tab}${tab}update ${model.names.table} set ${assignments}\n${tab}${tab}where ${where};\n`;
+        // zero rows is checked where the scalar update_row checks it: with row_version (82b §11)
+        return this.renderForall(model, `${prefix}update_rows`, `p_rows in out nocopy ${rowsType}`, dml, addError,
+            { zeroRows: model.features.versionColumn });
     }
 
     private renderDeleteRows(model: OracleTableApiModel, prefix: string, rowsType: string, addError: string): string {
-        const tbl = model.names.table;
-        let r = `${tab}procedure ${prefix}delete_rows (p_rows in ${rowsType}, x_errors in out nocopy t_err_tab) is\n`;
-        r += `${tab}begin\n`;
-        r += `${tab}${tab}forall i in 1 .. p_rows.count save exceptions\n`;
-        r += `${tab}${tab}${tab}delete from ${tbl} ${this.renderRowPredicates(model, false)};\n`;
-        r += this.renderBulkExceptions(addError);
-        r += `${tab}end ${prefix}delete_rows;\n\n`;
-        return r;
+        const where = rowPredicates(model, `p_rows(i).${model.names.pk}`, null).join(' and ');
+        // a row gone after the read is not an error, as in the scalar delete_row
+        const dml = `${tab}${tab}delete from ${model.names.table} where ${where};\n`;
+        return this.renderForall(model, `${prefix}delete_rows`, `p_rows in ${rowsType}`, dml, addError);
     }
 
     // ── _svc spec ────────────────────────────────────────────────────────────
@@ -423,8 +417,9 @@ export class OracleBulkRenderer {
 
     /**
      * Step 2 of update and delete: the rows in place, read from <t>_rls in one query and put back at their input
-     * index (the query's order is not the input's). A null or repeated id is a row error; an id the query does not
-     * return is [NOT_FOUND] for its index, as get_by_id.
+     * index (the query's order is not the input's). A null or repeated id is a row error and only its index leaves
+     * the batch (codex-037 X1-COLLECT-01): the other indices are read and go on; an id the query does not return is
+     * [NOT_FOUND] for its index, as get_by_id. In FAIL_FAST the caller stops at the first error anyway.
      */
     private renderRead(n: ReturnType<OracleBulkRenderer['names']>): string {
         const { model, tbl, pk } = n;
@@ -437,26 +432,31 @@ export class OracleBulkRenderer {
         r += `${tab}${tab}x_errors in out nocopy t_err_tab\n`;
         r += `${tab}) is\n`;
         r += `${tab}${tab}type t_pos is table of pls_integer index by varchar2(4000);\n`;
-        r += `${tab}${tab}l_pos   t_pos;\n`;
+        r += `${tab}${tab}type t_bad is table of boolean index by pls_integer;\n`;
+        r += `${tab}${tab}l_pos   t_pos;        -- id -> its input index (the first one)\n`;
+        r += `${tab}${tab}l_bad   t_bad;        -- the indices out of the batch: a null or repeated id\n`;
         r += `${tab}${tab}l_found t_row_view;\n`;
         r += `${tab}begin\n`;
         r += `${tab}${tab}for i in 1 .. p_ids.count loop\n`;
         r += `${tab}${tab}${tab}if p_ids(i) is null then\n`;
         r += `${tab}${tab}${tab}${tab}p_bulk_error(x_errors, i, ${BULK_ERRORS.input}, '[BULK_INPUT] ${tbl}: the id is null');\n`;
+        r += `${tab}${tab}${tab}${tab}l_bad(i) := true;\n`;
         r += `${tab}${tab}${tab}elsif l_pos.exists(to_char(p_ids(i))) then\n`;
         r += `${tab}${tab}${tab}${tab}p_bulk_error(x_errors, i, ${BULK_ERRORS.input}, '[BULK_INPUT] ${tbl}: the id ' || p_ids(i) || ' repeats row ' || l_pos(to_char(p_ids(i))));\n`;
+        r += `${tab}${tab}${tab}${tab}l_bad(i) := true;\n`;
         r += `${tab}${tab}${tab}else\n`;
         r += `${tab}${tab}${tab}${tab}l_pos(to_char(p_ids(i))) := i;\n`;
         r += `${tab}${tab}${tab}end if;\n`;
         r += `${tab}${tab}end loop;\n`;
-        r += `${tab}${tab}if x_errors.count > 0 then return; end if;\n`;
+        r += `${tab}${tab}if x_errors.count > 0 and p_mode = 'FAIL_FAST' then return; end if;\n`;
+        r += `${tab}${tab}-- a null id matches nothing, a repeated one returns its row once: both already out of the batch\n`;
         r += `${tab}${tab}select * bulk collect into l_found from ${tbl}_rls\n`;
         r += `${tab}${tab}where ${pk} in (select column_value from table(p_ids))${tenantWhere};\n`;
         r += `${tab}${tab}for k in 1 .. l_found.count loop\n`;
         r += `${tab}${tab}${tab}x_old(l_pos(to_char(l_found(k).${pk}))) := l_found(k);\n`;
         r += `${tab}${tab}end loop;\n`;
         r += `${tab}${tab}for i in 1 .. p_ids.count loop\n`;
-        r += `${tab}${tab}${tab}if not x_old.exists(i) then\n`;
+        r += `${tab}${tab}${tab}if not x_old.exists(i) and not l_bad.exists(i) then\n`;
         r += `${tab}${tab}${tab}${tab}p_bulk_error(x_errors, i, -20002, '[NOT_FOUND] ${tbl}: record not found (id=' || p_ids(i) || ')');\n`;
         r += `${tab}${tab}${tab}${tab}exit when p_mode = 'FAIL_FAST';\n`;
         r += `${tab}${tab}${tab}end if;\n`;

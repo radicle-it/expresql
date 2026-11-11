@@ -12425,171 +12425,7 @@ var Wt = class {
 		let g = t ? `${i}.t_id` : `${r}.${o}%type`;
 		return h += `${S}procedure p_log (\n`, h += `${S}${S}p_operation  in varchar2,\n`, h += `${S}${S}p_id         in ${g}`, p ? (h += `,\n${S}${S}p_old_values in clob default null,\n`, h += `${S}${S}p_new_values in clob default null\n`) : h += "\n", h += `${S}) is\n`, h += `${S}${S}pragma autonomous_transaction;\n`, h += `${S}${S}l_rec ${l}.t_rec;\n`, h += `${S}${S}l_id ${c}.id%type;\n`, h += `${S}begin\n`, h += `${S}${S}if not g_enabled then return; end if;\n`, h += `${S}${S}l_rec.entity    := '${r}';\n`, h += `${S}${S}l_rec.entity_id := p_id;\n`, h += `${S}${S}l_rec.operation := p_operation;\n`, p && (h += `${S}${S}l_rec.old_values := p_old_values;\n`, h += `${S}${S}l_rec.new_values := p_new_values;\n`), h += `${S}${S}${l}.create_rec(p_rec => l_rec, x_id => l_id);\n`, h += `${S}${S}-- l_id holds the generated audit record id.\n`, h += `${S}${S}-- use it here if needed, e.g. to notify, correlate, or route downstream:\n`, h += `${S}${S}-- your_pkg.on_audit(p_audit_id => l_id, p_entity => '${r}', p_operation => p_operation);\n`, h += `${S}${S}commit;\n`, h += `${S}end p_log;\n\n`, h += `${S}procedure log_insert (p_row in ${r}%rowtype) is\n`, h += `${S}begin\n`, h += p ? `${S}${S}p_log(p_operation => 'INSERT', p_id => p_row.${o}, p_new_values => f_to_json(p_row));\n` : `${S}${S}p_log(p_operation => 'INSERT', p_id => p_row.${o});\n`, h += `${S}end log_insert;\n\n`, h += `${S}procedure log_update (p_old_row in ${r}%rowtype, p_new_row in ${r}%rowtype) is\n`, h += `${S}begin\n`, h += p ? `${S}${S}p_log(p_operation => 'UPDATE', p_id => p_new_row.${o}, p_old_values => f_to_json(p_old_row), p_new_values => f_to_json(p_new_row));\n` : `${S}${S}p_log(p_operation => 'UPDATE', p_id => p_new_row.${o});\n`, h += `${S}end log_update;\n\n`, h += `${S}procedure log_delete (p_old_row in ${r}%rowtype) is\n`, h += `${S}begin\n`, h += p ? `${S}${S}p_log(p_operation => 'DELETE', p_id => p_old_row.${o}, p_old_values => f_to_json(p_old_row));\n` : `${S}${S}p_log(p_operation => 'DELETE', p_id => p_old_row.${o});\n`, h += `${S}end log_delete;\n\n`, h += `end ${K(a)};\n/\n`, h;
 	}
-}, Kt = {
-	input: -20005,
-	reentrant: -20006,
-	row: -20007,
-	rollback: -20008
-};
-function qt(e, t) {
-	let n = S.repeat(t);
-	return e.split("\n").map((e) => e === "" ? e : n + e).join("\n");
-}
-function Jt(e) {
-	let t = 2166136261;
-	for (let n = 0; n < e.length; n++) t ^= e.charCodeAt(n), t = Math.imul(t, 16777619) >>> 0;
-	return t.toString(16).padStart(8, "0");
-}
-function Yt(e) {
-	let t = "sp_bulk_" + K(e);
-	return t.length <= 128 ? t : t.slice(0, 119) + "_" + Jt(t);
-}
-function Xt(e) {
-	let t = Fe(e.node, !0);
-	if (t !== null) throw Error(`/bulk: ${e.names.table} ${t}`);
-}
-function Zt(e, t) {
-	if (e.inferType() === "table" && e.isOption("bulk")) throw Error(`/bulk: ${t} ${Fe(e, !1)}`);
-}
-var Qt = class {
-	constructor(e, t) {
-		this.ctx = e, this.analyzer = t;
-	}
-	names(e, t) {
-		let n = this.analyzer.analyze(e), r = n.names.table, i = n.names.dal;
-		return {
-			model: n,
-			tbl: r,
-			pk: n.names.pk,
-			svc: n.names.service,
-			bulkHks: r + "_bulk_hks",
-			errTabCtor: t ? `${i}.t_err_tab` : "t_err_tab",
-			insertRows: t ? `${i}.insert_rows` : "p_insert_rows",
-			updateRows: t ? `${i}.update_rows` : "p_update_rows",
-			deleteRows: t ? `${i}.delete_rows` : "p_delete_rows",
-			hasVer: n.features.versionColumn,
-			immutable: n.features.immutable,
-			scoped: n.dimensionScopes.length > 0
-		};
-	}
-	renderCollectionTypes(e, t) {
-		let n = `${S}type ${t} is table of ${e}%rowtype index by pls_integer;\n`;
-		return n += `${S}type t_err is record (idx pls_integer, code pls_integer, message varchar2(4000));\n`, n += `${S}type t_err_tab is table of t_err;\n\n`, n;
-	}
-	generateDalSpec(e) {
-		let { tbl: t, immutable: n } = this.names(e, !0), r = `${S}-- /bulk: one FORALL per batch; errors come back in x_errors by input index\n`;
-		return r += this.renderCollectionTypes(t, "t_rows"), r += `${S}procedure insert_rows (p_rows in out nocopy t_rows, x_errors in out nocopy t_err_tab);\n`, n || (r += `${S}procedure update_rows (p_rows in out nocopy t_rows, x_errors in out nocopy t_err_tab);\n`, r += `${S}procedure delete_rows (p_rows in t_rows, x_errors in out nocopy t_err_tab);\n`), r + "\n";
-	}
-	generateDml(e, t) {
-		let n = this.analyzer.analyze(e), r = t === "absorbed", i = r ? "p_" : "", a = r ? "t_row_view" : "t_rows", o = r ? "p_bulk_error" : "bulk_error", s = this.renderErrorHelper(o);
-		return s += this.renderInsertRows(n, i, a, o), n.features.immutable || (s += this.renderUpdateRows(n, i, a, o), s += this.renderDeleteRows(n, i, a, o)), s;
-	}
-	generateDeclarations(e, t) {
-		let n = "";
-		return e && (n += `${S}g_bulk_busy boolean := false;  -- /bulk: one bulk call at a time on this table\n`), t && (n += `${S}bulk_errors exception;\n`, n += `${S}pragma exception_init(bulk_errors, -24381);\n`), n + "\n";
-	}
-	renderErrorHelper(e) {
-		let t = `${S}procedure ${e} (\n`;
-		return t += `${S}${S}x_errors  in out nocopy t_err_tab,\n`, t += `${S}${S}p_idx     in pls_integer,\n`, t += `${S}${S}p_code    in pls_integer,\n`, t += `${S}${S}p_message in varchar2\n`, t += `${S}) is\n`, t += `${S}begin\n`, t += `${S}${S}x_errors.extend;\n`, t += `${S}${S}x_errors(x_errors.last).idx  := p_idx;\n`, t += `${S}${S}x_errors(x_errors.last).code := p_code;\n`, t += `${S}${S}x_errors(x_errors.last).message := substr(case when p_code between -20999 and -20000\n`, t += `${S}${S}${S}then regexp_replace(p_message, '^ORA-[0-9]{5}: ') else p_message end, 1, 4000);\n`, t += `${S}end ${e};\n\n`, t;
-	}
-	renderBulkExceptions(e) {
-		let t = `${S}exception\n`;
-		return t += `${S}${S}when bulk_errors then\n`, t += `${S}${S}${S}for j in 1 .. sql%bulk_exceptions.count loop\n`, t += `${S}${S}${S}${S}if sql%bulk_exceptions(j).error_code = 1 then\n`, t += `${S}${S}${S}${S}${S}${e}(x_errors, sql%bulk_exceptions(j).error_index, -20010, '[DUPLICATE] duplicate value on unique constraint.');\n`, t += `${S}${S}${S}${S}else\n`, t += `${S}${S}${S}${S}${S}${e}(x_errors, sql%bulk_exceptions(j).error_index, -sql%bulk_exceptions(j).error_code,\n`, t += `${S}${S}${S}${S}${S}${S}sqlerrm(-sql%bulk_exceptions(j).error_code));\n`, t += `${S}${S}${S}${S}end if;\n`, t += `${S}${S}${S}end loop;\n`, t;
-	}
-	renderInsertRows(e, t, n, r) {
-		let i = e.names.table, a = e.names.pk, o = e.features.syntheticTenantId, s = [...o ? ["tenant_id"] : [], ...je(e)], c = [a];
-		e.features.versionColumn && (c.push("row_version"), e.features.auditColumns && c.push(String(this.ctx.getOptionValue("createdcol") ?? "created"), String(this.ctx.getOptionValue("createdbycol") ?? "created_by")));
-		let l = `${S}procedure ${t}insert_rows (p_rows in out nocopy ${n}, x_errors in out nocopy t_err_tab) is\n`;
-		for (let e of c) l += `${S}${S}type t_ret_${e} is table of ${i}.${e}%type;\n`, l += `${S}${S}l_ret_${e} t_ret_${e};\n`;
-		o && (l += `${S}${S}l_tenant_id ${i}.tenant_id%type := ${e.names.tenantContext}.get_id;\n`), l += `${S}begin\n`, o && (l += `${S}${S}for i in 1 .. p_rows.count loop\n`, l += `${S}${S}${S}p_rows(i).tenant_id := l_tenant_id;\n`, l += `${S}${S}end loop;\n`), l += `${S}${S}forall i in 1 .. p_rows.count save exceptions\n`, s.length > 0 ? (l += `${S}${S}${S}insert into ${i} (${s.join(", ")})\n`, l += `${S}${S}${S}values (${s.map((e) => `p_rows(i).${e}`).join(", ")})\n`) : l += `${S}${S}${S}insert into ${i} values (default)\n`, l += `${S}${S}${S}returning ${c.join(", ")}\n`, l += `${S}${S}${S}bulk collect into ${c.map((e) => `l_ret_${e}`).join(", ")};\n`, l += `${S}${S}for i in 1 .. p_rows.count loop\n`;
-		for (let e of c) l += `${S}${S}${S}p_rows(i).${e} := l_ret_${e}(i);\n`;
-		return l += `${S}${S}end loop;\n`, l += this.renderBulkExceptions(r), l += `${S}end ${t}insert_rows;\n\n`, l;
-	}
-	renderRowPredicates(e, t) {
-		let n = `where ${e.names.pk} = p_rows(i).${e.names.pk}`;
-		return e.features.syntheticTenantId && (n += ` and tenant_id = ${e.names.tenantContext}.get_id`), t && e.features.versionColumn && (n += " and row_version = p_rows(i).row_version"), n;
-	}
-	renderUpdateRows(e, t, n, r) {
-		let i = e.names.table, a = e.names.pk, o = je(e), s = e.features.versionColumn, c = `${S}procedure ${t}update_rows (p_rows in out nocopy ${n}, x_errors in out nocopy t_err_tab) is\n`;
-		s && (c += `${S}${S}type t_count is table of pls_integer index by pls_integer;\n`, c += `${S}${S}l_count t_count;\n`, c += `${S}${S}l_dummy pls_integer;\n`), c += `${S}begin\n`, c += `${S}${S}forall i in 1 .. p_rows.count save exceptions\n`;
-		let l = o.length > 0 ? o.map((e) => `${e} = p_rows(i).${e}`).join(", ") : `${a} = p_rows(i).${a}`;
-		return c += `${S}${S}${S}update ${i} set ${l}\n`, c += `${S}${S}${S}${this.renderRowPredicates(e, !0)};\n`, s && (c += `${S}${S}for i in 1 .. p_rows.count loop\n`, c += `${S}${S}${S}l_count(i) := sql%bulk_rowcount(i);\n`, c += `${S}${S}end loop;\n`, c += `${S}${S}for i in 1 .. p_rows.count loop\n`, c += `${S}${S}${S}if l_count(i) = 0 then\n`, c += `${S}${S}${S}${S}begin\n`, c += `${S}${S}${S}${S}${S}select 1 into l_dummy from ${i} ${this.renderRowPredicates(e, !1)};\n`, c += `${S}${S}${S}${S}${S}${r}(x_errors, i, -20001, '[STALE_DATA] row modified by another session. reload and retry.');\n`, c += `${S}${S}${S}${S}exception\n`, c += `${S}${S}${S}${S}${S}when no_data_found then\n`, c += `${S}${S}${S}${S}${S}${S}${r}(x_errors, i, -20002, '[NOT_FOUND] record ' || p_rows(i).${a} || ' does not exist.');\n`, c += `${S}${S}${S}${S}end;\n`, c += `${S}${S}${S}end if;\n`, c += `${S}${S}end loop;\n`), c += this.renderBulkExceptions(r), c += `${S}end ${t}update_rows;\n\n`, c;
-	}
-	renderDeleteRows(e, t, n, r) {
-		let i = e.names.table, a = `${S}procedure ${t}delete_rows (p_rows in ${n}, x_errors in out nocopy t_err_tab) is\n`;
-		return a += `${S}begin\n`, a += `${S}${S}forall i in 1 .. p_rows.count save exceptions\n`, a += `${S}${S}${S}delete from ${i} ${this.renderRowPredicates(e, !1)};\n`, a += this.renderBulkExceptions(r), a += `${S}end ${t}delete_rows;\n\n`, a;
-	}
-	generateServiceSpec(e, t) {
-		let { model: n, tbl: r, pk: i, hasVer: a, immutable: o } = this.names(e, t), s = n.names.dal, c = `${S}-- /bulk (82b): input dense 1..n; x_ids and x_errors are defined only on a normal return\n`;
-		return c += `${S}type t_tab     is table of t_rec;\n`, c += `${S}type t_id_tab  is table of ${r}.${i}%type;\n`, a && (c += `${S}type t_ver_tab is table of ${r}.row_version%type;\n`), t ? (c += `${S}subtype t_row_view is ${s}.t_rows;\n`, c += `${S}subtype t_err      is ${s}.t_err;\n`, c += `${S}subtype t_err_tab  is ${s}.t_err_tab;\n\n`) : c += "\n" + this.renderCollectionTypes(r, "t_row_view"), c += `${S}procedure create_many (\n`, c += `${S}${S}p_recs   in  t_tab,\n`, c += `${S}${S}x_ids    out t_id_tab,\n`, c += `${S}${S}p_mode   in  varchar2 default 'FAIL_FAST',\n`, c += `${S}${S}x_errors out t_err_tab\n`, c += `${S});\n\n`, o || (c += `${S}procedure update_many (\n`, c += `${S}${S}p_ids          in  t_id_tab,\n`, c += `${S}${S}p_recs         in  t_tab,\n`, a && (c += `${S}${S}p_row_versions in  t_ver_tab,\n`), c += `${S}${S}p_mode         in  varchar2 default 'FAIL_FAST',\n`, c += `${S}${S}x_errors       out t_err_tab\n`, c += `${S});\n\n`, c += `${S}procedure delete_many (\n`, c += `${S}${S}p_ids    in  t_id_tab,\n`, c += `${S}${S}p_mode   in  varchar2 default 'FAIL_FAST',\n`, c += `${S}${S}x_errors out t_err_tab\n`, c += `${S});\n\n`), c;
-	}
-	hookSignatures(e, t) {
-		return {
-			validate: `procedure ${t}validate_many (p_operation in varchar2, p_rows in ${e}t_row_view, x_errors in out nocopy ${e}t_err_tab)`,
-			after: `procedure ${t}after_many (p_operation in varchar2, p_ids in ${e}t_id_tab)`
-		};
-	}
-	generateHooksPackage(e) {
-		let { svc: t, bulkHks: n } = this.names(e, !1), r = this.hookSignatures(t + ".", ""), i = `create or replace package ${n} as\n\n`;
-		return i += `${S}-- after every row passed its own hooks, before the write: invariants across rows, read only;\n`, i += `${S}-- a refused row is added to x_errors with its input index\n`, i += `${S}${r.validate};\n\n`, i += `${S}-- after every row was written and its after_<op> ran\n`, i += `${S}${r.after};\n\n`, i += `end ${K(n)};\n/\n`, i += `\ncreate or replace package body ${n} as\n`, i += "-- warning: this file is generated once and must not be overwritten\n\n", i += `${S}${r.validate} is begin null; end validate_many;\n\n`, i += `${S}${r.after} is begin null; end after_many;\n\n`, i += `end ${K(n)};\n/\n`, i;
-	}
-	generateServicePrivate(e, t, n) {
-		let { tbl: r } = this.names(e, t), i = `\n${S}-- /bulk: private (savepoint ${Yt(r)})\n\n`;
-		if (t && (i += this.renderErrorHelper("p_bulk_error")), i += `${S}procedure p_bulk_input (p_message in varchar2) is\n`, i += `${S}begin\n`, i += `${S}${S}raise_application_error(${Kt.input}, '[BULK_INPUT] ${r}: ' || p_message);\n`, i += `${S}end p_bulk_input;\n\n`, i += `${S}procedure p_bulk_shape (p_name in varchar2, p_count in pls_integer, p_first in pls_integer, p_last in pls_integer, p_expected in pls_integer default null) is\n`, i += `${S}begin\n`, i += `${S}${S}if p_count = 0 or p_first != 1 or p_last != p_count then\n`, i += `${S}${S}${S}p_bulk_input(p_name || ' is empty or not dense (indices 1..n)');\n`, i += `${S}${S}elsif p_expected is not null and p_count != p_expected then\n`, i += `${S}${S}${S}p_bulk_input(p_name || ' has ' || p_count || ' elements, expected ' || p_expected);\n`, i += `${S}${S}end if;\n`, i += `${S}end p_bulk_shape;\n\n`, i += `${S}procedure p_bulk_mode (p_mode in varchar2) is\n`, i += `${S}begin\n`, i += `${S}${S}if p_mode is null or p_mode not in ('FAIL_FAST', 'COLLECT') then\n`, i += `${S}${S}${S}p_bulk_input('the mode is FAIL_FAST or COLLECT');\n`, i += `${S}${S}end if;\n`, i += `${S}end p_bulk_mode;\n\n`, i += `${S}procedure p_bulk_raise (p_error in t_err) is\n`, i += `${S}begin\n`, i += `${S}${S}if p_error.code between -20999 and -20000 then\n`, i += `${S}${S}${S}raise_application_error(p_error.code, p_error.message || ' (row ' || p_error.idx || ')');\n`, i += `${S}${S}end if;\n`, i += `${S}${S}raise_application_error(${Kt.row}, '[BULK_ROW] ' || p_error.message || ' (row ' || p_error.idx || ')');\n`, i += `${S}end p_bulk_raise;\n\n`, !n) {
-			let e = this.hookSignatures("", "p_");
-			i += `${S}${e.validate} is begin null; end p_validate_many;\n`, i += `${S}${e.after} is begin null; end p_after_many;\n\n`;
-		}
-		return i;
-	}
-	generateServiceBody(e, t, n) {
-		let r = this.names(e, t), i = Ut(r.model.names.hooks, n), a = Ut(r.bulkHks, n), o = this.renderRead(r);
-		return o += this.renderCreate(r, i, a), r.immutable || (o += this.renderUpdate(r, i, a), o += this.renderDelete(r, i, a)), o += this.renderEntry(r, "create_many", [["p_recs", "in  t_tab"], ["x_ids", "out t_id_tab"]], `${S}${S}${S}${S}x_ids := t_id_tab();\n`), r.immutable || (o += this.renderEntry(r, "update_many", [
-			["p_ids", "in  t_id_tab"],
-			["p_recs", "in  t_tab"],
-			...r.hasVer ? [["p_row_versions", "in  t_ver_tab"]] : []
-		], ""), o += this.renderEntry(r, "delete_many", [["p_ids", "in  t_id_tab"]], "")), o;
-	}
-	renderRead(e) {
-		let { model: t, tbl: n, pk: r } = e, i = t.features.syntheticTenantId ? ` and tenant_id = ${t.names.tenantContext}.get_id` : "";
-		if (e.immutable) return "";
-		let a = `${S}procedure p_bulk_read (\n`;
-		return a += `${S}${S}p_ids    in t_id_tab,\n`, a += `${S}${S}p_mode   in varchar2,\n`, a += `${S}${S}x_old    in out nocopy t_row_view,\n`, a += `${S}${S}x_errors in out nocopy t_err_tab\n`, a += `${S}) is\n`, a += `${S}${S}type t_pos is table of pls_integer index by varchar2(4000);\n`, a += `${S}${S}l_pos   t_pos;\n`, a += `${S}${S}l_found t_row_view;\n`, a += `${S}begin\n`, a += `${S}${S}for i in 1 .. p_ids.count loop\n`, a += `${S}${S}${S}if p_ids(i) is null then\n`, a += `${S}${S}${S}${S}p_bulk_error(x_errors, i, ${Kt.input}, '[BULK_INPUT] ${n}: the id is null');\n`, a += `${S}${S}${S}elsif l_pos.exists(to_char(p_ids(i))) then\n`, a += `${S}${S}${S}${S}p_bulk_error(x_errors, i, ${Kt.input}, '[BULK_INPUT] ${n}: the id ' || p_ids(i) || ' repeats row ' || l_pos(to_char(p_ids(i))));\n`, a += `${S}${S}${S}else\n`, a += `${S}${S}${S}${S}l_pos(to_char(p_ids(i))) := i;\n`, a += `${S}${S}${S}end if;\n`, a += `${S}${S}end loop;\n`, a += `${S}${S}if x_errors.count > 0 then return; end if;\n`, a += `${S}${S}select * bulk collect into l_found from ${n}_rls\n`, a += `${S}${S}where ${r} in (select column_value from table(p_ids))${i};\n`, a += `${S}${S}for k in 1 .. l_found.count loop\n`, a += `${S}${S}${S}x_old(l_pos(to_char(l_found(k).${r}))) := l_found(k);\n`, a += `${S}${S}end loop;\n`, a += `${S}${S}for i in 1 .. p_ids.count loop\n`, a += `${S}${S}${S}if not x_old.exists(i) then\n`, a += `${S}${S}${S}${S}p_bulk_error(x_errors, i, -20002, '[NOT_FOUND] ${n}: record not found (id=' || p_ids(i) || ')');\n`, a += `${S}${S}${S}${S}exit when p_mode = 'FAIL_FAST';\n`, a += `${S}${S}${S}end if;\n`, a += `${S}${S}end loop;\n`, a += `${S}end p_bulk_read;\n\n`, a;
-	}
-	renderRowStep(e, t, n) {
-		let r = `${S}${S}${S}begin\n`;
-		return r += qt(e + t, 2), r += `${S}${S}${S}exception\n`, r += `${S}${S}${S}${S}when others then\n`, r += `${S}${S}${S}${S}${S}p_bulk_error(x_errors, i, sqlcode, sqlerrm);\n`, r += `${S}${S}${S}${S}${S}${n}.delete(i);\n`, r += `${S}${S}${S}${S}${S}l_stop := p_mode = 'FAIL_FAST';\n`, r += `${S}${S}${S}end;\n`, r += `${S}${S}${S}exit when l_stop;\n`, r;
-	}
-	renderTail(e, t, n, r, i, a) {
-		let o = `${S}${S}if x_errors.count > 0 and p_mode = 'FAIL_FAST' then return; end if;\n`;
-		return o += `${S}${S}if ${t}.count > 0 then\n`, o += `${S}${S}${S}${a("validate_many")}(p_operation => '${e}', p_rows => ${t}, x_errors => x_errors);\n`, o += `${S}${S}end if;\n`, o += `${S}${S}if x_errors.count > 0 then return; end if;\n`, o += `${S}${S}${n}(p_rows => ${t}, x_errors => x_errors);\n`, o += `${S}${S}if x_errors.count > 0 then return; end if;\n`, o += `${S}${S}for i in 1 .. ${t}.count loop\n`, o += qt(r, 1), o += `${S}${S}end loop;\n`, o += `${S}${S}${a("after_many")}(p_operation => '${e}', p_ids => ${i});\n`, o;
-	}
-	renderCreate(e, t, n) {
-		let r = e.model.columns.parameters.map(({ name: e }) => e), i = `${S}procedure p_create_many (\n`;
-		i += `${S}${S}p_recs   in  t_tab,\n`, i += `${S}${S}x_ids    in out nocopy t_id_tab,\n`, i += `${S}${S}p_mode   in  varchar2,\n`, i += `${S}${S}x_errors in out nocopy t_err_tab\n`, i += `${S}) is\n`, i += `${S}${S}l_new  t_row_view;\n`, i += `${S}${S}l_stop boolean := false;\n`, i += `${S}begin\n`, i += `${S}${S}p_bulk_mode(p_mode);\n`, i += `${S}${S}if p_recs is null then p_bulk_input('p_recs is null'); end if;\n`, i += `${S}${S}p_bulk_shape('p_recs', p_recs.count, p_recs.first, p_recs.last);\n`, i += `${S}${S}for i in 1 .. p_recs.count loop\n`, i += this.renderRowStep(J(r, "l_new(i)", (e) => `p_recs(i).${e}`), X("insert", "l_new(i)", e.scoped, t), "l_new"), i += `${S}${S}end loop;\n`;
-		let a = Z("insert", "l_new(i)", t) + `${S}${S}x_ids.extend;\n${S}${S}x_ids(i) := l_new(i).${e.pk};\n`;
-		return i += this.renderTail("insert", "l_new", e.insertRows, a, "x_ids", n), i += `${S}end p_create_many;\n\n`, i;
-	}
-	renderUpdate(e, t, n) {
-		let r = e.model.columns.parameters.map(({ name: e }) => e), i = `${S}procedure p_update_many (\n`;
-		i += `${S}${S}p_ids          in  t_id_tab,\n`, i += `${S}${S}p_recs         in  t_tab,\n`, e.hasVer && (i += `${S}${S}p_row_versions in  t_ver_tab,\n`), i += `${S}${S}p_mode         in  varchar2,\n`, i += `${S}${S}x_errors       in out nocopy t_err_tab\n`, i += `${S}) is\n`, i += `${S}${S}l_old  t_row_view;\n`, i += `${S}${S}l_new  t_row_view;\n`, i += `${S}${S}l_stop boolean := false;\n`, i += `${S}begin\n`, i += `${S}${S}p_bulk_mode(p_mode);\n`, i += `${S}${S}if p_ids is null then p_bulk_input('p_ids is null'); end if;\n`, i += `${S}${S}if p_recs is null then p_bulk_input('p_recs is null'); end if;\n`, e.hasVer && (i += `${S}${S}if p_row_versions is null then p_bulk_input('p_row_versions is null'); end if;\n`), i += `${S}${S}p_bulk_shape('p_ids', p_ids.count, p_ids.first, p_ids.last);\n`, i += `${S}${S}p_bulk_shape('p_recs', p_recs.count, p_recs.first, p_recs.last, p_ids.count);\n`, e.hasVer && (i += `${S}${S}p_bulk_shape('p_row_versions', p_row_versions.count, p_row_versions.first, p_row_versions.last, p_ids.count);\n`), i += `${S}${S}p_bulk_read(p_ids => p_ids, p_mode => p_mode, x_old => l_old, x_errors => x_errors);\n`, i += `${S}${S}if x_errors.count > 0 and p_mode = 'FAIL_FAST' then return; end if;\n`, i += `${S}${S}for i in 1 .. p_ids.count loop\n`, i += `${S}${S}${S}continue when not l_old.exists(i);\n`;
-		let a = `${S}${S}l_new(i) := l_old(i);\n`;
-		return a += J(r, "l_new(i)", (e) => `p_recs(i).${e}`), e.hasVer && (a += `${S}${S}l_new(i).row_version := p_row_versions(i);\n`), i += this.renderRowStep(a, X("update", "l_new(i)", e.scoped, t), "l_new"), i += `${S}${S}end loop;\n`, i += this.renderTail("update", "l_new", e.updateRows, Z("update", "l_new(i)", t), "p_ids", n), i += `${S}end p_update_many;\n\n`, i;
-	}
-	renderDelete(e, t, n) {
-		let r = `${S}procedure p_delete_many (\n`;
-		return r += `${S}${S}p_ids    in  t_id_tab,\n`, r += `${S}${S}p_mode   in  varchar2,\n`, r += `${S}${S}x_errors in out nocopy t_err_tab\n`, r += `${S}) is\n`, r += `${S}${S}l_old  t_row_view;\n`, r += `${S}${S}l_stop boolean := false;\n`, r += `${S}begin\n`, r += `${S}${S}p_bulk_mode(p_mode);\n`, r += `${S}${S}if p_ids is null then p_bulk_input('p_ids is null'); end if;\n`, r += `${S}${S}p_bulk_shape('p_ids', p_ids.count, p_ids.first, p_ids.last);\n`, r += `${S}${S}p_bulk_read(p_ids => p_ids, p_mode => p_mode, x_old => l_old, x_errors => x_errors);\n`, r += `${S}${S}if x_errors.count > 0 and p_mode = 'FAIL_FAST' then return; end if;\n`, r += `${S}${S}for i in 1 .. p_ids.count loop\n`, r += `${S}${S}${S}continue when not l_old.exists(i);\n`, r += this.renderRowStep("", X("delete", "l_old(i)", e.scoped, t, "p_ids(i)"), "l_old"), r += `${S}${S}end loop;\n`, r += this.renderTail("delete", "l_old", e.deleteRows, Z("delete", "l_old(i)", t, "p_ids(i)"), "p_ids", n), r += `${S}end p_delete_many;\n\n`, r;
-	}
-	renderEntry(e, t, n, r) {
-		let i = Yt(e.tbl), a = [
-			...n,
-			["p_mode", "in  varchar2 default 'FAIL_FAST'"],
-			["x_errors", "out t_err_tab"]
-		], o = Math.max(...a.map(([e]) => e.length)), s = a.map(([e]) => `${e} => ${e}`).join(", "), c = n.filter(([, e]) => e.startsWith("out")).map(([e]) => e), l = `${S}procedure ${t} (\n`;
-		l += a.map(([e, t]) => `${S}${S}${e.padEnd(o)} ${t}`).join(",\n") + "\n", l += `${S}) is\n`, l += `${S}${S}l_code  pls_integer;\n`, l += `${S}${S}l_msg   varchar2(4000);\n`, l += `${S}${S}l_trace varchar2(4000);\n`, l += `${S}begin\n`, l += `${S}${S}if g_bulk_busy then\n`, l += `${S}${S}${S}raise_application_error(${Kt.reentrant}, '[BULK_REENTRANT] ${e.tbl}: a bulk call on this table is already running');\n`, l += `${S}${S}end if;\n`, l += `${S}${S}g_bulk_busy := true;\n`, l += `${S}${S}begin\n`, l += `${S}${S}${S}savepoint ${i};\n`, l += `${S}${S}${S}x_errors := ${e.errTabCtor}();\n`;
-		for (let e of c) l += `${S}${S}${S}${e} := t_id_tab();\n`;
-		return l += `${S}${S}${S}p_${t}(${s});\n`, l += `${S}${S}${S}if x_errors.count > 0 then\n`, l += `${S}${S}${S}${S}rollback to savepoint ${i};\n`, l += r, l += `${S}${S}${S}end if;\n`, l += `${S}${S}exception\n`, l += `${S}${S}${S}when others then\n`, l += `${S}${S}${S}${S}l_code  := sqlcode;\n`, l += `${S}${S}${S}${S}l_msg   := sqlerrm;\n`, l += `${S}${S}${S}${S}l_trace := dbms_utility.format_error_backtrace;\n`, l += `${S}${S}${S}${S}g_bulk_busy := false;\n`, l += `${S}${S}${S}${S}begin\n`, l += `${S}${S}${S}${S}${S}rollback to savepoint ${i};\n`, l += `${S}${S}${S}${S}exception\n`, l += `${S}${S}${S}${S}${S}when others then\n`, l += `${S}${S}${S}${S}${S}${S}raise_application_error(${Kt.rollback}, substr('[BULK_ROLLBACK] ${e.tbl}: the batch could not be rolled back after '\n`, l += `${S}${S}${S}${S}${S}${S}${S}|| l_msg || ' (' || l_code || ') ' || l_trace, 1, 2000), true);\n`, l += `${S}${S}${S}${S}end;\n`, l += `${S}${S}${S}${S}raise;\n`, l += `${S}${S}end;\n`, l += `${S}${S}g_bulk_busy := false;\n`, l += `${S}${S}if x_errors.count > 0 and p_mode = 'FAIL_FAST' then\n`, l += `${S}${S}${S}p_bulk_raise(x_errors(1));\n`, l += `${S}${S}end if;\n`, l += `${S}end ${t};\n\n`, l;
-	}
-}, $t = class {
+}, Kt = class {
 	constructor(e, t, n) {
 		this.ctx = e, this.analyzer = t, this.bulk = n;
 	}
@@ -12614,8 +12450,8 @@ var Qt = class {
 		return d += `;\n${S}end ${i}insert_row;\n\n`, d;
 	}
 	renderNoRowsCheck(e, t, n) {
-		let r = e.names.table, i = e.names.pk, a = `${S}${S}if sql%rowcount = 0 then\n`;
-		return n ? (a += `${S}${S}${S}declare l_dummy pls_integer;\n`, a += `${S}${S}${S}begin\n`, e.features.syntheticTenantId ? a += `${S}${S}${S}${S}select 1 into l_dummy from ${r} where ${i} = l_id and tenant_id = ${e.names.tenantContext}.get_id;\n` : a += `${S}${S}${S}${S}select 1 into l_dummy from ${r} where ${i} = l_id;\n`, a += `${S}${S}${S}${S}raise_application_error(${t.staleError}, '[STALE_DATA] row modified by another session. reload and retry.');\n`, a += `${S}${S}${S}exception\n`, a += `${S}${S}${S}${S}when no_data_found then\n`, a += `${S}${S}${S}${S}${S}raise_application_error(${t.notFoundError}, '[NOT_FOUND] record ' || l_id || ' does not exist.');\n`, a += `${S}${S}${S}end;\n`) : a += `${S}${S}${S}raise_application_error(${t.notFoundError}, '[NOT_FOUND] record ' || l_id || ' does not exist.');\n`, a += `${S}${S}end if;\n`, a;
+		let r = `${S}${S}if sql%rowcount = 0 then\n`;
+		return r += n ? Jt(e, "l_id", `raise_application_error(${t.staleError}, '[STALE_DATA] row modified by another session. reload and retry.');`, `raise_application_error(${t.notFoundError}, '[NOT_FOUND] record ' || l_id || ' does not exist.');`) : `${S}${S}${S}raise_application_error(${t.notFoundError}, '[NOT_FOUND] record ' || l_id || ' does not exist.');\n`, r += `${S}${S}end if;\n`, r;
 	}
 	renderVersionedNoRowsCheck(e, t, n) {
 		let r = e.names.table, i = e.names.pk, a = `${S}${S}if sql%rowcount = 0 then\n`;
@@ -12631,10 +12467,13 @@ var Qt = class {
 	renderUpdateDeleteRoutines(e, t) {
 		if (e.features.immutable) return "";
 		let n = e.features.versioned, r = e.versionToColumn, i = e.names.table, a = e.names.pk, o = e.features.versionColumn, s = e.features.syntheticTenantId, c = e.names.tenantContext, l = this.profile(e, t), u = je(e).map((e) => `${e} = p_row.${e}`), d = `${S}procedure ${l.prefix}update_row (p_row in out nocopy ${i}%rowtype) is\n`;
-		if (d += `${S}${S}l_id ${l.idType};\n`, d += `${S}begin\n`, d += `${S}${S}l_id := p_row.${a};\n`, u.length > 0 || t === "package" ? (d += `${S}${S}update ${i} set\n`, d += `${S}${S}${S}` + u.join(`,\n${S}${S}${S}`) + "\n", d += `${S}${S}where ${a} = l_id`) : d += `${S}${S}update ${i} set ${a} = l_id where ${a} = l_id`, n && (d += `\n${S}${S}  and ${r} is null`), s && (d += `\n${S}${S}  and tenant_id = ${c}.get_id`), o && (d += `\n${S}${S}  and row_version = p_row.row_version`), d += ";\n", n ? d += this.renderVersionedNoRowsCheck(e, l, r) : o && (d += this.renderNoRowsCheck(e, l, !0)), d += `${S}end ${l.prefix}update_row;\n\n`, d += `${S}procedure ${l.prefix}delete_row (p_id in ${l.idType}) is\n`, d += `${S}begin\n`, n) {
+		if (d += `${S}${S}l_id ${l.idType};\n`, d += `${S}begin\n`, d += `${S}${S}l_id := p_row.${a};\n`, u.length > 0 || t === "package" ? (d += `${S}${S}update ${i} set\n`, d += `${S}${S}${S}` + u.join(`,\n${S}${S}${S}`) + "\n", d += `${S}${S}where `) : d += `${S}${S}update ${i} set ${a} = l_id where `, d += qt(e, "l_id", "p_row", {
+			openVersion: n,
+			rowVersion: !0
+		}).join(`\n${S}${S}  and `), d += ";\n", n ? d += this.renderVersionedNoRowsCheck(e, l, r) : o && (d += this.renderNoRowsCheck(e, l, !0)), d += `${S}end ${l.prefix}update_row;\n\n`, d += `${S}procedure ${l.prefix}delete_row (p_id in ${l.idType}) is\n`, d += `${S}begin\n`, n) {
 			let e = s ? ` and tenant_id = ${c}.get_id` : "";
 			d += `${S}${S}delete from ${i} where ${a} = p_id and ${r} is null${e};\n`, d += `${S}${S}if sql%rowcount = 0 then\n`, d += `${S}${S}${S}declare\n`, d += `${S}${S}${S}${S}l_${r} ${i}.${r}%type;\n`, d += `${S}${S}${S}begin\n`, d += `${S}${S}${S}${S}select ${r} into l_${r} from ${i} where ${a} = p_id${e};\n`, d += `${S}${S}${S}${S}if l_${r} is not null then\n`, d += `${S}${S}${S}${S}${S}raise_application_error(${l.closedError}, '[VERSIONED] ${i}: this version row is already closed (${r} is not null), it cannot be deleted');\n`, d += `${S}${S}${S}${S}end if;\n`, d += `${S}${S}${S}exception\n`, d += `${S}${S}${S}${S}when no_data_found then\n`, d += `${S}${S}${S}${S}${S}null;\n`, d += `${S}${S}${S}end;\n`, d += `${S}${S}end if;\n`;
-		} else d += s ? `${S}${S}delete from ${i} where ${a} = p_id and tenant_id = ${c}.get_id;\n` : `${S}${S}delete from ${i} where ${a} = p_id;\n`;
+		} else d += `${S}${S}delete from ${i} where ${qt(e, "p_id", null).join(" and ")};\n`;
 		return d += `${S}end ${l.prefix}delete_row;\n\n`, d;
 	}
 	renderReadRoutines(e, t) {
@@ -12681,7 +12520,186 @@ var Qt = class {
 		let t = this.analyzer.analyze(e), n = t.names.dal, r = `create or replace package body ${n} as\n\n`;
 		return r += `${S}resource_busy exception;\n`, r += `${S}pragma exception_init(resource_busy, -54);\n\n`, t.features.bulk && (r += this.bulk.generateDeclarations(!1, !0)), r += this.renderReadRoutines(t, "package"), r += this.renderInsertRoutine(t, "package"), r += this.renderCloseRoutine(t, "package"), r += this.renderUpdateDeleteRoutines(t, "package"), r += this.renderBusinessKeyReads(t, "package"), r += this.renderBridgeRoutines(t, "package"), t.features.bulk && (r += this.bulk.generateDml(e, "package")), r += `end ${K(n)};\n/\n`, r;
 	}
-}, en = class {
+};
+function qt(e, t, n, { openVersion: r = !1, rowVersion: i = !1 } = {}) {
+	let a = [`${e.names.pk} = ${t}`];
+	return r && a.push(`${e.versionToColumn} is null`), e.features.syntheticTenantId && a.push(`tenant_id = ${e.names.tenantContext}.get_id`), i && n !== null && e.features.versionColumn && a.push(`row_version = ${n}.row_version`), a;
+}
+function Jt(e, t, n, r) {
+	let i = `${S}${S}${S}declare l_dummy pls_integer;\n`;
+	return i += `${S}${S}${S}begin\n`, i += `${S}${S}${S}${S}select 1 into l_dummy from ${e.names.table} where ${qt(e, t, null).join(" and ")};\n`, i += `${S}${S}${S}${S}${n}\n`, i += `${S}${S}${S}exception\n`, i += `${S}${S}${S}${S}when no_data_found then\n`, i += `${S}${S}${S}${S}${S}${r}\n`, i += `${S}${S}${S}end;\n`, i;
+}
+//#endregion
+//#region src/oracle/plsql/layered/bulk.ts
+var Yt = {
+	input: -20005,
+	reentrant: -20006,
+	row: -20007,
+	rollback: -20008
+};
+function Xt(e, t) {
+	let n = S.repeat(t);
+	return e.split("\n").map((e) => e === "" ? e : n + e).join("\n");
+}
+function Zt(e) {
+	let t = 2166136261;
+	for (let n = 0; n < e.length; n++) t ^= e.charCodeAt(n), t = Math.imul(t, 16777619) >>> 0;
+	return t.toString(16).padStart(8, "0");
+}
+function Qt(e) {
+	let t = "sp_bulk_" + K(e);
+	return t.length <= 128 ? t : t.slice(0, 119) + "_" + Zt(t);
+}
+function $t(e) {
+	let t = Fe(e.node, !0);
+	if (t !== null) throw Error(`/bulk: ${e.names.table} ${t}`);
+}
+function en(e, t) {
+	if (e.inferType() === "table" && e.isOption("bulk")) throw Error(`/bulk: ${t} ${Fe(e, !1)}`);
+}
+var tn = class {
+	constructor(e, t) {
+		this.ctx = e, this.analyzer = t;
+	}
+	names(e, t) {
+		let n = this.analyzer.analyze(e), r = n.names.table, i = n.names.dal;
+		return {
+			model: n,
+			tbl: r,
+			pk: n.names.pk,
+			svc: n.names.service,
+			bulkHks: r + "_bulk_hks",
+			errTabCtor: t ? `${i}.t_err_tab` : "t_err_tab",
+			insertRows: t ? `${i}.insert_rows` : "p_insert_rows",
+			updateRows: t ? `${i}.update_rows` : "p_update_rows",
+			deleteRows: t ? `${i}.delete_rows` : "p_delete_rows",
+			hasVer: n.features.versionColumn,
+			immutable: n.features.immutable,
+			scoped: n.dimensionScopes.length > 0
+		};
+	}
+	renderCollectionTypes(e, t) {
+		let n = `${S}type ${t} is table of ${e}%rowtype index by pls_integer;\n`;
+		return n += `${S}type t_err is record (idx pls_integer, code pls_integer, message varchar2(4000));\n`, n += `${S}type t_err_tab is table of t_err;\n\n`, n;
+	}
+	generateDalSpec(e) {
+		let { tbl: t, immutable: n } = this.names(e, !0), r = `${S}-- /bulk: one FORALL per batch; errors come back in x_errors by input index\n`;
+		return r += this.renderCollectionTypes(t, "t_rows"), r += `${S}procedure insert_rows (p_rows in out nocopy t_rows, x_errors in out nocopy t_err_tab);\n`, n || (r += `${S}procedure update_rows (p_rows in out nocopy t_rows, x_errors in out nocopy t_err_tab);\n`, r += `${S}procedure delete_rows (p_rows in t_rows, x_errors in out nocopy t_err_tab);\n`), r + "\n";
+	}
+	generateDml(e, t) {
+		let n = this.analyzer.analyze(e), r = t === "absorbed", i = r ? "p_" : "", a = r ? "t_row_view" : "t_rows", o = r ? "p_bulk_error" : "bulk_error", s = this.renderErrorHelper(o);
+		return s += this.renderInsertRows(n, i, a, o), n.features.immutable || (s += this.renderUpdateRows(n, i, a, o), s += this.renderDeleteRows(n, i, a, o)), s;
+	}
+	generateDeclarations(e, t) {
+		let n = "";
+		return e && (n += `${S}g_bulk_busy boolean := false;  -- /bulk: one bulk call at a time on this table\n`), t && (n += `${S}bulk_errors exception;\n`, n += `${S}pragma exception_init(bulk_errors, -24381);\n`), n + "\n";
+	}
+	renderErrorHelper(e) {
+		let t = `${S}procedure ${e} (\n`;
+		return t += `${S}${S}x_errors  in out nocopy t_err_tab,\n`, t += `${S}${S}p_idx     in pls_integer,\n`, t += `${S}${S}p_code    in pls_integer,\n`, t += `${S}${S}p_message in varchar2\n`, t += `${S}) is\n`, t += `${S}begin\n`, t += `${S}${S}x_errors.extend;\n`, t += `${S}${S}x_errors(x_errors.last).idx  := p_idx;\n`, t += `${S}${S}x_errors(x_errors.last).code := p_code;\n`, t += `${S}${S}x_errors(x_errors.last).message := substr(case when p_code between -20999 and -20000\n`, t += `${S}${S}${S}then regexp_replace(p_message, '^ORA-[0-9]{5}: ') else p_message end, 1, 4000);\n`, t += `${S}end ${e};\n\n`, t;
+	}
+	renderForall(e, t, n, r, i, { zeroRows: a = !1, declare: o = "", before: s = "", after: c = "" } = {}) {
+		let l = e.names.pk, u = `${S}procedure ${t} (${n}, x_errors in out nocopy t_err_tab) is\n`;
+		u += `${S}${S}type t_codes is table of pls_integer index by pls_integer;\n`, u += `${S}${S}l_failed t_codes;     -- index -> the Oracle error of its DML\n`, a && (u += `${S}${S}l_count  t_codes;     -- index -> the rows it touched\n`), u += o, u += `${S}begin\n`, u += s;
+		let d = a ? `${S}${S}${S}for i in 1 .. p_rows.count loop l_count(i) := sql%bulk_rowcount(i); end loop;\n` : "";
+		return u += `${S}${S}begin\n`, u += `${S}${S}${S}forall i in 1 .. p_rows.count save exceptions\n`, u += Xt(r, 2), u += d, u += `${S}${S}exception\n`, u += `${S}${S}${S}when bulk_errors then\n`, u += `${S}${S}${S}${S}for j in 1 .. sql%bulk_exceptions.count loop\n`, u += `${S}${S}${S}${S}${S}l_failed(sql%bulk_exceptions(j).error_index) := sql%bulk_exceptions(j).error_code;\n`, u += `${S}${S}${S}${S}end loop;\n`, u += Xt(d, 1), u += `${S}${S}end;\n`, u += `${S}${S}for i in 1 .. p_rows.count loop\n`, u += `${S}${S}${S}if l_failed.exists(i) then\n`, u += `${S}${S}${S}${S}if l_failed(i) = 1 then\n`, u += `${S}${S}${S}${S}${S}${i}(x_errors, i, -20010, '[DUPLICATE] duplicate value on unique constraint.');\n`, u += `${S}${S}${S}${S}else\n`, u += `${S}${S}${S}${S}${S}${i}(x_errors, i, -l_failed(i), sqlerrm(-l_failed(i)));\n`, u += `${S}${S}${S}${S}end if;\n`, a && (u += `${S}${S}${S}elsif l_count(i) = 0 then\n`, u += Xt(Jt(e, `p_rows(i).${l}`, `${i}(x_errors, i, -20001, '[STALE_DATA] row modified by another session. reload and retry.');`, `${i}(x_errors, i, -20002, '[NOT_FOUND] record ' || p_rows(i).${l} || ' does not exist.');`), 1)), u += `${S}${S}${S}end if;\n`, u += `${S}${S}end loop;\n`, c && (u += `${S}${S}if l_failed.count = 0 then\n`, u += Xt(c, 1), u += `${S}${S}end if;\n`), u += `${S}end ${t};\n\n`, u;
+	}
+	renderInsertRows(e, t, n, r) {
+		let i = e.names.table, a = e.names.pk, o = e.features.syntheticTenantId, s = [...o ? ["tenant_id"] : [], ...je(e)], c = [a];
+		e.features.versionColumn && (c.push("row_version"), e.features.auditColumns && c.push(String(this.ctx.getOptionValue("createdcol") ?? "created"), String(this.ctx.getOptionValue("createdbycol") ?? "created_by")));
+		let l = "";
+		for (let e of c) l += `${S}${S}type t_ret_${e} is table of ${i}.${e}%type;\n${S}${S}l_ret_${e} t_ret_${e};\n`;
+		let u = "";
+		o && (l += `${S}${S}l_tenant_id ${i}.tenant_id%type := ${e.names.tenantContext}.get_id;\n`, u = `${S}${S}for i in 1 .. p_rows.count loop\n${S}${S}${S}p_rows(i).tenant_id := l_tenant_id;\n${S}${S}end loop;\n`);
+		let d = s.length > 0 ? `${S}${S}insert into ${i} (${s.join(", ")})\n${S}${S}values (${s.map((e) => `p_rows(i).${e}`).join(", ")})\n` : `${S}${S}insert into ${i} values (default)\n`;
+		d += `${S}${S}returning ${c.join(", ")}\n${S}${S}bulk collect into ${c.map((e) => `l_ret_${e}`).join(", ")};\n`;
+		let f = `${S}${S}for i in 1 .. p_rows.count loop\n`;
+		for (let e of c) f += `${S}${S}${S}p_rows(i).${e} := l_ret_${e}(i);\n`;
+		return f += `${S}${S}end loop;\n`, this.renderForall(e, `${t}insert_rows`, `p_rows in out nocopy ${n}`, d, r, {
+			declare: l,
+			before: u,
+			after: f
+		});
+	}
+	renderUpdateRows(e, t, n, r) {
+		let i = e.names.pk, a = je(e), o = a.length > 0 ? a.map((e) => `${e} = p_rows(i).${e}`).join(", ") : `${i} = p_rows(i).${i}`, s = qt(e, `p_rows(i).${i}`, "p_rows(i)", { rowVersion: !0 }).join(" and "), c = `${S}${S}update ${e.names.table} set ${o}\n${S}${S}where ${s};\n`;
+		return this.renderForall(e, `${t}update_rows`, `p_rows in out nocopy ${n}`, c, r, { zeroRows: e.features.versionColumn });
+	}
+	renderDeleteRows(e, t, n, r) {
+		let i = qt(e, `p_rows(i).${e.names.pk}`, null).join(" and "), a = `${S}${S}delete from ${e.names.table} where ${i};\n`;
+		return this.renderForall(e, `${t}delete_rows`, `p_rows in ${n}`, a, r);
+	}
+	generateServiceSpec(e, t) {
+		let { model: n, tbl: r, pk: i, hasVer: a, immutable: o } = this.names(e, t), s = n.names.dal, c = `${S}-- /bulk (82b): input dense 1..n; x_ids and x_errors are defined only on a normal return\n`;
+		return c += `${S}type t_tab     is table of t_rec;\n`, c += `${S}type t_id_tab  is table of ${r}.${i}%type;\n`, a && (c += `${S}type t_ver_tab is table of ${r}.row_version%type;\n`), t ? (c += `${S}subtype t_row_view is ${s}.t_rows;\n`, c += `${S}subtype t_err      is ${s}.t_err;\n`, c += `${S}subtype t_err_tab  is ${s}.t_err_tab;\n\n`) : c += "\n" + this.renderCollectionTypes(r, "t_row_view"), c += `${S}procedure create_many (\n`, c += `${S}${S}p_recs   in  t_tab,\n`, c += `${S}${S}x_ids    out t_id_tab,\n`, c += `${S}${S}p_mode   in  varchar2 default 'FAIL_FAST',\n`, c += `${S}${S}x_errors out t_err_tab\n`, c += `${S});\n\n`, o || (c += `${S}procedure update_many (\n`, c += `${S}${S}p_ids          in  t_id_tab,\n`, c += `${S}${S}p_recs         in  t_tab,\n`, a && (c += `${S}${S}p_row_versions in  t_ver_tab,\n`), c += `${S}${S}p_mode         in  varchar2 default 'FAIL_FAST',\n`, c += `${S}${S}x_errors       out t_err_tab\n`, c += `${S});\n\n`, c += `${S}procedure delete_many (\n`, c += `${S}${S}p_ids    in  t_id_tab,\n`, c += `${S}${S}p_mode   in  varchar2 default 'FAIL_FAST',\n`, c += `${S}${S}x_errors out t_err_tab\n`, c += `${S});\n\n`), c;
+	}
+	hookSignatures(e, t) {
+		return {
+			validate: `procedure ${t}validate_many (p_operation in varchar2, p_rows in ${e}t_row_view, x_errors in out nocopy ${e}t_err_tab)`,
+			after: `procedure ${t}after_many (p_operation in varchar2, p_ids in ${e}t_id_tab)`
+		};
+	}
+	generateHooksPackage(e) {
+		let { svc: t, bulkHks: n } = this.names(e, !1), r = this.hookSignatures(t + ".", ""), i = `create or replace package ${n} as\n\n`;
+		return i += `${S}-- after every row passed its own hooks, before the write: invariants across rows, read only;\n`, i += `${S}-- a refused row is added to x_errors with its input index\n`, i += `${S}${r.validate};\n\n`, i += `${S}-- after every row was written and its after_<op> ran\n`, i += `${S}${r.after};\n\n`, i += `end ${K(n)};\n/\n`, i += `\ncreate or replace package body ${n} as\n`, i += "-- warning: this file is generated once and must not be overwritten\n\n", i += `${S}${r.validate} is begin null; end validate_many;\n\n`, i += `${S}${r.after} is begin null; end after_many;\n\n`, i += `end ${K(n)};\n/\n`, i;
+	}
+	generateServicePrivate(e, t, n) {
+		let { tbl: r } = this.names(e, t), i = `\n${S}-- /bulk: private (savepoint ${Qt(r)})\n\n`;
+		if (t && (i += this.renderErrorHelper("p_bulk_error")), i += `${S}procedure p_bulk_input (p_message in varchar2) is\n`, i += `${S}begin\n`, i += `${S}${S}raise_application_error(${Yt.input}, '[BULK_INPUT] ${r}: ' || p_message);\n`, i += `${S}end p_bulk_input;\n\n`, i += `${S}procedure p_bulk_shape (p_name in varchar2, p_count in pls_integer, p_first in pls_integer, p_last in pls_integer, p_expected in pls_integer default null) is\n`, i += `${S}begin\n`, i += `${S}${S}if p_count = 0 or p_first != 1 or p_last != p_count then\n`, i += `${S}${S}${S}p_bulk_input(p_name || ' is empty or not dense (indices 1..n)');\n`, i += `${S}${S}elsif p_expected is not null and p_count != p_expected then\n`, i += `${S}${S}${S}p_bulk_input(p_name || ' has ' || p_count || ' elements, expected ' || p_expected);\n`, i += `${S}${S}end if;\n`, i += `${S}end p_bulk_shape;\n\n`, i += `${S}procedure p_bulk_mode (p_mode in varchar2) is\n`, i += `${S}begin\n`, i += `${S}${S}if p_mode is null or p_mode not in ('FAIL_FAST', 'COLLECT') then\n`, i += `${S}${S}${S}p_bulk_input('the mode is FAIL_FAST or COLLECT');\n`, i += `${S}${S}end if;\n`, i += `${S}end p_bulk_mode;\n\n`, i += `${S}procedure p_bulk_raise (p_error in t_err) is\n`, i += `${S}begin\n`, i += `${S}${S}if p_error.code between -20999 and -20000 then\n`, i += `${S}${S}${S}raise_application_error(p_error.code, p_error.message || ' (row ' || p_error.idx || ')');\n`, i += `${S}${S}end if;\n`, i += `${S}${S}raise_application_error(${Yt.row}, '[BULK_ROW] ' || p_error.message || ' (row ' || p_error.idx || ')');\n`, i += `${S}end p_bulk_raise;\n\n`, !n) {
+			let e = this.hookSignatures("", "p_");
+			i += `${S}${e.validate} is begin null; end p_validate_many;\n`, i += `${S}${e.after} is begin null; end p_after_many;\n\n`;
+		}
+		return i;
+	}
+	generateServiceBody(e, t, n) {
+		let r = this.names(e, t), i = Ut(r.model.names.hooks, n), a = Ut(r.bulkHks, n), o = this.renderRead(r);
+		return o += this.renderCreate(r, i, a), r.immutable || (o += this.renderUpdate(r, i, a), o += this.renderDelete(r, i, a)), o += this.renderEntry(r, "create_many", [["p_recs", "in  t_tab"], ["x_ids", "out t_id_tab"]], `${S}${S}${S}${S}x_ids := t_id_tab();\n`), r.immutable || (o += this.renderEntry(r, "update_many", [
+			["p_ids", "in  t_id_tab"],
+			["p_recs", "in  t_tab"],
+			...r.hasVer ? [["p_row_versions", "in  t_ver_tab"]] : []
+		], ""), o += this.renderEntry(r, "delete_many", [["p_ids", "in  t_id_tab"]], "")), o;
+	}
+	renderRead(e) {
+		let { model: t, tbl: n, pk: r } = e, i = t.features.syntheticTenantId ? ` and tenant_id = ${t.names.tenantContext}.get_id` : "";
+		if (e.immutable) return "";
+		let a = `${S}procedure p_bulk_read (\n`;
+		return a += `${S}${S}p_ids    in t_id_tab,\n`, a += `${S}${S}p_mode   in varchar2,\n`, a += `${S}${S}x_old    in out nocopy t_row_view,\n`, a += `${S}${S}x_errors in out nocopy t_err_tab\n`, a += `${S}) is\n`, a += `${S}${S}type t_pos is table of pls_integer index by varchar2(4000);\n`, a += `${S}${S}type t_bad is table of boolean index by pls_integer;\n`, a += `${S}${S}l_pos   t_pos;        -- id -> its input index (the first one)\n`, a += `${S}${S}l_bad   t_bad;        -- the indices out of the batch: a null or repeated id\n`, a += `${S}${S}l_found t_row_view;\n`, a += `${S}begin\n`, a += `${S}${S}for i in 1 .. p_ids.count loop\n`, a += `${S}${S}${S}if p_ids(i) is null then\n`, a += `${S}${S}${S}${S}p_bulk_error(x_errors, i, ${Yt.input}, '[BULK_INPUT] ${n}: the id is null');\n`, a += `${S}${S}${S}${S}l_bad(i) := true;\n`, a += `${S}${S}${S}elsif l_pos.exists(to_char(p_ids(i))) then\n`, a += `${S}${S}${S}${S}p_bulk_error(x_errors, i, ${Yt.input}, '[BULK_INPUT] ${n}: the id ' || p_ids(i) || ' repeats row ' || l_pos(to_char(p_ids(i))));\n`, a += `${S}${S}${S}${S}l_bad(i) := true;\n`, a += `${S}${S}${S}else\n`, a += `${S}${S}${S}${S}l_pos(to_char(p_ids(i))) := i;\n`, a += `${S}${S}${S}end if;\n`, a += `${S}${S}end loop;\n`, a += `${S}${S}if x_errors.count > 0 and p_mode = 'FAIL_FAST' then return; end if;\n`, a += `${S}${S}-- a null id matches nothing, a repeated one returns its row once: both already out of the batch\n`, a += `${S}${S}select * bulk collect into l_found from ${n}_rls\n`, a += `${S}${S}where ${r} in (select column_value from table(p_ids))${i};\n`, a += `${S}${S}for k in 1 .. l_found.count loop\n`, a += `${S}${S}${S}x_old(l_pos(to_char(l_found(k).${r}))) := l_found(k);\n`, a += `${S}${S}end loop;\n`, a += `${S}${S}for i in 1 .. p_ids.count loop\n`, a += `${S}${S}${S}if not x_old.exists(i) and not l_bad.exists(i) then\n`, a += `${S}${S}${S}${S}p_bulk_error(x_errors, i, -20002, '[NOT_FOUND] ${n}: record not found (id=' || p_ids(i) || ')');\n`, a += `${S}${S}${S}${S}exit when p_mode = 'FAIL_FAST';\n`, a += `${S}${S}${S}end if;\n`, a += `${S}${S}end loop;\n`, a += `${S}end p_bulk_read;\n\n`, a;
+	}
+	renderRowStep(e, t, n) {
+		let r = `${S}${S}${S}begin\n`;
+		return r += Xt(e + t, 2), r += `${S}${S}${S}exception\n`, r += `${S}${S}${S}${S}when others then\n`, r += `${S}${S}${S}${S}${S}p_bulk_error(x_errors, i, sqlcode, sqlerrm);\n`, r += `${S}${S}${S}${S}${S}${n}.delete(i);\n`, r += `${S}${S}${S}${S}${S}l_stop := p_mode = 'FAIL_FAST';\n`, r += `${S}${S}${S}end;\n`, r += `${S}${S}${S}exit when l_stop;\n`, r;
+	}
+	renderTail(e, t, n, r, i, a) {
+		let o = `${S}${S}if x_errors.count > 0 and p_mode = 'FAIL_FAST' then return; end if;\n`;
+		return o += `${S}${S}if ${t}.count > 0 then\n`, o += `${S}${S}${S}${a("validate_many")}(p_operation => '${e}', p_rows => ${t}, x_errors => x_errors);\n`, o += `${S}${S}end if;\n`, o += `${S}${S}if x_errors.count > 0 then return; end if;\n`, o += `${S}${S}${n}(p_rows => ${t}, x_errors => x_errors);\n`, o += `${S}${S}if x_errors.count > 0 then return; end if;\n`, o += `${S}${S}for i in 1 .. ${t}.count loop\n`, o += Xt(r, 1), o += `${S}${S}end loop;\n`, o += `${S}${S}${a("after_many")}(p_operation => '${e}', p_ids => ${i});\n`, o;
+	}
+	renderCreate(e, t, n) {
+		let r = e.model.columns.parameters.map(({ name: e }) => e), i = `${S}procedure p_create_many (\n`;
+		i += `${S}${S}p_recs   in  t_tab,\n`, i += `${S}${S}x_ids    in out nocopy t_id_tab,\n`, i += `${S}${S}p_mode   in  varchar2,\n`, i += `${S}${S}x_errors in out nocopy t_err_tab\n`, i += `${S}) is\n`, i += `${S}${S}l_new  t_row_view;\n`, i += `${S}${S}l_stop boolean := false;\n`, i += `${S}begin\n`, i += `${S}${S}p_bulk_mode(p_mode);\n`, i += `${S}${S}if p_recs is null then p_bulk_input('p_recs is null'); end if;\n`, i += `${S}${S}p_bulk_shape('p_recs', p_recs.count, p_recs.first, p_recs.last);\n`, i += `${S}${S}for i in 1 .. p_recs.count loop\n`, i += this.renderRowStep(J(r, "l_new(i)", (e) => `p_recs(i).${e}`), X("insert", "l_new(i)", e.scoped, t), "l_new"), i += `${S}${S}end loop;\n`;
+		let a = Z("insert", "l_new(i)", t) + `${S}${S}x_ids.extend;\n${S}${S}x_ids(i) := l_new(i).${e.pk};\n`;
+		return i += this.renderTail("insert", "l_new", e.insertRows, a, "x_ids", n), i += `${S}end p_create_many;\n\n`, i;
+	}
+	renderUpdate(e, t, n) {
+		let r = e.model.columns.parameters.map(({ name: e }) => e), i = `${S}procedure p_update_many (\n`;
+		i += `${S}${S}p_ids          in  t_id_tab,\n`, i += `${S}${S}p_recs         in  t_tab,\n`, e.hasVer && (i += `${S}${S}p_row_versions in  t_ver_tab,\n`), i += `${S}${S}p_mode         in  varchar2,\n`, i += `${S}${S}x_errors       in out nocopy t_err_tab\n`, i += `${S}) is\n`, i += `${S}${S}l_old  t_row_view;\n`, i += `${S}${S}l_new  t_row_view;\n`, i += `${S}${S}l_stop boolean := false;\n`, i += `${S}begin\n`, i += `${S}${S}p_bulk_mode(p_mode);\n`, i += `${S}${S}if p_ids is null then p_bulk_input('p_ids is null'); end if;\n`, i += `${S}${S}if p_recs is null then p_bulk_input('p_recs is null'); end if;\n`, e.hasVer && (i += `${S}${S}if p_row_versions is null then p_bulk_input('p_row_versions is null'); end if;\n`), i += `${S}${S}p_bulk_shape('p_ids', p_ids.count, p_ids.first, p_ids.last);\n`, i += `${S}${S}p_bulk_shape('p_recs', p_recs.count, p_recs.first, p_recs.last, p_ids.count);\n`, e.hasVer && (i += `${S}${S}p_bulk_shape('p_row_versions', p_row_versions.count, p_row_versions.first, p_row_versions.last, p_ids.count);\n`), i += `${S}${S}p_bulk_read(p_ids => p_ids, p_mode => p_mode, x_old => l_old, x_errors => x_errors);\n`, i += `${S}${S}if x_errors.count > 0 and p_mode = 'FAIL_FAST' then return; end if;\n`, i += `${S}${S}for i in 1 .. p_ids.count loop\n`, i += `${S}${S}${S}continue when not l_old.exists(i);\n`;
+		let a = `${S}${S}l_new(i) := l_old(i);\n`;
+		return a += J(r, "l_new(i)", (e) => `p_recs(i).${e}`), e.hasVer && (a += `${S}${S}l_new(i).row_version := p_row_versions(i);\n`), i += this.renderRowStep(a, X("update", "l_new(i)", e.scoped, t), "l_new"), i += `${S}${S}end loop;\n`, i += this.renderTail("update", "l_new", e.updateRows, Z("update", "l_new(i)", t), "p_ids", n), i += `${S}end p_update_many;\n\n`, i;
+	}
+	renderDelete(e, t, n) {
+		let r = `${S}procedure p_delete_many (\n`;
+		return r += `${S}${S}p_ids    in  t_id_tab,\n`, r += `${S}${S}p_mode   in  varchar2,\n`, r += `${S}${S}x_errors in out nocopy t_err_tab\n`, r += `${S}) is\n`, r += `${S}${S}l_old  t_row_view;\n`, r += `${S}${S}l_stop boolean := false;\n`, r += `${S}begin\n`, r += `${S}${S}p_bulk_mode(p_mode);\n`, r += `${S}${S}if p_ids is null then p_bulk_input('p_ids is null'); end if;\n`, r += `${S}${S}p_bulk_shape('p_ids', p_ids.count, p_ids.first, p_ids.last);\n`, r += `${S}${S}p_bulk_read(p_ids => p_ids, p_mode => p_mode, x_old => l_old, x_errors => x_errors);\n`, r += `${S}${S}if x_errors.count > 0 and p_mode = 'FAIL_FAST' then return; end if;\n`, r += `${S}${S}for i in 1 .. p_ids.count loop\n`, r += `${S}${S}${S}continue when not l_old.exists(i);\n`, r += this.renderRowStep("", X("delete", "l_old(i)", e.scoped, t, "p_ids(i)"), "l_old"), r += `${S}${S}end loop;\n`, r += this.renderTail("delete", "l_old", e.deleteRows, Z("delete", "l_old(i)", t, "p_ids(i)"), "p_ids", n), r += `${S}end p_delete_many;\n\n`, r;
+	}
+	renderEntry(e, t, n, r) {
+		let i = Qt(e.tbl), a = [
+			...n,
+			["p_mode", "in  varchar2 default 'FAIL_FAST'"],
+			["x_errors", "out t_err_tab"]
+		], o = Math.max(...a.map(([e]) => e.length)), s = a.map(([e]) => `${e} => ${e}`).join(", "), c = n.filter(([, e]) => e.startsWith("out")).map(([e]) => e), l = `${S}procedure ${t} (\n`;
+		l += a.map(([e, t]) => `${S}${S}${e.padEnd(o)} ${t}`).join(",\n") + "\n", l += `${S}) is\n`, l += `${S}${S}l_code  pls_integer;\n`, l += `${S}${S}l_msg   varchar2(4000);\n`, l += `${S}${S}l_trace varchar2(4000);\n`, l += `${S}begin\n`, l += `${S}${S}if g_bulk_busy then\n`, l += `${S}${S}${S}raise_application_error(${Yt.reentrant}, '[BULK_REENTRANT] ${e.tbl}: a bulk call on this table is already running');\n`, l += `${S}${S}end if;\n`, l += `${S}${S}g_bulk_busy := true;\n`, l += `${S}${S}begin\n`, l += `${S}${S}${S}savepoint ${i};\n`, l += `${S}${S}${S}x_errors := ${e.errTabCtor}();\n`;
+		for (let e of c) l += `${S}${S}${S}${e} := t_id_tab();\n`;
+		return l += `${S}${S}${S}p_${t}(${s});\n`, l += `${S}${S}${S}if x_errors.count > 0 then\n`, l += `${S}${S}${S}${S}rollback to savepoint ${i};\n`, l += r, l += `${S}${S}${S}end if;\n`, l += `${S}${S}exception\n`, l += `${S}${S}${S}when others then\n`, l += `${S}${S}${S}${S}l_code  := sqlcode;\n`, l += `${S}${S}${S}${S}l_msg   := sqlerrm;\n`, l += `${S}${S}${S}${S}l_trace := dbms_utility.format_error_backtrace;\n`, l += `${S}${S}${S}${S}g_bulk_busy := false;\n`, l += `${S}${S}${S}${S}begin\n`, l += `${S}${S}${S}${S}${S}rollback to savepoint ${i};\n`, l += `${S}${S}${S}${S}exception\n`, l += `${S}${S}${S}${S}${S}when others then\n`, l += `${S}${S}${S}${S}${S}${S}raise_application_error(${Yt.rollback}, substr('[BULK_ROLLBACK] ${e.tbl}: the batch could not be rolled back after '\n`, l += `${S}${S}${S}${S}${S}${S}${S}|| l_msg || ' (' || l_code || ') ' || l_trace, 1, 2000), true);\n`, l += `${S}${S}${S}${S}end;\n`, l += `${S}${S}${S}${S}raise;\n`, l += `${S}${S}end;\n`, l += `${S}${S}g_bulk_busy := false;\n`, l += `${S}${S}if x_errors.count > 0 and p_mode = 'FAIL_FAST' then\n`, l += `${S}${S}${S}p_bulk_raise(x_errors(1));\n`, l += `${S}${S}end if;\n`, l += `${S}end ${t};\n\n`, l;
+	}
+}, nn = class {
 	constructor(e) {
 		this.analyzer = e;
 	}
@@ -12707,7 +12725,7 @@ var Qt = class {
 		}
 		return u += `${S}procedure validate (\n`, u += `${S}${S}p_operation in varchar2,\n`, u += `${S}${S}p_row       in out nocopy ${r}%rowtype\n`, u += `${S}) is begin null; end validate;\n\n`, u += `${S}procedure before_insert (p_row in out nocopy ${r}%rowtype) is begin null; end;\n`, s && (u += `${S}procedure before_close (p_row in out nocopy ${r}%rowtype) is begin null; end;\n\n`), c ? u += `${S}procedure after_insert (p_row in ${r}%rowtype) is begin null; end;\n\n` : (u += `${S}procedure before_update (p_row in out nocopy ${r}%rowtype) is begin null; end;\n`, u += `${S}procedure before_delete (p_id in ${o}) is begin null; end;\n\n`, u += `${S}procedure after_insert  (p_row in ${r}%rowtype) is begin null; end;\n`, u += `${S}procedure after_update  (p_row in ${r}%rowtype) is begin null; end;\n`, u += `${S}procedure after_delete  (p_id in ${o})     is begin null; end;\n`, s && (u += `${S}procedure after_close   (p_row in ${r}%rowtype) is begin null; end;\n`), u += "\n"), n.bridge !== null && (u += `${S}procedure before_grant  (p_row in out nocopy ${r}%rowtype) is begin null; end;\n`, u += `${S}procedure after_grant   (p_row in ${r}%rowtype) is begin null; end;\n`, u += `${S}procedure before_revoke (p_row in ${r}%rowtype) is begin null; end;\n`, u += `${S}procedure after_revoke  (p_row in ${r}%rowtype) is begin null; end;\n\n`), u += `end ${K(a)};\n/\n`, u;
 	}
-}, tn = class {
+}, rn = class {
 	constructor(e, t, n) {
 		this.analyzer = e, this.dal = t, this.hooks = n;
 	}
@@ -12771,7 +12789,7 @@ var Qt = class {
 		}
 		return C += `end ${K(c)};\n/\n`, C;
 	}
-}, nn = class {
+}, an = class {
 	constructor(e, t, n, r) {
 		this.analyzer = e, this.dal = t, this.hooks = n, this.bulk = r;
 	}
@@ -12799,9 +12817,9 @@ var Qt = class {
 		let L = r.businessKeyColumn;
 		return L !== "" && (I += `${S}function get_current (p_${L} in ${i}.${L}%type) return ${i}%rowtype is\n`, I += `${S}begin\n`, I += `${S}${S}return ${k}(p_${L} => p_${L});\n`, I += `${S}end get_current;\n\n`, I += `${S}function get_as_of (p_${L} in ${i}.${L}%type, p_as_of in timestamp) return ${i}%rowtype is\n`, I += `${S}begin\n`, I += `${S}${S}return ${A}(p_${L} => p_${L}, p_as_of => p_as_of);\n`, I += `${S}end get_as_of;\n\n`, I += `${S}function history (p_${L} in ${i}.${L}%type) return sys_refcursor is\n`, I += `${S}begin\n`, I += `${S}${S}return ${ee}(p_${L} => p_${L});\n`, I += `${S}end history;\n\n`, I += `${S}procedure change_rec (\n`, I += `${S}${S}p_${L.padEnd(10)} in     ${i}.${L}%type,\n`, I += `${S}${S}p_rec         in     t_rec,\n`, I += `${S}${S}p_${_.padEnd(10)} in     ${i}.${_}%type default systimestamp,\n`, I += `${S}${S}x_id          out    ${i}.${l}%type\n`, I += `${S}) is\n`, I += `${S}${S}l_current ${i}%rowtype;\n`, I += `${S}${S}l_rec     t_rec := p_rec;\n`, I += `${S}begin\n`, I += `${S}${S}l_current := get_current(p_${L} => p_${L});\n`, I += `${S}${S}l_rec.${L} := p_${L};\n`, I += `${S}${S}l_rec.${_} := null;  -- the next version opens open, whatever p_rec carried\n`, I += `${S}${S}close_version(\n`, I += `${S}${S}${S}p_id       => l_current.${l},\n`, I += `${S}${S}${S}p_${_} => p_${_}`, u && (I += `,\n${S}${S}${S}p_row_version => l_current.row_version`), I += `\n${S}${S});\n`, I += `${S}${S}create_rec(p_rec => l_rec, x_id => x_id);\n`, I += `${S}end change_rec;\n\n`), P !== null && (I += `${S}procedure grant_${P.rightLabel} (\n`, I += `${S}${S}p_${P.left.padEnd(10)} in     ${i}.${P.left}%type,\n`, I += `${S}${S}p_${P.right.padEnd(10)} in     ${i}.${P.right}%type,\n`, I += `${S}${S}x_id          out    ${i}.${l}%type\n`, I += `${S}) is\n`, I += `${S}${S}l_row ${i}%rowtype;\n`, I += `${S}begin\n`, I += `${S}${S}l_row.${P.left} := p_${P.left};\n`, I += `${S}${S}l_row.${P.right} := p_${P.right};\n`, I += X("grant", "l_row", v.length > 0, F), I += `${S}${S}${j}(p_row => l_row);\n`, I += Z("grant", "l_row", F), I += `${S}${S}x_id := l_row.${l};\n`, I += `${S}exception\n`, I += `${S}${S}when dup_val_on_index then\n`, I += `${S}${S}${S}select ${l} into x_id from ${i}_rls where ${P.left} = p_${P.left} and ${P.right} = p_${P.right};\n`, I += `${S}end grant_${P.rightLabel};\n\n`, I += `${S}procedure revoke_${P.rightLabel} (\n`, I += `${S}${S}p_${P.left} in ${i}.${P.left}%type,\n`, I += `${S}${S}p_${P.right} in ${i}.${P.right}%type\n`, I += `${S}) is\n`, I += `${S}${S}l_row ${i}%rowtype;\n`, I += `${S}begin\n`, I += `${S}${S}l_row.${P.left} := p_${P.left};\n`, I += `${S}${S}l_row.${P.right} := p_${P.right};\n`, I += X("revoke", "l_row", v.length > 0, F), I += `${S}${S}${M}(p_${P.left} => p_${P.left}, p_${P.right} => p_${P.right});\n`, I += Z("revoke", "l_row", F), I += `${S}end revoke_${P.rightLabel};\n\n`, I += `${S}function has_${P.rightLabel} (p_${P.left} in ${i}.${P.left}%type, p_${P.right} in ${i}.${P.right}%type) return boolean is\n`, I += `${S}begin\n`, I += `${S}${S}return ${N}(p_${P.left} => p_${P.left}, p_${P.right} => p_${P.right});\n`, I += `${S}end has_${P.rightLabel};\n\n`, I += `${S}function list_${P.rightLabel} (p_${P.left} in ${i}.${P.left}%type) return sys_refcursor is\n`, I += `${S}begin\n`, I += `${S}${S}return ${te}(p_${P.left} => p_${P.left});\n`, I += `${S}end list_${P.rightLabel};\n\n`), r.features.bulk && (I += this.bulk.generateServiceBody(e, t, n)), I += `end ${K(s)};\n/\n`, I;
 	}
-}, rn = class {
+}, on = class {
 	constructor(e, t) {
-		this.analyzer = t, this.audit = new Gt(e, t), this.bulk = new Qt(e, t), this.dal = new $t(e, t, this.bulk), this.hooks = new en(t), this.app = new Wt(e, t, this.dal, this.hooks), this.rest = new tn(t, this.dal, this.hooks), this.service = new nn(t, this.dal, this.hooks, this.bulk);
+		this.analyzer = t, this.audit = new Gt(e, t), this.bulk = new tn(e, t), this.dal = new Kt(e, t, this.bulk), this.hooks = new nn(t), this.app = new Wt(e, t, this.dal, this.hooks), this.rest = new rn(t, this.dal, this.hooks), this.service = new an(t, this.dal, this.hooks, this.bulk);
 	}
 	generateDimensionRlsView(e) {
 		let t = this.analyzer.analyze(e), n = t.names.table;
@@ -12820,42 +12838,42 @@ var Qt = class {
 	generate(e) {
 		if (e.inferType() !== "table" || e.children.length === 0) return "";
 		let t = this.analyzer.analyze(e);
-		t.features.bulk && Xt(t);
+		t.features.bulk && $t(t);
 		let { hasDal: n, hasHks: r, hasSvc: i } = t.capabilities, a = t.features.auditLog, o = t.interfaces.app, s = t.interfaces.rest, c = "", l = this.generateDimensionRlsView(e);
 		return l && (c += l + "\n"), n && (c += this.dal.generateSpec(e) + "\n" + this.dal.generateBody(e) + "\n"), r && (c += this.hooks.generateSpec(e, n) + "\n" + this.hooks.generateBody(e, n) + "\n"), i && (c += this.service.generateSpec(e) + "\n", a && (c += this.audit.generateSpec(e) + "\n"), t.features.bulk && r && (c += this.bulk.generateHooksPackage(e) + "\n"), c += this.service.generateBody(e, n, r) + "\n", a && (c += this.audit.generateBody(e, n) + "\n")), o && (c += this.app.generateSpec(e) + "\n", this.defersAppBody(e) || (c += this.app.generateBody(e, i, n, r))), s && (o && (c += "\n"), c += this.rest.generateSpec(e) + "\n" + this.rest.generateBody(e, i, n, r)), c;
 	}
 };
 //#endregion
 //#region src/oracle/plsql/ords.ts
-function an(e, t) {
+function sn(e, t) {
 	if (t.inferType() !== "table" || !t.isOption("rest")) return "";
 	let n = t.parseName(), r = n.indexOf("\"") === 0, i = e.objPrefix() + n;
 	return i = r ? e.objPrefix() + n.substring(1, n.length - 1) : (e.objPrefix() + n).toUpperCase(), "begin\n" + S + "ords.enable_object(p_enabled=>TRUE, p_object=>'" + i + "');\nend;\n/\n";
 }
 //#endregion
 //#region src/oracle/plsql/tenant-context.ts
-function on(e) {
+function cn(e) {
 	let t = (e + "tenant_ctx").toLowerCase(), n = "-- Shared tenant-isolation context provider (read-only side)\n";
 	return n += `create or replace package ${t} as\n\n`, n += `${S}-- Returns the tenant ID bound to the current session (null when not set).\n`, n += `${S}-- Safe to grant broadly: a SYS_CONTEXT read carries no privilege restriction.\n`, n += `${S}function get_id return integer;\n\n`, n += `end ${K(t)};\n/\n`, n;
 }
-function sn(e) {
+function ln(e) {
 	let t = (e + "tenant_ctx").toLowerCase(), n = `create or replace package body ${t} as\n\n`;
 	return n += `${S}function get_id return integer is\n`, n += `${S}begin\n`, n += `${S}${S}return to_number(sys_context('${t}', 'tenant_id'));\n`, n += `${S}end get_id;\n\n`, n += `end ${K(t)};\n/\n`, n;
 }
-function cn(e) {
+function un(e) {
 	let t = (e + "tenant_ctx").toLowerCase(), n = (e + "tenant_bootstrap").toLowerCase(), r = "-- Tenant-isolation bootstrap provider (mutating side: set_id/clear_id)\n";
 	return r += `-- Run once as DBA: create or replace context ${t} using ${n};\n`, r += `-- Grant EXECUTE on ${n} ONLY to a trusted bootstrap principal (logon trigger\n`, r += "-- owner or auth handler) — never to the general application/APEX runtime role.\n", r += `create or replace package ${n} as\n\n`, r += `${S}-- Binds the tenant ID at session start (logon trigger or REST auth handler).\n`, r += `${S}procedure set_id(p_tenant_id in integer);\n\n`, r += `${S}-- Clears the tenant ID bound to the current session (connection-pool checkout\n`, r += `${S}-- boundaries, logoff, or test teardown).\n`, r += `${S}procedure clear_id;\n\n`, r += `end ${K(n)};\n/\n`, r;
 }
-function ln(e) {
+function dn(e) {
 	let t = (e + "tenant_ctx").toLowerCase(), n = (e + "tenant_bootstrap").toLowerCase(), r = `create or replace package body ${n} as\n\n`;
 	return r += `${S}procedure set_id(p_tenant_id in integer) is\n`, r += `${S}begin\n`, r += `${S}${S}dbms_session.set_context('${t}', 'tenant_id', to_char(p_tenant_id));\n`, r += `${S}end set_id;\n\n`, r += `${S}procedure clear_id is\n`, r += `${S}begin\n`, r += `${S}${S}dbms_session.clear_context('${t}');\n`, r += `${S}end clear_id;\n\n`, r += `end ${K(n)};\n/\n`, r;
 }
 //#endregion
 //#region src/oracle/plsql/triggers.ts
-function un(e) {
+function fn(e) {
 	return e.isOption("lower") ? "lower" : e.isOption("upper") ? "upper" : "";
 }
-var dn = class {
+var pn = class {
 	constructor(e, t) {
 		this.ctx = e, this.naming = t;
 	}
@@ -12868,7 +12886,7 @@ var dn = class {
 		let i = !1, a = e.apexUser();
 		e.hasRowKey() && (r += "    :new.row_key := compress_int(row_key_seq.nextval);\n", i = !0);
 		for (let t of e.children) {
-			let e = un(t);
+			let e = fn(t);
 			e !== "" && (r += "    :new." + t.parseName().toLowerCase() + " := " + e + "(:new." + t.parseName().toLowerCase() + ");\n", i = !0);
 		}
 		if (e.hasRowVersion() && (r += "    :new.row_version := 1;\n", i = !0), e.hasAuditCols()) {
@@ -12895,7 +12913,7 @@ var dn = class {
 		o += "    before update\n    on " + a + "\n    for each row\nbegin\n";
 		let s = e.apexUser();
 		for (let t of e.children) {
-			let e = un(t);
+			let e = fn(t);
 			e !== "" && (o += "    :new." + t.parseName().toLowerCase() + " := " + e + "(:new." + t.parseName().toLowerCase() + ");\n");
 		}
 		if (n && (o += "    :new.row_version := nvl(:old.row_version, 0) + 1;\n"), r) {
@@ -12935,12 +12953,12 @@ var dn = class {
 		}
 		return p += `end trg_${i}_versioned;\n/\n\n`, p;
 	}
-}, fn = class {
+}, mn = class {
 	constructor(e, t) {
-		this.ctx = e, this.triggers = new dn(e, t), this.legacyTapi = new kt(e), this.tableApi = new Pe(e), this.aggregate = new Pt(this.tableApi), this.layered = new rn(e, this.tableApi), this.importer = new Ht(e, this.tableApi);
+		this.ctx = e, this.triggers = new pn(e, t), this.legacyTapi = new kt(e), this.tableApi = new Pe(e), this.aggregate = new Pt(this.tableApi), this.layered = new on(e, this.tableApi), this.importer = new Ht(e, this.tableApi);
 	}
 	restEnable(e) {
-		return an(this.ctx, e);
+		return sn(this.ctx, e);
 	}
 	generateTrigger(e) {
 		return this.triggers.generate(e);
@@ -12974,24 +12992,24 @@ var dn = class {
 		return this.legacyTapi.generate(e);
 	}
 	generateTenantCtxSpec(e) {
-		return on(e);
-	}
-	generateTenantCtxBody(e) {
-		return sn(e);
-	}
-	generateTenantBootstrapSpec(e) {
 		return cn(e);
 	}
-	generateTenantBootstrapBody(e) {
+	generateTenantCtxBody(e) {
 		return ln(e);
 	}
-}, pn = " not null";
-function mn(e) {
+	generateTenantBootstrapSpec(e) {
+		return un(e);
+	}
+	generateTenantBootstrapBody(e) {
+		return dn(e);
+	}
+}, hn = " not null";
+function gn(e) {
 	return e.lastIndexOf(",\n") === e.length - 2 && (e = e.substring(0, e.length - 2) + "\n"), e;
 }
-var hn = class extends ue {
+var _n = class extends ue {
 	constructor(e, t) {
-		super(e), this._naming = t ?? x, this._view = new Dt(e, this._naming), this._plsql = new fn(e, this._naming);
+		super(e), this._naming = t ?? x, this._view = new Dt(e, this._naming), this._plsql = new mn(e, this._naming);
 	}
 	colType(e) {
 		return this._toOracleType(e);
@@ -13112,7 +13130,7 @@ var hn = class extends ue {
 				for (let i in e.children) {
 					let o = e.children[i];
 					if (a === o.parseName()) {
-						(o.isOption("nn") || o.isOption("notnull")) && (n = pn), o.isOption("cascade") ? t = " on delete cascade" : o.isOption("setnull") && (t = " on delete set null"), (o.isOption("unique") || o.isOption("uk")) && (s = "\n" + S + S + " ".repeat(e.maxChildNameLen()) + "constraint " + r + "_" + a + this._naming.unq + " unique");
+						(o.isOption("nn") || o.isOption("notnull")) && (n = hn), o.isOption("cascade") ? t = " on delete cascade" : o.isOption("setnull") && (t = " on delete set null"), (o.isOption("unique") || o.isOption("uk")) && (s = "\n" + S + S + " ".repeat(e.maxChildNameLen()) + "constraint " + r + "_" + a + this._naming.unq + " unique");
 						break;
 					}
 				}
@@ -13124,7 +13142,7 @@ var hn = class extends ue {
 				for (let t in e.children) {
 					let i = e.children[t];
 					if (a === i.parseName()) {
-						(i.isOption("nn") || i.isOption("notnull")) && (n = pn), i.isOption("cascade") ? s = " on delete cascade" : i.isOption("setnull") && (s = " on delete set null"), (i.isOption("unique") || i.isOption("uk")) && (c = "\n" + S + S + " ".repeat(e.maxChildNameLen()) + "constraint " + r + "_" + a + this._naming.unq + " unique");
+						(i.isOption("nn") || i.isOption("notnull")) && (n = hn), i.isOption("cascade") ? s = " on delete cascade" : i.isOption("setnull") && (s = " on delete set null"), (i.isOption("unique") || i.isOption("uk")) && (c = "\n" + S + S + " ".repeat(e.maxChildNameLen()) + "constraint " + r + "_" + a + this._naming.unq + " unique");
 						break;
 					}
 				}
@@ -13312,7 +13330,7 @@ var hn = class extends ue {
 		let r = this._ddl.getOptionValue("db"), i = r !== null && r.length > 0 && 23 <= (o(r) ?? 0), a = "";
 		e.isOption("immutable") && i && (a = "immutable ");
 		let s = e.getGenIdColName(), c = this._genSequence(e, t);
-		return c += this._genTableHeader(e, t, a, s), c += this._genTenantIdColumn(e), c += this._genFkColumns(e, t), c += this._genRowKeyColumn(e, t), c += this._genRegularColumns(e, t, s), c += this._genRowVersionColumn(e), c += this._genAuditColumns(e), c += this._genAdditionalColumns(e), c += this._genVersionedColumns(e), c += e.genConstraint(), c = mn(c), c += this._genTableFooter(e, t, a, i), c += this._genMultiColFkAlters(e, t), c += this._genIndexes(e, t, i), this._genTenantIdFk(e, t), c += this._genComments(e, t), c += "\n", c;
+		return c += this._genTableHeader(e, t, a, s), c += this._genTenantIdColumn(e), c += this._genFkColumns(e, t), c += this._genRowKeyColumn(e, t), c += this._genRegularColumns(e, t, s), c += this._genRowVersionColumn(e), c += this._genAuditColumns(e), c += this._genAdditionalColumns(e), c += this._genVersionedColumns(e), c += e.genConstraint(), c = gn(c), c += this._genTableFooter(e, t, a, i), c += this._genMultiColFkAlters(e, t), c += this._genIndexes(e, t, i), this._genTenantIdFk(e, t), c += this._genComments(e, t), c += "\n", c;
 	}
 	generateDDL(e) {
 		if (e.inferType() === "view" || e.inferType() === "dv") return "";
@@ -13432,7 +13450,7 @@ var hn = class extends ue {
 			let t = this.generateLayeredTAPI(e);
 			t && (i++ === 0 && (n += "-- APIs\n"), n += t + "\n");
 		} else {
-			Zt(e, (this._ddl.objPrefix() + e.parseName()).toLowerCase());
+			en(e, (this._ddl.objPrefix() + e.parseName()).toLowerCase());
 			let t = e.trimmedContent().toLowerCase().includes("/api");
 			if (this._ddl.optionEQvalue("api", !1) && !t) continue;
 			let r = this.generateTAPI(e);
@@ -13518,7 +13536,7 @@ var hn = class extends ue {
 		}
 		return n;
 	}
-}, gn = {
+}, vn = {
 	drop_package: 1,
 	drop_view: 2,
 	drop_fk: 3,
@@ -13559,7 +13577,7 @@ function $(e, t, n, r, i = !1) {
 	};
 	return r !== void 0 && (a.column = r), a;
 }
-var _n = class {
+var yn = class {
 	compute(e, t) {
 		let n = [], r = [], i = this._tableMap(e), a = this._tableMap(t), o = this._viewMap(e), s = this._viewMap(t), c = [];
 		for (let [e, t] of i) a.has(e) || c.push(t);
@@ -13619,12 +13637,12 @@ var _n = class {
 		return t.optionEQvalue("pk", "SEQ") && n.push(Q("drop_sequence", r, `drop sequence ${a}${i}${x.seq};\n`)), n.push(Q("drop_table", r, `drop table ${a}${i} cascade constraints;\n`)), n;
 	}
 	_createTable(e, t) {
-		let n = [], r = e.parseName(), i = t.objPrefix() + r, a = new hn(t);
+		let n = [], r = e.parseName(), i = t.objPrefix() + r, a = new _n(t);
 		t.optionEQvalue("pk", "SEQ") && n.push(Q("add_sequence", r, `create sequence  ${i}${x.seq};\n`)), e.lateInitFks();
 		let o = t.postponedAlters.length, s = a.generateTable(e), c = t.postponedAlters.slice(o);
 		for (let e of c) s += e + "\n";
 		n.push(Q("create_table", r, s));
-		let l = new fn(t, x), u = l.generateTrigger(e);
+		let l = new mn(t, x), u = l.generateTrigger(e);
 		u && n.push(Q("create_trigger", r, u));
 		let d = this._apiKind(e, t);
 		return d === "layered" ? n.push(...this._splitPkgBlocks(l.generateLayeredTAPI(e), r)) : d === "simple" && n.push(...this._splitPkgBlocks(l.generateTAPI(e), r)), n;
@@ -13723,7 +13741,7 @@ var _n = class {
 		if (s(e) === s(t)) return i;
 		let c = (e) => e.children.some((e) => e.isOption("lower") || e.isOption("upper")), l = c(e) || e.hasRowVersion() || e.hasAuditCols() || e.hasRowKey(), u = c(e) || e.hasRowVersion() || e.hasAuditCols(), d = c(t) || t.hasRowVersion() || t.hasAuditCols() || t.hasRowKey(), f = c(t) || t.hasRowVersion() || t.hasAuditCols();
 		if (l && i.push(Q("drop_trigger", a, `drop trigger ${o}${x.bi};\n`)), u && i.push(Q("drop_trigger", a, `drop trigger ${o}${x.bu};\n`)), d || f) {
-			let e = new fn(r, x).generateTrigger(t);
+			let e = new mn(r, x).generateTrigger(t);
 			e && i.push(Q("create_trigger", a, e));
 		}
 		return i;
@@ -13918,7 +13936,7 @@ var _n = class {
 			(t == null || t.trimmedContent() !== r.trimmedContent()) && a.push(r);
 		}
 		for (let e of this._topoSortViews(a, t)) {
-			let t = new hn(n).generateView(e);
+			let t = new _n(n).generateView(e);
 			t && r.push(Q("create_view", e.parseName(), t));
 		}
 		return r;
@@ -13941,19 +13959,20 @@ var _n = class {
 	_diffPackages(e, t, n, r, i) {
 		let a = [], o = [], s = t.parseName(), c = G(r) ? "if exists " : "", l = this._apiKind(e, n), u = this._apiKind(t, r);
 		for (let i of this._droppedPkgs(e, t, n, r, l, u)) a.push(Q("drop_package", s, `drop package ${c}${i};\n`));
-		let d = (e.isOption("apex") || e.isOption("apx")) !== (t.isOption("apex") || t.isOption("apx")), f = this._packagesSql(t, r, u);
-		return (i || l !== u || d || this._packagesSql(e, n, l) !== f) && f !== "" && a.push(...this._splitPkgBlocks(f, s)), {
+		let d = (e.isOption("apex") || e.isOption("apx")) !== (t.isOption("apex") || t.isOption("apx")), f = this._packagesSql(t, r, u, !0);
+		return (i || l !== u || d || this._packagesSql(e, n, l, !1) !== f) && f !== "" && a.push(...this._splitPkgBlocks(f, s)), {
 			stmts: a,
 			warns: o
 		};
 	}
-	_packagesSql(e, t, n) {
+	_packagesSql(e, t, n, r) {
 		if (n === "none") return "";
+		let i = new mn(t, x), a = () => n === "layered" ? i.generateLayeredTAPI(e) : i.generateTAPI(e);
+		if (r) return a();
 		try {
-			let r = new fn(t, x);
-			return n === "layered" ? r.generateLayeredTAPI(e) : r.generateTAPI(e);
+			return a();
 		} catch (e) {
-			return `-- not generated: ${e.message}`;
+			return `-- the old model does not generate: ${e.message}`;
 		}
 	}
 	_apiKind(e, t) {
@@ -13999,7 +14018,7 @@ var _n = class {
 		return [...e].sort((e, t) => this._step(e) - this._step(t));
 	}
 	_step(e) {
-		return e.kind === "create_package" ? e.sql.toLowerCase().includes("package body ") ? 17 : 15 : gn[e.kind] ?? 99;
+		return e.kind === "create_package" ? e.sql.toLowerCase().includes("package body ") ? 17 : 15 : vn[e.kind] ?? 99;
 	}
 	_summary(e, t, n, r) {
 		let i = 0, a = 0, o = 0;
@@ -14035,6 +14054,6 @@ var _n = class {
 		return (i.length > 0 || a.length > 0) && (o += "--\n", o += "-- ⚠ DESTRUCTIVE OPERATIONS\n", i.length > 0 && (o += `--   Tables dropped  : ${i.length}\n`), a.length > 0 && (o += `--   Columns dropped : ${a.length}\n`), o += "--   Apply during a maintenance window.\n", o += "--\n"), o += "-- ============================================================\n", o += "\n", o;
 	}
 };
-pe("oracle", (e) => new hn(e)), he("oracle", (e) => new _n());
+pe("oracle", (e) => new _n(e)), he("oracle", (e) => new yn());
 //#endregion
 export { ue as BaseGenerator, ge as createDiffGenerator, U as default, U as expresql, Ct as expresql_version, xt as fromDBML, mt as fromJSON, he as registerDiffGenerator, pe as registerGenerator, gt as toDBML, _t as toDDL, St as toDiff, ht as toERD, vt as toErrors };

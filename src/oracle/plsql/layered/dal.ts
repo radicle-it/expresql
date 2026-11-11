@@ -86,22 +86,11 @@ export class OracleDalRenderer {
         profile: DalRenderProfile,
         distinguishStale: boolean,
     ): string {
-        const tbl = model.names.table;
-        const pkName = model.names.pk;
         let r = `${tab}${tab}if sql%rowcount = 0 then\n`;
         if (distinguishStale) {
-            r += `${tab}${tab}${tab}declare l_dummy pls_integer;\n`;
-            r += `${tab}${tab}${tab}begin\n`;
-            if (model.features.syntheticTenantId) {
-                r += `${tab}${tab}${tab}${tab}select 1 into l_dummy from ${tbl} where ${pkName} = l_id and tenant_id = ${model.names.tenantContext}.get_id;\n`;
-            } else {
-                r += `${tab}${tab}${tab}${tab}select 1 into l_dummy from ${tbl} where ${pkName} = l_id;\n`;
-            }
-            r += `${tab}${tab}${tab}${tab}raise_application_error(${profile.staleError}, '[STALE_DATA] row modified by another session. reload and retry.');\n`;
-            r += `${tab}${tab}${tab}exception\n`;
-            r += `${tab}${tab}${tab}${tab}when no_data_found then\n`;
-            r += `${tab}${tab}${tab}${tab}${tab}raise_application_error(${profile.notFoundError}, '[NOT_FOUND] record ' || l_id || ' does not exist.');\n`;
-            r += `${tab}${tab}${tab}end;\n`;
+            r += renderStaleOrNotFound(model, 'l_id',
+                `raise_application_error(${profile.staleError}, '[STALE_DATA] row modified by another session. reload and retry.');`,
+                `raise_application_error(${profile.notFoundError}, '[NOT_FOUND] record ' || l_id || ' does not exist.');`);
         } else {
             r += `${tab}${tab}${tab}raise_application_error(${profile.notFoundError}, '[NOT_FOUND] record ' || l_id || ' does not exist.');\n`;
         }
@@ -215,17 +204,15 @@ export class OracleDalRenderer {
         if (setCols.length > 0 || mode === 'package') {
             r += `${tab}${tab}update ${tbl} set\n`;
             r += `${tab}${tab}${tab}` + setCols.join(`,\n${tab}${tab}${tab}`) + '\n';
-            r += `${tab}${tab}where ${pkName} = l_id`;
+            r += `${tab}${tab}where `;
         } else {
-            r += `${tab}${tab}update ${tbl} set ${pkName} = l_id where ${pkName} = l_id`;
+            r += `${tab}${tab}update ${tbl} set ${pkName} = l_id where `;
         }
         // /versioned: free correction of any column (including <vtCol> itself,
         // i.e. this can also close the row) is permitted only while the row has
         // never been closed — once <vtCol> is set, it is permanent history. See
         // renderVersionedNoRowsCheck: this is what used to be a DB trigger.
-        if (isVersioned) r += `\n${tab}${tab}  and ${vtCol} is null`;
-        if (synTenantId) r += `\n${tab}${tab}  and tenant_id = ${tenantCtxPkg}.get_id`;
-        if (hasVer) r += `\n${tab}${tab}  and row_version = p_row.row_version`;
+        r += rowPredicates(model, 'l_id', 'p_row', { openVersion: isVersioned, rowVersion: true }).join(`\n${tab}${tab}  and `);
         r += `;\n`;
         if (isVersioned) r += this.renderVersionedNoRowsCheck(model, profile, vtCol);
         else if (hasVer) r += this.renderNoRowsCheck(model, profile, true);
@@ -254,10 +241,8 @@ export class OracleDalRenderer {
             r += `${tab}${tab}${tab}${tab}${tab}null;\n`;
             r += `${tab}${tab}${tab}end;\n`;
             r += `${tab}${tab}end if;\n`;
-        } else if (synTenantId) {
-            r += `${tab}${tab}delete from ${tbl} where ${pkName} = p_id and tenant_id = ${tenantCtxPkg}.get_id;\n`;
         } else {
-            r += `${tab}${tab}delete from ${tbl} where ${pkName} = p_id;\n`;
+            r += `${tab}${tab}delete from ${tbl} where ${rowPredicates(model, 'p_id', null).join(' and ')};\n`;
         }
         r += `${tab}end ${profile.prefix}delete_row;\n\n`;
         return r;
@@ -536,4 +521,38 @@ export class OracleDalRenderer {
         r += `end ${bareName(dal)};\n/\n`;
         return r;
     }
+}
+
+/**
+ * The predicates that address one row of a write, shared by the scalar DAL and /bulk: the key, the open version
+ * (/versioned), the tenant, the row version (optimistic lock) when the caller passes the row that carries it.
+ */
+export function rowPredicates(
+    model: OracleTableApiModel,
+    idExpr: string,
+    rowExpr: string | null,
+    { openVersion = false, rowVersion = false }: { openVersion?: boolean; rowVersion?: boolean } = {},
+): string[] {
+    const preds = [`${model.names.pk} = ${idExpr}`];
+    if (openVersion) preds.push(`${model.versionToColumn} is null`);
+    if (model.features.syntheticTenantId) preds.push(`tenant_id = ${model.names.tenantContext}.get_id`);
+    if (rowVersion && rowExpr !== null && model.features.versionColumn) preds.push(`row_version = ${rowExpr}.row_version`);
+    return preds;
+}
+
+/**
+ * A write that touched no row: the row still exists (by key and tenant) → it was changed by another session
+ * ([STALE_DATA]), else it is gone ([NOT_FOUND]). The two statements say what to do: raise (scalar) or record the
+ * error of an index (/bulk). Rendered at three tabs; a caller deeper in a loop indents it.
+ */
+export function renderStaleOrNotFound(model: OracleTableApiModel, idExpr: string, onStale: string, onNotFound: string): string {
+    let r = `${tab}${tab}${tab}declare l_dummy pls_integer;\n`;
+    r += `${tab}${tab}${tab}begin\n`;
+    r += `${tab}${tab}${tab}${tab}select 1 into l_dummy from ${model.names.table} where ${rowPredicates(model, idExpr, null).join(' and ')};\n`;
+    r += `${tab}${tab}${tab}${tab}${onStale}\n`;
+    r += `${tab}${tab}${tab}exception\n`;
+    r += `${tab}${tab}${tab}${tab}when no_data_found then\n`;
+    r += `${tab}${tab}${tab}${tab}${tab}${onNotFound}\n`;
+    r += `${tab}${tab}${tab}end;\n`;
+    return r;
 }

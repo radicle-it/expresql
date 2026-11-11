@@ -840,7 +840,9 @@ contract of every row and changes only the DML: one `FORALL ... SAVE EXCEPTIONS`
   4. <t>_bulk_hks.validate_many                          -- read only, adds row errors
   5. any row error: no DML
   6. FORALL ... SAVE EXCEPTIONS (<t>_dal.insert_rows / update_rows / delete_rows, or absorbed)
-     SQL%BULK_EXCEPTIONS copied first; ORA-00001 -> [DUPLICATE] -20010; a row version that does not match -> [STALE_DATA]
+     SQL%BULK_EXCEPTIONS (and SQL%BULK_ROWCOUNT where the scalar checks it) copied first, on both paths; one error per
+  index: ORA-00001 -> [DUPLICATE] -20010, else zero rows -> [STALE_DATA] / [NOT_FOUND] (update with row_version only,
+  as update_row; a delete of a row gone after the read is no error, as delete_row)
   7. after_<op> per row, then after_many
   8. a row error: rollback to the savepoint; FAIL_FAST raises the first one (" (row n)"), COLLECT returns them in x_errors
      any other error: rollback to the savepoint and the original exception raised again, in both modes
@@ -849,8 +851,9 @@ contract of every row and changes only the DML: one `FORALL ... SAVE EXCEPTIONS`
 - **Types (spec of `_svc`):** `t_tab` (table of `t_rec`), `t_id_tab`, `t_ver_tab` (with `row_version`), `t_row_view`
   (the rows by input index, `%rowtype`), `t_err` (`idx`, `code`, `message`) and `t_err_tab`. With a DAL the last three
   are subtypes of the DAL's types (`t_rows`, `t_err`, `t_err_tab`), so one collection crosses both layers.
-- **Input:** dense collections `1..n`, the same size; a null or repeated id is a row error (the image before the change
-  would be ambiguous). The input index is the identity of a row everywhere: the read of step 2 goes back to it through
+- **Input:** dense collections `1..n`, the same size (otherwise `[BULK_INPUT]` raised: an error of the call); a null or
+  repeated id is a row error that takes only its index out of the batch (the image before the change would be
+  ambiguous). The input index is the identity of a row everywhere: the read of step 2 goes back to it through
   a map `id → index`, so the order of the query does not matter.
 - **Outputs:** defined only on a normal return. A normal return with `x_errors` empty means the batch is written; with
   `x_errors` not empty (COLLECT) nothing is written and `x_ids` is empty. After an exception the caller ignores them.

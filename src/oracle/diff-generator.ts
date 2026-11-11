@@ -1024,22 +1024,28 @@ export class OracleDiffGenerator implements DiffGenerator {
         const apexChanged  =
             (oldNode.isOption('apex') || oldNode.isOption('apx')) !==
             (newNode.isOption('apex') || newNode.isOption('apx'));
-        const newSql = this._packagesSql(newNode, newCtx, newKind);
+        const newSql = this._packagesSql(newNode, newCtx, newKind, true);
         const needsReplace = colsChanged || oldKind !== newKind || apexChanged
-            || this._packagesSql(oldNode, oldCtx, oldKind) !== newSql;
+            || this._packagesSql(oldNode, oldCtx, oldKind, false) !== newSql;
         if (needsReplace && newSql !== '') stmts.push(...this._splitPkgBlocks(newSql, tbl));
 
         return { stmts, warns };
     }
 
-    /** The packages the generator emits for a table, '' without an API; a model it cannot generate counts as changed. */
-    private _packagesSql(node: IDdlNode, ctx: DdlContext, kind: 'layered' | 'simple' | 'none'): string {
+    /**
+     * The packages the generator emits for a table, '' without an API. The target model must generate: its error stops
+     * the migration (codex-037 X1-DIFF-01), never a plan with the drops and without the new packages. The old model is
+     * only compared: one that no longer generates (a rule added since) counts as changed.
+     */
+    private _packagesSql(node: IDdlNode, ctx: DdlContext, kind: 'layered' | 'simple' | 'none', target: boolean): string {
         if (kind === 'none') return '';
+        const plsql = new OraclePlsqlBuilder(ctx, DEFAULT_NAMING);
+        const generate = () => kind === 'layered' ? plsql.generateLayeredTAPI(node) : plsql.generateTAPI(node);
+        if (target) return generate();
         try {
-            const plsql = new OraclePlsqlBuilder(ctx, DEFAULT_NAMING);
-            return kind === 'layered' ? plsql.generateLayeredTAPI(node) : plsql.generateTAPI(node);
+            return generate();
         } catch (e) {
-            return `-- not generated: ${(e as Error).message}`;
+            return `-- the old model does not generate: ${(e as Error).message}`;
         }
     }
 

@@ -14,7 +14,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   codes -20005 `[BULK_INPUT]`, -20006 `[BULK_REENTRANT]`, -20007 `[BULK_ROW]`, -20008 `[BULK_ROLLBACK]`. Refused at
   generation (and shown by the editor, from the same rules): no service, `/versioned`, a detail of an `/aggregate`,
   `/auditlog`, `/bridge`, `/soda`, `/history`, `/flashback`, translated columns. Without `/bulk` the generated output is
-  unchanged. `test/unit/bulk.test.ts`, `hook-order.test.ts` (bulk paths), `diff.test.ts`.
+  unchanged. The outcome of the `FORALL` by input index: the exceptions (`SQL%BULK_EXCEPTIONS`) and, where the scalar
+  `update_row` checks it (with `row_version`), the rows touched (`SQL%BULK_ROWCOUNT`) are copied on the normal path and in
+  the handler of ORA-24381, then one error per index in the order of the input (codex-037). A null or repeated id takes
+  only its index out of the batch. The scalar DAL and `/bulk` share `rowPredicates` and `renderStaleOrNotFound`.
+  `test/unit/bulk.test.ts`, `hook-order.test.ts` (bulk paths), `diff.test.ts`.
 - `/virtual <expr>`: a computed column, `generated always as (<expr>) virtual`. 2.8.0 also leaves it out of the DAL's
   insert and update (it was out of `t_rec` but still written by `insert_row`/`update_row`, ORA-54013), and the editor
   knows the directive.
@@ -22,7 +26,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   a change of columns, kind, `/auditlog` or `/apex`: a change of `/bulk`, of a dimension column, of the tier or of the
   interface left the old packages in place. The packages no longer generated are dropped (the tier, `/bulk`), from the
   same list as the generator's drops. The bodies of `<t>_hks` and `<t>_bulk_hks`, written by hand, are created only when
-  missing, never replaced: until 2.7.0 the migration overwrote the body of `_hks` with the empty generated one.
+  missing, never replaced: until 2.7.0 the migration overwrote the body of `_hks` with the empty generated one. A new
+  model the generator refuses (`/bulk` on a lookup tier, with `/auditlog`...) stops the migration with its error, never a
+  plan with the drops and without the new packages.
 - The tier logic is one: `isLayeredNode`, `tierCapabilities`, `interfaceFlags` and `layeredPackageNames` in
   `table-model.ts`, used by the analyser, the generator's drops and the migration (they had three copies, the migration's
   without the normalisation of the tier).

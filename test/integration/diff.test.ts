@@ -1001,3 +1001,21 @@ describe('packages follow the generated output (2.8.0)', () => {
         expect(pkgs(r).some(s => s.startsWith('create or replace package body widgets_dal as'))).toBe(true);
     });
 });
+
+// codex-037 X1-DIFF-01: a target the generator refuses stops the migration -- never the drops without the new packages
+describe('a target model that does not generate', () => {
+    const old = 'widgets /api full+hks\n  name vc100 /nn\n';
+    test('/bulk on a lookup tier: refused, no plan', () => {
+        expect(() => diff(old, old.replace('full+hks', 'lookup /bulk'))).toThrow(/\/bulk: widgets has no service/);
+    });
+    test('/bulk with /auditlog: refused, no plan', () => {
+        expect(() => diff(old, old.replace('full+hks', 'full+hks /bulk /auditlog'))).toThrow(/\/bulk: widgets has \/auditlog/);
+    });
+    test('a new table refused too', () => {
+        expect(() => diff(old, old + 'gadgets /api full+hks /bulk /versioned /businesskey code\n  code vc20 /nn\n')).toThrow(/\/bulk: gadgets is \/versioned/);
+    });
+    test('an old model that no longer generates is only compared: the new packages replace it', () => {
+        const r = diff(old.replace('full+hks', 'lookup /bulk'), old);
+        expect(r.statements.some(s => s.kind === 'create_package' && s.sql.includes('create or replace package widgets_svc as'))).toBe(true);
+    });
+});
